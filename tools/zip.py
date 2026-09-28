@@ -5,7 +5,9 @@
 用法：python3 tools/zip.py  →  生成上级目录 kimi-game-rank.zip
 
 交付包里只放「线上运行需要的东西」：
-  · 构建脚本、设计文档、独立展示页都不进包；
+  · 构建脚本、设计文档、独立展示页、仓库配置（.github）都不进包；
+  · 仓库文档（README / CHANGELOG / 贡献指南 / 行为准则 / 安全政策）与安装、诊断脚本
+    只留在 GitHub —— 交付包与开源仓库保持完全分开；
   · storage 下只保留目录骨架（.gitkeep）与访问控制文件（.htaccess），
     锁文件 / 日志 / 缓存 / 时间戳等运行期产物一律排除。
 """
@@ -24,12 +26,21 @@ SKIP = (
     os.path.join(PROJ, 'tools') + os.sep,          # 构建与校验脚本
     os.path.join(PROJ, 'docs') + os.sep,           # 设计与研究文档
     os.path.join(PROJ, 'standalone') + os.sep,     # 更新日志 / 跳转页独立版（另发）
+    os.path.join(PROJ, '.github') + os.sep,        # 仓库配置：只属于 GitHub，不进站点
     os.path.join(PROJ, '.git') + os.sep,
 )
 
 # 单独文件级的排除
 SKIP_FILES = (
     os.path.join(PROJ, '.gitignore'),
+    os.path.join(PROJ, 'install.php'),      # 安装器：站点已装好，不随交付分发
+    os.path.join(PROJ, 'diag.php'),         # 诊断入口：运维用，不随交付分发
+    # 以下仓库文档只留在 GitHub —— 交付包与开源仓库完全分开
+    os.path.join(PROJ, 'README.md'),
+    os.path.join(PROJ, 'CHANGELOG.md'),
+    os.path.join(PROJ, 'CONTRIBUTING.md'),
+    os.path.join(PROJ, 'CODE_OF_CONDUCT.md'),
+    os.path.join(PROJ, 'SECURITY.md'),
     os.path.join(PROJ, 'check.php'),        # 环境自检
     os.path.join(PROJ, 'selfcheck.php'),    # 站点自检
     os.path.join(PROJ, 'mimecheck.php'),    # MIME 自检
