@@ -33,6 +33,7 @@ SKIP = (
 # 单独文件级的排除
 SKIP_FILES = (
     os.path.join(PROJ, '.gitignore'),
+    os.path.join(PROJ, 'LICENSE'),          # 许可证：只留在仓库，交付包与仓库完全分开
     os.path.join(PROJ, 'install.php'),      # 安装器：站点已装好，不随交付分发
     os.path.join(PROJ, 'diag.php'),         # 诊断入口：运维用，不随交付分发
     # 以下仓库文档只留在 GitHub —— 交付包与开源仓库完全分开
