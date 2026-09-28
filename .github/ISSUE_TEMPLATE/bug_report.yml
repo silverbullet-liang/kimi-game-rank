@@ -1,0 +1,47 @@
+name: Bug 报告
+description: 报告一个问题（安全问题请勿走这里，见 SECURITY.md）
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ⚠️ **安全问题请不要在这里提交**，请按 [SECURITY.md](../SECURITY.md) 的私密渠道报告。
+  - type: textarea
+    id: what
+    attributes:
+      label: 发生了什么
+      description: 简明描述现象
+    validations:
+      required: true
+  - type: textarea
+    id: expect
+    attributes:
+      label: 期望的行为
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 打开 …
+        2. 点击 …
+        3. 看到 …
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: 环境
+      description: PHP 版本、数据库版本、浏览器（前端问题时）
+      placeholder: "PHP 7.4 / MySQL 8.0 / Chrome 130"
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: 补充信息
+      description: 截图、日志片段等；**请先确认其中不含密钥、数据库连接或用户数据**
+    validations:
+      required: false

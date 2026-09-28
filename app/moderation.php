@@ -1,0 +1,323 @@
+<?php
+/**
+ * 内容过三关（评论 / 消息发送前，服务端强制）
+ * ============================================================
+ * 一验：本地词库 + 常用句式正则 —— 零网络开销，先挡掉绝大多数。
+ * 二验：译成英文后交给英文脏词接口 —— 覆盖词库收不到的新说法。
+ * 过三关：glm-4-flash 判定，只认 True（放行）/ False（拦截）。
+ *
+ * 三条原则：
+ *   ① 词库与白名单都从数据文件读取，本文件不含任何词条字面量；
+ *   ② 结论按「内容指纹」缓存，同样的内容只验一次；
+ *   ③ 外部环节故障默认不阻断发言（可在配置里改成严格模式），
+ *      但每一次降级都会记日志，方便事后回溯。
+ *
+ * 额度：第三关走本站自有模型（glm-4-flash），用量记在站点名下，
+ *       任何情况下都不消耗发言者的个人额度。
+ */
+
+/** 词库与白名单的磁盘路径 */
+function moderation_word_file()  { return APP_ROOT . '/app/data/moderation_words.txt'; }
+function moderation_allow_file() { return APP_ROOT . '/app/data/moderation_allow.txt'; }
+
+/**
+ * 载入词库：返回 array(index => array(首字 => array(词条...)), all => array(词条...))。
+ * 首字索引把逐条比对从「整库扫」降为「只看同首字的候选」，长文本下差距明显。
+ */
+function moderation_words(): array
+{
+    static $cache = null;
+    if ($cache !== null) { return $cache; }
+
+    $idx = array(); $all = array();
+    $f = moderation_word_file();
+    if (is_file($f)) {
+        $raw = @file_get_contents($f);
+        if ($raw !== false) {
+            foreach (explode("\n", $raw) as $line) {
+                $w = trim($line);
+                if ($w === '' || $w[0] === '#') { continue; }
+                $w = mb_strtolower($w, 'UTF-8');
+                if (mb_strlen($w, 'UTF-8') < 2) { continue; }   // 单字误伤面过大，整库不收录
+                if (isset($all[$w])) { continue; }
+                $all[$w] = true;
+                $idx[mb_substr($w, 0, 1, 'UTF-8')][] = $w;
+            }
+        }
+    }
+    return $cache = array('index' => $idx, 'all' => array_keys($all));
+}
+
+/** 白名单：命中这些词的位置先被屏蔽，避免「正常词里夹着敏感片段」被误伤 */
+function moderation_allow(): array
+{
+    static $cache = null;
+    if ($cache !== null) { return $cache; }
+    $out = array();
+    $f = moderation_allow_file();
+    if (is_file($f)) {
+        $raw = @file_get_contents($f);
+        if ($raw !== false) {
+            foreach (explode("\n", $raw) as $line) {
+                $w = trim($line);
+                if ($w !== '' && $w[0] !== '#') { $out[] = mb_strtolower($w, 'UTF-8'); }
+            }
+        }
+    }
+    return $cache = $out;
+}
+
+/**
+ * 归一化：让「插空格 / 夹符号 / 全角 / 大小写」这类绕行写法回到同一形态。
+ * 返回 array(plain, squeezed)：squeezed 还把连续重复字压成 2 个，用于挡刷屏式变体。
+ */
+function moderation_norm(string $s): array
+{
+    /* 全角字母数字与全角空格 → 半角（mb_convert_kana 的 'as'） */
+    if (function_exists('mb_convert_kana')) {
+        $t = @mb_convert_kana($s, 'as', 'UTF-8');
+        if (is_string($t) && $t !== '') { $s = $t; }
+    }
+    $s = mb_strtolower($s, 'UTF-8');
+    /* 去掉不可见与零宽字符 */
+    $s = (string)preg_replace('/[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2060}-\x{2064}\x{FEFF}\x{00AD}]/u', '', $s);
+    /* 去掉夹在中间的轻度分隔符：这是最常见的「打码绕行」手法 */
+    $s = (string)preg_replace('/[\s\x{00B7}\x{2022}\x{30FB}\.\-\_\*\~\^\+\=\|\/\\\\,\x{3002}\x{FF0C}\x{FF01}\x{FF1F}\x{FF1B}\x{FF1A}]+/u', '', $s);
+    if ($s === '') { return array('plain' => '', 'squeezed' => ''); }
+    $sq = (string)preg_replace('/(.)\1{2,}/u', '$1$1', $s);      // 连续 3 个以上压成 2 个
+    return array('plain' => $s, 'squeezed' => $sq);
+}
+
+/** 把白名单命中的位置替换成等长占位符：位置不变，但不再参与匹配 */
+function moderation_shield(string $text): string
+{
+    foreach (moderation_allow() as $w) {
+        $n = mb_strlen($w, 'UTF-8');
+        if ($n < 2) { continue; }
+        $pos = 0;
+        while (($pos = mb_strpos($text, $w, $pos, 'UTF-8')) !== false) {
+            $text = mb_substr($text, 0, $pos, 'UTF-8')
+                  . str_repeat('·', $n)
+                  . mb_substr($text, $pos + $n, null, 'UTF-8');
+            $pos += $n;
+        }
+    }
+    return $text;
+}
+
+/** 在给定文本里查词库；命中即返回该词（仅用于内部判断，不对外输出） */
+function moderation_scan(string $text): string
+{
+    if ($text === '') { return ''; }
+    $cat = moderation_words();
+    if (!$cat['all']) { return ''; }
+    $len = mb_strlen($text, 'UTF-8');
+    for ($i = 0; $i < $len; $i++) {
+        $c1 = mb_substr($text, $i, 1, 'UTF-8');
+        if (!isset($cat['index'][$c1])) { continue; }
+        foreach ($cat['index'][$c1] as $w) {
+            $n = mb_strlen($w, 'UTF-8');
+            if ($i + $n > $len) { continue; }
+            if (mb_substr($text, $i, $n, 'UTF-8') === $w) { return $w; }
+        }
+    }
+    return '';
+}
+
+/**
+ * 常用句式正则：只针对「形态」而非「词义」，因此不受词库覆盖面限制。
+ * 返回命中的规则名（空串 = 无命中）。
+ */
+function moderation_patterns(string $text): string
+{
+    if ($text === '') { return ''; }
+
+    /* 刷屏：同一字符连发 12 次以上 */
+    if (preg_match('/(.)\1{11,}/u', $text)) { return 'flood'; }
+
+    /* 联系方式引流：加/留 + 平台词，或平台词后紧跟 5 位以上数字 */
+    if (preg_match('/(加|留|私|扣)\s*(我|你)?\s*(微|威信|v信|vx|wx|qq|扣扣|企鹅|电报|tg|telegram)/iu', $text)) { return 'contact'; }
+    if (preg_match('/(微|威信|v信|vx|wx|qq|扣扣|telegram|tg)\s*[:：]?\s*\d{5,}/iu', $text)) { return 'contact'; }
+
+    /* 站外手机号（11 位，1 开头） */
+    if (preg_match('/(?<!\d)1[3-9]\d{9}(?!\d)/u', $text)) { return 'phone'; }
+
+    /* 纯数字长串（常见于报号引流） */
+    if (preg_match('/(?<!\d)\d{8,}(?!\d)/u', $text)) { return 'number_spam'; }
+
+    return '';
+}
+
+/** 第一验：词库 + 句式。返回 array(ok, reason) */
+function moderation_check1(string $text): array
+{
+    $n = moderation_norm($text);
+    $hit = moderation_scan(moderation_shield($n['plain']));
+    if ($hit === '' && $n['squeezed'] !== $n['plain']) {
+        $hit = moderation_scan(moderation_shield($n['squeezed']));
+    }
+    if ($hit !== '') { return array('ok' => false, 'reason' => 'wordlist'); }
+
+    $p = moderation_patterns($n['plain']);
+    if ($p !== '') { return array('ok' => false, 'reason' => 'pattern:' . $p); }
+
+    return array('ok' => true, 'reason' => '');
+}
+
+/** 外部接口取文本（短超时；失败返回 ''，由调用方决定降级） */
+function moderation_http(string $url, int $timeout = 4, int $maxBytes = 20000): string
+{
+    if (!function_exists('curl_init')) { return ''; }
+    $body = '';
+    $ch = curl_init($url);
+    curl_setopt_array($ch, array(
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_TIMEOUT        => $timeout,
+        CURLOPT_CONNECTTIMEOUT => 4,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_USERAGENT      => 'KimiGameRank/' . (defined('APP_VERSION') ? APP_VERSION : '1.0'),
+        CURLOPT_WRITEFUNCTION  => function ($ch, $chunk) use (&$body, $maxBytes) {
+            $body .= $chunk;
+            return (strlen($body) > $maxBytes) ? 0 : strlen($chunk);
+        },
+    ));
+    curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    return ($code === 200) ? $body : '';
+}
+
+/** 文本是否含中日韩字符（决定要不要送翻译） */
+function moderation_has_cjk(string $s): bool
+{
+    return (bool)preg_match('/[\x{3400}-\x{9FFF}\x{F900}-\x{FAFF}]/u', $s);
+}
+
+/**
+ * 第二验：翻译成英文 → 英文脏词接口。
+ * 任一环节不可用时返回 unknown（默认放行、记日志，绝不因为外部服务抽风就封住发言）。
+ */
+function moderation_check2(string $text): array
+{
+    $en = $text;
+    if (moderation_has_cjk($text)) {
+        $q   = mb_substr($text, 0, 300, 'UTF-8');
+        $raw = moderation_http('https://api.mymemory.translated.net/get?q='
+             . rawurlencode($q) . '&langpair=' . rawurlencode('zh-CN|en'), 5);
+        if ($raw === '') { return array('ok' => true, 'unknown' => true, 'reason' => 'translate_unavailable'); }
+        $j = json_decode($raw, true);
+        $t = is_array($j) && isset($j['responseData']['translatedText']) ? (string)$j['responseData']['translatedText'] : '';
+        if ($t === '') { return array('ok' => true, 'unknown' => true, 'reason' => 'translate_empty'); }
+        $en = $t;
+    }
+    if (trim($en) === '') { return array('ok' => true, 'reason' => ''); }
+
+    $raw = moderation_http('https://www.purgomalum.com/service/containsprofanity?text=' . rawurlencode(mb_substr($en, 0, 500, 'UTF-8')), 4);
+    if ($raw === '') { return array('ok' => true, 'unknown' => true, 'reason' => 'profanity_unavailable'); }
+    $verdict = strtolower(trim($raw));
+    if ($verdict === 'true')  { return array('ok' => false, 'reason' => 'english_profanity'); }
+    if ($verdict === 'false') { return array('ok' => true, 'reason' => ''); }
+    return array('ok' => true, 'unknown' => true, 'reason' => 'profanity_unexpected');
+}
+
+/**
+ * 第三关：glm-4-flash 判定，模型只回 True（合规，放行）或 False（拦截）。
+ * 走站点自有通道，用量记在站点名下（uid=0），不动任何人的个人额度。
+ */
+function moderation_check3(string $text): array
+{
+    $sys = "你是社区内容审核员。判断用户提交的内容是否合规。\n"
+         . "判定为不合规的情形：辱骂、人身攻击、歧视、色情、暴力威胁、违法犯罪、\n"
+         . "广告引流、无意义刷屏。\n"
+         . "正常讨论游戏、作品、剧情，或表达对作品/评分的不满与批评，都算合规。\n"
+         . "只输出一个词：合规输出 True，不合规输出 False。不要输出任何其它内容。";
+    $user = "待审内容：\n<content>\n" . mb_substr($text, 0, 500, 'UTF-8') . "\n</content>";
+    $msgs = array(
+        array('role' => 'system', 'content' => $sys),
+        array('role' => 'user',   'content' => $user),
+    );
+
+    try {
+        $r = zhipu_chat($msgs, (string)cfg('moderation.model', 'glm-4-flash'));
+    } catch (Throwable $e) {
+        app_log('moderation_check3 failed: ' . $e->getMessage());
+        return array('ok' => true, 'unknown' => true, 'reason' => 'ai_unavailable');
+    }
+    if (!empty($r['usage'])) { ai_usage_record(0, $r['usage'], 'glm'); }   // 站点承担
+
+    /* 解析：先看开头那个词（"False." / "True" 都能认），
+       再退回整串查找——但整串里 true 与 false 同时出现时以 true 为准，
+       避免模型多嘴复述「输出 True 或 False」反而把正常内容判死。 */
+    $out  = strtolower(trim((string)$r['text']));
+    $head = (string)preg_replace('/[^a-z].*$/s', '', $out);
+    if ($head === 'false') { return array('ok' => false, 'reason' => 'ai_reject'); }
+    if ($head === 'true')  { return array('ok' => true,  'reason' => ''); }
+    $hasF = strpos($out, 'false') !== false;
+    $hasT = strpos($out, 'true')  !== false;
+    if ($hasF && !$hasT) { return array('ok' => false, 'reason' => 'ai_reject'); }
+    if ($hasT)           { return array('ok' => true,  'reason' => ''); }
+    app_log('moderation_check3 unexpected output len=' . strlen($out));
+    return array('ok' => true, 'unknown' => true, 'reason' => 'ai_unexpected');
+}
+
+/**
+ * 主入口：过三关 + 缓存。
+ * $scope：'comment' | 'message'，仅用于日志与后续分域调参。
+ * 返回 array(ok, stage, reason, cached)。ok=false 时调用方应拒绝写入并给出统一话术。
+ */
+function moderate_text(string $text, string $scope = 'comment'): array
+{
+    $text = trim($text);
+    if ($text === '') { return array('ok' => true, 'stage' => 0, 'reason' => '', 'cached' => false); }
+    if ((int)cfg('moderation.enabled', 1) !== 1) { return array('ok' => true, 'stage' => 0, 'reason' => 'disabled', 'cached' => false); }
+
+    /* 结论缓存：同一内容只验一次（内容改了，指纹就变，自然重验） */
+    $ttl = max(3600, (int)cfg('moderation.cache_ttl', 604800));
+    $key = 'mod_' . substr(dup_content_norm($text), 0, 40);
+    $hit = cache_get($key, $ttl);
+    if (is_array($hit) && isset($hit['ok'])) {
+        return array('ok' => (bool)$hit['ok'], 'stage' => (int)($hit['stage'] ?? 0),
+                     'reason' => (string)($hit['reason'] ?? ''), 'cached' => true);
+    }
+
+    $steps = array(
+        array('stage' => 1, 'fn' => 'moderation_check1', 'on' => true),
+        array('stage' => 2, 'fn' => 'moderation_check2', 'on' => (int)cfg('moderation.stage2', 1) === 1),
+        array('stage' => 3, 'fn' => 'moderation_check3', 'on' => (int)cfg('moderation.stage3', 1) === 1),
+    );
+
+    $strict  = (int)cfg('moderation.strict', 0) === 1;
+    $verdict = array('ok' => true, 'stage' => 0, 'reason' => '');
+
+    foreach ($steps as $s) {
+        if (!$s['on']) { continue; }
+        $r = call_user_func($s['fn'], $text);
+        if (empty($r['ok'])) {
+            $verdict = array('ok' => false, 'stage' => $s['stage'], 'reason' => (string)$r['reason']);
+            break;
+        }
+        if (!empty($r['unknown'])) {
+            /* 外部环节故障：默认放行（社区不该被第三方服务拖停），严格模式则拒绝 */
+            app_log('moderation degraded scope=' . $scope . ' stage=' . $s['stage']
+                  . ' reason=' . $r['reason'] . ' strict=' . ($strict ? 1 : 0));
+            if ($strict) { $verdict = array('ok' => false, 'stage' => $s['stage'], 'reason' => 'unavailable'); break; }
+            $verdict = array('ok' => true, 'stage' => 0, 'reason' => 'degraded');
+        }
+    }
+
+    cache_set($key, array('ok' => $verdict['ok'] ? 1 : 0, 'stage' => $verdict['stage'],
+                          'reason' => $verdict['reason']), $ttl);
+    if (!$verdict['ok']) {
+        app_log('moderation blocked scope=' . $scope . ' stage=' . $verdict['stage'] . ' reason=' . $verdict['reason']);
+    }
+    return array('ok' => (bool)$verdict['ok'], 'stage' => (int)$verdict['stage'],
+                 'reason' => (string)$verdict['reason'], 'cached' => false);
+}
+
+/** 拒绝写入时的统一话术（对外只说结论与出路，不透露命中了什么，避免被反向试探） */
+function moderate_reject(array $v)
+{
+    $extra = ((int)$v['stage'] === 1) ? '请检查是否含辱骂、广告或联系方式。' : '请修改后重新发送。';
+    fail(422, '内容未通过审核，' . $extra . '如认为误判，可通过「反映问题」告知我们。');
+}

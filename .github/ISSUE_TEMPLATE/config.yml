@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔐 报告安全问题
+    url: https://github.com/silverbullet-liang/kimi-game-rank/security/advisories/new
+    about: 漏洞请走私密渠道，不要开公开 Issue。授权范围见 SECURITY.md
+  - name: 📖 阅读文档
+    url: https://github.com/silverbullet-liang/kimi-game-rank/blob/main/README.md
+    about: 部署、配置与自检说明

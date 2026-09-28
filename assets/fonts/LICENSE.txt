@@ -1,0 +1,56 @@
+================================================================================
+ 自托管字体 —— 来源与授权说明 (Self-hosted Fonts: Origin & License)
+ 项目: kimi-game-rank
+ 说明: 以下字体均自托管于本站 assets/fonts/ 目录，未作任何跨域外链引用。
+================================================================================
+
+--------------------------------------------------------------------------------
+1) ZCOOL KuaiLe (手绘风)  —— 站酷快乐体
+--------------------------------------------------------------------------------
+ 本地文件 : assets/fonts/hand/kuaile/zcool-kuaile-*.woff2 (共 93 个 unicode-range 分片)
+            assets/fonts/hand/kuaile/LICENSE
+ 来源 npm : @fontsource/zcool-kuaile@5.3.0
+ CDN      : https://gcore.jsdelivr.net/npm/@fontsource/zcool-kuaile@5.3.0/
+ 上游源码 : https://github.com/google/fonts/tree/main/ofl/zcoolkuaile
+ 版本     : 5.3.0
+ 授权     : SIL Open Font License, Version 1.1 (OFL-1.1)
+            作者: 站酷 ZCOOL
+            许可证全文见同目录下的 LICENSE 文件。
+            可免费商用，亦允许网页嵌入与自托管。
+
+--------------------------------------------------------------------------------
+2) FusionPixel (像素风，中英文)  —— Fusion Pixel 12px Proportional SC
+--------------------------------------------------------------------------------
+ 本地文件 : assets/fonts/fusion-pixel/fusion-pixel-12px-proportional-sc-latin-400-normal.woff2
+            assets/fonts/fusion-pixel/LICENSE
+ 来源 npm : @fontsource/fusion-pixel-12px-proportional-sc@5.3.0
+ tarball  : https://cdn.npmmirror.com/packages/@fontsource/fusion-pixel-12px-proportional-sc/5.3.0/fusion-pixel-12px-proportional-sc-5.3.0.tgz
+ 上游源码 : https://github.com/TakWolf/fusion-pixel-font
+ 版本     : v2024.05.12 (fontsource 包版本 5.3.0)
+ 授权     : SIL Open Font License, Version 1.1 (OFL-1.1)
+            作者: TakWolf (https://takwolf.com)
+            许可证全文见同目录下的 LICENSE 文件。
+
+--------------------------------------------------------------------------------
+3) MiSans (默认正文字体，可变字重)  —— MiSans Variable
+--------------------------------------------------------------------------------
+ 本地文件 : assets/fonts/misans/MiSansVF.<hash>.<n>.woff2 (共 56 个 unicode-range 分片)
+ 来源 npm : misans@5.0.0  (仅取 lib/Normal/ 下 MiSansVF 可变字重组)
+ CDN      : https://gcore.jsdelivr.net/npm/misans@5.0.0/lib/Normal/MiSansVF.*
+ 版本     : 5.0.0
+ 授权     : MiSans 为小米官方字体，可免费商用；字体知识产权归小米公司所有。
+            详见 https://hyperos.mi.com/font/ (MiSans 官方页面)。
+
+================================================================================
+ 备注
+--------------------------------------------------------------------------------
+ * 所有 @font-face 的 url() 均为相对路径，指向本站 assets/fonts/ 下的本地文件，
+   不存在任何指向 http(s) 外部域名的引用。
+ * MiSans 的 unicode-range 对应关系取自官方 MiSansVF.min.css，仅将 URL 改为
+   本地相对路径，分片与 unicode-range 的映射保持原样。
+ * Fusion Pixel 为单文件全字符集字体（fontsource 标注为 latin 子集，但实际
+   覆盖 17573 个中日韩统一表意文字及基本拉丁字母）。
+ * ZCOOL KuaiLe 的 unicode-range 分片取自上游 400.css，仅将 url() 改为本地
+   相对路径；上游提供的 .woff 回退格式未收录（woff2 已为现代浏览器通用格式）。
+   该字体收录常用汉字约 6800 字，正文中未收录的生僻字由 MiSans 兜底。
+================================================================================

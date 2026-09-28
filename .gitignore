@@ -1,0 +1,38 @@
+# ---------- 运行时生成（含数据库连接与密钥），由安装器重建 ----------
+config/config.php
+
+# ---------- 密钥池：仓库只提供 .sample 模板 ----------
+config/api_keys.php
+
+# ---------- 审核词库：官方词表不随源码公开 ----------
+app/data/moderation_words.txt
+app/data/moderation_allow.txt
+
+# ---------- 内部归档与逆向研究稿（不对外） ----------
+docs/archive/
+docs/Kimi API详解与研究指南.md
+
+# ---------- 构建与交付产物 ----------
+*.zip
+
+# ---------- 存储与日志 ----------
+storage/cache/*
+storage/logs/*
+storage/uploads/*
+storage/backups/*
+!storage/cache/.gitkeep
+!storage/logs/.gitkeep
+!storage/uploads/.gitkeep
+!storage/backups/.gitkeep
+
+# ---------- 安装锁与运行期标记 ----------
+storage/installed.lock
+storage/migrated_*.lock
+storage/schema_checked.txt
+
+# ---------- 编辑器 / 系统 ----------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

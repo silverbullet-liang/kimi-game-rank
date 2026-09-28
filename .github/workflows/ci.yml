@@ -1,0 +1,36 @@
+name: 自检
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          extensions: mbstring, pdo_mysql
+          coverage: none
+
+      - name: PHP 语法检查（全量 php -l）
+        run: |
+          find . -name '*.php' -not -path './storage/*' -print0 | while IFS= read -r -d '' f; do php -l "$f" || exit 1; done
+
+      - name: 项目基线检查（PHP 7.0 语法红线）
+        run: python3 tools/phpcheck.py
+
+      - name: 前端重名冲突检查
+        run: python3 tools/jscheck.py
+
+      - name: 泄漏自检（密钥 / 词库 / 数据库连接）
+        run: python3 tools/repo_check.py

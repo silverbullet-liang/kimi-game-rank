@@ -1,0 +1,344 @@
+/* 皮肤变量覆写 */
+html[data-skin="sketch"] {
+  --tab-active-bg: color-mix(in srgb, #f2c94c 62%, transparent);
+  --tab-active-fg: #3b342c;
+  --msg-bg: #fffdf8;
+  --msg-fg: #3b342c;
+  --msg-mine-bg: color-mix(in srgb, #f2c94c 40%, #fffdf8);
+  --msg-mine-fg: #3b342c;
+  --toast-bg: #fffdf8;
+  --toast-fg: #3b342c;
+  --toast-err-bg: color-mix(in srgb, #e8734a 28%, #fffdf8);
+  --toast-radius: var(--radius-sm);
+  --toast-border: 1.5px solid rgba(59, 52, 44, .38);
+}
+
+/* ============================================================
+ * 皮肤：手绘风（纸笔手账）
+ * ------------------------------------------------------------
+ * 依据：daisyUI《Hand-Drawn UI Design Style》
+ *   - 三层纸色：米白纸（底）/ 草图纸（次层）/ 轻灰纸（三层），并叠纸张噪点
+ *   - 线条不完美：不均描边、明显的草图轮廓、手绘方框与下划线
+ *   - 字体分工（可读性关键）：手写体只用于**标题与标注**，正文用干净字体
+ *   - 圆角控制在 0.25–1rem（4–16px）区间，略带不对称但不夸张
+ *   - 配色：米白纸 + 深墨为主，蜡笔 / 马克笔 / 水彩作小范围强调
+ *   - 动效：线条逐笔绘出、插画轻微闲置摆动、状态变化短暂不完全重绘
+ * 独立文件：本风格全部视觉定义。
+ * ============================================================ */
+
+:root {
+  --sk-ink: #3b342c;                       /* 深墨 */
+  --sk-ink-soft: rgba(59, 52, 44, .38);
+  --sk-paper: #fdfaf2;                     /* base-100 米白纸 */
+  --sk-paper-2: #f6efdf;                   /* base-200 草图纸 */
+  --sk-paper-3: #eee7d7;                   /* base-300 轻灰纸 */
+  --sk-crayon: #e8734a;                    /* 蜡笔橘 */
+  --sk-marker: #f2c94c;                    /* 马克笔黄 */
+  --sk-water: #7aa7c7;                     /* 水彩蓝 */
+
+  --bg-1: var(--sk-paper);
+  --bg-2: var(--sk-paper-2);
+  --surface: #fffdf8;
+  --surface-solid: #fffdf8;
+  --border: var(--sk-ink-soft);
+  --border-soft: rgba(59, 52, 44, .22);
+  --text: #3b342c;
+  --text-2: #6a6053;
+  --text-3: #9b917f;
+
+  /* 圆角：0.25–1rem 区间，略带不对称以显手绘 */
+  --radius-lg: 16px 12px 17px 13px;
+  --radius-md: 12px 9px 13px 10px;
+  --radius-sm: 9px 7px 10px 8px;
+  --shadow: none;
+  --shadow-sm: none;
+
+  /* 字体分工 */
+  --sk-hand: 'ZCOOL KuaiLe', 'MiSans', "Kaiti SC", "STKaiti", "KaiTi", "楷体", cursive;
+  --sk-clean: 'MiSans', system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --sk-ease: cubic-bezier(.34, 1.25, .42, 1);
+}
+
+[data-theme="dark"] {
+  --sk-ink: #eae3d6;
+  --sk-ink-soft: rgba(234, 227, 214, .34);
+  --sk-paper: #23211d;
+  --sk-paper-2: #1d1b18;
+  --sk-paper-3: #2b2823;
+  --surface: #2a2723;
+  --surface-solid: #2a2723;
+  --border-soft: rgba(234, 227, 214, .2);
+  --text: #eae4d8;
+  --text-2: #bdb5a6;
+  --text-3: #8e8677;
+}
+
+/* ---------- 纸张：三层色 + 横线 + 噪点 ---------- */
+body {
+  font-family: var(--sk-clean);            /* 正文用干净字体 */
+  background-color: var(--sk-paper);
+  background-image:
+    repeating-linear-gradient(0deg, transparent 0 27px, color-mix(in srgb, var(--sk-water) 26%, transparent) 27px 28px),
+    linear-gradient(180deg, var(--sk-paper), var(--sk-paper-2));
+  background-attachment: fixed;
+  color: var(--text);
+}
+/* 纸纹噪点 */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: .5;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E");
+}
+[data-theme="dark"] body::after { mix-blend-mode: screen; opacity: .3; }
+
+/* ---------- 标题：手写体 + 逐笔绘出 ---------- */
+.card-title, .rank-title, .doc h1, .doc h2, .doc h3, .donate-head, .guest-box h3,
+.login-title, .dialog h3, .profile-head .name {
+  font-family: var(--sk-hand);
+  font-weight: 700;
+  letter-spacing: .3px;
+}
+.doc h1, .doc h2 { font-size: 20px; }
+.card-title { display: inline-block; animation: skDraw .5s steps(14, end) both; }
+@keyframes skDraw {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+/* 标注也用一点手写感 */
+.tiny, .muted, .badge, .skin-card b, .ck-big { font-family: var(--sk-hand); }
+
+/* ---------- 基材：不均描边 + 三层纸色 ---------- */
+.card, .panel-plain, .rank-item, .stat-box, .tp-col, .tool-card, .block-note,
+.dialog, .drawer, .picker, .toast, .donate-box, .guest-box, .search-panel, .tip-card {
+  background: var(--surface);
+  border: 1.5px solid var(--sk-ink-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: 2px 3px 0 rgba(59, 52, 44, .06);
+}
+/* 层级用纸色深浅表达（草图纸 / 轻灰纸） */
+.rank-item, .stat-box, .tool-card, .tip-card { background: var(--sk-paper-2); }
+.panel-plain, .table, .picker-body, .drawer { background: var(--sk-paper-3); }
+.card, .panel-plain { animation: skDraw .55s steps(18, end) both; }
+/* 轻微歪斜（不完全一致，像手贴上） */
+.rank-item:nth-child(3n+1), .comment:nth-child(3n+1) { transform: rotate(-.22deg); }
+.rank-item:nth-child(3n+2), .comment:nth-child(3n+2) { transform: rotate(.18deg); }
+.rank-item:hover, .card:hover { transform: rotate(0deg); transition: transform .28s var(--sk-ease); }
+
+.topbar, .tabbar, .chat-input {
+  background: color-mix(in srgb, var(--sk-paper) 92%, transparent);
+  border: 0;
+  border-bottom: 1.6px solid var(--sk-ink-soft);
+  box-shadow: none;
+}
+.tabbar { border-bottom: 0; border-top: 1.6px solid var(--sk-ink-soft); }
+.announce {
+  background: color-mix(in srgb, var(--sk-marker) 42%, var(--surface));
+  border: 1.5px solid var(--sk-ink-soft);
+  border-radius: var(--radius-md);
+}
+
+/* ---------- 按钮：手画方框 + 悬停摆动 ---------- */
+.btn, .btn-ghost, .icon-btn, .chip, .pager button, .back-btn, .fold-toggle,
+.lb-bar button, .dialog-actions button, .comment .ops button, .pick-btn {
+  background: var(--surface);
+  color: var(--text);
+  border: 1.5px solid var(--sk-ink);
+  border-radius: var(--radius-sm);
+  box-shadow: 2px 2px 0 rgba(59, 52, 44, .12);
+  font-weight: 600;
+  transition: transform .16s var(--sk-ease);
+}
+.btn { background: color-mix(in srgb, var(--sk-marker) 46%, var(--surface)); }
+.btn-danger { background: color-mix(in srgb, var(--sk-crayon) 34%, var(--surface)); }
+.btn:hover, .btn-ghost:hover, .icon-btn:hover, .chip:hover { animation: skWobble .36s ease-in-out; }
+.btn:active, .pager button:active { transform: translate(1px, 2px); box-shadow: 0 0 0 rgba(0, 0, 0, 0); }
+@keyframes skWobble {
+  0%, 100% { transform: rotate(-.8deg); }
+  50%      { transform: rotate(.8deg); }
+}
+/* 闲置摆动：只给少量元素，避免整页晃 */
+.totop, .medal { animation: skIdle 3.4s ease-in-out infinite; }
+@keyframes skIdle {
+  0%, 100% { transform: rotate(-.6deg) translateY(0); }
+  50%      { transform: rotate(.6deg) translateY(-1px); }
+}
+.input {
+  background: transparent;
+  border: 1.5px solid var(--sk-ink-soft);
+  border-radius: var(--radius-sm);
+  font-family: var(--sk-clean);
+}
+.input:focus { outline: none; border-color: var(--sk-crayon); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sk-crayon) 16%, transparent); }
+.seg { background: var(--surface); border: 1.5px solid var(--sk-ink-soft); border-radius: var(--radius-sm); }
+.seg button.on { background: color-mix(in srgb, var(--sk-marker) 50%, transparent); border-radius: var(--radius-sm); }
+.switch { border: 1.5px solid var(--sk-ink-soft); background: color-mix(in srgb, var(--sk-ink) 12%, transparent); }
+.switch[aria-checked="true"] { background: color-mix(in srgb, var(--sk-crayon) 62%, transparent); }
+
+/* ---------- 选中态：马克笔涂抹 ---------- */
+.badge { background: color-mix(in srgb, var(--sk-water) 34%, transparent); border: 1.2px solid var(--sk-ink-soft); border-radius: var(--radius-sm); }
+.medal { border: 1.4px solid var(--sk-ink-soft); }
+
+/* ---------- 对话 ---------- */
+.bubble {
+  background: var(--surface);
+  border: 1.5px solid var(--sk-ink-soft);
+  border-radius: var(--radius-md);
+  box-shadow: 2px 2px 0 rgba(59, 52, 44, .06);
+}
+.msg.mine .bubble {
+  background: color-mix(in srgb, var(--sk-marker) 34%, var(--surface));
+  border-style: solid;
+}
+.typing i { background: var(--sk-ink-soft); }
+
+/* ---------- 文档 / 富文本 ---------- */
+.doc pre, .ai-text pre, .bubble pre {
+  background: var(--sk-paper-2);
+  border: 1.5px solid var(--sk-ink-soft);
+  border-radius: var(--radius-md);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+.doc code, .ai-text code, .bubble code {
+  background: color-mix(in srgb, var(--sk-marker) 44%, transparent);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+.doc table, .ai-text table { border: 1.5px solid var(--sk-ink-soft); border-radius: var(--radius-sm); }
+.doc th, .ai-text th { background: color-mix(in srgb, var(--sk-water) 26%, transparent); border-bottom: 1.5px solid var(--sk-ink-soft); }
+.doc td, .ai-text td { border-bottom: 1.2px solid var(--border-soft); }
+.doc blockquote, .ai-text blockquote {
+  border-left: 4px solid color-mix(in srgb, var(--sk-crayon) 52%, transparent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: color-mix(in srgb, var(--sk-paper-2) 70%, transparent);
+  padding: 6px 12px;
+}
+.doc a, .ai-text a { text-decoration: underline wavy; text-underline-offset: 3px; color: var(--sk-crayon); }
+.doc h1, .doc h2 { border-bottom: 2px solid var(--sk-ink-soft); padding-bottom: 4px; }
+
+/* ---------- 列表 / 表格 / 评论 ---------- */
+.table th { font-family: var(--sk-hand); }
+.table td, .table th { border-color: var(--border-soft); }
+.comment {
+  background: var(--surface);
+  border: 1.5px solid var(--sk-ink-soft);
+  border-radius: var(--radius-md);
+}
+.comment.sub { border-left: 4px solid color-mix(in srgb, var(--sk-water) 46%, transparent); }
+.replies { border-left: 2px solid var(--border-soft); }
+.rating, .r-SSS, .r-SS, .r-S, .r-A, .r-B, .r-C {
+  background: color-mix(in srgb, var(--sk-marker) 52%, transparent);
+  color: var(--sk-ink);
+  border: 1.4px solid var(--sk-ink-soft);
+  border-radius: var(--radius-sm);
+  font-family: var(--sk-hand);
+}
+.slider .rail { background: transparent; border: 1.5px solid var(--sk-ink-soft); border-radius: var(--radius-sm); }
+.slider .fill { background: color-mix(in srgb, var(--sk-marker) 76%, transparent); border-radius: var(--radius-sm); }
+.slider .knob { background: var(--surface); border: 1.5px solid var(--sk-ink); border-radius: 50%; }
+.swatch { border: 1.5px solid var(--sk-ink-soft); border-radius: var(--radius-sm); }
+
+/* ---------- 占比条 / 签到 / 风格卡片 ---------- */
+.tp-bar { background: color-mix(in srgb, var(--sk-ink) 12%, transparent); border-radius: var(--radius-sm); }
+.tp-bar i { background: color-mix(in srgb, var(--sk-crayon) 62%, transparent); border-radius: var(--radius-sm); }
+.checkin-row, .skin-row { border-radius: var(--radius-md); }
+.skin-card {
+  background: var(--surface);
+  border: 1.5px solid var(--sk-ink-soft);
+  border-radius: var(--radius-md);
+  box-shadow: 2px 2px 0 rgba(59, 52, 44, .07);
+}
+.skin-card:hover { animation: skWobble .36s ease-in-out; }
+.skin-card.on { border-color: var(--sk-ink); background: color-mix(in srgb, var(--sk-marker) 40%, var(--surface)); }
+.skin-prev { border-radius: var(--radius-sm); }
+
+/* ---------- 动效：落笔淡入 ---------- */
+@keyframes skDrop {
+  0%   { opacity: 0; transform: translateY(6px) rotate(-.5deg); }
+  100% { opacity: 1; transform: none; }
+}
+.stat-box, .msg, .tool-card { animation: skDrop .38s var(--sk-ease) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .card, .panel-plain, .card-title, .stat-box, .msg, .tool-card { animation: none; }
+  .totop, .medal { animation: none; }
+}
+"""
+
+/* ============================================================
+ * 修正一：预览截图后的问题修复
+ * （截图确认：右下「我的消息」白字浅底几乎不可读）
+ * ============================================================ */
+
+/* 1) 修复浅底白字：发出消息固定用深墨字 */
+.msg.mine .bubble { color: var(--sk-ink) !important; }
+.msg.mine .bubble a { color: var(--sk-crayon); }
+.bubble { color: var(--sk-ink); }
+
+/* 2) 手绘感不依赖手写字体（系统普遍没有中文手写体）：
+      改用轻微倾斜 + 手绘波浪下划线 + 加粗字重 */
+.card-title, .rank-title, .donate-head, .dialog h3, .profile-head .name {
+  transform: rotate(-.7deg);
+  font-weight: 800;
+  letter-spacing: .2px;
+}
+.card-title { display: inline-block; background: none; padding: 0; }
+.card-title::after {
+  content: '';
+  display: block;
+  height: 6px;
+  margin-top: -1px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='6'%3E%3Cpath d='M0 4 Q 10 1 20 4 T 40 4' stroke='%233b342c' stroke-opacity='.45' fill='none' stroke-width='1.4'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-size: 40px 6px;
+}
+[data-theme="dark"] .card-title::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='6'%3E%3Cpath d='M0 4 Q 10 1 20 4 T 40 4' stroke='%23eae3d6' stroke-opacity='.45' fill='none' stroke-width='1.4'/%3E%3C/svg%3E");
+}
+
+/* 3) 提示条：纸底深墨字 + 虚线边（原先沿用通用深色胶囊，与纸张冲突） */
+.toast {
+  background: var(--surface) !important;
+  color: var(--sk-ink) !important;
+  border: 1.5px solid var(--sk-ink-soft);
+  border-radius: var(--radius-sm);
+  box-shadow: 2px 2px 0 rgba(59, 52, 44, .12);
+  font-weight: 600;
+}
+.toast.err {
+  background: color-mix(in srgb, var(--sk-crayon) 26%, var(--surface)) !important;
+  color: var(--sk-ink) !important;
+  border-color: var(--sk-crayon);
+}
+
+/* 4) 底部导航选中：马克笔涂抹 + 轻微倾斜 */
+.tabbar .tab { color: var(--text-2); }
+
+/* ============================================================
+ * 覆盖块：确保关键样式必定生效
+ * ============================================================ */
+html[data-skin="sketch"] .card, html[data-skin="sketch"] .panel-plain,
+html[data-skin="sketch"] .rank-item, html[data-skin="sketch"] .stat-box,
+html[data-skin="sketch"] .tp-col, html[data-skin="sketch"] .comment,
+html[data-skin="sketch"] .tool-card, html[data-skin="sketch"] .donate-box,
+html[data-skin="sketch"] .guest-box, html[data-skin="sketch"] .tip-card {
+  background: var(--surface) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+html[data-skin="sketch"] .rank-item, html[data-skin="sketch"] .table { background: var(--sk-paper-2) !important; }
+html[data-skin="sketch"] .panel-plain, html[data-skin="sketch"] .drawer { background: var(--sk-paper-3) !important; }
+/* 发出消息：白字问题（此前被 app.css 的 color:#fff 覆盖） */
+html[data-skin="sketch"] .msg.mine .bubble {
+  background: color-mix(in srgb, var(--sk-marker) 40%, var(--surface)) !important;
+  color: var(--sk-ink) !important;
+}
+html[data-skin="sketch"] .bubble { color: var(--sk-ink) !important; }
+html[data-skin="sketch"] .drawer-item.active { background: color-mix(in srgb, var(--sk-marker) 56%, transparent) !important; color: var(--sk-ink) !important; }
+html[data-skin="sketch"] .toast { background: var(--surface) !important; color: var(--sk-ink) !important; }
+html[data-skin="sketch"] .toast.err { background: color-mix(in srgb, var(--sk-crayon) 28%, var(--surface)) !important; color: var(--sk-ink) !important; }
+

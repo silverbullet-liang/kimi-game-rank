@@ -1,0 +1,368 @@
+/* 皮肤变量覆写 */
+html[data-skin="brutal"] {
+  --tab-active-bg: #ffd93d;
+  --tab-active-fg: #0b0b0c;
+  --msg-bg: #fffdf6;
+  --msg-fg: #0b0b0c;
+  --msg-mine-bg: color-mix(in srgb, var(--accent) 26%, #fffdf6);
+  --msg-mine-fg: #0b0b0c;
+  --toast-bg: #ffd93d;
+  --toast-fg: #0b0b0c;
+  --toast-err-bg: var(--accent);
+  --toast-radius: 0;
+  --toast-border: 3px solid #0b0b0c;
+}
+
+/* ============================================================
+ * 皮肤：新粗野（Neo-brutalism）
+ * ------------------------------------------------------------
+ * 依据：NN/g《Neobrutalism: Definition and Best Practices》
+ *   - 高对比明亮色彩，但**调色板限制在 2–3 色**（黑 / 主题色 / 单一强调色）
+ *   - 粗线条与几何形状：3px 实线黑边，不依赖渐变与柔和阴影
+ *   - 生硬投影：实心单色硬阴影（黑，偏移 4px），保持"原始"质感
+ *   - 字体分工：粗体几何标题 + 干净中性正文，避免正文使用装饰体
+ *   - 层级靠**尺寸差异**（标题约为正文两倍）与色彩强度，而非阴影层级
+ *   - 策略性留白 24–32px，抵消密集几何与粗边框带来的压迫
+ *   - 交互反馈明确：悬停浮起、按下真位移并让投影归零
+ *   - 可访问性：强调色只用于背景并配黑字（不做黄字青底这类低对比组合）
+ * 独立文件：本风格全部视觉定义。
+ * ============================================================ */
+
+:root {
+  --nb-ink: #0b0b0c;
+  --nb-bg: #f4f1e8;
+  --nb-paper: #fffdf6;
+  --nb-hl: #ffd93d;            /* 唯一强调色：只作背景，始终配黑字 */
+  --nb-accent: var(--accent);  /* 主题色作主撞色 */
+
+  --bg-1: var(--nb-bg);
+  --bg-2: var(--nb-bg);
+  --surface: var(--nb-paper);
+  --surface-solid: var(--nb-paper);
+  --border: var(--nb-ink);
+  --border-soft: var(--nb-ink);
+  --text: #0b0b0c;
+  --text-2: #3a3a3f;
+  --text-3: #6b6b72;
+
+  --radius-lg: 0;
+  --radius-md: 0;
+  --radius-sm: 0;
+  --shadow: 4px 4px 0 var(--nb-ink);
+  --shadow-sm: 4px 4px 0 var(--nb-ink);
+
+  /* 字体分工：粗几何标题 / 干净正文 */
+  --nb-display: "Archivo Black", "Anton", "Bebas Neue", Impact, "Haettenschweiler", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --nb-body: 'MiSans', system-ui, -apple-system, "Inter", "Roboto", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --sk-ease: cubic-bezier(.2, .9, .3, 1);
+}
+
+[data-theme="dark"] {
+  --nb-ink: #f4f1e6;
+  --nb-bg: #131218;
+  --nb-paper: #1e1d24;
+  --text: #f6f4ee;
+  --text-2: #c8c5ba;
+  --text-3: #8f8c83;
+}
+
+body {
+  font-family: var(--nb-body);
+  font-weight: 500;
+  background-color: var(--nb-bg);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--nb-ink) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--nb-ink) 7%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+  color: var(--text);
+}
+
+/* ---------- 标题：几何粗体 + 显著字号（约为正文两倍） ---------- */
+.card-title, .rank-title, .doc h1, .doc h2, .donate-head, .login-title, .dialog h3, .profile-head .name {
+  font-family: var(--nb-display);
+  font-weight: 900;
+  font-size: 22px;
+  line-height: 1.1;
+  letter-spacing: -.5px;
+  text-transform: uppercase;
+}
+.card-title { border-bottom: 3px solid var(--nb-ink); padding-bottom: 8px; }
+.doc h1 { font-size: 30px; }
+.doc h2 { font-size: 24px; }
+.doc h3 { font-size: 19px; font-family: var(--nb-display); }
+/* 正文保持中性易读 */
+.doc p, .doc li, .comment .text, .bubble, .table td { font-family: var(--nb-body); line-height: 1.65; }
+
+/* ---------- 基材：3px 黑框 + 4px 硬阴影 + 24px 留白 ---------- */
+.card, .panel-plain, .rank-item, .stat-box, .tp-col, .tool-card, .block-note,
+.dialog, .drawer, .picker, .toast, .donate-box, .guest-box, .search-panel, .tip-card {
+  background: var(--surface);
+  border: 3px solid var(--nb-ink);
+  border-radius: 0;
+  box-shadow: var(--shadow);
+}
+.card, .panel-plain { padding: 24px; }
+.rank-item { padding: 16px; }
+.rank-item:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--nb-ink); }
+.card:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--nb-ink); }
+/* 错位旋转：粗野的"手摆"感，比手绘更硬 */
+.card:nth-child(odd) { transform: rotate(-.3deg); }
+.card:nth-child(even) { transform: rotate(.3deg); }
+.card:hover { transform: rotate(0) translate(-2px, -2px); }
+
+.topbar, .tabbar, .chat-input {
+  background: var(--surface);
+  border: 0;
+  border-bottom: 4px solid var(--nb-ink);
+  box-shadow: none;
+}
+.tabbar { border-bottom: 0; border-top: 4px solid var(--nb-ink); }
+.announce {
+  background: var(--nb-hl);
+  color: #0b0b0c;             /* 强调色只配黑字，保证对比 */
+  border: 3px solid var(--nb-ink);
+  box-shadow: var(--shadow-sm);
+  font-weight: 800;
+}
+
+/* ---------- 按钮：浮起 / 按下 ---------- */
+.btn, .btn-ghost, .icon-btn, .chip, .pager button, .back-btn, .fold-toggle,
+.lb-bar button, .dialog-actions button, .comment .ops button, .pick-btn, .seg button {
+  border: 3px solid var(--nb-ink);
+  border-radius: 0;
+  box-shadow: var(--shadow-sm);
+  font-family: var(--nb-display);
+  font-weight: 900;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  font-size: 13px;
+  transition: transform .12s var(--sk-ease), box-shadow .12s var(--sk-ease);
+}
+.btn { background: var(--nb-hl); color: #0b0b0c; padding: 12px 18px; }
+.btn-ghost, .pager button, .back-btn, .fold-toggle, .lb-bar button, .comment .ops button, .pick-btn {
+  background: var(--surface);
+  color: var(--text);
+}
+.btn:hover, .btn-ghost:hover, .icon-btn:hover, .chip:hover, .pager button:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--nb-ink); }
+.btn:active, .btn-ghost:active, .pager button:active, .icon-btn:active, .chip:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 var(--nb-ink);      /* 投影归零 = 真的按进去 */
+}
+.btn-danger { background: var(--nb-accent); color: var(--accent-ink); }
+.input, textarea.input {
+  background: var(--surface);
+  border: 3px solid var(--nb-ink);
+  border-radius: 0;
+  padding: 12px 14px;
+  font-family: var(--nb-body);
+  font-weight: 500;
+  color: var(--text);
+}
+.input:focus { outline: none; box-shadow: 4px 4px 0 var(--nb-ink); }
+.seg { background: var(--surface); border: 3px solid var(--nb-ink); padding: 3px; }
+.seg button { box-shadow: none; border: 0; }
+.seg button.on { background: var(--nb-accent); color: var(--accent-ink); }
+.switch { border: 3px solid var(--nb-ink); background: var(--surface); }
+.switch[aria-checked="true"] { background: var(--nb-hl); }
+
+/* ---------- 选中态：主题色块 + 黑字 ---------- */
+.badge {
+  background: var(--nb-hl);
+  color: #0b0b0c;
+  border: 2px solid var(--nb-ink);
+  box-shadow: 2px 2px 0 var(--nb-ink);
+  font-family: var(--nb-display);
+  text-transform: uppercase;
+}
+.medal { border: 2px solid var(--nb-ink); box-shadow: 2px 2px 0 var(--nb-ink); }
+
+/* ---------- 对话 ---------- */
+.bubble {
+  background: var(--surface);
+  border: 3px solid var(--nb-ink);
+  border-radius: 0;
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+}
+.msg.mine .bubble { background: color-mix(in srgb, var(--nb-accent) 24%, var(--surface)); }
+.typing i { background: var(--nb-ink); }
+
+/* ---------- 文档 / 富文本 ---------- */
+.doc pre, .ai-text pre, .bubble pre {
+  background: var(--surface);
+  border: 3px solid var(--nb-ink);
+  border-radius: 0;
+  box-shadow: var(--shadow-sm);
+  padding: 16px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+.doc code, .ai-text code, .bubble code {
+  background: var(--nb-hl);
+  color: #0b0b0c;
+  border: 2px solid var(--nb-ink);
+  border-radius: 0;
+  padding: 1px 6px;
+  font-weight: 700;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+.doc table, .ai-text table { border: 3px solid var(--nb-ink); border-radius: 0; }
+.doc th, .ai-text th {
+  background: var(--nb-hl);
+  color: #0b0b0c;
+  border: 2px solid var(--nb-ink);
+  font-family: var(--nb-display);
+  text-transform: uppercase;
+  font-size: 13px;
+}
+.doc td, .ai-text td { border: 2px solid var(--nb-ink); }
+.doc blockquote, .ai-text blockquote {
+  border-left: 8px solid var(--nb-ink);
+  border-radius: 0;
+  padding: 8px 16px;
+  font-weight: 600;
+}
+.doc a, .ai-text a { color: var(--text); text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 3px; }
+.doc img, .lightbox img { border: 3px solid var(--nb-ink); border-radius: 0; }
+.doc hr { border: 0; border-top: 3px solid var(--nb-ink); }
+
+/* ---------- 列表 / 表格 / 评论 ---------- */
+.table { border: 3px solid var(--nb-ink); box-shadow: var(--shadow-sm); background: var(--surface); }
+.table th, .table td { border: 2px solid var(--nb-ink); }
+.comment {
+  background: var(--surface);
+  border: 3px solid var(--nb-ink);
+  border-radius: 0;
+  box-shadow: var(--shadow-sm);
+  padding: 16px;
+}
+.comment.sub { border-left-width: 10px; }
+.replies { border-left: 3px solid var(--nb-ink); }
+.rating, .r-SSS, .r-SS, .r-S, .r-A, .r-B, .r-C {
+  background: var(--nb-hl);
+  color: #0b0b0c;
+  border: 2px solid var(--nb-ink);
+  border-radius: 0;
+  font-family: var(--nb-display);
+  font-weight: 900;
+}
+.r-SSS, .r-SS { background: var(--nb-accent); color: var(--accent-ink); }
+.slider .rail { background: var(--surface); border: 3px solid var(--nb-ink); border-radius: 0; }
+.slider .fill { background: var(--nb-accent); border-radius: 0; }
+.slider .knob { background: var(--nb-hl); border: 3px solid var(--nb-ink); border-radius: 0; }
+.swatch { border: 3px solid var(--nb-ink); border-radius: 0; }
+
+/* ---------- 占比条：分段方块（复古拟物） ---------- */
+.tp-bar { background: var(--surface); border: 2px solid var(--nb-ink); border-radius: 0; }
+.tp-bar i, .prog-bar i {
+  background: repeating-linear-gradient(90deg, var(--nb-accent) 0 6px, transparent 6px 9px);
+  border-radius: 0;
+}
+
+/* ---------- 签到 / 风格卡片 ---------- */
+.checkin-row, .skin-row { border-radius: 0; }
+.skin-card {
+  background: var(--surface);
+  border: 3px solid var(--nb-ink);
+  border-radius: 0;
+  box-shadow: var(--shadow-sm);
+  transition: transform .12s var(--sk-ease), box-shadow .12s var(--sk-ease);
+}
+.skin-card:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--nb-ink); }
+.skin-card.on { background: var(--nb-hl); color: #0b0b0c; }
+.skin-prev { border: 2px solid var(--nb-ink); border-radius: 0; }
+
+/* ---------- 动效：硬位移弹入 ---------- */
+@keyframes nbSnap {
+  0%   { opacity: 0; transform: translate(-10px, 10px); }
+  62%  { opacity: 1; transform: translate(3px, -3px); }
+  100% { opacity: 1; transform: none; }
+}
+.card, .rank-item, .panel-plain, .stat-box, .msg, .comment, .tool-card {
+  animation: nbSnap .26s var(--sk-ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card, .rank-item, .panel-plain, .stat-box, .msg, .comment, .tool-card { animation: none; }
+  * { transition-duration: .01ms !important; }
+}
+"""
+
+/* ============================================================
+ * 修正一：预览截图后的问题修复
+ * （截图反馈：粗框硬影有了，但缺少层次与精致度）
+ * ============================================================ */
+
+/* 1) 留白与网格：背景网格加深，卡片内距加大 */
+body {
+  background-size: 24px 24px;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--nb-ink) 9%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--nb-ink) 9%, transparent) 1px, transparent 1px);
+}
+.card, .panel-plain { padding: 26px; }
+.rank-item, .comment { padding: 18px; }
+
+/* 2) 标题做成撞色标签块（粗野主义的招牌做法） */
+.card-title {
+  display: inline-block;
+  background: var(--nb-hl);
+  color: #0b0b0c;
+  padding: 5px 12px;
+  border: 3px solid var(--nb-ink);
+  box-shadow: 3px 3px 0 var(--nb-ink);
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+.card-title { border-bottom: 3px solid var(--nb-ink); }
+
+/* 3) 提示条：黄底黑字 + 硬边硬影（原先沿用通用深色胶囊） */
+.toast {
+  background: var(--nb-hl) !important;
+  color: #0b0b0c !important;
+  border: 3px solid var(--nb-ink);
+  border-radius: 0;
+  box-shadow: 4px 4px 0 var(--nb-ink);
+  font-family: var(--nb-display);
+  font-weight: 900;
+  font-size: 12px;
+  padding: 10px 16px;
+}
+.toast.err {
+  background: var(--nb-accent) !important;
+  color: var(--accent-ink) !important;
+}
+
+/* 4) 底部导航选中：色块 + 内描边 */
+.tabbar .tab {
+  font-family: var(--nb-display);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: .4px;
+  color: var(--text-2);
+}
+
+/* ============================================================
+ * 覆盖块：确保关键样式必定生效
+ * ============================================================ */
+html[data-skin="brutal"] .card, html[data-skin="brutal"] .panel-plain,
+html[data-skin="brutal"] .rank-item, html[data-skin="brutal"] .stat-box,
+html[data-skin="brutal"] .tp-col, html[data-skin="brutal"] .comment,
+html[data-skin="brutal"] .tool-card, html[data-skin="brutal"] .donate-box,
+html[data-skin="brutal"] .guest-box, html[data-skin="brutal"] .tip-card {
+  background: var(--nb-paper) !important;
+  border: 3px solid var(--nb-ink) !important;
+  border-radius: 0 !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+html[data-skin="brutal"] .msg.mine .bubble {
+  background: color-mix(in srgb, var(--nb-accent) 26%, var(--nb-paper)) !important;
+  color: var(--nb-ink) !important;
+}
+html[data-skin="brutal"] .bubble { color: var(--nb-ink) !important; }
+html[data-skin="brutal"] .tabbar .tab { color: var(--text-2) !important; font-family: var(--nb-display); }
+html[data-skin="brutal"] .drawer-item.active { background: var(--nb-hl) !important; color: #0b0b0c !important; }
+html[data-skin="brutal"] .toast { background: var(--nb-hl) !important; color: #0b0b0c !important; }
+html[data-skin="brutal"] .toast.err { background: var(--nb-accent) !important; color: var(--accent-ink) !important; }
+

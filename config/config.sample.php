@@ -1,0 +1,80 @@
+<?php
+/**
+ * 主配置文件（示例）
+ * ------------------------------------------------------------
+ * 复制为 config.php 并填写你自己的连接参数。
+ * ⚠️ 本文件只需填「数据库」与「站点」两段；其余密钥由 install.php 自动生成写入。
+ */
+declare(strict_types=1);
+
+return array(
+
+    /* ---------- 数据库：主库 ---------- */
+    'db' => array(
+        'host'    => '127.0.0.1',
+        'port'    => 3306,
+        'name'    => 'kimi_rank',
+        'user'    => 'root',
+        'pass'    => '',
+        'charset' => 'utf8mb4',
+    ),
+
+    /* ---------- 数据库：管理员凭证库（独立库，物理分离） ---------- */
+    'db_admin' => array(
+        'host'    => '127.0.0.1',
+        'port'    => 3306,
+        'name'    => 'kimi_admin_sec',
+        'user'    => 'root',
+        'pass'    => '',
+        'charset' => 'utf8mb4',
+    ),
+
+    /* ---------- 站点 ---------- */
+    'site' => array(
+        'name'        => 'kimi游戏榜',
+        'url'         => 'https://your-domain.com',   // 不带结尾斜杠
+        'timezone'    => 'Asia/Shanghai',              // 仅展示层；库内全 UTC
+        'force_https' => true,
+    ),
+
+    /* ---------- 密钥（install.php 生成后自动回填，请勿手改） ---------- */
+    'secrets' => array(
+        'rc4_key'      => '',   // RC4 密钥（admin密钥sha256 + md5(1970101) + sha256(jgybhjhjh:jji) + 512位随机串）
+        'aes_key'      => '',   // AES 密钥（100 位随机）
+        'cron_key'     => '',   // 定时同步 key
+    ),
+
+    /* ---------- 管理员账户（预置） ---------- */
+    'admin' => array(
+        'username' => 'admin',
+        // 原始密钥文本（sha256 之前）；install.php 会写入管理员库
+        'secret_raw' => 'vsisgywhssis sjebehevegejdcdje euavxaxagshsceche846455185',
+    ),
+
+    /* ---------- AI 用量限额 ---------- */
+    'ai_limits' => array(
+        'daily_tokens'   => 100000,
+        'monthly_tokens' => 3000000,
+        'per_minute'     => 6,      // 登录用户每分钟调用上限
+    ),
+
+    /* ---------- 操作频次 ---------- */
+    'rate_limits' => array(
+        'per_minute' => 50,      // 每位用户（管理员除外）每分钟最多操作次数
+    ),
+
+    /* ---------- 安全 ---------- */
+    'security' => array(
+        'token_ttl'        => 604800,   // 登录 token 有效期（秒，7 天滑动）
+        'guest_token_ttl'  => 86400,    // 游客 token 有效期（24h）
+        'login_max_fails'  => 5,        // 同 IP 失败次数
+        'login_lock_time'  => 600,      // 锁定时长（秒）
+        'fail_delay_us'    => array(60000, 180000),  // 失败随机延迟区间（微秒）
+    ),
+
+    /* ---------- 液态玻璃 ---------- */
+    'glass' => array(
+        'default_mode'  => 'css',      // css | webgl
+        'default_accent' => 'blue-purple', // blue-purple | ios-colorful | custom
+    ),
+);

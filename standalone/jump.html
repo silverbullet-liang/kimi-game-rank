@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>正在前往 Kimi 游戏榜</title>
+<meta name="description" content="跳转页：即将前往 Kimi 游戏榜（Kimi 社区游戏作品六维评分排行榜）。">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex">
+<!-- 无 JS 时的兜底跳转（含在 noscript 中，仅禁用脚本的浏览器会执行） -->
+<noscript><meta http-equiv="refresh" content="0;url=https://kimi-game-rank.wuaze.com"></noscript>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:#06070b;color:rgba(255,255,255,.92);overflow:hidden;
+  font:400 15px/1.7 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  display:grid;place-items:center;padding:22px;
+}
+::selection{background:rgba(45,212,191,.28)}
+:focus-visible{outline:2px solid #5eead4;outline-offset:3px;border-radius:10px}
+
+/* 背景：光斑 + 颗粒 */
+.bg{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;
+  background:radial-gradient(1100px 680px at 14% -12%,#0c1220 0%,rgba(6,7,11,0) 58%),#06070b}
+.blob{position:absolute;border-radius:50%;filter:blur(120px)}
+.b1{width:58vw;height:58vw;left:-16vw;top:-20vw;opacity:.42;
+  background:radial-gradient(circle at 32% 32%,#2dd4bf 0%,rgba(45,212,191,0) 62%)}
+.b2{width:50vw;height:50vw;right:-14vw;top:14vh;opacity:.30;
+  background:radial-gradient(circle at 58% 42%,#f59e0b 0%,rgba(245,158,11,0) 62%)}
+.b3{width:64vw;height:64vw;left:18vw;bottom:-32vw;opacity:.24;
+  background:radial-gradient(circle at 50% 50%,#f43f5e 0%,rgba(244,63,94,0) 60%)}
+.grain{position:absolute;inset:0;opacity:.28;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='.55'/></svg>")}
+
+/* 玻璃卡 */
+.card{position:relative;z-index:10;width:100%;max-width:410px;text-align:center;
+  padding:38px 30px 30px;border-radius:26px;
+  background:linear-gradient(180deg,rgba(255,255,255,.085),rgba(255,255,255,.028));
+  border:1px solid rgba(255,255,255,.13);
+  -webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);
+  box-shadow:0 30px 70px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.20)}
+.card::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;
+  background:linear-gradient(152deg,rgba(255,255,255,.58),rgba(255,255,255,.06) 30%,rgba(255,255,255,0) 56%,rgba(255,255,255,.20));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude}
+
+.mark{width:46px;height:46px;margin:0 auto 14px;display:grid;place-items:center;border-radius:15px;
+  border:1px solid rgba(45,212,191,.32);
+  background:linear-gradient(180deg,rgba(45,212,191,.26),rgba(45,212,191,.09));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 8px 24px rgba(45,212,191,.18)}
+.mark svg{width:23px;height:23px;fill:#c9fff5}
+
+h1{margin:0 0 8px;font-size:23px;font-weight:800;letter-spacing:-.02em;
+  background:linear-gradient(180deg,#fff,rgba(255,255,255,.74));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sub{margin:0;font-size:13px;color:rgba(255,255,255,.55)}
+
+/* 倒计时环 */
+.ring{position:relative;width:112px;height:112px;margin:24px auto 18px}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:5;stroke-linecap:round}
+.rbg{stroke:rgba(255,255,255,.10)}
+.rfg{stroke:#5eead4;stroke-dasharray:327;stroke-dashoffset:0;
+  filter:drop-shadow(0 0 8px rgba(94,234,212,.55))}
+.rnum{position:absolute;inset:0;display:grid;place-items:center;
+  font:700 34px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  letter-spacing:-.03em;color:#fff}
+
+.status{margin:0 0 18px;font-size:13px;color:rgba(255,255,255,.60)}
+.go{display:block;width:100%;padding:13px 18px;border-radius:15px;text-decoration:none;
+  font-size:14.5px;font-weight:700;color:#04120d;
+  background:linear-gradient(180deg,#6ff0d8,#22c1a5);
+  box-shadow:0 10px 26px rgba(45,212,191,.26),inset 0 1px 0 rgba(255,255,255,.45);
+  transition:transform .18s ease,box-shadow .18s ease}
+.go:hover{transform:translateY(-1px);box-shadow:0 14px 32px rgba(45,212,191,.34),inset 0 1px 0 rgba(255,255,255,.45)}
+.go:active{transform:translateY(0)}
+
+.tags{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin:18px 0 0}
+.tag{padding:5px 10px;border-radius:999px;font-size:11.5px;color:rgba(255,255,255,.62);
+  border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.04)}
+.hint{margin:18px 0 0;font-size:11.5px;line-height:1.8;color:rgba(255,255,255,.34);
+  overflow-wrap:break-word}
+.hint b{color:rgba(255,255,255,.55);font-weight:500;white-space:nowrap}
+
+@media (max-width:400px){
+  .card{padding:32px 22px 30px;border-radius:22px}
+  .ring{width:96px;height:96px}
+  .rnum{font-size:29px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+}
+</style>
+</head>
+<body>
+
+<div class="bg" aria-hidden="true">
+  <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
+  <span class="grain"></span>
+</div>
+
+<main class="card">
+  <div class="mark" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><path d="M12 2l2.4 2.5 3.4-.6.6 3.4L21 12l-2.6 4.7.6 3.4-3.4-.6L12 22l-2.4-2.5-3.4.6-.6-3.4L3 12l2.6-4.7-.6-3.4 3.4.6z"/></svg>
+  </div>
+
+  <h1>Kimi 游戏榜</h1>
+  <p class="sub">Kimi 社区游戏作品 · 六维综合评分排行榜</p>
+
+  <div class="ring">
+    <svg viewBox="0 0 120 120" aria-hidden="true">
+      <circle class="rbg" cx="60" cy="60" r="52"></circle>
+      <circle class="rfg" id="rf" cx="60" cy="60" r="52"></circle>
+    </svg>
+    <div class="rnum" id="rn">4</div>
+  </div>
+
+  <p class="status" id="st" aria-live="polite">正在前往站点…</p>
+
+  <a class="go" id="go" href="https://kimi-game-rank.wuaze.com">立即前往</a>
+
+  <div class="tags">
+    <span class="tag">六维评分</span>
+    <span class="tag">四大榜单</span>
+    <span class="tag">AI 助手</span>
+  </div>
+
+  <p class="hint">若未自动跳转，请点击上面的按钮<br>或手动访问 <b>kimi-game-rank.wuaze.com</b></p>
+</main>
+
+<script>
+(function () {
+  /* ===== 跳转配置：改这里即可换目标与等待时长 ===== */
+  var TARGET = 'https://kimi-game-rank.wuaze.com';
+  var WAIT   = 4;                 // 秒，倒计时时长
+  var C      = 327;               // 圆环周长（2πr，r=52）
+
+  var rf = document.getElementById('rf');
+  var rn = document.getElementById('rn');
+  var st = document.getElementById('st');
+  var go = document.getElementById('go');
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function leave() { window.location.replace(TARGET); }
+
+  /* 目标地址统一以脚本中的 TARGET 为准（含手动按钮） */
+  go.setAttribute('href', TARGET);
+  go.addEventListener('click', function (e) { e.preventDefault(); leave(); });
+
+  if (reduce) {                    /* 尊重减弱动效：不做逐帧动画，直接显示剩余时间 */
+    st.textContent = '即将前往站点…';
+    setTimeout(leave, WAIT * 1000);
+    return;
+  }
+
+  var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
+  var shown = -1;
+
+  function tick() {
+    var now = (window.performance && performance.now) ? performance.now() : Date.now();
+    var t = Math.min(1, (now - t0) / (WAIT * 1000));
+    rf.style.strokeDashoffset = (C * t).toFixed(1);
+    var left = Math.ceil(WAIT - t * WAIT);
+    if (left !== shown) { shown = left; rn.textContent = left > 0 ? left : '0'; }
+    if (t < 1) { requestAnimationFrame(tick); }
+  }
+  requestAnimationFrame(tick);
+
+  setTimeout(leave, WAIT * 1000);
+})();
+</script>
+</body>
+</html>

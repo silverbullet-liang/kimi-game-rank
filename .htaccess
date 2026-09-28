@@ -1,0 +1,54 @@
+# ============================================================
+#  Kimi游戏榜  Apache 配置（共享主机兼容版）
+# ============================================================
+
+# ---------- 静态资源 MIME 修正（ES Module 与字体必需） ----------
+# 若服务器把 .js 返回为 text/plain，浏览器会拒绝加载模块脚本
+# woff2 若被当作 application/octet-stream 返回，字体可能被浏览器拒绝
+<IfModule mod_mime.c>
+    AddType text/javascript .js .mjs
+    AddType text/css .css
+    AddType image/svg+xml .svg
+    AddType font/woff2 .woff2
+</IfModule>
+AddDefaultCharset UTF-8
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # 强制 HTTPS
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+    # 透传 Authorization（Bearer 登录态必需）
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    RewriteRule ^$ index.php [L]
+</IfModule>
+
+# ---------- 传输压缩 ----------
+# 样式表（尤其字体索引 fonts.css）与脚本是纯文本，压缩后体积大幅下降。
+# woff2 本身已压缩，不重复处理。模块不存在时整段被忽略，不影响主机兼容性。
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json image/svg+xml
+</IfModule>
+
+# 敏感路径与文件直接 404（mod_alias）
+RedirectMatch 404 ^/(config|storage|sql|docs|app)/.*$
+RedirectMatch 404 \.(sql|log|ini)$
+
+# ---------- 自定义错误页 ----------
+# 全部指向 error.php：自包含、不依赖 bootstrap 与外部资源，
+# 并且会读取 kimgr_skin cookie，按当前皮肤切换整套设计语言。
+ErrorDocument 400 /error.php?code=400
+ErrorDocument 401 /error.php?code=401
+ErrorDocument 403 /error.php?code=403
+ErrorDocument 404 /error.php?code=404
+ErrorDocument 405 /error.php?code=405
+ErrorDocument 408 /error.php?code=408
+ErrorDocument 429 /error.php?code=429
+ErrorDocument 500 /error.php?code=500
+ErrorDocument 502 /error.php?code=502
+ErrorDocument 503 /error.php?code=503

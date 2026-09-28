@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>更新日志 · Kimi游戏榜</title>
+<meta name="description" content="Kimi游戏榜更新日志（独立展示版），记录每个版本的新增、改动、修复与安全更新。">
+<meta name="color-scheme" content="dark">
+<style>
+/* ============ 基础 ============ */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:#06070b;color:rgba(255,255,255,.92);
+  font:400 15px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+::selection{background:rgba(45,212,191,.28)}
+a{color:inherit}
+:focus-visible{outline:2px solid #5eead4;outline-offset:3px;border-radius:8px}
+.mono{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+
+/* ============ 背景：光斑 + 颗粒（营造玻璃后的折射） ============ */
+.bg{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;
+  background:radial-gradient(1200px 720px at 12% -12%,#0c1220 0%,rgba(6,7,11,0) 58%),#06070b}
+.blob{position:absolute;border-radius:50%;filter:blur(120px);will-change:transform}
+.b1{width:56vw;height:56vw;left:-14vw;top:-18vw;opacity:.42;
+  background:radial-gradient(circle at 32% 32%,#2dd4bf 0%,rgba(45,212,191,0) 62%)}
+.b2{width:48vw;height:48vw;right:-12vw;top:16vh;opacity:.30;
+  background:radial-gradient(circle at 58% 42%,#f59e0b 0%,rgba(245,158,11,0) 62%)}
+.b3{width:62vw;height:62vw;left:20vw;bottom:-30vw;opacity:.24;
+  background:radial-gradient(circle at 50% 50%,#f43f5e 0%,rgba(244,63,94,0) 60%)}
+.grain{position:absolute;inset:0;opacity:.28;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='.55'/></svg>")}
+
+/* ============ 玻璃 ============ */
+.glass{position:relative;
+  background:linear-gradient(180deg,rgba(255,255,255,.085),rgba(255,255,255,.028));
+  border:1px solid rgba(255,255,255,.13);border-radius:22px;
+  -webkit-backdrop-filter:blur(22px) saturate(170%);
+  backdrop-filter:blur(22px) saturate(170%);
+  box-shadow:0 24px 60px rgba(0,0,0,.50),0 2px 10px rgba(0,0,0,.30),
+             inset 0 1px 0 rgba(255,255,255,.20),inset 0 -1px 0 rgba(255,255,255,.04)}
+/* 液态高光描边：上缘强、中部归零、下缘回光 */
+.glass::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;z-index:1;
+  background:linear-gradient(152deg,rgba(255,255,255,.58),rgba(255,255,255,.06) 30%,rgba(255,255,255,0) 56%,rgba(255,255,255,.20));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude}
+
+/* ============ 滚动进度 ============ */
+.progress{position:fixed;top:0;left:0;right:0;height:2px;z-index:60;background:transparent}
+.progress i{display:block;height:100%;width:0;border-radius:0 2px 2px 0;
+  background:linear-gradient(90deg,#2dd4bf,#5eead4 55%,#fbbf24)}
+
+/* ============ 顶栏 ============ */
+.topbar{position:sticky;top:0;z-index:50;
+  background:linear-gradient(180deg,rgba(9,11,17,.82),rgba(9,11,17,.46));
+  -webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);
+  border-bottom:1px solid rgba(255,255,255,.08)}
+.topbar-in{max-width:1040px;margin:0 auto;padding:10px 22px}
+.brand{display:flex;align-items:center;gap:9px;margin-bottom:2px}
+.brand svg{width:15px;height:15px;fill:#5eead4;flex:0 0 auto}
+.brand b{font-size:13px;letter-spacing:.01em}
+.brand span{font-size:11px;color:rgba(255,255,255,.40)}
+.vnav{display:flex;gap:7px;overflow-x:auto;padding:8px 0 4px;scrollbar-width:none;-ms-overflow-style:none}
+.vnav::-webkit-scrollbar{display:none}
+.vnav a{flex:0 0 auto;padding:6px 12px;border-radius:999px;text-decoration:none;
+  font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:rgba(255,255,255,.60);
+  border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.035);
+  transition:color .18s ease,background .18s ease,border-color .18s ease}
+.vnav a:hover{color:#fff;background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.20)}
+.vnav a.on{color:#04120d;border-color:transparent;
+  background:linear-gradient(180deg,#6ff0d8,#22c1a5);
+  box-shadow:0 4px 16px rgba(45,212,191,.30)}
+
+/* ============ 版心 ============ */
+.wrap{position:relative;z-index:10;max-width:1040px;margin:0 auto;padding:26px 22px 110px}
+
+/* 主图卡 */
+.hero{padding:34px 32px 30px;margin-bottom:18px}
+.eyebrow{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.20em;
+  color:rgba(255,255,255,.42);text-transform:uppercase}
+.hero h1{margin:14px 0 12px;font-size:clamp(27px,4.6vw,40px);line-height:1.12;
+  font-weight:800;letter-spacing:-.022em;
+  background:linear-gradient(180deg,#fff,rgba(255,255,255,.72));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero>p{margin:0;max-width:62ch;color:rgba(255,255,255,.66)}
+.hero blockquote{margin:18px 0 0;padding:13px 16px;border-radius:14px;
+  border:1px solid rgba(255,255,255,.10);border-left:2px solid rgba(94,234,212,.65);
+  background:rgba(255,255,255,.035);color:rgba(255,255,255,.60);font-size:13.5px;
+  backdrop-filter:blur(8px)}
+.stats{display:flex;flex-wrap:wrap;gap:9px;margin-top:22px}
+.stat{padding:11px 15px;border-radius:14px;border:1px solid rgba(255,255,255,.10);
+  background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02))}
+.stat b{display:block;font:700 15px/1.25 ui-monospace,Menlo,monospace;letter-spacing:-.01em}
+.stat span{font-size:10.5px;letter-spacing:.06em;color:rgba(255,255,255,.40)}
+
+/* ============ 版本卡 ============ */
+.card{margin:14px 0;padding:4px 30px 26px;scroll-margin-top:96px}
+.card h2{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  margin:24px 0 18px;padding-bottom:15px;border-bottom:1px solid rgba(255,255,255,.09)}
+.vtag{display:inline-flex;align-items:center;padding:5px 12px;border-radius:10px;
+  font:700 14px/1 ui-monospace,Menlo,monospace;letter-spacing:-.01em;color:#eafffb;
+  border:1px solid rgba(45,212,191,.34);
+  background:linear-gradient(180deg,rgba(45,212,191,.26),rgba(45,212,191,.10));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+.vdate{font:500 12.5px/1 ui-monospace,Menlo,monospace;color:rgba(255,255,255,.42)}
+
+/* 小节标题：左侧色条 */
+.card h3{display:flex;align-items:center;gap:9px;margin:24px 0 12px;
+  font-size:14px;font-weight:700;letter-spacing:.01em;color:rgba(255,255,255,.86)}
+.card h3::before{content:"";width:3px;height:14px;border-radius:2px;background:currentColor;
+  box-shadow:0 0 12px currentColor}
+.s-add{color:#5eead4}.s-chg{color:#fbbf24}.s-fix{color:#fb7185}
+.s-safe{color:#60a5fa}.s-doc{color:#94a3b8}.s-db{color:#7dd3fc}.s-def{color:#cbd5e1}
+
+/* 正文 */
+.card ol,.card ul{margin:10px 0 4px;padding-left:0;list-style:none;counter-reset:n}
+.card ol>li,.card ul>li{position:relative;padding-left:26px;margin:9px 0;
+  color:rgba(255,255,255,.70)}
+.card ol>li{counter-increment:n}
+.card ol>li::before{content:counter(n);position:absolute;left:0;top:0;
+  width:17px;height:19px;display:grid;place-items:center;border-radius:6px;
+  font:600 10.5px/1 ui-monospace,Menlo,monospace;color:rgba(255,255,255,.55);
+  background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.09)}
+.card ul>li::before{content:"";position:absolute;left:6px;top:11px;width:5px;height:5px;
+  border-radius:2px;background:rgba(94,234,212,.55)}
+.card p{margin:10px 0;color:rgba(255,255,255,.70)}
+.card strong{color:#fff;font-weight:600}
+.card code{padding:2px 6px;border-radius:6px;font-size:.88em;
+  font-family:ui-monospace,Menlo,monospace;color:#a7f3e4;
+  background:rgba(45,212,191,.10);border:1px solid rgba(45,212,191,.20)}
+.card pre{margin:12px 0;padding:14px 16px;border-radius:14px;overflow-x:auto;
+  background:rgba(0,0,0,.36);border:1px solid rgba(255,255,255,.09)}
+.card pre code{background:none;border:none;padding:0;color:rgba(255,255,255,.80)}
+.card blockquote{margin:14px 0;padding:12px 15px;border-radius:13px;
+  border:1px solid rgba(255,255,255,.09);border-left:2px solid rgba(94,234,212,.55);
+  background:rgba(255,255,255,.032);color:rgba(255,255,255,.60);font-size:13.5px}
+.card hr{border:none;height:1px;margin:22px 0;
+  background:linear-gradient(90deg,rgba(255,255,255,.16),rgba(255,255,255,0))}
+.card a{color:#7fe9d6;text-decoration:none;border-bottom:1px solid rgba(127,233,214,.36)}
+.card a:hover{border-bottom-color:#7fe9d6}
+.xref{color:rgba(255,255,255,.56);white-space:nowrap}
+
+/* ============ 页脚 / 回顶 ============ */
+footer{position:relative;z-index:10;max-width:1040px;margin:0 auto;padding:0 22px 60px;
+  color:rgba(255,255,255,.32);font-size:12px;line-height:1.9}
+footer b{color:rgba(255,255,255,.55);font-weight:600}
+#toTop{position:fixed;right:20px;bottom:22px;z-index:55;width:42px;height:42px;
+  display:grid;place-items:center;border-radius:14px;cursor:pointer;
+  background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.05));
+  border:1px solid rgba(255,255,255,.16);
+  -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+  box-shadow:0 10px 30px rgba(0,0,0,.45);
+  opacity:0;transform:translateY(12px);pointer-events:none;
+  transition:opacity .22s ease,transform .22s ease}
+#toTop.show{opacity:1;transform:none;pointer-events:auto}
+#toTop:hover{background:linear-gradient(180deg,rgba(255,255,255,.20),rgba(255,255,255,.09))}
+#toTop svg{width:17px;height:17px;fill:rgba(255,255,255,.85)}
+
+@media (max-width:640px){
+  .wrap{padding:18px 14px 96px}
+  .hero{padding:26px 20px 22px}
+  .card{padding:2px 18px 20px}
+  .topbar-in{padding:9px 14px}
+  footer{padding:0 14px 52px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+
+html{scroll-behavior:smooth}
+</style>
+</head>
+<body>
+
+<div class="bg" aria-hidden="true">
+  <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
+  <span class="grain"></span>
+</div>
+
+<div class="progress" aria-hidden="true"><i id="bar"></i></div>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.4 2.5 3.4-.6.6 3.4L21 12l-2.6 4.7.6 3.4-3.4-.6L12 22l-2.4-2.5-3.4.6-.6-3.4L3 12l2.6-4.7-.6-3.4 3.4.6z"/></svg>
+      <b>Kimi 游戏榜</b><span>更新日志 · 独立展示版</span>
+    </div>
+    <nav class="vnav" id="vnav" aria-label="版本导航"><a href="#v2_20_1">v2.20.1</a><a href="#v2_20_0">v2.20.0</a><a href="#v2_19_0">v2.19.0</a><a href="#v2_18_1">v2.18.1</a><a href="#v2_18_0">v2.18.0</a><a href="#v2_17_1">v2.17.1</a><a href="#v2_17_0">v2.17.0</a><a href="#v2_16_1">v2.16.1</a><a href="#v2_16_0">v2.16.0</a><a href="#v2_15_9">v2.15.9</a><a href="#v2_15_8">v2.15.8</a><a href="#v2_15_7">v2.15.7</a><a href="#v2_15_6">v2.15.6</a><a href="#v2_15_5">v2.15.5</a><a href="#v2_15_4">v2.15.4</a><a href="#v2_15_3">v2.15.3</a><a href="#v2_15_2">v2.15.2</a><a href="#v2_15_1">v2.15.1</a><a href="#v2_15_0">v2.15.0</a><a href="#v2_14_0">v2.14.0</a><a href="#v2_13_0">v2.13.0</a><a href="#v2_12_0">v2.12.0</a><a href="#v2_11_0">v2.11.0</a><a href="#v2_10_4">v2.10.4</a><a href="#v2_10_3">v2.10.3</a><a href="#v2_10_2">v2.10.2</a><a href="#v2_10_1">v2.10.1</a><a href="#v2_10_0">v2.10.0</a><a href="#v2_9_4">v2.9.4</a><a href="#v2_9_3">v2.9.3</a><a href="#v2_9_2">v2.9.2</a><a href="#v2_9_1">v2.9.1</a><a href="#v2_9_0">v2.9.0</a><a href="#v2_8_0">v2.8.0</a><a href="#v2_7_0">v2.7.0</a><a href="#v2_6_0">v2.6.0</a><a href="#v2_5_0">v2.5.0</a><a href="#v2_4_1">v2.4.1</a><a href="#v2_4_0">v2.4.0</a><a href="#v2_3_0">v2.3.0</a><a href="#v2_2_0">v2.2.0</a><a href="#v2_1_0">v2.1.0</a><a href="#v2_0_0">v2.0.0</a><a href="#v1_9_0">v1.9.0</a><a href="#v1_8_1">v1.8.1</a><a href="#v1_8_0">v1.8.0</a><a href="#v1_7_0">v1.7.0</a><a href="#v1_6_3">v1.6.3</a><a href="#v1_6_2">v1.6.2</a><a href="#v1_6_1">v1.6.1</a><a href="#v1_6_0">v1.6.0</a><a href="#v1_5_0">v1.5.0</a><a href="#v1_4_0">v1.4.0</a><a href="#v1_3_0">v1.3.0</a><a href="#v1_2_0">v1.2.0</a><a href="#v1_1_0">v1.1.0</a><a href="#v1_0_0">v1.0.0</a></nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero glass">
+    <h1>更新日志</h1><p>本站持续迭代。这里记录每个版本的变化——<strong>包括新增了什么、改了什么、删除了什么，以及还有哪些做得不好</strong>。新版本在最上方。</p><blockquote>本页是公开页面，只描述<strong>对用户可见的变化</strong>，不涉及任何内部实现细节。</blockquote>
+    <div class="stats">
+      <div class="stat"><b>57</b><span>个版本</span></div>
+      <div class="stat"><b>v2.20.1</b><span>最新版本</span></div>
+      <div class="stat"><b>2026-09-28</b><span>最后更新</span></div>
+    </div>
+  </section>
+
+  <section class="card glass" id="v2_20_1"><h2><span class="vtag mono">v2.20.1</span><span class="vdate mono">2026-09-28</span></h2><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li><strong>修复 AI 助手偶发报错、回复中断的问题</strong>：部分回答在收尾时会直接报错，已经生成到一半的内容也一并丢失；现在能正常收尾，本次用量照常计入。</li></ol><hr></section>
+<section class="card glass" id="v2_20_0"><h2><span class="vtag mono">v2.20.0</span><span class="vdate mono">2026-09-27</span></h2><h3 class="sec s-add">新增</h3><ol style="counter-reset:n 0"><li><strong>控制面板新增「智能链接识别」（BETA，默认关闭）</strong>：有些作品的「页面地址」本身只是个跳转页（一句「正在前往…」，真正的作品在别处）。开启后，收录与批量更新会尝试从这类页面里找出<strong>真实地址</strong>并替换，标题与评分也改按真实页面来算。</li></ol><ul><li>判定刻意保守：先确认这页确实像跳转页，再排除常见大站与站内地址，<strong>只认唯一一个候选链接</strong>；识别不出就保持原样，不会乱改。</li><li><strong>不会误伤作品自己的家</strong>：GitHub Pages、Vercel / Netlify / Cloudflare Pages /EdgeOne / HuggingFace Spaces 等托管平台，以及 Kimi、智谱、豆包、Coze、通义、文心、元宝、DeepSeek 等平台的作者子站与分享页，一律视作真实作品页；页面里若出现画布、内嵌框架、音视频等作品特征，也不会被当成跳转页。</li></ul><ol style="counter-reset:n 1"><li>「AI 用量排行」<strong>主管理员与副管理员都能看</strong>（此前只在主管理员面板里）。</li></ol><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li>「评分方式」与「智能链接识别」这两个开关此前只有主管理员能切换，<strong>现在副管理员也可以</strong>——他们本来就要负责收录与更新作品。</li></ol><hr></section>
+<section class="card glass" id="v2_19_0"><h2><span class="vtag mono">v2.19.0</span><span class="vdate mono">2026-09-27</span></h2><h3 class="sec s-add">新增</h3><ol style="counter-reset:n 0"><li><strong>控制面板新增「评分方式」开关</strong>。默认自动评分；站长若会按实际情况与反馈手动调分，可切换为「只更新信息」——此后<strong>已收录作品</strong>在更新时只改信息（标题、简介、图片、互动数等），<strong>不再覆盖评分</strong>，手动调过的分得以保留；<strong>新收录的作品一律照常评分</strong>，不受这个开关影响。需要把老作品按算法重算时，切回「自动评分」再点一次「全部更新」。</li><li><strong>两处排行都能翻页了</strong>：「AI 用量排行」此前只列前 20 名，现在可按页查看，序号跨页连续；「用户列表」也补上了分页控件——搜索会回到第一页，自动刷新时停留在当前页。</li></ol><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li><strong>「一键更新全部作品」改为按排名从高到低</strong>（总分降序，并列按收录顺序），不再按收录先后。开始前会先固定本轮名单，因此中途分数变化也不会漏掉或重复处理某件作品。</li><li>副管理员视角的「用户列表」在自动刷新时，一度会短暂显示他不可用的操作按钮，已修正。</li></ol><h3 class="sec s-def">说明</h3><ol style="counter-reset:n 0"><li>关闭自动评分<strong>不影响新收录的作品</strong>：新作品一律照常给出初值分。它保护的是已收录作品的手动调分，不让批量更新把它覆盖掉。</li><li>评分标准页已同步说明：评分默认自动计算，<strong>站长可能按实际情况对个别作品做人工修正</strong>，但不接受调分申请。</li></ol><hr></section>
+<section class="card glass" id="v2_18_1"><h2><span class="vtag mono">v2.18.1</span><span class="vdate mono">2026-09-27</span></h2><h3 class="sec s-def">变更</h3><ol style="counter-reset:n 0"><li><strong>「关于」页的管理者名单改为实时读取</strong>。它之前是写死的，现在由站内数据直接生成，站长与副管理员按身份标注——名单有变动，刷新页面即可看到，不必等下一次发版。</li><li>「关于」页新增<strong>参考与借鉴</strong>区块。</li></ol><h3 class="sec s-def">说明</h3><ol style="counter-reset:n 0"><li>名单只取<strong>用户名与身份标签</strong>两项，不含 UID、凭证或其它账号标识。</li><li>这条读取链路与运营后台的接口<strong>完全分开</strong>：公开页面只走公开只读接口，游客与登录用户看到的都一样，不会去碰后台那条链路。</li></ol><hr></section>
+<section class="card glass" id="v2_18_0"><h2><span class="vtag mono">v2.18.0</span><span class="vdate mono">2026-09-27</span></h2><h3 class="sec s-add">新增</h3><ol style="counter-reset:n 0"><li><strong>控制面板新增「数据库备份」（仅主管理员）</strong>：点一下就把全站数据导出成一个SQL 文件存在服务器上，同一区块里可随时<strong>下载</strong>到本地留存，也可以<strong>删除</strong>旧备份。</li></ol><ul><li>文件默认压缩，下载更快也更省流量；</li><li>备份不放在能直接用网址打开的位置，<strong>下载必须经过管理员鉴权</strong>。</li></ul><ol style="counter-reset:n 1"><li>导出的稳妥处理：能取到一致的数据快照（InnoDB）就会取，避免「边导边变」；同一时间只允许一个备份任务，重复点击不会并发导出；单份上限 256MB，超限会中止并清掉半成品。</li></ol><h3 class="sec s-def">说明</h3><ol style="counter-reset:n 0"><li>备份只存在两处——<strong>你自己的服务器</strong>和<strong>你下载到的本地</strong>；本站不向任何第三方发送这些数据。</li><li>备份含账号与评论数据，提个醒：<strong>下载后请妥善保管，用完及时删掉</strong>。</li></ol><hr></section>
+<section class="card glass" id="v2_17_1"><h2><span class="vtag mono">v2.17.1</span><span class="vdate mono">2026-09-27</span></h2><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li><strong>作品预览图不显示</strong>。收录作品时只读取了作品正文里的图片，而站内收录的多数是HTML / 代码类作品——它们的预览图其实挂在<strong>作品分享卡</strong>上。这部分此前一直被漏读，所以榜单卡片、详情页图集和编辑表单里的封面都是空的。现已一并读取，并兼容几种不同的图片字段写法（原图 / 缩略图 / 直链）。</li><li>已收录的老作品<strong>不会自动补图</strong>：在控制面板点一次「全部更新作品」就会一路跑到全部完成，跑完预览图即恢复。</li></ol><h3 class="sec s-def">说明</h3><ol style="counter-reset:n 0"><li>评分口径<strong>没有变化</strong>：六维里的「图片数」仍只认作品正文里的图片，已收录作品的总分不会因这次修复而变动。</li><li>收录与更新走的是同一条入库逻辑，所以这次修复对两者同时生效。</li></ol><hr></section>
+<section class="card glass" id="v2_17_0"><h2><span class="vtag mono">v2.17.0</span><span class="vdate mono">2026-09-27</span></h2><h3 class="sec s-add">新增</h3><ol style="counter-reset:n 0"><li><strong>评论与消息发送前新增「过三关」自动审核</strong>，命中即当场拦下（提示「内容未通过审核」，可修改后重发；认为误判可通过「反映问题」找我们）：</li></ol><ul><li>第一关：站内词库与常用句式识别，拦辱骂、广告、联系方式与刷屏；</li><li>第二关：把内容译成英文后做一次脏词检测，堵住用外文辱骂绕过中文词库的写法；</li><li>第三关：AI 判定一次（只回答通过或不通过），识别词库覆盖不到的语境型违规。插字、加符号、全角、夹零宽字符这类绕行写法都在拦截面内；游戏术语与日常用语有单独的白名单兜底，正常讨论不会被误伤。</li></ul><ol style="counter-reset:n 1"><li><strong>「过三关」的判定逻辑已完整公开</strong>，写在<strong>《用户协议》</strong>第九条——不含代码，只讲规则：每一关做什么、什么情况从宽处理、不通过时为什么不告诉你命中了什么，都在里面。</li><li>审核结论<strong>按内容缓存</strong>，同样的内容只审一次，不会重复外发或重复计费。</li><li><strong>每份文档末尾新增「下载原始 md 文件」</strong>：功能说明、AI 使用说明、社区公约、评分标准、入榜规则、用户协议、隐私政策、更新日志这八份，都可以在页面底部一键把原文存到本地留档；存下来的内容与页面所见完全一致，不经二次改写。</li></ol><h3 class="sec s-def">说明</h3><ol style="counter-reset:n 0"><li>三关<strong>都不消耗你的额度</strong>——包括其中的 AI 判定，全部由本站承担，也不占用你的免费模型次数。</li><li>审核只发送<strong>内容本身</strong>，不含账号、UID、IP 等身份信息；这一点已同步写入<strong>《隐私政策》</strong>第八条。</li></ol><hr></section>
+<section class="card glass" id="v2_16_1"><h2><span class="vtag mono">v2.16.1</span><span class="vdate mono">2026-09-27</span></h2><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li><strong>搜索总结不会再被作品标题或简介里的文字带偏</strong>。搜索内容取自站外，若其中夹带了「忽略以上」「你现在是」这类句子，以前有可能影响总结内容；现在这些内容只按作品信息看待，不会被当成指令执行。</li><li><strong>搜索总结的缓存以「关键词 + 命中条数」为准</strong>：站内作品增删或被改名导致条数变化时，旧摘要立即作废并重新生成，不会拿过期的数字继续用。</li></ol><h3 class="sec s-chg">改动</h3><ol style="counter-reset:n 0"><li>控制面板的 AI 用量<strong>按通道分账</strong>：「本站模型」与「模型网关」分别统计 tokens 与调用次数，并新增按账号的 <strong>AI 用量排行</strong>（可切通道查看）。「选了免费模型、实际回退到本站模型」的消耗记在本站模型名下，如实反映真实开销。</li><li>副管理员管理页新增<strong>豹子号余量提示</strong>：豹子号共 8 个，用尽后新加的副管理员会自动改用普通 8 位 UID——<strong>身份与权限完全不受影响</strong>，页面上会直接写明。</li></ol><hr></section>
+<section class="card glass" id="v2_16_0"><h2><span class="vtag mono">v2.16.0</span><span class="vdate mono">2026-09-27</span></h2><h3 class="sec s-add">新增</h3><ol style="counter-reset:n 0"><li><strong>搜索结果页顶部新增「AI 总结」卡片</strong>：搜一个关键词，顶部先把这次命中的作品整理成一段摘要——命中了几件、整体成色如何、怎么挑。内容较长时自动折叠，点「展开全部」看全文。</li></ol><ul><li>它只看站内命中的作品，不联网、不查站外内容，也不会编造清单之外的作品；</li><li><strong>任何情况下都不消耗你的额度</strong>：无论是否登录、免费次数是否用完，卡片都照常出现（它走本站自己的开销，与你的个人额度互不相干）；</li><li>同一个关键词只生成一次，之后所有人（含游客）都直接读缓存；</li><li>不想看就在「我的 → 搜索」里关掉，游客的开关记在本机浏览器中。</li></ul><h3 class="sec s-chg">改动</h3><ol style="counter-reset:n 0"><li>设置页新增「搜索」分组，作为上述开关的入口</li></ol><hr></section>
+<section class="card glass" id="v2_15_9"><h2><span class="vtag mono">v2.15.9</span><span class="vdate mono">2026-09-27</span></h2><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li><strong>副管理员的控制面板有两块内容一直显示不出来</strong>：数据总览与趋势统计是空的，社区凭证填了也保存不上——面板给了入口，操作完却没有反应。现已修复。</li></ol><h3 class="sec s-chg">改动</h3><ol style="counter-reset:n 0"><li><strong>「下载 Token 脚本」从「一键更新全部作品」里挪到「社区凭证」区块，副管理员同样可用</strong>。副管理员抓取作品需要自己的社区 Token，取得脚本的工具与粘贴凭证的入口现在在同一处。每个账号的凭证分别加密存放，相互看不到。</li></ol><hr></section>
+<section class="card glass" id="v2_15_8"><h2><span class="vtag mono">v2.15.8</span><span class="vdate mono">2026-09-27</span></h2><h3 class="sec s-add">新增</h3><ol style="counter-reset:n 0"><li><strong>全站字体重做：三款字体全部随站分发</strong>，不再取决于你的设备里恰好装了什么。</li></ol><ul><li>默认：<strong>小米 MiSans</strong>（可变字重，粗细过渡更自然）</li><li>手绘风：<strong>站酷快乐体</strong>（开源字体，可免费商用；生僻字自动回退到 MiSans）</li><li>像素风：<strong>Fusion Pixel</strong>（中英文齐全）字体按需分片加载——浏览器只下载当前页面真正用到的那几片，不会为了几个字把整个字体包拖下来</li></ul><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li><strong>回复评论的显示格式统一为「@某人 正文」</strong>，其中 @ 的部分用灰色，与站内其它地方的写法一致（此前 @ 跟在用户名之后还带一个点，读起来像是用户名的一部分）</li></ol><h3 class="sec s-chg">改动</h3><ol style="counter-reset:n 0"><li>页面资源启用传输压缩，样式与脚本的传输体积明显减小</li></ol><hr></section>
+<section class="card glass" id="v2_15_7"><h2><span class="vtag mono">v2.15.7</span><span class="vdate mono">2026-09-26</span></h2><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li><strong>免费模型次数用尽后仍能继续对话</strong>。此前次数用完时，界面只当成「通道繁忙」，转而用另一条通道重试，于是超额也能照常发出——每人每日的次数限制形同虚设。现在次数用尽会明确拦下并告知原因（如「今日免费模型次数已用完」），被拦下的这一条不会出现在对话里，你输入的内容也仍然留在输入框中</li></ol><hr></section>
+<section class="card glass" id="v2_15_6"><h2><span class="vtag mono">v2.15.6</span><span class="vdate mono">2026-09-26</span></h2><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li><strong>世界对话打不开</strong>：进入后会提示「没有权限」，实际是请求在服务器端被拒绝。现已调整访问路径解决，消息记录与发言规则完全不变</li><li><strong>页面切换时偶发的脚本报错</strong>：切换动画在页面处于后台时会被浏览器跳过，此前会把这种情况报成错误，现在按正常情况处理</li></ol><hr></section>
+<section class="card glass" id="v2_15_5"><h2><span class="vtag mono">v2.15.5</span><span class="vdate mono">2026-09-26</span></h2><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li><strong>出错时只显示「请求失败」，看不到原因</strong>。无论是「没有权限」「页面不见了」还是「服务出错了」，界面都只回一句「请求失败」，排查时无从下手。现在会直接把真实原因告诉你</li><li><strong>失败却被显示成正常</strong>：网络面板里那些出错的请求状态显示正常，给排查造成很大误导；现已与实际结果一致</li><li>「登录态失效」此前会被显示成「没有权限」，现在按实际原因提示</li></ol><hr></section>
+<section class="card glass" id="v2_15_4"><h2><span class="vtag mono">v2.15.4</span><span class="vdate mono">2026-09-26</span></h2><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li><strong>世界对话里发言被误拦</strong>：第一条能发出去，之后一分钟内的发言全被拒（提示「发言过于频繁」），而网络面板里连请求都看不到。现已修正判定规则——正常聊天不再受任何间隔限制</li><li>同样被误拦的「发表评论」「提交反馈」「注册」一并修正</li></ol><h3 class="sec s-chg">改动</h3><ol style="counter-reset:n 0"><li>各类操作的频次上限与真实额度一一对应，不再存在「固定间隔」这种限制：发言 15 次/分钟、评论 20 次/分钟、AI 对话 6 次/分钟、反馈 5 次/10 分钟、注册 10 次/小时</li></ol><hr></section>
+<section class="card glass" id="v2_15_3"><h2><span class="vtag mono">v2.15.3</span><span class="vdate mono">2026-09-26</span></h2><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li>控制面板点「编辑作品」报错、编辑器打不开——此前只留了入口、没有写实现。现已补全作品编辑器——标题、作者、分类、简介、分享链接、社区链接、封面、图集、上下架状态与<strong>六维明细</strong>都能改，保存后列表自动刷新</li><li>顺带修正六维的手工编辑上限：此前被静默截断到 100，而真实口径是<strong>每维满分 200</strong></li><li>对话框打开后丢失玻璃质感（样式类在打开时被覆盖掉了）</li></ol><h3 class="sec s-chg">改动</h3><ol style="counter-reset:n 0"><li><strong>开发流程加强</strong>：新增一道专项检查，专门拦下「只在运行时才报错、直接把页面打坏」的那一类错误（历史上出现过几次）。检查在正式产物上运行，且校验的是临时副本，有问题的版本不会覆盖上一版可用文件</li></ol><hr></section>
+<section class="card glass" id="v2_15_2"><h2><span class="vtag mono">v2.15.2</span><span class="vdate mono">2026-09-26</span></h2><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li><strong>访问统计的归属地错位</strong>：此前「省份」里会出现「中国[CN]」、「城市」里会出现「四川省」这类省份名。根因是只保存了拼成一条的归属地文本，统计时再用规则去猜省市，字段边界早已丢失。现在改为<strong>按国家 / 省份 / 城市三个独立字段存储与统计</strong>，历史记录也按缓存自动回填。</li><li>控制面板「用户管理」的搜索按钮此前没有绑定事件，现在可以正常使用。</li></ol><h3 class="sec s-add">新增</h3><ol style="counter-reset:n 0"><li>「一键更新全部作品」旁新增<strong>「下载 Token 脚本」</strong>按钮：一键下载获取社区 Token 用的浏览器脚本（服务端中转下载，附带来源与风险提示）</li><li>控制面板新增<strong>评论回收站</strong>：可查看已删除的评论、恢复到原处，或彻底清空（清空不可撤销）</li><li>评论<strong>屏蔽</strong>：被屏蔽的评论折叠显示，点开仍可查看——与删除是两回事</li></ol><h3 class="sec s-chg">改动</h3><ol style="counter-reset:n 0"><li><strong>评论删除明确为「入回收站」</strong>：被删除的评论及其回复在前端<strong>完全不显示</strong>，但内容仍保留在库中，管理员可恢复或清空</li><li><strong>副管理员可查看全站只读数据</strong>：数据总览、趋势统计、用户列表（只读）与访问排行；用户 IP 与归属地明细仍仅总管理员可见，改库、账号处置、公告等操作副管理员不可用</li></ol><hr></section>
+<section class="card glass" id="v2_15_1"><h2><span class="vtag mono">v2.15.1</span><span class="vdate mono">2026-09-25</span></h2><h3 class="sec s-add">新增</h3><ol style="counter-reset:n 0"><li>新增<strong>《社区公约》</strong>：参考成熟社区的写法，分七章三十四条——总则、我们共同维护的准则、禁止的内容与行为（危害国家安全、违法与不良信息、侵害他人权益、侵犯知识产权、破坏社区秩序、危害技术安全、未成年人保护等八类红线）、重点场景规范（评论区 / 世界对话 / AI 助手 / 用户名头像 / 站内表情 / 屏蔽词）、违规处置与从重从轻情节、举报投诉与申诉、附则</li><li>新增<strong>《功能说明》</strong>：逐项解释全站功能——四大榜单、搜索与作品详情、点赞与评论、世界对话、账号与「我的」、站内表情、反映问题、常见问题，看完一页即可上手全部功能</li><li>新增<strong>《AI 使用说明》</strong>：AI 能力清单、两种模型的计费方式、<strong>额度计算规则</strong>（本站模型按 token、免费模型按次数、签到加成、额度重置时间）、缓存机制、省额度技巧、数据与隐私、常见问题</li></ol><h3 class="sec s-chg">改动</h3><ol style="counter-reset:n 0"><li><strong>公开文档收敛为八份</strong>：社区公约、用户协议、隐私政策、功能说明、AI 使用说明、评分标准、入榜规则、更新日志——只保留必要的，去掉重复</li><li><strong>三份文档的内容并入协议正文</strong>（合并后不再单独成页，入口相应取消）：</li></ol><ul><li>版权与侵权投诉的完整流程（权利通知要素、可直接套用的模板、反通知、重复侵权、恶意通知、处理时限）→ 并入《用户协议》第八条</li><li>账号与安全（密码规则与安全建议、登录凭证与有效期、忘记密码的办理方式、账号注销与数据删除）→ 并入《用户协议》第五条</li><li>Cookie 与本地存储的逐项清单、不使用声明、清除方式与清除后的影响 → 并入《隐私政策》第七条</li></ul><ol style="counter-reset:n 2"><li>抽屉菜单的文档入口相应收敛为八项；登录页新增《功能说明》《AI 使用说明》入口，并明确「登录后可投票、评论、参与世界对话并使用 AI 助手；游客仅可浏览」</li><li>公开文档补齐<strong>可点击链接</strong>：第三方服务写出全称并可跳转官网或接口文档；法律法规可跳转国家法律法规数据库</li><li><strong>新增「站内表情素材（B 站表情）」说明</strong>：明确表情来源、版权归属、仅限站内交流的使用范围、与权利人无合作关系，权利人可随时通过「反映问题」主张移除</li><li>各文档互链重排；《入榜规则》增加「常见问题」，《评分标准》增加数据来源、逐维计与不计、完整算例、自查清单与术语表</li></ol><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li>修正《评分标准》中重复的章节编号</li><li>清理《用户协议》中若干<strong>不应对公众披露的技术细节</strong>，改为对用户可见的说明（不影响任何规则的实际效力）</li></ol><hr></section>
+<section class="card glass" id="v2_15_0"><h2><span class="vtag mono">v2.15.0</span><span class="vdate mono">2026-09-25</span></h2><h3 class="sec s-add">新增</h3><ol style="counter-reset:n 0"><li>AI 问答缓存：<strong>新对话的第一问</strong>若此前有人问过且已有答案，直接沿用，不再重复向模型提问——省时、省额度，答案保持一致</li><li>只有「不依赖站内数据、不联网查询」的纯知识型回答才会入缓存；涉及实时内容（天气、时间、榜单等）的回答一律不缓存，避免给出过期结果</li><li>缓存命中不计入模型额度（因为并未真正调用模型）</li></ol><h3 class="sec s-chg">改动</h3><ol style="counter-reset:n 0"><li>AI 默认使用<strong>本站模型</strong>（按 token 计），照实显示其名称；免费模型需在列表里显式选择后才生效</li><li>模型选择器重做：胶囊按钮 + 下拉卡片，选项标注「本站默认 / 免费模型」与各自计费方式</li></ol><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li>修复「自动初始化未完成 · 管理员库初始化失败」：初始化时探测管理员库结构用了一条数据库并不接受的写法，导致首次初始化当场中断、整站停在错误页</li><li>同类问题一并修正：判断「表是否存在 / 列是否存在」的探测也受影响，此前会被误判为「不存在」，连累初始化与自动修复。现全部改为通用、稳妥的探测方式</li><li>修复「页面脚本错误、整页空白」：上一轮重构在页面脚本的尾部残留了一段重复片段，把字符串截断，浏览器解析到中途即报错，整个前端脚本失效。现已清除</li><li>修复控制面板「root is not defined」：概览渲染函数少接了一个参数，同类问题此前已出现过一次</li><li>修复流式对话在选用免费模型时报错（模型参数没有传进内部函数）</li><li>修复「全站剩余」一直显示为占位符：管理员的个人额度无限制，但<strong>全站额度与之无关</strong>，此前被一并隐藏</li><li>构建流程新增<strong>产物语法校验</strong>：出包前用真正的 JS 解析器校验合并结果，语法不通过就中止、且不覆盖上一版可用文件——这类错误此后无法出包</li><li>构建流程新增<strong>未声明变量检查</strong>：专门拦「函数体引用了未声明的局部变量」这类只在运行时爆、且会把页面打成空白的写错（历史上已两次发生）</li></ol><h3 class="sec s-safe">安全</h3><ol style="counter-reset:n 0"><li><strong>上传文件名净化</strong>：外部传入的文件名一律去掉路径与危险字符、限制扩展名后才使用；落盘文件名始终由服务端随机生成，绝不采用用户提供的名称</li><li>复核全站输出转义：页面、公告、错误页、聊天与列表内容均经转义后输出</li></ol><h3 class="sec s-doc">文档</h3><ol style="counter-reset:n 0"><li>《用户协议》全面重写：定义与解释、用户资格与年龄、服务性质与「无服务等级承诺」、账号与安全、<strong>站内数据与虚拟权益的定性</strong>、行为规范、知识产权与<strong>通知—删除（权利通知应含要素）</strong>、评论对话点赞、AI 服务、第三方服务、<strong>免责声明</strong>、<strong>责任限制</strong>、违约与<strong>账号申诉</strong>、服务变更终止与<strong>存续条款</strong>、通知送达、<strong>法律适用与争议解决</strong>、可分割性与完整协议等条款</li><li>《隐私政策》全面重写：<strong>个人信息处理者身份与联系方式</strong>、信息清单、收集方式、<strong>处理目的与法律依据（含无需同意的例外情形）</strong>、<strong>敏感个人信息与自动化决策说明</strong>、Cookie 与本地存储、<strong>共享 / 委托处理 / 转让清单表</strong>、IP 特别说明、<strong>存储与跨境传输</strong>、安全措施与<strong>安全事件告知</strong>、<strong>信息保留期限表</strong>、<strong>你的权利</strong>（含可携带权）、未成年人保护、政策更新、免责与责任限制、<strong>术语说明</strong>、<strong>投诉与外部救济途径</strong></li><li>修正两份文档中与实现不符的旧表述（管理员凭证的存储方式、AI 额度的具体数值等）；额度改为「以页面实时显示为准」，避免文档与实现脱节</li><li>文档渲染补上分隔线支持，并为其添加样式</li><li>《评分标准》补全为<strong>全算法公开版</strong>：六维逐一给出记号、公式、满分锚点、设计理由，新增数据不足与异常处理、防刷分机制、动态重算、常见问题、权重调整与公示等章节；并按代码真实实现校正了若干描述（形式创新的归一化、交互标签集合、文本口径）</li><li>《入榜规则》补全：准入条件、<strong>分区判定优先级与兜底规则</strong>、收录方式、查重与更新、<strong>四个榜型的真实排序口径</strong>、展示字段、移除规则、纠错与申诉渠道</li><li><strong>修正全站的分数口径错误</strong>：真实算法为「单维 0–200、总分 0–1200」，但 AI 助手的系统提示与本协议此前误写为「0–100 / 0–600」，现已统一更正</li></ol><h3 class="sec s-db">数据库</h3><ol style="counter-reset:n 0"><li>结构升级。控制面板「数据库更新」可一键补齐，幂等、可反复执行</li></ol><hr></section>
+<section class="card glass" id="v2_14_0"><h2><span class="vtag mono">v2.14.0</span><span class="vdate mono">2026-09-25</span></h2><h3 class="sec s-add">新增</h3><ol style="counter-reset:n 0"><li>AI 对话接入更多免费模型：自动获取可用模型，只保留纯文本、完全免费的</li><li>模型列表每天自动更新一次，无需人工维护</li><li>模型名自动提取，可在列表中自行选择要用的模型</li><li>「我的」页新增「AI 免费模型」卡片：可选模型数、我的今日次数、全站剩余一目了然</li><li>AI 对话新增「模型」选择条</li></ol><h3 class="sec s-chg">改动</h3><ol style="counter-reset:n 0"><li>免费模型改用<strong>次数</strong>计：<strong>每人每天 2 次、全站每天 50 次</strong>，界面实时显示剩余；其余模型仍按原有的 token 额度，两者互不影响</li></ol><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li>修复控制面板打不开的问题</li><li>修复 AI 的时间查询失效的问题</li><li><strong>世界对话整体重写</strong>：以 id 去重、杜绝重复上屏；读取失败给出可重试提示而非空白；发言 / 撤回 / 图片 / 表情行为稳定</li></ol><h3 class="sec s-def">改进</h3><ol style="counter-reset:n 0"><li>进入首页默认停在「我的」页</li><li>链接直达：地址带参数即自动进入对应界面（如 <code>?p=chat</code>，或 <code>?chat</code> 等简写）；控制面板等敏感界面<strong>不接受地址直达</strong>，必须由站内入口进入</li></ol><h3 class="sec s-db">数据库</h3><ol style="counter-reset:n 0"><li>结构升级。控制面板「数据库更新」可一键补齐，幂等、可反复执行</li></ol><hr></section>
+<section class="card glass" id="v2_13_0"><h2><span class="vtag mono">v2.13.0</span><span class="vdate mono">2026-09-25</span></h2><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li>修复 AI 助手读取网页时「无论哪个网址都失败」的问题。改用更稳妥的校验方式，正常网页均可读取</li><li>顺带加固网页读取的体积限制，避免个别主机上请求直接失败</li></ol><h3 class="sec s-safe">安全</h3><ol style="counter-reset:n 0"><li>对不安全地址的拦截<strong>没有放松</strong>，判定方式比原先更可靠</li></ol><hr></section>
+<section class="card glass" id="v2_12_0"><h2><span class="vtag mono">v2.12.0</span><span class="vdate mono">2026-09-20</span></h2><h3 class="sec s-safe">安全</h3><ol style="counter-reset:n 0"><li>管理员凭证改为更安全的存储方式：即使数据被拖走，也不会直接暴露</li><li><strong>登录方式完全不变</strong>，属于无感升级，不会因为一次升级把管理员挡在门外</li></ol><hr></section>
+<section class="card glass" id="v2_11_0"><h2><span class="vtag mono">v2.11.0</span><span class="vdate mono">2026-09-19</span></h2><h3 class="sec s-add">新增</h3><ol style="counter-reset:n 0"><li>控制面板新增「数据库更新」：升级后若有个别结构没能及时补齐，现在可以手动补上，不必再等</li><li>分两步：先「检查状态」看清缺什么，再「一键更新」补齐。更新前会确认一次，完成后列出本次补齐了哪些、还剩哪些，以及耗时</li><li>更新是幂等的，反复执行不会重复改动，也不会删除任何已有数据</li><li>该功能仅总管理员可用（副管理员不可见、不可调用）</li></ol><h3 class="sec s-def">说明</h3><ol style="counter-reset:n 0"><li>它能解决的正是「显示已是最新、实际却仍缺失」这种情形</li></ol><hr></section>
+<section class="card glass" id="v2_10_4"><h2><span class="vtag mono">v2.10.4</span><span class="vdate mono">2026-09-19</span></h2><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li>修复「大部分地方服务器内部错误」。上一次只修了评论与反馈，漏掉了同一根因的另外几处：高手榜与人气榜的排序、作品同步、点赞后的计数、控制面板改分。现已全部改为「缺了就自动走退路」，绝不会再因为一处缺失把整站打成 500</li><li>修正结构检查在个别数据库设置下可能判错的问题</li><li>修正结构补齐后同一请求内仍按旧结构走的问题</li><li>自检脚本接入真正的语法检查；没有相应环境时自动退回静态检查</li><li>删除一个无人引用、内容残缺的文件</li></ol><h3 class="sec s-add">新增</h3><ol style="counter-reset:n 0"><li>新增独立诊断入口：整站出错时也能运行，直接列出运行环境、结构体检结果与最近日志。出于安全考虑，入口带访问口令，用后请删除</li></ol><hr></section>
+<section class="card glass" id="v2_10_3"><h2><span class="vtag mono">v2.10.3</span><span class="vdate mono">2026-09-18</span></h2><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li>修复发表评论与反馈必定报「服务器内部错误」：相关内容此前写死在一处尚未建立的存储上，现已改为「有就用、没有就跳过」，提交永不因它失败</li><li>解开升级机制的一处死结：此前某一步失败也会把版本记账为已完成，导致缺失的部分再也补不回来；现已改为「成功才记账」，并新增一道只看实际情况、与版本号无关的自动修复，线上无需人工干预即可自愈</li><li>修正命名判断在个别数据库设置下可能误判的问题</li></ol><hr></section>
+<section class="card glass" id="v2_10_2"><h2><span class="vtag mono">v2.10.2</span><span class="vdate mono">2026-09-18</span></h2><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li>修复启动失败导致整站打不开的问题：上一轮改动留下了一段残骸（同一功能被定义了两遍，且引用了已不存在的函数），现已清除</li><li>自检脚本补上「重复定义」检查，此后这类会导致整站打不开的错误在打包前就能拦下</li></ol><hr></section>
+<section class="card glass" id="v2_10_1"><h2><span class="vtag mono">v2.10.1</span><span class="vdate mono">2026-09-18</span></h2><h3 class="sec s-chg">改动</h3><ol style="counter-reset:n 0"><li>分区判定改为「其余归游戏」：二创 / 文学 / 工具三类都不命中时，一律归入游戏，不再保持原分区不动</li><li>游戏不再单独判定，作为兜底</li><li>预览统计相应调整：额外显示「其中靠默认归入游戏」有多少件</li></ol><hr></section>
+<section class="card glass" id="v2_10_0"><h2><span class="vtag mono">v2.10.0</span><span class="vdate mono">2026-09-18</span></h2><h3 class="sec s-add">新增</h3><ol style="counter-reset:n 0"><li>一键更换分区：按标题与简介自动判定作品分区，先预览再执行</li><li>判定优先级为 二创 ＞ 文学 ＞ 工具 ＞ 游戏</li><li>二创的判定依据：出现「改编自 / 原作者是 / 同人 / 二创 / 番外 / 衍生 / 设定集 / 平行世界 / 致敬」等表述</li><li>文学的判定依据：出现「小说 / 文学 / 散文 / 诗歌 / 连载 / 短篇 / 章节 / 文集 / 随笔」等表述</li><li>工具与游戏也有各自的判定词</li><li>手工批量迁移：可把某个分区的作品整体并入另一个分区</li></ol><h3 class="sec s-def">说明</h3><ol style="counter-reset:n 0"><li>判定不出来的作品保持原分区不动</li><li>预览与执行使用同一套逻辑，所见即所做</li><li>变更分批执行，进度可见</li></ol><hr></section>
+<section class="card glass" id="v2_9_4"><h2><span class="vtag mono">v2.9.4</span><span class="vdate mono">2026-09-18</span></h2><h3 class="sec s-chg">优化</h3><ol style="counter-reset:n 0"><li>榜单排序明显提速</li><li>作品详情页缓存：游客访问详情的结果可复用 60 秒；榜单列表缓存放宽到 45 秒</li><li>优化底层查询，加载更快</li><li>存储自动清理：限流计数、操作窗口、过期锁定等临时文件，以及日志文件，按约 2% 的请求抽样清理；日志超过 512KB 只保留最近部分</li><li>AI 对话记录每用户保留最近 200 条，超出自动裁掉最旧的</li></ol><h3 class="sec s-def">改进</h3><ol style="counter-reset:n 0"><li>关键样式表与主脚本增加预加载，缩短首屏可见时间</li><li>补充页面描述与分享卡片信息，便于搜索与分享时展示</li><li>增加若干安全响应头（禁止被第三方页面嵌套、限制来源信息外泄、收紧浏览器权限）</li></ol><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li>一处兼容问题：误用了高版本才支持的写法，在低版本环境会直接报错</li></ol><hr></section>
+<section class="card glass" id="v2_9_3"><h2><span class="vtag mono">v2.9.3</span><span class="vdate mono">2026-09-17</span></h2><h3 class="sec s-add">新增</h3><ol style="counter-reset:n 0"><li>自定义错误页面：404 / 403 / 400 / 405 / 408 / 429 / 500 / 502 / 503 都有专门界面，不再是白底英文提示</li><li>错误页自动跟随当前设计风格与深浅色</li><li>错误页自带两个去处：返回首页、返回上一页</li></ol><h3 class="sec s-def">说明</h3><ol style="counter-reset:n 0"><li>错误页不依赖数据库与站内任何资源文件，即便数据库不可用或样式加载失败，它依然能正常显示，并正确返回状态码</li><li>接口请求出错时仍返回数据，不会被替换成页面</li></ol><hr></section>
+<section class="card glass" id="v2_9_2"><h2><span class="vtag mono">v2.9.2</span><span class="vdate mono">2026-09-17</span></h2><h3 class="sec s-chg">改动</h3><ol style="counter-reset:n 0"><li>侧边菜单改为从右侧滑出（触发位置在右上角，之前却从左侧出来，方向对不上）</li><li>说明：榜单本就是分页加载（每页 12 条，滚动到接近底部自动续载）。若仍感觉慢，多半是首次请求时上游接口响应偏慢</li></ol><hr></section>
+<section class="card glass" id="v2_9_1"><h2><span class="vtag mono">v2.9.1</span><span class="vdate mono">2026-09-17</span></h2><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li>MD3 风格此前有一大半规则其实没有生效，现已修正</li><li>MD3 补上完整的排版尺度（标题 / 正文 / 按钮的字号与字距）</li></ol><h3 class="sec s-chg">改动</h3><ol style="counter-reset:n 0"><li>MD3 卡片增加入场动画（弹性曲线，逐张错开）</li><li>MD3 分段控件改为圆角胶囊，选中项带物理回弹</li><li>MD3 输入框改为填充式外观，聚焦时底部转为加粗主色</li><li>MD3 按钮与标签统一加粗字重与字距</li></ol><hr></section>
+<section class="card glass" id="v2_9_0"><h2><span class="vtag mono">v2.9.0</span><span class="vdate mono">2026-09-17</span></h2><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li>签到无法点击，现已修复</li><li>控制面板的时间范围切换存在同样问题，一并修复</li><li>部分样式规则此前一直没生效，已修正</li><li>底部通知同时弹出多条时会叠在一起，现在自动向上堆叠，且同时最多保留 3 条</li></ol><h3 class="sec s-chg">改动</h3><ol style="counter-reset:n 0"><li>操作限制改为按次数：每分钟超过 40 次才限制 60 秒，正常使用不再受任何间隔限制</li><li>评论与反馈增加防重复：同一用户发过完全相同的内容就不再允许重复提交（忽略空格与不可见字符）</li><li>AI 一次可以调用多个工具（最多 3 个），结果一并回传</li><li>AI 拿到失败原因后可以修正参数重试，最多两次；仍失败会如实说明，不再假装成功</li><li>重复提交被拦下时改用「内容重复」类提示，避免与「操作过于频繁」混为一谈</li><li>工具调用格式约束进一步收紧，禁止把工具名与参数分开写</li></ol><h3 class="sec s-def">改动（交付包）</h3><ol style="counter-reset:n 0"><li>交付包只保留线上运行需要的文件</li></ol><hr></section>
+<section class="card glass" id="v2_8_0"><h2><span class="vtag mono">v2.8.0</span><span class="vdate mono">2026-09-17</span></h2><h3 class="sec s-fix">修复</h3><ol style="counter-reset:n 0"><li>AI 不再把查询指令漏成乱码</li><li>天气一类需要参数的查询不再报「缺少参数」</li><li>管理员可以正常回复反馈了</li><li>副管理员提交的反馈，管理员此前看不到回复按钮，现已可以回复</li></ol><h3 class="sec s-add">新增</h3><ol style="counter-reset:n 0"><li>表情扩充到 352 个：常用 35、小黄脸 223、tv 小电视 94（其中 44 个为动图）</li><li>表情面板改为按分组切换，不再挤在一个长列表里滚动</li></ol><h3 class="sec s-def">已知不足</h3><ol style="counter-reset:n 0"><li>表情为原图未做二次压缩，站点体积因此增加约 4 MB</li><li>不同表情包中的同名表情会共用同一张图</li></ol><hr></section>
+<section class="card glass" id="v2_7_0"><h2><span class="vtag mono">v2.7.0</span><span class="vdate mono">2026-09-17</span></h2><h3 class="sec s-add">新增</h3><p>界面之间的来回变得连续了，不再是「换一页、从头开始」：</p><ul><li><strong>返回不再重新加载</strong>：从作品详情退回榜单，页面还是你离开时的样子——原来的位置、原来滚动到的地方都保留着</li><li><strong>返回动画</strong>：切换界面有了方向感。往前走是新页面从右侧推入；退回时，上一页沿着来的那条路径滑回来</li><li><strong>进去和回来是同一条路</strong>：点开榜单上的作品时，它的封面会「长大」成详情页的图；返回时再缩回原来的位置</li><li><strong>从左边缘右滑可预览上一页</strong>：手指按住屏幕左边缘往右拖，上一页会跟着手指一起出现</li><li>五种风格各有各的转场节奏</li></ul><h3 class="sec s-chg">改动</h3><ul><li>「我的 → 设计风格」里新增「返回动画」开关，可以随时关掉</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>返回后看到的是离开时的内容快照；若这段时间别人发布了新内容，需要切到别的界面再回来（或下拉刷新）才能看到</li><li>边缘滑动手势需要触屏设备；鼠标操作请用左上角的返回按钮或浏览器的后退</li></ul><hr></section>
+<section class="card glass" id="v2_6_0"><h2><span class="vtag mono">v2.6.0</span><span class="vdate mono">2026-09-16</span></h2><h3 class="sec s-def">重做</h3><p>五套风格全部按各自领域的设计规范重写，不再是想当然的近似：</p><ul><li><strong>液态玻璃</strong>：玻璃只用在浮在内容之上的层（顶栏、底栏、抽屉、弹窗、提示），内容卡片不再使用玻璃，避免「玻璃叠玻璃」造成的层次混乱</li><li><strong>MD3 材质</strong>：补齐完整的颜色角色、形状尺度、两级高度、组件尺寸、动效曲线与点击涟漪</li><li><strong>像素风</strong>：直角不是靠去掉圆角，而是用多层偏移阴影「拼」出台阶角；严格限制为八色；动画改为分步</li><li><strong>手绘风</strong>：三层纸色并叠纸张噪点；<strong>手写体只用于标题与标注，正文改用清晰字体</strong>；标题从左到右逐笔写出</li><li><strong>新粗野</strong>：调色板限制为 2–3 色，硬阴影统一为实心偏移，粗几何标题搭配中性正文，卡片留白 24 像素</li></ul><h3 class="sec s-chg">改动</h3><ul><li>各风格的组件尺寸、圆角尺度、动效曲线按各自规范对齐</li><li>交互反馈统一加强：按钮按下有真实位移或内发光，悬停有明确变化</li><li>风格选择卡片的说明文字更新为各风格的实际特征</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>像素风与手绘风的字体依赖系统字体，不同设备上字形会有差异</li><li>液态玻璃的模糊效果对低端设备的绘制开销较大；系统开启「减少动态效果」时会自动降级</li><li>风格与主题色相互独立，个别组合对比度一般，可自行搭配</li></ul><hr></section>
+<section class="card glass" id="v2_5_0"><h2><span class="vtag mono">v2.5.0</span><span class="vdate mono">2026-09-16</span></h2><h3 class="sec s-chg">改动</h3><ul><li><strong>五种风格各自独立</strong>：此前所有风格共用同一份样式、靠局部覆盖实现，导致「有些地方变了、有些没变」。现在每种风格都是独立的一份样式，由服务器按你的选择加载对应文件</li><li><strong>切换方式改为刷新页面</strong>：选择风格后页面自动刷新一次，换风格更彻底</li><li>风格选择跨设备同步</li></ul><h3 class="sec s-def">重做</h3><ul><li><strong>MD3 材质</strong>重做为真正的 Material You：色面层级代替边框、点击有涟漪与状态叠层、底部导航用胶囊指示器、输入框为填充式下划线</li><li><strong>像素风</strong>重做为真正的 8-bit 画面：全直角、硬边描边、无模糊硬投影、按钮按下时真位移、背景铺扫描线、图片强制像素化</li><li><strong>手绘风与新粗野彻底拉开</strong>：手绘风为米色纸张 + 虚线描边 + 手写字体 + 荧光笔涂抹标题；新粗野为纯黑粗框 + 硬投影 + 零圆角 + 高饱和撞色</li><li>每套风格都有各自的入场动画与交互反馈</li></ul><h3 class="sec s-def">补齐</h3><ul><li><strong>所有界面的组件与状态都纳入风格</strong>：表格、评论与回复、作品详情、图片查看、控制面板、抽屉、弹窗、滑杆、评级标签、分页按钮，以及选中、激活、禁用等状态</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>切换风格需要刷新页面一次，不是即时切换</li><li>风格与主题色相互独立，仍需自行搭配；个别组合观感一般</li><li>像素风的等宽字体依赖系统字体，不同设备上字形略有差异</li></ul><hr></section>
+<section class="card glass" id="v2_4_1"><h2><span class="vtag mono">v2.4.1</span><span class="vdate mono">2026-09-16</span></h2><h3 class="sec s-fix">修复</h3><ul><li><strong>AI 回复不再露出查询指令</strong>：此前若模型不按格式写，直接把指令显示给用户；现在这类写法都会被识别为查询动作并执行</li><li>单次只写工具名也能正常触发查询</li><li><strong>控制面板访问排行不再为空</strong>：此前地区记录始终为空、且统计口径过窄，接口异常时整个榜会空掉；现已修正并改为全量统计</li><li><strong>签到入口对所有身份可见</strong>（此前管理员看不到签到卡片）</li><li><strong>风格切换覆盖补全</strong>：文档、代码块与表格、访问排行、签到行此前不跟随风格，现已统一</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>归属地仍依赖第三方接口，接口不可用时排行会显示「未知」，此时无法给出地区分布</li><li>访问记录只在登录时写入一条，长时间保持登录状态不会新增记录</li></ul><hr></section>
+<section class="card glass" id="v2_4_0"><h2><span class="vtag mono">v2.4.0</span><span class="vdate mono">2026-09-15</span></h2><h3 class="sec s-add">新增</h3><ul><li><strong>评论屏蔽</strong>：「我的 → 内容屏蔽」可设置屏蔽词与正则表达式，命中的评论自动收起为一行提示，点击可展开。仅对设置者本人生效；游客也能设置（保存在本机浏览器）</li><li>普通词语按包含匹配，正则用斜杠包裹（如 <code>/广告|引流/i</code>），均忽略大小写</li><li>上限 50 条、单条 100 字</li><li><strong>访问排行</strong>：控制面板新增国家 / 省份 / 城市三个维度的访问量前十五名，带比例条。管理员与副管理员均可查看</li><li><strong>用户归属地</strong>：管理员可在用户管理中看到每位用户最近一次访问的脱敏 IP 与地区</li><li><strong>AI 回复富文本</strong>：标题、列表、代码块、引用、表格、链接、加粗全部渲染</li><li><strong>界面独立网址</strong>：每个界面都有各自的网址，复制后换浏览器、换设备或发给他人打开即可直达。管理界面地址仍需密钥验证</li></ul><h3 class="sec s-chg">改动</h3><ul><li>更新日志改为公开版本，所有人可看</li><li>AI 回复与工具指令彻底分离：AI 查询数据的过程不再出现在对话界面</li><li>世界对话的消息<strong>刻意不渲染富文本</strong>，只有 AI 回复渲染，避免有人用格式符号刷屏</li></ul><h3 class="sec s-def">移除</h3><ul><li>移除更新日志中的站内实现描述（日志是公开页面，不应包含可供利用的内部信息）</li></ul><hr></section>
+<section class="card glass" id="v2_3_0"><h2><span class="vtag mono">v2.3.0</span><span class="vdate mono">2026-09-15</span></h2><h3 class="sec s-add">新增</h3><ul><li><strong>每日签到</strong>：「我的」页一键签到</li><li>签到当天 AI 额度增加</li><li>连续签到每满 7 天，当月 AI 额度额外增加，可叠加</li><li>AI 用量卡片显示额度上限</li></ul><h3 class="sec s-chg">改动</h3><ul><li>AI 额度上限上调</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>签到加成只作用于 AI 额度，与点赞、评论等其他功能无关</li><li>断签后连续天数直接归零，没有补签或保底机制</li><li>额度上限在半个月内调整了两次，早期用户对额度的预期会不一致</li></ul><hr></section>
+<section class="card glass" id="v2_2_0"><h2><span class="vtag mono">v2.2.0</span><span class="vdate mono">2026-09-15</span></h2><h3 class="sec s-chg">改动</h3><ul><li>操作冷却由 90 秒缩短为 60 秒</li><li>新增每分钟操作次数上限（50 次），防止短时间反复操作</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>冷却与次数上限直接拒绝请求，不会排队等待</li><li>每日额度设置得较高，实际很难触发，日限额的存在感不强</li></ul><hr></section>
+<section class="card glass" id="v2_1_0"><h2><span class="vtag mono">v2.1.0</span><span class="vdate mono">2026-09-15</span></h2><h3 class="sec s-add">新增</h3><ul><li><strong>操作冷却</strong>：除主管理员外，同一类操作（发评论、发言、点赞、提交反馈、AI 对话、上传图片、注册）两次之间需间隔 1.5 分钟</li><li>冷却期间点击会直接提示还需等待多少秒</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>冷却规则对所有人统一，无法按用户区分</li><li>撤回自己的评论、撤回消息、取消点赞不受冷却限制，但删除再重发仍受限制</li></ul><hr></section>
+<section class="card glass" id="v2_0_0"><h2><span class="vtag mono">v2.0.0</span><span class="vdate mono">2026-09-15</span></h2><h3 class="sec s-add">新增</h3><ul><li><strong>五种设计风格一键切换</strong>，即时生效、无需刷新、跨设备同步</li><li><strong>液态玻璃</strong>（默认）：磨砂通透质感，背景虚化</li><li><strong>MD3 材质</strong>：大圆角、分层色面、轻投影</li><li><strong>像素风</strong>：全直角、硬边框、硬投影、等宽字体、图片像素化</li><li><strong>手绘风</strong>：不规则圆角、虚线描边、纸张横线底、手写字体</li><li><strong>新粗野风</strong>：粗黑框 + 硬阴影、高饱和底色、按下时位移反馈</li><li><strong>更新日志</strong>：本页</li><li>进入页面时先应用本机外观偏好，避免深浅色或风格闪烁</li></ul><h3 class="sec s-chg">改动</h3><ul><li>风格只改变界面的形状语言，<strong>主题色仍由蓝紫 / 苹果 / 自定义三套独立控制</strong>，两者可自由组合</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>风格与主题色的组合由用户自由选择，个别组合观感不佳</li><li>风格切换即时生效，但第三方脚本、浏览器插件绘制的界面元素不受控</li><li>五种风格均只调整结构，不改变信息层级与功能位置</li></ul><hr></section>
+<section class="card glass" id="v1_9_0"><h2><span class="vtag mono">v1.9.0</span><span class="vdate mono">2026-09-15</span></h2><h3 class="sec s-add">新增</h3><ul><li>控制面板的统计、趋势图、作品与用户列表自动刷新</li><li>评论区自动检查新评论，仅在出现新内容时重绘，并保持展开状态与阅读位置</li></ul><h3 class="sec s-chg">改动</h3><ul><li>榜单改为向下滚动自动加载下一页，底部显示加载进度</li></ul><h3 class="sec s-def">移除</h3><ul><li><strong>对外开放 API 服务整体下线</strong>：包括密钥申请、密钥管理与接口文档。移除原因是维护成本与安全暴露面都不划算</li><li>移除榜单底部的手动「加载更多」按钮</li><li>移除控制面板统计的「手动刷新」按钮</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>自动刷新是定时轮询，不是推送，消息最多有半分钟延迟</li><li>页面切到后台时轮询暂停，回到前台需要等一轮才更新</li></ul><hr></section>
+<section class="card glass" id="v1_8_1"><h2><span class="vtag mono">v1.8.1</span><span class="vdate mono">2026-09-14</span></h2><h3 class="sec s-add">新增</h3><ul><li>AI 新增两个能力：</li><li><strong>天气查询</strong>：任意城市实时天气（气温、体感、湿度、风速、今日最高最低），支持中文、英文、拼音</li><li><strong>当前时间</strong>：站点当地时间、星期、时间戳，支持指定任意时区</li><li>问天气、问时间时 AI 必须给出真实数据，不再回答「我无法获取」</li></ul><h3 class="sec s-def">移除</h3><ul><li>移除 AI 在无数据时含糊作答的兜底话术（改为明确提示无法获取并说明原因）</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>天气依赖第三方免费接口，对方不可用时无法查询</li><li>天气数据为实时观测值，不做历史与预报</li></ul><hr></section>
+<section class="card glass" id="v1_8_0"><h2><span class="vtag mono">v1.8.0</span><span class="vdate mono">2026-09-14</span></h2><h3 class="sec s-add">新增</h3><ul><li>分页加载：榜单每页 12 条，控制面板作品列表支持分页与每页条数切换</li><li>关于页新增「支持一下」区块</li></ul><h3 class="sec s-def">移除</h3><ul><li><strong>删除鸣谢名单</strong>（改为支持开发者区块）</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>每页条数是固定档位，不能自由输入</li></ul><hr></section>
+<section class="card glass" id="v1_7_0"><h2><span class="vtag mono">v1.7.0</span><span class="vdate mono">2026-09-14</span></h2><h3 class="sec s-fix">修复</h3><ul><li>副管理员与管理员无法清空 AI 对话</li><li>AI 对话的工具卡片、降级提示、用量显示失效</li><li>AI 用量重复累加显示</li></ul><h3 class="sec s-chg">改动</h3><ul><li><strong>副管理员改与普通用户同一登录通道</strong>：现有用户升级为副管理员后不需要修改密码，原密码继续可用</li></ul><h3 class="sec s-def">移除</h3><ul><li><strong>移除副管理员的独立通道</strong>（此前与总管理员一样单独存放，导致升级时必须改密码，管理成本高且容易出错）</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>副管理员的权限目前限于作品搜索与上传、回复反馈，不能查看用户数据</li><li>副管理员与普通用户同库，账号安全性依赖普通用户体系</li></ul><hr></section>
+<section class="card glass" id="v1_6_3"><h2><span class="vtag mono">v1.6.3</span><span class="vdate mono">2026-09-14</span></h2><h3 class="sec s-fix">修复</h3><ul><li>AI 的查询指令痕迹不再出现在对话界面，任何书写方式都不会漏出</li><li>读取网页内容过短时给出提示，引导更换来源</li></ul><h3 class="sec s-def">移除</h3><ul><li>移除 AI 回复中所有中间过程文字</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>网页读取对需要登录或强脚本渲染的站点无效</li><li>单次最多同时查询 3 项数据</li></ul><hr></section>
+<section class="card glass" id="v1_6_2"><h2><span class="vtag mono">v1.6.2</span><span class="vdate mono">2026-09-14</span></h2><h3 class="sec s-add">新增</h3><ul><li><strong>现有用户可直接升级为副管理员</strong>，保留全部数据；也可随时降回普通用户</li></ul><h3 class="sec s-def">移除</h3><ul><li>移除副管理员必须重新创建账号的限制</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>升级与降级会即时改变权限，没有二次确认外的冷静期</li></ul><hr></section>
+<section class="card glass" id="v1_6_1"><h2><span class="vtag mono">v1.6.1</span><span class="vdate mono">2026-09-13</span></h2><h3 class="sec s-add">新增</h3><ul><li><strong>8 位编号</strong>：每个账号有唯一编号，可用于反查账号；管理员与副管理员为特殊编号</li><li>「我的」页展示编号，支持一键复制</li></ul><h3 class="sec s-fix">修复</h3><ul><li>公告不显示的问题</li></ul><h3 class="sec s-def">移除</h3><ul><li><strong>移除跑马灯式公告</strong>（改为静态两行展示）</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>编号是可反推的唯一编号——知道对应关系即可由编号推出账号，属于设计取舍而非缺陷，但意味着编号不适合公开张贴</li><li>账号总数超过一亿时编号不再唯一</li></ul><hr></section>
+<section class="card glass" id="v1_6_0"><h2><span class="vtag mono">v1.6.0</span><span class="vdate mono">2026-09-13</span></h2><h3 class="sec s-add">新增</h3><ul><li>副管理员体系（身份标识、独立权限、可回复反馈）</li><li>作品详细数据编辑（全字段编辑，改分自动重算总分与评级）</li><li>控制面板一键更新全部作品（显示进度、可停止）</li><li>评论区回复平铺展示、<code>@被回复人</code> 标识、长回复自动折叠与换行</li><li>用户协议与隐私政策</li></ul><h3 class="sec s-def">移除</h3><ul><li><strong>移除管理员专属对话</strong>（合并为统一的 AI 对话）</li><li>移除评论区的多层嵌套缩进（改为同级平铺，层级过多时不易阅读）</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>一键更新全部作品受主机请求频率限制影响，作品多时耗时较长</li><li>评分为固定六维，权重不可自定义</li></ul><hr></section>
+<section class="card glass" id="v1_5_0"><h2><span class="vtag mono">v1.5.0</span><span class="vdate mono">2026-09-12</span></h2><h3 class="sec s-chg">改动</h3><ul><li>界面渲染方案统一，整体质感打磨</li><li>作品链接优先跳转直达链接</li><li>站外图片加载优化，修复预览图不显示</li><li>控制面板新增作品快捷搜索</li><li>AI 对话支持站内数据查询与网页阅读</li></ul><h3 class="sec s-def">移除</h3><ul><li><strong>彻底移除 WebGL 渲染方案</strong>：此前维持两套玻璃效果实现，维护成本高、移动端表现差、部分设备直接白屏。统一为单一方案后稳定性明显改善</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>站外图片需经服务端中转，首次加载比直连稍慢</li><li>图片仅支持 JPG / PNG / GIF / WebP，单张不超过 2MB</li></ul><hr></section>
+<section class="card glass" id="v1_4_0"><h2><span class="vtag mono">v1.4.0</span><span class="vdate mono">2026-09-12</span></h2><h3 class="sec s-add">新增</h3><ul><li>加载反馈：顶部进度条、按钮加载状态、骨架屏</li><li>环境自检页面</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>骨架屏为通用占位，不反映即将加载内容的真实结构</li></ul><hr></section>
+<section class="card glass" id="v1_3_0"><h2><span class="vtag mono">v1.3.0</span><span class="vdate mono">2026-09-12</span></h2><h3 class="sec s-chg">改动</h3><ul><li>布局重构：顶部导航固定，消息区独立滚动，输入区固定，不再整页滚动</li><li>游客输入区锁定，聊天滚动方向修正</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>独立滚动区在部分移动端浏览器上会与页面下拉刷新冲突</li></ul><hr></section>
+<section class="card glass" id="v1_2_0"><h2><span class="vtag mono">v1.2.0</span><span class="vdate mono">2026-09-12</span></h2><h3 class="sec s-fix">修复</h3><ul><li>界面切换时的报错与重复提交</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>界面切换为整块替换渲染，切换动画较朴素</li></ul><hr></section>
+<section class="card glass" id="v1_1_0"><h2><span class="vtag mono">v1.1.0</span><span class="vdate mono">2026-09-11</span></h2><h3 class="sec s-fix">修复</h3><ul><li>下载包内文件时间显示为 1980 年</li><li>共享主机并发限制导致的脚本加载失败</li></ul><h3 class="sec s-chg">改动</h3><ul><li>前端改为单文件加载，规避主机并发限制</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>单文件体积较大，首次加载比模块化稍慢</li></ul><hr></section>
+<section class="card glass" id="v1_0_0"><h2><span class="vtag mono">v1.0.0</span><span class="vdate mono">2026-09-10</span></h2><h3 class="sec s-def">首个版本</h3><ul><li>账号体系：用户名密码登录 / 注册 / 游客模式，密码安全存储</li><li>榜单：游戏 / 工具 / 文学 / 二创四分类，总榜 / 投票榜 / 诸神榜 / 冷门榜四榜型</li><li>六维综合评分（创意 / 体验 / 深度 / 成本 / 态度 / 热度）与 SSS～C 评级</li><li>作品详情：六维雷达图、评分明细、简介、评论区、图片查看</li><li>世界对话：文本与图片消息、表情、撤回、新消息通知</li><li>AI 对话：流式输出、联网能力、用量统计</li><li>控制面板：数据总览、趋势图表、作品与用户管理、公告设置</li><li>液态玻璃视觉 + 深浅色 + 三套主题色</li></ul><h3 class="sec s-def">移除</h3><ul><li><strong>设计阶段即去掉验证码</strong>：社区站点以可用性优先，登录仅保留密码校验</li></ul><h3 class="sec s-def">已知不足</h3><ul><li>用户名与密码除长度外无格式限制，输错不会即时提示</li><li>无账号找回机制，忘记密码无法自助恢复</li></ul><hr><h2>当前仍然存在的不足</h2><p>以下问题至今没有解决，列出来是为了不让它们被版本记录掩盖：</p><ol style="counter-reset:n 0"><li><strong>没有实时推送</strong>。评论、对话、控制面板都靠定时轮询，最多有半分钟左右延迟，页面切到后台还会暂停。</li><li><strong>没有账号找回</strong>。没有邮箱或手机绑定，忘记密码无法自助恢复，只能联系管理员。</li><li><strong>搜索是关键词匹配</strong>。不支持拼音、错别字容错与语义检索，作品名记不全就容易搜不到。</li><li><strong>评分维度固定</strong>。六维与权重写死在算法里，无法为不同分类设置不同权重。</li><li><strong>归属地不够准</strong>。依赖第三方接口的返回格式，解析失败的一律归入「其他」。</li><li><strong>访问排行覆盖不全</strong>。关闭「记录访问信息」的用户不参与统计。</li><li><strong>图片限制较紧</strong>。仅 4 种格式、单张 2MB，长截图容易超限。</li><li><strong>站外图片依赖服务端中转</strong>，首次加载偏慢，且对方站点下线时图片会失效。</li><li><strong>清理任务依赖外部触发</strong>。主机不提供系统定时任务，若未配置外部计划任务，过期的临时文件会一直累积。</li><li><strong>移动端按常见尺寸适配</strong>，极窄（小于 320px）或极宽屏幕的排版未逐档调优。</li><li><strong>AI 回答质量取决于模型与检索结果</strong>，站内数据查询只能覆盖已收录作品，未收录的内容查不到。</li><li><strong>早期版本记录较粗</strong>（v1.0.0 之前的内部迭代没有单独记录版本号）。</li></ol><hr><blockquote>更早的内部迭代未单独记录版本号。</blockquote></section>
+</main>
+
+<footer>
+  <b>Kimi 游戏榜 · 更新日志</b><br>
+  本页为独立展示版，可直接离线打开或单独部署；内容与站点「更新日志」页面一致。<br>
+  生成时间：2026-09-28
+</footer>
+
+<button id="toTop" type="button" aria-label="回到顶部">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5l7 7-1.4 1.4L13 8.8V19h-2V8.8L6.4 13.4 5 12z"/></svg>
+</button>
+
+<script>
+(function () {
+  var bar = document.getElementById('bar');
+  var nav = document.getElementById('vnav');
+  var links = nav ? [].slice.call(nav.querySelectorAll('a')) : [];
+  var cards = [].slice.call(document.querySelectorAll('section.card'));
+
+  function onScroll() {
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    var p = h > 0 ? Math.min(1, window.pageYOffset / h) : 0;
+    if (bar) { bar.style.width = (p * 100).toFixed(2) + '%'; }
+    var btn = document.getElementById('toTop');
+    if (btn) { btn.classList.toggle('show', window.pageYOffset > 700); }
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  /* 当前版本高亮 */
+  if (cards.length && 'IntersectionObserver' in window) {
+    var cur = null;
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (!e.isIntersecting) { return; }
+        var id = e.target.id;
+        if (id === cur) { return; }
+        cur = id;
+        links.forEach(function (a) {
+          var on = a.getAttribute('href') === '#' + id;
+          a.classList.toggle('on', on);
+          if (on && nav) {
+            var l = a.offsetLeft - nav.clientWidth / 2 + a.offsetWidth / 2;
+            nav.scrollTo({ left: Math.max(0, l), behavior: 'smooth' });
+          }
+        });
+      });
+    }, { rootMargin: '-96px 0px -62% 0px', threshold: 0 });
+    cards.forEach(function (c) { io.observe(c); });
+  }
+
+  var top = document.getElementById('toTop');
+  if (top) {
+    top.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+})();
+</script>
+</body>
+</html>

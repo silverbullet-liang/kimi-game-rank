@@ -1,0 +1,715 @@
+/* 皮肤变量覆写（由 app.css 的基础规则读取，必定生效） */
+html[data-skin="md3"]{
+  --tab-active-bg: #e8def8;
+  --tab-active-fg: #1d1b20;
+  --msg-bg: #ece6f4;
+  --msg-fg: #1d1b20;
+  --msg-mine-bg: #e8def8;
+  --msg-mine-fg: #1d1b20;
+  --toast-bg: #4a4458;
+  --toast-fg: #f5eff7;
+  --toast-err-bg: #8c1d18;
+  --toast-radius: 4px;
+}
+html[data-skin="md3"][data-theme="dark"]{
+  --tab-active-bg: #4a4458;
+  --tab-active-fg: #e8def8;
+  --msg-bg: #2b2833;
+  --msg-fg: #e6e0e9;
+  --msg-mine-bg: #4a4458;
+  --msg-mine-fg: #e8def8;
+  --toast-bg: #e6e0e9;
+  --toast-fg: #322f35;
+  --toast-err-bg: #f2b8b5;
+}
+
+/* ============================================================
+ * 皮肤：MD3 材质（Material Design 3）
+ * ------------------------------------------------------------
+ * 依据：知识库《MD3下拉修复记忆》中的 MD3 实现规范
+ *   - 颜色角色：primary / primary-container / secondary-container / tertiary-container
+ *     / surface / surface-variant / on-surface / on-surface-variant / outline / error
+ *   - 形状：卡片 28px、文本框与菜单 16px、按钮 20px、复选框 2px、Switch 轨道 16px
+ *   - 高度：elevation-1 与 elevation-2 两级，卡片静息 1、悬停 2
+ *   - 组件尺寸：按钮高 40、文本框高 56、Switch 52×32（thumb 16、选中平移 20）
+ *   - 动效：emphasized cubic-bezier(.2,0,0,1)、spring cubic-bezier(.2,.8,.2,1)
+ *   - 涟漪：标准 opacity .06 / scale 1.4 / 280ms；小型 opacity .04 / 固定 24px / 250ms
+ *   - 状态层：卡片悬停上移 2px，按钮悬停上移 1px，选中项用 primary-container
+ *   - Switch 的 thumb 不参与交互（pointer-events: none）
+ * 独立文件：本风格全部视觉定义。
+ * ============================================================ */
+
+:root {
+  /* ---- 颜色角色（由站点主题色推导，不写死色相） ---- */
+  --md-primary: var(--accent);
+  --md-on-primary: var(--accent-ink);
+  --md-primary-container: color-mix(in srgb, var(--accent) 14%, #ffffff);
+  --md-on-primary-container: color-mix(in srgb, var(--accent) 74%, #101014);
+  --md-secondary-container: color-mix(in srgb, var(--accent) 8%, #ece6f0);
+  --md-on-secondary-container: color-mix(in srgb, var(--accent) 52%, #1c1b1f);
+  --md-tertiary-container: color-mix(in srgb, var(--accent) 10%, #ffe8d9);
+
+  --md-surface: #fef7ff;
+  --md-surface-variant: #e7e0ec;
+  --md-surface-container: #f3edf7;
+  --md-surface-container-high: #ece6f0;
+  --md-surface-container-highest: #e6e0e9;
+  --md-on-surface: #1d1b20;
+  --md-on-surface-variant: #49454f;
+  --md-outline: #79747e;
+  --md-outline-variant: #cac4d0;
+  --md-error: #b3261e;
+
+  /* ---- 高度：MD3 elevation 1 / 2 ---- */
+  --md-elev-1: 0px 1px 3px 1px rgba(0, 0, 0, .15), 0px 1px 2px 0px rgba(0, 0, 0, .30);
+  --md-elev-2: 0px 2px 6px 2px rgba(0, 0, 0, .15), 0px 1px 2px 0px rgba(0, 0, 0, .30);
+
+  /* ---- 形状 ---- */
+  --md-shape-xl: 28px;
+  --md-shape-lg: 16px;
+  --md-shape-md: 12px;
+  --md-shape-sm: 8px;
+
+  /* ---- 动效 ---- */
+  --md-emphasized: cubic-bezier(.2, 0, 0, 1);
+  --md-spring: cubic-bezier(.2, .8, .2, 1);
+  --md-bounce: cubic-bezier(.34, 1.56, .64, 1);
+
+  /* ---- 映射到通用变量 ---- */
+  --bg-1: var(--md-surface);
+  --bg-2: var(--md-surface-container);
+  --surface: var(--md-surface-container);
+  --surface-solid: var(--md-surface);
+  --border: transparent;
+  --border-soft: var(--md-outline-variant);
+  --text: var(--md-on-surface);
+  --text-2: var(--md-on-surface-variant);
+  --text-3: var(--md-outline);
+  --radius-lg: var(--md-shape-xl);
+  --radius-md: var(--md-shape-lg);
+  --radius-sm: var(--md-shape-md);
+  --shadow: var(--md-elev-1);
+  --shadow-sm: var(--md-elev-1);
+  --sk-font: 'MiSans', "Roboto", "Noto Sans SC", -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+[data-theme="dark"] {
+  --md-primary-container: color-mix(in srgb, var(--accent) 28%, #141218);
+  --md-on-primary-container: color-mix(in srgb, var(--accent) 40%, #ffffff);
+  --md-secondary-container: color-mix(in srgb, var(--accent) 14%, #211f26);
+  --md-on-secondary-container: color-mix(in srgb, var(--accent) 36%, #e6e0e9);
+  --md-tertiary-container: color-mix(in srgb, var(--accent) 18%, #2b2119);
+
+  --md-surface: #141218;
+  --md-surface-variant: #49454f;
+  --md-surface-container: #1d1b20;
+  --md-surface-container-high: #2b2930;
+  --md-surface-container-highest: #36343b;
+  --md-on-surface: #e6e0e9;
+  --md-on-surface-variant: #cac4d0;
+  --md-outline: #938f99;
+  --md-outline-variant: #49454f;
+  --md-error: #f2b8b5;
+  --md-elev-1: 0px 1px 3px 1px rgba(0, 0, 0, .5), 0px 1px 2px 0px rgba(0, 0, 0, .4);
+  --md-elev-2: 0px 2px 6px 2px rgba(0, 0, 0, .5), 0px 1px 2px 0px rgba(0, 0, 0, .4);
+}
+
+body {
+  font-family: var(--sk-font);
+  background: var(--md-surface);
+  color: var(--md-on-surface);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 导航层：surface-container（MD3 顶/底栏不用玻璃） ---------- */
+.topbar, .tabbar, .chat-input {
+  background: var(--md-surface-container);
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.topbar { box-shadow: 0 1px 0 var(--md-outline-variant); }
+.tabbar { box-shadow: 0 -1px 0 var(--md-outline-variant); }
+.announce {
+  background: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+  border: 0;
+  border-radius: var(--md-shape-lg);
+}
+
+/* ---------- 卡片：28px 圆角 + elevation-1，悬停升到 elevation-2 ---------- */
+.card, .panel-plain, .rank-item, .stat-box, .tp-col, .tool-card, .block-note,
+.dialog, .drawer, .picker, .toast, .donate-box, .guest-box, .search-panel, .tip-card {
+  border: 0;
+  border-radius: var(--md-shape-lg);
+  background: var(--md-surface-container);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.card { border-radius: var(--md-shape-xl); padding: 20px 18px; box-shadow: var(--md-elev-1); }
+.card:hover { box-shadow: var(--md-elev-2); transform: translateY(-2px); transition: box-shadow .2s var(--md-emphasized), transform .2s var(--md-emphasized); }
+.card-title { color: var(--md-on-surface-variant); font-weight: 600; font-size: 14px; letter-spacing: .1px; }
+.rank-item { background: var(--md-surface-container); transition: box-shadow .2s var(--md-emphasized), transform .2s var(--md-emphasized); }
+.rank-item:hover { box-shadow: var(--md-elev-2); transform: translateY(-2px); }
+
+/* ---------- 按钮：高 40、圆角 20（胶囊），四种样式 ---------- */
+.btn {
+  position: relative;
+  overflow: hidden;
+  min-height: 40px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+  box-shadow: none;
+  font-weight: 500;
+  letter-spacing: .1px;
+  transition: box-shadow .2s var(--md-emphasized), transform .2s var(--md-emphasized), background .2s var(--md-emphasized);
+}
+.btn:hover { box-shadow: var(--md-elev-1); transform: translateY(-1px); }
+.btn:active { transform: translateY(0) scale(.99); }
+.btn:focus-visible { outline: 3px solid color-mix(in srgb, var(--md-primary) 42%, transparent); outline-offset: 2px; }
+
+/* 涟漪：标准（opacity .06 / scale 1.4 / 280ms） */
+.btn:not(.loading)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, currentColor, transparent 62%);
+  opacity: 0;
+  transform: scale(.5);
+}
+.btn:not(.loading):active::after { animation: mdRipple .28s var(--md-emphasized) both; }
+@keyframes mdRipple {
+  from { opacity: .06; transform: scale(.5); }
+  to   { opacity: 0;   transform: scale(1.4); }
+}
+/* 小型组件的涟漪：固定 24px、scale 1.2、250ms、opacity .04 */
+.btn-sm:not(.loading)::after, .icon-btn::after, .comment .ops button::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: currentColor;
+  opacity: 0;
+}
+.btn-sm:not(.loading):active::after, .icon-btn:active::after, .comment .ops button:active::after {
+  animation: mdRippleSmall .25s var(--md-emphasized) both;
+}
+@keyframes mdRippleSmall {
+  from { opacity: .04; transform: scale(.6); }
+  to   { opacity: 0;   transform: scale(1.2); }
+}
+
+/* outlined / tonal / text 三种变体 */
+.btn-ghost, .icon-btn {
+  min-height: 40px;
+  border: 1px solid var(--md-outline);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--md-primary);
+  box-shadow: none;
+}
+.btn-ghost:hover, .icon-btn:hover { background: color-mix(in srgb, var(--md-primary) 8%, transparent); }
+.chip, .cat-tab, .seg {
+  border: 0;
+  border-radius: 8px;
+  background: var(--md-surface-container-high);
+  color: var(--md-on-surface-variant);
+}
+.chip.on, .cat-tab.on { background: var(--md-secondary-container); color: var(--md-on-secondary-container); font-weight: 600; }
+.btn-link { border: 0; background: transparent; color: var(--md-primary); border-radius: 20px; }
+.btn-danger { background: var(--md-error); color: #fff; }
+
+/* ---------- 文本框：高 56、圆角 16、1px outline，聚焦 primary ---------- */
+.input {
+  min-height: 56px;
+  padding: 14px 16px;
+  border: 1px solid var(--md-outline);
+  border-radius: var(--md-shape-lg);
+  background: transparent;
+  color: var(--md-on-surface);
+  transition: border-color .18s var(--md-emphasized), box-shadow .18s var(--md-emphasized);
+}
+.input::placeholder { color: var(--md-on-surface-variant); }
+.input:focus {
+  outline: none;
+  border-color: var(--md-primary);
+  box-shadow: inset 0 0 0 1px var(--md-primary);
+}
+textarea.input { min-height: 120px; }
+
+/* ---------- 开关：轨道 52×32 圆角 16，thumb 16 平移 20 ---------- */
+.switch {
+  width: 52px;
+  height: 32px;
+  border-radius: 16px;
+  border: 2px solid var(--md-outline);
+  background: var(--md-surface-container-highest);
+  position: relative;
+  transition: background .2s var(--md-emphasized), border-color .2s var(--md-emphasized);
+}
+.switch[aria-checked="true"] { background: var(--md-primary); border-color: var(--md-primary); }
+/* thumb 不参与交互（避免误触与悬停放大） */
+.switch::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  margin-top: -8px;
+  border-radius: 50%;
+  background: var(--md-outline);
+  pointer-events: none;
+  transition: transform .25s var(--md-spring), background .2s var(--md-emphasized), width .2s var(--md-spring), height .2s var(--md-spring);
+}
+.switch[aria-checked="true"]::after { background: var(--md-on-primary); transform: translateX(20px); }
+
+/* ---------- 分段按钮：指示器带物理回弹 ---------- */
+.seg { padding: 4px; border-radius: 20px; background: var(--md-surface-container-high); display: inline-flex; gap: 2px; }
+.seg button {
+  min-height: 32px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--md-on-surface-variant);
+  transition: background .25s var(--md-bounce), color .25s var(--md-emphasized);
+}
+.seg button.on { background: var(--md-primary-container); color: var(--md-on-primary-container); font-weight: 600; }
+
+/* ---------- 导航与选中态：胶囊指示器 ---------- */
+.tabbar .tab { border-radius: 999px; transition: color .2s var(--md-emphasized); }
+@keyframes md3Pill { from { transform: scaleX(.2); opacity: 0; } to { transform: none; opacity: 1; } }
+.drawer { border-radius: var(--md-shape-xl) 0 0 var(--md-shape-xl); }   /* 抽屉在右侧，圆角朝左 */
+.drawer-item { border-radius: 999px; }
+.drawer-item.on { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+
+/* ---------- 复选 / 单选：18×18、2px outline、圆角 2px ---------- */
+.agree input[type="checkbox"], .pk-btn { border-radius: 2px; }
+.badge {
+  background: var(--md-tertiary-container);
+  color: color-mix(in srgb, var(--accent) 48%, #3b2f26);
+  border: 0;
+  border-radius: 8px;
+}
+.medal { box-shadow: var(--md-elev-1); border-radius: 50%; }
+
+/* ---------- 对话：内容层不用玻璃 ---------- */
+.bubble {
+  background: var(--md-surface-container-high);
+  border: 0;
+  border-radius: var(--md-shape-lg);
+  box-shadow: none;
+}
+.msg.mine .bubble { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.typing i { background: var(--md-on-surface-variant); }
+
+/* ---------- 文档 / 富文本 ---------- */
+.doc pre, .ai-text pre, .bubble pre {
+  background: var(--md-surface-container-highest);
+  border: 0;
+  border-radius: var(--md-shape-lg);
+  padding: 14px 16px;
+}
+.doc code, .ai-text code, .bubble code {
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+.doc table, .ai-text table { border: 1px solid var(--md-outline-variant); border-radius: var(--md-shape-md); }
+.doc th, .ai-text th { background: var(--md-surface-container-high); border-bottom: 1px solid var(--md-outline-variant); font-weight: 600; }
+.doc td, .ai-text td { border-bottom: 1px solid var(--md-outline-variant); }
+.doc blockquote, .ai-text blockquote {
+  border-left: 4px solid var(--md-primary);
+  border-radius: 0 var(--md-shape-md) var(--md-shape-md) 0;
+  background: var(--md-surface-container);
+  padding: 8px 14px;
+}
+.doc h1, .doc h2 { border-bottom: 0; }
+.doc img, .lightbox img { border-radius: var(--md-shape-lg); }
+
+/* ---------- 列表 / 表格 / 面板 ---------- */
+.table { background: var(--md-surface-container); }
+.table th { background: var(--md-surface-container-high); color: var(--md-on-surface-variant); border: 0; font-weight: 600; }
+.table td { border: 0; border-bottom: 1px solid var(--md-outline-variant); }
+.pager button, .back-btn, .fold-toggle, .lb-bar button, .pk-btn {
+  border: 0;
+  border-radius: 999px;
+  background: var(--md-surface-container-high);
+  color: var(--md-on-surface);
+  min-height: 36px;
+}
+.pager .on { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.comment { background: var(--md-surface-container); border: 0; border-radius: var(--md-shape-lg); }
+.comment.sub { background: var(--md-surface-container-high); }
+.replies { border-left: 2px solid var(--md-outline-variant); }
+.rating, .r-SSS, .r-SS, .r-S, .r-A, .r-B, .r-C {
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+  border: 0;
+  border-radius: 8px;
+  font-weight: 600;
+}
+.slider .rail { background: var(--md-surface-variant); height: 4px; border-radius: 999px; }
+.slider .fill { background: var(--md-primary); border-radius: 999px; }
+.slider .knob { width: 20px; height: 20px; background: var(--md-primary); border: 2px solid var(--md-surface); border-radius: 50%; }
+
+/* ---------- 占比条 / 签到 / 风格卡片 ---------- */
+.tp-bar { background: var(--md-surface-variant); border-radius: 999px; }
+.tp-bar i { background: var(--md-primary); border-radius: 999px; }
+.checkin-row { border-radius: var(--md-shape-lg); }
+.skin-row { border-radius: var(--md-shape-lg); }
+.skin-card {
+  background: var(--md-surface-container);
+  border: 2px solid transparent;
+  border-radius: var(--md-shape-lg);
+  box-shadow: none;
+  transition: border-color .2s var(--md-emphasized), background .2s var(--md-emphasized);
+}
+.skin-card:hover { background: var(--md-surface-container-high); }
+.skin-card.on { border-color: var(--md-primary); background: var(--md-primary-container); }
+.skin-prev { border-radius: var(--md-shape-md); }
+
+/* ---------- 动效：emphasized 入场 ---------- */
+@keyframes md3In {
+  from { opacity: 0; transform: translateY(8px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+.card, .rank-item, .panel-plain, .stat-box, .msg, .comment, .tool-card {
+  animation: md3In .3s var(--md-emphasized) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card, .rank-item, .panel-plain, .stat-box, .msg, .comment, .tool-card { animation: none; }
+  * { transition-duration: .01ms !important; }
+}
+"""
+
+/* ============================================================
+ * 修正一：预览截图后的问题修复
+ * （截图反馈：卡片无层次、导航选中无指示、按钮层级混乱、字重偏轻）
+ * ============================================================ */
+
+/* 1) 表面分层：背景 → 卡片 → 次级容器，层次拉开 */
+:root {
+  --md-surface: #fdf7ff;
+  --md-surface-container-low: #f7f2fa;
+  --md-surface-container: #f1ecf5;
+  --md-surface-container-high: #eae4f0;
+}
+[data-theme="dark"] {
+  --md-surface: #131218;
+  --md-surface-container-low: #1d1b22;
+  --md-surface-container: #221f28;
+  --md-surface-container-high: #29252f;
+}
+body { background: var(--md-surface); font-weight: 400; }
+.card {
+  background: var(--md-surface-container-low);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .10), 0 2px 8px 2px rgba(103, 80, 164, .10);
+}
+[data-theme="dark"] .card {
+  background: var(--md-surface-container-low);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .55), 0 2px 8px 2px rgba(0, 0, 0, .35);
+}
+.rank-item, .stat-box, .tp-col, .comment, .tool-card, .donate-box, .guest-box, .tip-card {
+  background: var(--md-surface-container);
+}
+.card:hover { box-shadow: 0 2px 6px 2px rgba(103, 80, 164, .16), 0 1px 3px 1px rgba(0, 0, 0, .14); }
+
+/* 2) 字重与字号层级（MD3：正文 400、标题 500） */
+.card-title { font-weight: 500; font-size: 14px; letter-spacing: .1px; }
+.rank-title { font-weight: 500; font-size: 15px; }
+.btn, .tab, .chip, .pager button { font-weight: 500; letter-spacing: .1px; }
+.profile-head .name { font-weight: 500; }
+
+/* 3) 按钮三级明确区分：填充 / 描边 / 文字 */
+.btn { box-shadow: 0 1px 2px rgba(0, 0, 0, .14); }
+.btn:active { box-shadow: none; }
+.btn-ghost, .icon-btn { background: transparent; border: 1px solid var(--md-outline); color: var(--md-primary); }
+.btn-ghost:active { background: color-mix(in srgb, var(--md-primary) 12%, transparent); }
+.btn-link { background: transparent; border: 0; color: var(--md-primary); }
+.btn-sm { border-radius: 999px; }
+.chip { background: var(--md-surface-container-high); color: var(--md-on-surface-variant); }
+.chip.on { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+
+/* 4) 底部导航：选中项给药丸底（原先只有文字变色，几乎没有指示） */
+.tabbar .tab {
+  border-radius: 16px;
+  margin: 0 3px;
+  font-weight: 500;
+  transition: background .2s var(--md-emphasized), color .2s var(--md-emphasized);
+}
+
+/* 5) 提示条：MD3 的反色表面（snackbar），深浅主题互换 */
+.toast {
+  background: #322f35 !important;
+  color: #f5eff7 !important;
+  border-radius: 4px;
+  padding: 12px 16px;
+  font-size: 14px;
+  box-shadow: 0 2px 6px 2px rgba(0, 0, 0, .16);
+}
+.toast.err { background: #8c1d18 !important; color: #ffffff !important; }
+[data-theme="dark"] .toast { background: #e6e0e9 !important; color: #322f35 !important; }
+[data-theme="dark"] .toast.err { background: #f2b8b5 !important; color: #601410 !important; }
+
+/* ============================================================
+ * 覆盖块：确保关键样式必定生效（提高特异性 + 明确取值）
+ * 说明：基础样式由 app.css 提供，部分组件与之同特异性，此处强制覆盖。
+ * ============================================================ */
+.card {
+  background: var(--md-surface-container-low) !important;
+  border: 0 !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.rank-item, .stat-box,
+.tp-col, .comment,
+.tool-card, .panel-plain,
+.donate-box, .guest-box, .tip-card {
+  background: var(--md-surface-container) !important;
+  border: 0 !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.table { background: var(--md-surface-container-low) !important; border: 0 !important; }
+.bubble { background: var(--md-surface-container-high) !important; border: 0 !important; }
+.msg.mine .bubble { background: var(--md-primary-container) !important; color: var(--md-on-primary-container) !important; }
+.drawer-item.active { background: var(--md-secondary-container) !important; color: var(--md-on-secondary-container) !important; }
+.toast { background: #322f35 !important; color: #f5eff7 !important; }
+
+/* ============================================================
+ * 变量兜底：用 html[data-skin] 定义（特异性高于 :root，不受加载顺序影响）
+ * ============================================================ */
+html[data-skin="md3"]{
+  --md-surface-low: #f7f2fa;
+  --md-surface-2: #f1ecf5;
+  --md-surface-3: #eae4f0;
+}
+html[data-skin="md3"][data-theme="dark"]{
+  --md-surface-low: #1d1b22;
+  --md-surface-2: #221f28;
+  --md-surface-3: #29252f;
+}
+.card { background: var(--md-surface-low, #f7f2fa) !important; }
+.rank-item, .stat-box, .tp-col,
+.comment, .tool-card, .panel-plain,
+.donate-box, .guest-box, .tip-card {
+  background: var(--md-surface-2, #f1ecf5) !important;
+}
+.table { background: var(--md-surface-low, #f7f2fa) !important; }
+.bubble { background: var(--md-surface-3, #eae4f0) !important; }
+body { background: #fdf7ff !important; }
+[data-theme="dark"] body { background: #131218 !important; }
+
+/* 终修：提高卡片与背景的对比 + MD3 导航指示器比例 + 带紫调的提示条 */
+body { background: #fbf6ff !important; }
+[data-theme="dark"] body { background: #131218 !important; }
+.card {
+  background: #ece6f4 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .12), 0 2px 6px 2px rgba(103, 80, 164, .16) !important;
+}
+[data-theme="dark"] .card {
+  background: #26232e !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 2px 6px 2px rgba(0, 0, 0, .35) !important;
+}
+.rank-item, .stat-box, .tp-col,
+.comment, .tool-card, .panel-plain,
+.donate-box, .guest-box, .tip-card {
+  background: #f4eefa !important;
+}
+[data-theme="dark"] .rank-item, [data-theme="dark"] .stat-box,
+[data-theme="dark"] .tp-col, [data-theme="dark"] .comment,
+[data-theme="dark"] .tool-card, [data-theme="dark"] .panel-plain {
+  background: #2b2833 !important;
+}
+/* 底部导航：MD3 规范的 64×32 胶囊指示器（包裹图标而非整页宽） */
+.tabbar .tab {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: transparent !important;
+}
+/* Snackbar：带紫调的反色表面 */
+.toast { background: #4a4458 !important; color: #f5eff7 !important; }
+[data-theme="dark"] .toast { background: #e6e0e9 !important; color: #322f35 !important; }
+
+/* ============================================================
+ * Material You 核心：由主题色推导色调序列（tonal palette）
+ * ------------------------------------------------------------
+ * 真正的 MD3 表面不是死灰，而是带着主题色的淡淡色调；
+ * 这里用 color-mix 从 --accent 推导 tone 10/30/50/80/90/92/95/99，
+ * 再由这些色调定义全部颜色角色。换主题色 → 整套表面随之变化。
+ * ============================================================ */
+html[data-skin="md3"]{
+  --md-t99: color-mix(in srgb, var(--accent) 3%, #ffffff);
+  --md-t95: color-mix(in srgb, var(--accent) 7%, #ffffff);
+  --md-t92: color-mix(in srgb, var(--accent) 11%, #ffffff);
+  --md-t90: color-mix(in srgb, var(--accent) 15%, #ffffff);
+  --md-t80: color-mix(in srgb, var(--accent) 24%, #ffffff);
+  --md-t50: color-mix(in srgb, var(--accent) 45%, #b3abbd);
+  --md-t30: color-mix(in srgb, var(--accent) 60%, #35313c);
+  --md-t10: color-mix(in srgb, var(--accent) 78%, #1d1b20);
+
+  --md-surface: var(--md-t99);
+  --md-surface-container-low: var(--md-t95);
+  --md-surface-container: var(--md-t92);
+  --md-surface-container-high: var(--md-t90);
+  --md-surface-container-highest: var(--md-t80);
+  --md-on-surface: var(--md-t10);
+  --md-on-surface-variant: var(--md-t30);
+  --md-outline: var(--md-t50);
+  --md-outline-variant: var(--md-t80);
+  --md-primary-container: var(--md-t90);
+  --md-on-primary-container: var(--md-t10);
+  --md-secondary-container: color-mix(in srgb, var(--md-t90) 72%, #ffffff);
+  --md-on-secondary-container: var(--md-t10);
+  --md-tertiary-container: color-mix(in srgb, var(--md-t90) 60%, #ffe8d9);
+
+  --surface: var(--md-surface-container);
+  --surface-solid: var(--md-surface);
+  --text: var(--md-on-surface);
+  --text-2: var(--md-on-surface-variant);
+  --text-3: var(--md-outline);
+  --border-soft: var(--md-outline-variant);
+}
+html[data-skin="md3"][data-theme="dark"]{
+  --md-t99: color-mix(in srgb, var(--accent) 6%, #131218);
+  --md-t95: color-mix(in srgb, var(--accent) 9%, #17151d);
+  --md-t92: color-mix(in srgb, var(--accent) 12%, #1b1921);
+  --md-t90: color-mix(in srgb, var(--accent) 16%, #201d26);
+  --md-t80: color-mix(in srgb, var(--accent) 21%, #292630);
+  --md-t50: color-mix(in srgb, var(--accent) 26%, #9a93a4);
+  --md-t30: color-mix(in srgb, var(--accent) 22%, #cac4d0);
+  --md-t10: color-mix(in srgb, var(--accent) 14%, #eae4ef);
+
+  --md-primary-container: color-mix(in srgb, var(--accent) 32%, #141218);
+  --md-on-primary-container: color-mix(in srgb, var(--accent) 24%, #f5eff7);
+  --md-secondary-container: color-mix(in srgb, var(--accent) 22%, #1f1d24);
+  --md-on-secondary-container: color-mix(in srgb, var(--accent) 20%, #e6e0e9);
+}
+
+/* 让前面所有硬编码的表面色改为引用色调变量（表面随主题色变化） */
+body { background: var(--md-surface) !important; }
+.card { background: var(--md-surface-container-low) !important; }
+.rank-item, .stat-box, .tp-col,
+.comment, .tool-card, .panel-plain,
+.donate-box, .guest-box, .tip-card,
+.search-panel {
+  background: var(--md-surface-container) !important;
+}
+.table { background: var(--md-surface-container-low) !important; }
+.bubble { background: var(--md-surface-container-high) !important; }
+.tabbar, .topbar, .chat-input {
+  background: var(--md-surface-container) !important;
+}
+.toast { background: var(--md-t30) !important; color: var(--md-t95) !important; }
+[data-theme="dark"] .toast { background: var(--md-t80) !important; color: var(--md-t10) !important; }
+
+/* 状态层（state layer）：悬停叠加 8%、按下叠加 12% */
+.btn:hover {
+  box-shadow: inset 0 0 0 100vmax rgba(255, 255, 255, .10), 0 1px 2px rgba(0, 0, 0, .16) !important;
+}
+.btn:active {
+  box-shadow: inset 0 0 0 100vmax rgba(0, 0, 0, .12) !important;
+}
+.btn-ghost:hover, .icon-btn:hover,
+.chip:hover, .pager button:hover {
+  box-shadow: inset 0 0 0 100vmax color-mix(in srgb, var(--accent) 8%, transparent) !important;
+}
+.card:hover, .rank-item:hover {
+  box-shadow: 0 1px 3px 1px rgba(0, 0, 0, .14), 0 2px 8px 2px color-mix(in srgb, var(--accent) 22%, transparent) !important;
+  transform: translateY(-2px);
+}
+
+/* 收口：选中态与按钮高度用字面值（不依赖变量解析） */
+.btn {
+  box-shadow: 0 1px 3px 1px rgba(0, 0, 0, .12), 0 1px 2px 0 rgba(0, 0, 0, .20) !important;
+}
+.drawer-item.active, .chip.on, .cat-tab.on {
+  background: color-mix(in srgb, var(--accent) 16%, #ffffff) !important;
+  color: color-mix(in srgb, var(--accent) 64%, #1d1b20) !important;
+}
+
+/* 暴力覆盖：底部导航选中态（多重选择器 + 固定色值） */
+
+
+/* ============================================================
+ * 排版尺度（MD3 Type Scale）
+ * ------------------------------------------------------------
+ * 复用参考资料《MD3下拉修复记忆》中的字号规格：
+ *   headline-large 32/40、title-large 22/28、
+ *   body-large 16/24（字距 .5px）、label-large 14/20（字距 .1px，字重 500）
+ * 此前本风格只改了颜色与形状，字号沿用通用值，这是「看着不像」的重要原因：
+ * MD3 的辨识度有相当一部分来自这套排版比例与字距。
+ * ============================================================ */
+h1, .doc h1, .doc h2 {
+  font-size: 32px; font-weight: 400; line-height: 40px; letter-spacing: 0;
+  color: var(--md-on-surface);
+}
+h2, .doc h3 { font-size: 22px; font-weight: 400; line-height: 28px; color: var(--md-on-surface); }
+h3, .doc h4 { font-size: 18px; font-weight: 500; line-height: 24px; }
+.card-title, .section-title {
+  font-size: 22px; font-weight: 400; line-height: 28px;
+  letter-spacing: 0; color: var(--md-on-surface);
+  margin: 4px 0 14px;
+}
+.card-title svg.ic, .section-title svg.ic { width: 22px; height: 22px; fill: var(--md-on-surface-variant); }
+/* 正文：MD3 body-large，带 .5px 字距 */
+body, .card p, .doc p, .bubble, .ai-text p { letter-spacing: .5px; }
+.card p, .doc p, .bubble .text { font-size: 15px; line-height: 24px; }
+/* 标签与按钮：label-large，字重 500、字距 .1px */
+.btn, .tab, .chip, .label-large, .doc-ver { font-weight: 500; letter-spacing: .1px; }
+.tiny, .muted, .rank-meta { letter-spacing: .4px; }
+
+/* 卡片入场：0.6s 弹性，逐张错开（参考资料 cardEnter） */
+@keyframes mdCardEnter {
+  from { opacity: 0; transform: translateY(16px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.card, .rank-item { animation: mdCardEnter .6s var(--md-spring) both; }
+.card:nth-of-type(2) { animation-delay: .05s; }
+.card:nth-of-type(3) { animation-delay: .1s; }
+.card:nth-of-type(4) { animation-delay: .15s; }
+
+/* 分段控件：选中指示器带物理回弹（参考资料 .md-segmented-indicator） */
+.seg { background: var(--md-surface-container-high); border-radius: 20px; padding: 4px; gap: 4px; border: 0; }
+.seg button { border-radius: 16px; height: 32px; font-weight: 500; transition: color .3s var(--md-emphasized); }
+.seg button.on {
+  background: var(--md-secondary-container); color: var(--md-on-secondary-container);
+  box-shadow: var(--md-elev-1);
+  transition: background .4s var(--md-bounce), color .4s var(--md-bounce), box-shadow .4s var(--md-bounce);
+}
+
+/* 文本框：MD3 填充式外观，聚焦时底线转为 2px 主色。
+   背景写死色值：此处用 var() 引用容器色在某些上下文解析不出，会整条声明失效。 */
+.input, textarea.input {
+  border-radius: 16px 16px 0 0;
+  border: 0; border-bottom: 1px solid #79747e;
+  background: #ece6f0;
+  transition: border-color .2s cubic-bezier(.2, 0, 0, 1), background .2s cubic-bezier(.2, 0, 0, 1);
+}
+.input:focus, textarea.input:focus {
+  border-bottom: 2px solid var(--md-primary); box-shadow: none;
+  background: #e6e0e9;
+}
+html[data-skin="md3"][data-theme="dark"] .input,
+html[data-skin="md3"][data-theme="dark"] textarea.input { background: #36343b; border-bottom-color: #938f99; }
+html[data-skin="md3"][data-theme="dark"] .input:focus,
+html[data-skin="md3"][data-theme="dark"] textarea.input:focus { background: #4a4458; }
+
+/* 按钮：MD3 规范高 40、圆角 20、label-large 字重 */
+.btn { height: 40px; padding: 0 24px; border-radius: 20px; font-size: 14px; font-weight: 500; letter-spacing: .1px; }
+.btn-sm { height: 32px; padding: 0 16px; border-radius: 16px; font-size: 13px; }
+.btn-lg { height: 48px; padding: 0 28px; border-radius: 24px; font-size: 15px; }
+.btn-ghost { border-radius: 20px; height: 40px; padding: 0 20px; font-weight: 500; }

@@ -1,0 +1,475 @@
+/* 皮肤变量覆写 */
+html[data-skin="pixel"] {
+  --tab-active-bg: #2038ec;
+  --tab-active-fg: #f8f8f8;
+  --msg-bg: #f8f8f8;
+  --msg-fg: #101820;
+  --msg-mine-bg: #9cd2f8;
+  --msg-mine-fg: #101820;
+  --toast-bg: #101820;
+  --toast-fg: #fcfc54;
+  --toast-err-bg: #d82800;
+  --toast-radius: 0;
+}
+
+/* ============================================================
+ * 皮肤：像素风（8-bit / NES）
+ * ------------------------------------------------------------
+ * 依据：CodeFronts《Eight Bit Pixel Art Buttons and HUD》
+ *   - 台阶角（stepped corners）用多层 box-shadow 偏移拼出，而非 border-radius / border-image
+ *   - 阴影偏移量必须是整数像素（4px），否则边缘发虚
+ *   - 按钮 = 四向单步外描边 + 右下内阴影（深墨）+ 左上内高光（纸白）
+ *   - 面板 / HUD = 双步角（两圈 4px 与 8px 阴影）
+ *   - 按下时内阴影与内高光对角互换，模拟物理压下
+ *   - 调色板纪律：只用 8 个固定色，不写裸色值
+ *   - 字体：等宽栈 + tabular-nums，字重 700，字距 .1em
+ * 独立文件：本风格全部视觉定义。
+ * ============================================================ */
+
+:root {
+  /* ---- NES 八色调色板 ---- */
+  --px-ink:    #101820;
+  --px-paper:  #f8f8f8;
+  --px-red:    #d82800;
+  --px-orange: #fc9838;
+  --px-yellow: #fcfc54;
+  --px-green:  #00a844;
+  --px-blue:   #2038ec;
+  --px-sky:    #9cd2f8;
+  --px-off:    #9a9a9a;
+  --px-off-ink:#2a2a2a;
+
+  /* 像素单位：必须整数 */
+  --px-px: 4px;
+  --px-mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace;
+
+  --bg-1: #dfe4e8;
+  --bg-2: #d3dae0;
+  --surface: var(--px-paper);
+  --surface-solid: var(--px-paper);
+  --border: var(--px-ink);
+  --border-soft: var(--px-ink);
+  --text: var(--px-ink);
+  --text-2: #2f3a44;
+  --text-3: #5b6670;
+
+  --radius-lg: 0;
+  --radius-md: 0;
+  --radius-sm: 0;
+  --shadow: 0 4px 0 0 var(--px-ink);
+  --shadow-sm: 0 4px 0 0 var(--px-ink);
+  --sk-font: var(--px-mono);
+}
+
+[data-theme="dark"] {
+  --bg-1: #101820;
+  --bg-2: #0a1017;
+  --surface: #1c242e;
+  --surface-solid: #1c242e;
+  --text: var(--px-paper);
+  --text-2: #c2cad2;
+  --text-3: #8d97a1;
+}
+
+body {
+  font-family: var(--px-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: var(--text);
+  background-color: var(--bg-1);
+  background-image: repeating-linear-gradient(0deg, rgba(16, 24, 32, .07) 0 2px, transparent 2px 4px);
+  background-attachment: fixed;
+}
+img, .thumb img, .av img, .avatar img, .msg-img {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+}
+* { border-radius: 0 !important; }
+
+/* ---------- 台阶角工具规则（多层偏移阴影） ---------- */
+.card, .rank-item, .stat-box, .tp-col, .tool-card, .block-note, .donate-box, .guest-box,
+.search-panel, .tip-card, .toast {
+  /* 四向单步描边 + 右硬影 */
+  box-shadow:
+    calc(var(--px-px) * -1) 0 0 0 var(--px-ink),
+    var(--px-px) 0 0 0 var(--px-ink),
+    0 calc(var(--px-px) * -1) 0 0 var(--px-ink),
+    0 var(--px-px) 0 0 var(--px-ink),
+    var(--px-px) calc(var(--px-px) * 2) 0 0 var(--px-ink);
+  background: var(--surface);
+}
+/* 面板 / HUD：双步角（两圈） */
+.card, .panel-plain, .dialog, .drawer, .picker {
+  box-shadow:
+    calc(var(--px-px) * -1) 0 0 0 var(--px-ink),
+    var(--px-px) 0 0 0 var(--px-ink),
+    0 calc(var(--px-px) * -1) 0 0 var(--px-ink),
+    0 var(--px-px) 0 0 var(--px-ink),
+    calc(var(--px-px) * -2) 0 0 0 var(--px-ink),
+    calc(var(--px-px) * 2) 0 0 0 var(--px-ink),
+    0 calc(var(--px-px) * -2) 0 0 0 var(--px-ink),
+    0 calc(var(--px-px) * 2) 0 0 0 var(--px-ink);
+  padding: calc(var(--px-px) * 4);
+}
+/* 留出台阶角的空间，避免相邻元素被外描边压住 */
+.card, .rank-item, .stat-box, .tp-col, .tool-card, .panel-plain, .comment { margin: var(--px-px); }
+.col, .rank-item { margin-bottom: calc(var(--px-px) * 1.4); }
+.card-title, .rank-title {
+  text-transform: uppercase;
+  letter-spacing: .16em;
+  font-size: 13px;
+  color: var(--text);
+  padding-bottom: 6px;
+  border-bottom: var(--px-px) solid var(--px-ink);
+  display: block;
+}
+
+.topbar, .tabbar, .chat-input {
+  background: var(--surface);
+  box-shadow: 0 4px 0 0 var(--px-ink);
+  border: 0;
+}
+.tabbar { box-shadow: 0 -4px 0 0 var(--px-ink); }
+.announce {
+  background: var(--px-yellow);
+  color: var(--px-ink);
+  box-shadow:
+    calc(var(--px-px) * -1) 0 0 0 var(--px-ink),
+    var(--px-px) 0 0 0 var(--px-ink),
+    0 calc(var(--px-px) * -1) 0 0 0 var(--px-ink),
+    0 var(--px-px) 0 0 0 var(--px-ink);
+  margin: var(--px-px);
+}
+
+/* ---------- 按钮：单步角 + 内高光/内阴影，按下对角互换 ---------- */
+.btn, .btn-ghost, .icon-btn, .chip, .seg button, .pick-btn, .fold-toggle, .pager button,
+.back-btn, .btn-sm, .lb-bar button, .dialog-actions button, .comment .ops button {
+  position: relative;
+  border: 0;
+  background: var(--surface);
+  color: var(--px-ink);
+  font-weight: 700;
+  font-size: .85rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  transition: none;
+  box-shadow:
+    calc(var(--px-px) * -1) 0 0 0 var(--px-ink),
+    var(--px-px) 0 0 0 var(--px-ink),
+    0 calc(var(--px-px) * -1) 0 0 0 var(--px-ink),
+    0 var(--px-px) 0 0 0 var(--px-ink),
+    inset calc(var(--px-px) * -1) calc(var(--px-px) * -1) 0 0 rgba(16, 24, 32, .55),
+    inset var(--px-px) var(--px-px) 0 0 rgba(248, 248, 248, .5);
+}
+.btn {
+  background: var(--px-green);
+  padding: 10px 16px;
+}
+.btn-ghost, .icon-btn, .chip, .pager button, .back-btn, .fold-toggle, .lb-bar button, .comment .ops button {
+  background: var(--surface);
+}
+/* 按下：内阴影与内高光对角互换 */
+.btn:active, .btn-ghost:active, .icon-btn:active, .chip:active, .pager button:active,
+.pick-btn:active, .fold-toggle:active, .comment .ops button:active, .dialog-actions button:active {
+  box-shadow:
+    calc(var(--px-px) * -1) 0 0 0 var(--px-ink),
+    var(--px-px) 0 0 0 var(--px-ink),
+    0 calc(var(--px-px) * -1) 0 0 0 var(--px-ink),
+    0 var(--px-px) 0 0 0 var(--px-ink),
+    inset var(--px-px) var(--px-px) 0 0 rgba(16, 24, 32, .55),
+    inset calc(var(--px-px) * -1) calc(var(--px-px) * -1) 0 0 rgba(248, 248, 248, .5);
+}
+.btn:disabled, .btn[disabled], .btn-link:disabled {
+  background: var(--px-off);
+  color: var(--px-off-ink);
+  box-shadow:
+    calc(var(--px-px) * -1) 0 0 0 var(--px-ink),
+    var(--px-px) 0 0 0 var(--px-ink),
+    0 calc(var(--px-px) * -1) 0 0 0 var(--px-ink),
+    0 var(--px-px) 0 0 0 var(--px-ink);
+}
+.btn-danger { background: var(--px-red); color: var(--px-paper); }
+
+/* ---------- 输入：内凹 ---------- */
+.input, textarea.input {
+  border: 0;
+  background: var(--surface);
+  color: var(--text);
+  padding: 10px 12px;
+  box-shadow:
+    calc(var(--px-px) * -1) 0 0 0 var(--px-ink),
+    var(--px-px) 0 0 0 var(--px-ink),
+    0 calc(var(--px-px) * -1) 0 0 0 var(--px-ink),
+    0 var(--px-px) 0 0 0 var(--px-ink),
+    inset var(--px-px) var(--px-px) 0 0 rgba(16, 24, 32, .45);
+}
+.input:focus { outline: none; background: var(--px-sky); color: var(--px-ink); }
+.seg { background: var(--surface); box-shadow: 0 0 0 var(--px-px) var(--px-ink); padding: 2px; }
+.switch {
+  border: 0;
+  background: var(--surface);
+  box-shadow: 0 0 0 var(--px-px) var(--px-ink), inset 2px 2px 0 0 rgba(16, 24, 32, .4);
+}
+.switch[aria-checked="true"] { background: var(--px-green); }
+/* 焦点可见性 */
+:focus-visible { outline: 3px solid var(--px-orange); outline-offset: 2px; }
+
+/* ---------- 徽章 / 奖牌 / 评级 ---------- */
+.badge {
+  background: var(--px-orange);
+  color: var(--px-ink);
+  padding: 1px 6px;
+  box-shadow: 0 0 0 2px var(--px-ink);
+}
+.medal { box-shadow: 0 0 0 2px var(--px-ink); color: var(--px-ink); }
+.rating, .r-SSS, .r-SS, .r-S, .r-A, .r-B, .r-C {
+  padding: 1px 6px;
+  background: var(--px-sky);
+  color: var(--px-ink);
+  box-shadow: 0 0 0 2px var(--px-ink);
+  letter-spacing: .1em;
+}
+.r-SSS, .r-SS { background: var(--px-yellow); }
+
+/* ---------- 对话 ---------- */
+.bubble {
+  background: var(--surface);
+  color: var(--text);
+  padding: 10px 12px;
+  box-shadow:
+    calc(var(--px-px) * -1) 0 0 0 var(--px-ink),
+    var(--px-px) 0 0 0 var(--px-ink),
+    0 calc(var(--px-px) * -1) 0 0 0 var(--px-ink),
+    0 var(--px-px) 0 0 0 var(--px-ink);
+  margin: var(--px-px);
+}
+.msg.mine .bubble { background: var(--px-sky); color: var(--px-ink); }
+.typing i { background: var(--px-ink); animation: pxBlink 1s steps(1) infinite; }
+@keyframes pxBlink { 50% { opacity: 0; } }
+
+/* ---------- 文档 / 富文本 ---------- */
+.doc pre, .ai-text pre, .bubble pre {
+  background: var(--surface);
+  color: var(--text);
+  padding: 12px;
+  box-shadow: 0 0 0 var(--px-px) var(--px-ink), inset var(--px-px) var(--px-px) 0 0 rgba(16, 24, 32, .4);
+}
+.doc code, .ai-text code, .bubble code {
+  background: var(--px-yellow);
+  color: var(--px-ink);
+  padding: 1px 5px;
+  box-shadow: 0 0 0 2px var(--px-ink);
+}
+.doc table, .ai-text table { box-shadow: 0 0 0 2px var(--px-ink); }
+.doc th, .ai-text th { background: var(--px-sky); color: var(--px-ink); box-shadow: 0 0 0 2px var(--px-ink); }
+.doc td, .ai-text td { box-shadow: 0 1px 0 0 rgba(16, 24, 32, .35); }
+.doc blockquote, .ai-text blockquote {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  box-shadow: inset 6px 0 0 0 var(--px-ink);
+  padding: 6px 12px;
+}
+.doc a, .ai-text a { color: var(--px-blue); text-decoration: underline; }
+
+/* ---------- 列表 / 表格 / 评论 ---------- */
+.table { background: var(--surface); box-shadow: 0 0 0 2px var(--px-ink); }
+.table th { background: var(--px-sky); color: var(--px-ink); box-shadow: 0 0 0 2px var(--px-ink); letter-spacing: .1em; }
+.table td { box-shadow: 0 2px 0 0 rgba(16, 24, 32, .3); }
+.comment {
+  background: var(--surface);
+  padding: 10px;
+  box-shadow:
+    calc(var(--px-px) * -1) 0 0 0 var(--px-ink),
+    var(--px-px) 0 0 0 var(--px-ink),
+    0 calc(var(--px-px) * -1) 0 0 0 var(--px-ink),
+    0 var(--px-px) 0 0 0 var(--px-ink);
+}
+.comment.sub { box-shadow: inset 6px 0 0 0 var(--px-ink), 0 0 0 var(--px-px) var(--px-ink); }
+.replies { box-shadow: inset 3px 0 0 0 var(--px-ink); }
+
+/* ---------- 占比条：分段方块 ---------- */
+.tp-bar, .prog-bar, .slider .rail { background: var(--surface); box-shadow: 0 0 0 2px var(--px-ink); }
+.tp-bar i, .prog-bar i, .prog-bar span, .slider .fill {
+  background: repeating-linear-gradient(90deg, var(--px-green) 0 5px, transparent 5px 7px);
+}
+.slider .knob { background: var(--px-orange); box-shadow: 0 0 0 2px var(--px-ink); }
+.swatch { box-shadow: 0 0 0 2px var(--px-ink); }
+
+/* ---------- 风格选择卡片 ---------- */
+.skin-row { box-shadow: none; }
+.skin-card {
+  background: var(--surface);
+  box-shadow:
+    calc(var(--px-px) * -1) 0 0 0 var(--px-ink),
+    var(--px-px) 0 0 0 var(--px-ink),
+    0 calc(var(--px-px) * -1) 0 0 0 var(--px-ink),
+    0 var(--px-px) 0 0 0 var(--px-ink);
+  margin: var(--px-px);
+  transition: none;
+}
+.skin-card.on { background: var(--px-sky); color: var(--px-ink); }
+.skin-prev { box-shadow: 0 0 0 2px var(--px-ink); }
+
+/* ---------- 动效：分步出现 ---------- */
+@keyframes pxStep {
+  from { opacity: 0; transform: translate(-6px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+.card, .rank-item, .panel-plain, .stat-box, .msg, .comment, .tool-card {
+  animation: pxStep .28s steps(3, end) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card, .rank-item, .panel-plain, .stat-box, .msg, .comment, .tool-card { animation: none; }
+  .typing i { animation: none; }
+}
+"""
+
+/* ============================================================
+ * 修正一：预览截图后的问题修复
+ * ============================================================ */
+
+/* 1) 像素点阵字体：自托管 Fusion Pixel（中英文齐全，见 assets/css/fonts.css） */
+:root { --px-mono: 'FusionPixel', ui-monospace, "Courier New", monospace; }
+body { font-family: var(--px-mono); font-size: 13px; letter-spacing: 0; }
+.card-title, .rank-title, .btn, .btn-ghost, .badge, .rating, .chip, .pager button { font-size: 11px; letter-spacing: .04em; }
+.tiny, .rank-meta, .tp-c, .tp-i, .tabbar .tab { font-size: 10px; }
+
+/* 2) 背景：扫描线加强 + 点阵网格（原先太淡几乎看不见） */
+body {
+  background-color: var(--bg-1);
+  background-image:
+    repeating-linear-gradient(0deg, rgba(16, 24, 32, .22) 0 3px, transparent 3px 6px),
+    linear-gradient(0deg, rgba(16, 24, 32, .10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16, 24, 32, .10) 1px, transparent 1px);
+  background-size: auto, 8px 8px, 8px 8px;
+  background-attachment: fixed;
+}
+
+/* 3) 标题：像素分段下划线 */
+.card-title, .rank-title { border-bottom: 0; padding-bottom: 0; }
+.card-title::after, .rank-title::after {
+  content: '';
+  display: block;
+  height: 3px;
+  margin-top: 7px;
+  background: repeating-linear-gradient(90deg, var(--px-ink) 0 4px, transparent 4px 8px);
+}
+
+/* 4) 卡片角上的像素装饰块 */
+.card, .panel-plain { position: relative; }
+.card::before, .panel-plain::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  width: 9px;
+  height: 9px;
+  background: var(--px-orange);
+  box-shadow: inset 0 0 0 2px var(--px-ink);
+}
+
+/* 5) 消息提示：高对比硬边方块（原先沿用通用深色胶囊） */
+.toast {
+  background: var(--px-ink) !important;
+  color: var(--px-yellow) !important;
+  border: 0;
+  border-radius: 0;
+  padding: 8px 14px;
+  font-size: 11px;
+  box-shadow:
+    calc(var(--px-px) * -1) 0 0 0 var(--px-sky), var(--px-px) 0 0 0 var(--px-sky),
+    0 calc(var(--px-px) * -1) 0 0 var(--px-sky), 0 var(--px-px) 0 0 var(--px-sky);
+}
+.toast.err { background: var(--px-red) !important; color: var(--px-paper) !important; }
+
+/* 6) 底部导航选中：实心块 + 上移 + 硬描边 */
+.tabbar .tab { color: var(--px-ink); letter-spacing: .06em; }
+
+/* ============================================================
+ * 覆盖块：确保关键样式必定生效
+ * ============================================================ */
+html[data-skin="pixel"] .card, html[data-skin="pixel"] .panel-plain,
+html[data-skin="pixel"] .rank-item, html[data-skin="pixel"] .stat-box,
+html[data-skin="pixel"] .tp-col, html[data-skin="pixel"] .comment,
+html[data-skin="pixel"] .tool-card, html[data-skin="pixel"] .donate-box,
+html[data-skin="pixel"] .guest-box, html[data-skin="pixel"] .table {
+  background: var(--surface) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+html[data-skin="pixel"] .msg.mine .bubble { background: var(--px-sky) !important; color: var(--px-ink) !important; }
+html[data-skin="pixel"] .tabbar .tab { color: var(--px-ink) !important; }
+html[data-skin="pixel"] .drawer-item.active { background: var(--px-blue) !important; color: var(--px-paper) !important; }
+html[data-skin="pixel"] .toast { background: var(--px-ink) !important; color: var(--px-yellow) !important; }
+html[data-skin="pixel"] .toast.err { background: var(--px-red) !important; color: var(--px-paper) !important; }
+
+/* 终修：背景扫描线 + 按钮/卡片 bevel 立体感（用前缀提升特异性，确保生效） */
+html[data-skin="pixel"] body {
+  background-color: var(--bg-1) !important;
+  background-image: repeating-linear-gradient(0deg,
+    rgba(16, 24, 32, .30) 0 3px, rgba(0, 0, 0, 0) 3px 6px) !important;
+  background-attachment: scroll !important;
+}
+html[data-skin="pixel"] .btn, html[data-skin="pixel"] .btn-ghost, html[data-skin="pixel"] .icon-btn,
+html[data-skin="pixel"] .pager button, html[data-skin="pixel"] .fold-toggle,
+html[data-skin="pixel"] .comment .ops button, html[data-skin="pixel"] .back-btn {
+  box-shadow:
+    calc(var(--px-px) * -1) 0 0 0 var(--px-ink), var(--px-px) 0 0 0 var(--px-ink),
+    0 calc(var(--px-px) * -1) 0 0 0 var(--px-ink), 0 var(--px-px) 0 0 0 var(--px-ink),
+    inset calc(var(--px-px) * -1) calc(var(--px-px) * -1) 0 0 rgba(16, 24, 32, .60),
+    inset var(--px-px) var(--px-px) 0 0 rgba(248, 248, 248, .55) !important;
+}
+html[data-skin="pixel"] .card, html[data-skin="pixel"] .panel-plain, html[data-skin="pixel"] .rank-item,
+html[data-skin="pixel"] .stat-box, html[data-skin="pixel"] .tp-col, html[data-skin="pixel"] .comment {
+  box-shadow:
+    calc(var(--px-px) * -1) 0 0 0 var(--px-ink), var(--px-px) 0 0 0 var(--px-ink),
+    0 calc(var(--px-px) * -1) 0 0 0 var(--px-ink), 0 var(--px-px) 0 0 0 var(--px-ink),
+    calc(var(--px-px) * 2) calc(var(--px-px) * 2) 0 0 rgba(16, 24, 32, .38) !important;
+}
+html[data-skin="pixel"] .switch, html[data-skin="pixel"] .input {
+  box-shadow: 0 0 0 2px var(--px-ink), inset 2px 2px 0 0 rgba(16, 24, 32, .38) !important;
+}
+
+/* bevel 立体感：字面值写法（不使用变量与 calc） */
+html[data-skin="pixel"] .btn { box-shadow: -4px 0 0 0 #101820, 4px 0 0 0 #101820, 0 -4px 0 0 #101820, 0 4px 0 0 #101820, inset -4px -4px 0 0 rgba(16, 24, 32, .60), inset 4px 4px 0 0 rgba(248, 248, 248, .55) !important; }
+html[data-skin="pixel"] .btn:active { box-shadow: -4px 0 0 0 #101820, 4px 0 0 0 #101820, 0 -4px 0 0 #101820, 0 4px 0 0 #101820, inset 4px 4px 0 0 rgba(16, 24, 32, .60), inset -4px -4px 0 0 rgba(248, 248, 248, .55) !important; }
+html[data-skin="pixel"] .btn-ghost, html[data-skin="pixel"] .pager button { box-shadow: -4px 0 0 0 #101820, 4px 0 0 0 #101820, 0 -4px 0 0 #101820, 0 4px 0 0 #101820, inset -4px -4px 0 0 rgba(16, 24, 32, .45), inset 4px 4px 0 0 rgba(248, 248, 248, .5) !important; }
+html[data-skin="pixel"] .card, html[data-skin="pixel"] .rank-item, html[data-skin="pixel"] .panel-plain { box-shadow: -4px 0 0 0 #101820, 4px 0 0 0 #101820, 0 -4px 0 0 #101820, 0 4px 0 0 #101820, 8px 8px 0 0 rgba(16, 24, 32, .38) !important; }
+html[data-skin="pixel"] .input { box-shadow: 0 0 0 2px #101820, inset 2px 2px 0 0 rgba(16, 24, 32, .38) !important; }
+
+/* ============================================================
+ * 游戏质感补强：CRT 暗角 + 点阵纹理 + 双色像素边线 + 选中闪烁
+ * ============================================================ */
+html[data-skin="pixel"] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 50%, rgba(16, 24, 32, .22) 100%);
+}
+/* 点阵抖动纹理（dither） */
+html[data-skin="pixel"] .card, html[data-skin="pixel"] .panel-plain, html[data-skin="pixel"] .rank-item {
+  background-image: radial-gradient(rgba(16, 24, 32, .07) 1px, transparent 1px) !important;
+  background-size: 4px 4px !important;
+}
+/* 标题下的分段像素线 */
+html[data-skin="pixel"] .card-title::after, html[data-skin="pixel"] .rank-title::after {
+  content: '' !important;
+  display: block !important;
+  height: 3px !important;
+  margin-top: 7px !important;
+  background: repeating-linear-gradient(90deg, #101820 0 4px, transparent 4px 8px) !important;
+}
+/* 顶栏与底栏：双色像素边线（黑 + 黄） */
+html[data-skin="pixel"] .topbar { border-bottom: 0 !important; box-shadow: 0 4px 0 0 #101820, 0 8px 0 0 #fcfc54 !important; }
+html[data-skin="pixel"] .tabbar { border-top: 0 !important; box-shadow: 0 -4px 0 0 #101820, 0 -8px 0 0 #fcfc54 !important; }
+/* 选中项闪烁（像素游戏光标感） */
+@keyframes pxBlinkSel {
+  0%, 68% { box-shadow: inset 0 0 0 2px #101820; }
+  69%, 100% { box-shadow: inset 0 0 0 2px #fcfc54; }
+}
+@media (prefers-reduced-motion: reduce) {
+}
+
