@@ -64,12 +64,33 @@ if ($announceText === '') {
   } catch (e) {}
 })();
 </script>
-<link rel="stylesheet" href="assets/css/fonts.css?v=<?= APP_VERSION ?>">
-<link rel="preload" as="style" href="assets/css/app.css?v=<?= APP_VERSION ?>">
-<link rel="stylesheet" href="assets/css/app.css?v=<?= APP_VERSION ?>">
-<?php if ($SKIN !== 'glass'): /* 液态玻璃即 app.css 默认样式，无需额外皮肤文件 */ ?>
-<link rel="stylesheet" href="assets/css/skins/<?= $SKIN ?>.css?v=<?= APP_VERSION ?>">
+<?php
+/* 首屏关键 CSS 直接内联：app.css 无任何 url() 外链依赖，可安全内联，
+   省掉一次跨洋往返与渲染阻塞；皮肤文件同理。动态 HTML 本身不缓存，内联不损失缓存收益。 */
+?>
+<style><?php readfile(__DIR__ . '/assets/css/app.css'); ?></style>
+<?php $__skinCss = __DIR__ . '/assets/css/skins/' . $SKIN . '.css';
+if ($SKIN !== 'glass' && is_file($__skinCss)): /* 液态玻璃即 app.css 默认样式，无需额外皮肤文件 */ ?>
+<style><?php readfile($__skinCss); ?></style>
 <?php endif; ?>
+<?php
+/* 自定义字体不参与首屏关键路径：首屏先用系统字体渲染（@font-face 本就是 swap 语义），
+   浏览器空闲后再注入字体表，避免十几个字体分片抢占首屏连接。禁用 JS 时回退为同步加载。 */
+?>
+<script>
+(function () {
+  var href = 'assets/css/fonts.css?v=<?= APP_VERSION ?>';
+  function inject() {
+    var l = document.createElement('link');
+    l.rel = 'stylesheet';
+    l.href = href;
+    document.head.appendChild(l);
+  }
+  if ('requestIdleCallback' in window) { requestIdleCallback(inject, { timeout: 2000 }); }
+  else { setTimeout(inject, 400); }
+})();
+</script>
+<noscript><link rel="stylesheet" href="assets/css/fonts.css?v=<?= APP_VERSION ?>"></noscript>
 <script>
 /* 全局诊断：脚本或资源加载失败时，直接在页面顶部显示原因（便于截图反馈） */
 (function () {
