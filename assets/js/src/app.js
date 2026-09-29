@@ -6,7 +6,7 @@ import { applyTheme, saveTheme, initSystemWatcher, ACCENTS } from './theme.js';
 import { setNavigate } from './router.js';
 import { cacheGet, cacheSet, cacheTouch, cachePrev, runTransition, enablePredictiveBack, setNavAnim } from './transitions.js';
 
-import { renderRank } from './pages/rank.js';
+import { renderRank, PAGE_SIZE as RANK_PAGE_SIZE } from './pages/rank.js';
 import { renderDetail } from './pages/detail.js';
 import { renderLobby } from './pages/lobby.js';
 import { renderMine } from './pages/mine.js';
@@ -368,14 +368,15 @@ function bindEvents() {
 /* ============================================================
  * 公告
  * ============================================================ */
-async function loadAnnounce() {
+/* 公告已由服务端渲染进页面；启动载荷若带回更新的内容就就地更新。
+   这里不再单独发请求 —— 它原本排在首屏关键路径上，白白多一个往返。 */
+function applyAnnounce() {
   try {
-    const d = await api('site.php', 'announce', null, { silent: true });
+    if (state.announce === undefined || state.announce === null) { return; }
     const bar = document.getElementById('announceBar');
     const txt = document.getElementById('announceText');
     if (!bar || !txt) { return; }
-    // 后端有值则以最新为准；否则保留服务端已渲染的内容；两者皆空才隐藏
-    const content = (d && d.announce) ? String(d.announce) : txt.textContent.trim();
+    const content = String(state.announce || '').trim() || txt.textContent.trim();
     if (content) { txt.textContent = content; bar.hidden = false; }
     else { bar.hidden = true; }
   } catch (e) {}
@@ -541,6 +542,16 @@ async function main() {
     setTimeout(() => { if (typeof window.__reRenderCurrent === 'function') { window.__reRenderCurrent(); } }, 200);
   });
 
+  /* 首屏参数：榜单页让启动载荷直接把第一页带回来，省掉一次往返 */
+  const firstRoute = parseHash();
+  if (firstRoute.name === 'rank') {
+    window.__firstPayload = {
+      category: firstRoute.params.category || 'all',
+      board: firstRoute.params.board || 'total',
+      size: RANK_PAGE_SIZE,
+    };
+  }
+
   await boot();
   applyTheme();
   /* 返回动画开关（本机偏好，默认开启） */
@@ -564,7 +575,7 @@ async function main() {
   } catch (e) {}
   bindEvents();
   renderDrawer();
-  await loadAnnounce();
+  applyAnnounce();
   /* 首屏地址规范化：hash / 裸参数统一改为 ?p= 形式；无参数默认「我的」。
      敏感界面不接受通过地址直达（站内入口仍可正常进入）。 */
   const initial = readRoute();

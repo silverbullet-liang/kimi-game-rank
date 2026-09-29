@@ -16,22 +16,13 @@ switch ($action) {
     case 'bootstrap':
     case 'announce': {
         require_token();
-        $cat = array();
-        foreach (db_all('SELECT category, COUNT(*) n FROM works WHERE is_hidden = 0 GROUP BY category') as $r) {
-            $cat[(string)$r['category']] = (int)$r['n'];
-        }
-        $ann = trim((string)db_val("SELECT content FROM announcements WHERE content <> '' ORDER BY id ASC LIMIT 1"));
-        if ($ann === '') { $ann = trim((string)setting_get('announcement', '')); }
+        /* 分类计数与公告都走站点聚合缓存（60 秒）：
+           此前两件事分属不同请求、各查一次库，同一屏就重复算了整表聚合。 */
         ok(array(
             'site'        => (string)cfg('site.name', 'Kimi游戏榜'),
             'version'     => APP_VERSION,
-            'announce'    => $ann,
-            'categories'  => array(
-                'game'       => isset($cat['game']) ? $cat['game'] : 0,
-                'tool'       => isset($cat['tool']) ? $cat['tool'] : 0,
-                'literature' => isset($cat['literature']) ? $cat['literature'] : 0,
-                'fanart'     => isset($cat['fanart']) ? $cat['fanart'] : 0,
-            ),
+            'announce'    => site_announce(),
+            'categories'  => site_category_counts(),
             'csrf'        => csrf_token(),
         ));
         break;

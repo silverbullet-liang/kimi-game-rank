@@ -80,6 +80,39 @@ function current_identity()
     return $cache = $p;
 }
 
+/**
+ * 身份载荷：把令牌解出的身份整形成前端可直接套用的结构。
+ * ------------------------------------------------------------
+ * 「启动载荷」与「重新验证」都要这份数据，抽成一处，避免两条链路漂移。
+ */
+function identity_payload(array $id): array
+{
+    $data = array('role' => $id['role'], 'uid' => (int)$id['uid']);
+    if ($id['role'] === 'user' || $id['role'] === 'subadmin') {
+        /* 普通用户与副管理员都有真实用户行：同等待遇（含 CSRF，可发言） */
+        $u = current_user_row();
+        if ($u === null) { fail(401, '账号不可用'); }
+        $data['username'] = (string)$u['username'];
+        $data['avatar']   = identicon_data_uri((string)$u['username'], 80);
+        $data['settings'] = user_settings($u);
+        $data['csrf']     = csrf_token();
+        $data['uid8']     = uid_of_user($u, subadmin_seq_of((int)$u['id']));
+        if ($id['role'] === 'subadmin') { $data['is_admin'] = true; $data['subadmin'] = true; }
+    } elseif ($id['role'] === 'admin') {
+        $data['username'] = 'admin';
+        $data['avatar']   = identicon_data_uri('admin', 80);
+        $data['is_admin'] = true;
+        $data['csrf']     = csrf_token();
+        $au = current_user_row();
+        $data['uid8'] = $au !== null ? uid_of_user($au, 0) : UID_ADMIN;
+    } else {
+        $data['username'] = '游客';
+        $data['avatar']   = identicon_data_uri('guest', 80);
+        $data['csrf']     = csrf_token();
+    }
+    return $data;
+}
+
 /** 所有 API 必须携带有效令牌，否则拒绝 */
 function require_token(): array
 {

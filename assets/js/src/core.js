@@ -366,15 +366,35 @@ export function prompt_(title, text, confirmLabel = '确定') {
  * 1) 取 CSRF → 2) 有 token 则 verify，失败则落游客 → 3) 无 token 申请游客令牌
  * ============================================================ */
 export async function boot() {
+  const t = getToken();
+  if (t) { setToken(t); }
+
+  /* 启动载荷：一次请求拿回 csrf、登录态（无令牌则顺带下发游客令牌）、
+     站内公告、分类计数，以及（榜单页）首屏第一页。
+     此前这些要串行走四个请求，而每次请求后端都要重新引导一遍 —— 首屏慢的主因。 */
+  const want = window.__firstPayload || null;
+  try {
+    const q = { first: want ? 1 : 0 };
+    if (want) { q.category = want.category; q.board = want.board; q.size = want.size; }
+    const d = await api('start.php', 'app', q, { silent: true, tries: 2 });
+    if (d && d.token) { setToken(d.token); }
+    applyIdentity(d);
+    state.announce = (d && d.announce !== undefined) ? String(d.announce || '') : '';
+    state.categories = (d && d.categories) ? d.categories : {};
+    state.firstPage = (d && d.first) ? d.first : null;
+    state.booted = true;
+    return state;
+  } catch (e) {
+    /* 落回旧流程：任何情况下都要能进站 */
+  }
+
   // CSRF（会话级）
   try {
     const d = await fetch('api/auth.php?action=csrf', { credentials: 'same-origin' }).then(r => r.json());
     if (d && d.data && d.data.csrf) state.csrf = d.data.csrf;
   } catch (e) {}
 
-  const t = getToken();
   if (t) {
-    setToken(t);
     try {
       const d = await api('auth.php', 'verify');
       applyIdentity(d);

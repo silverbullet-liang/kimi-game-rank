@@ -8,77 +8,25 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 
 $action = param_str('action', 'list');
-$CATS = array('game' => '游戏类', 'tool' => '工具类', 'literature' => '文学类', 'fanart' => '二创类');
+$CATS = works_cats();
 
 switch ($action) {
 
     /* 榜单列表 */
     case 'list': {
-        $ident0 = require_token();   // 所有接口必须带令牌
+        require_token();             // 所有接口必须带令牌
         $cat   = param_str('category', 'all');
         $board = param_str('board', 'total');
         $q     = trim(param_str('q', ''));
         $page  = max(1, param_int('page', 1));
-        $size  = 20;
-        $off   = ($page - 1) * $size;
+        /* 每页条数按调用方给的来（此前硬编码 20，与前端 12 不一致，
+           导致第二页起的名次整体错位）；与榜单查询共享同一段逻辑与缓存。 */
+        $size  = max(1, min(50, param_int('size', 20)));
 
-        $where = array('is_hidden = 0');
-        $args  = array();
-        if (isset($CATS[$cat])) { $where[] = 'category = ?'; $args[] = $cat; }
-        if ($q !== '') {
-            $where[] = '(title LIKE ? OR author_name LIKE ?)';
-            $args[] = '%' . $q . '%';
-            $args[] = '%' . $q . '%';
-        }
-        $w = implode(' AND ', $where);
-
-        /* 排序键优先取物化列（peak_score / vote_count），可走索引。
-           物化列是迁移新增的，若尚未就绪就退回子查询——慢一些，但不能因此 500。 */
-        $peakKey = col_ok('works', 'peak_score')
-            ? 'w.peak_score'
-            : (table_exists('work_score_history')
-                ? '(SELECT COALESCE(MAX(h.total_score),0) FROM work_score_history h WHERE h.work_id = w.id)'
-                : 'w.total_score');
-        $voteKey = col_ok('works', 'vote_count')
-            ? 'w.vote_count'
-            : (table_exists('work_votes')
-                ? '(SELECT COUNT(*) FROM work_votes v WHERE v.work_id = w.id)'
-                : 'w.total_score');
-
-        if ($board === 'gods') {
-            $sql = "SELECT w.* FROM works w WHERE $w ORDER BY $peakKey DESC, w.total_score DESC LIMIT $size OFFSET $off";
-        } elseif ($board === 'vote') {
-            $sql = "SELECT w.* FROM works w WHERE $w ORDER BY $voteKey DESC, w.total_score DESC LIMIT $size OFFSET $off";
-        } elseif ($board === 'cold') {
-            // 冷门榜：热度低但整体不低（沧海遗珠）
-            $sql = "SELECT w.* FROM works w WHERE $w
-                    ORDER BY w.heat_score ASC, w.total_score DESC
-                    LIMIT $size OFFSET $off";
-        } else {
-            $sql = "SELECT w.* FROM works w WHERE $w ORDER BY w.total_score DESC, w.updated_at DESC LIMIT $size OFFSET $off";
-        }
         $ident = current_identity();
         $uid = $ident && $ident['role'] === 'admin' ? admin_uid() : (int)(isset($ident['uid']) ? $ident['uid'] : 0);
 
-        /* 游客结果可复用：45 秒缓存（登录用户含个性化点赞态，不缓存） */
-        $cacheKey = 'wlist' . md5(implode('|', array($cat, $board, $q, (string)$page)));
-        if ($uid === 0) {
-            $hit = cache_get($cacheKey, 45);
-            if ($hit !== null) { ok($hit); }
-        }
-
-        $rows = db_all($sql, $args);
-        $total = (int)db_val("SELECT COUNT(*) FROM works WHERE $w", $args);
-        $out = array(
-            'items' => array_map(function ($r) use ($CATS, $uid) { return work_public($r, $CATS, $uid); }, $rows),
-            'page'  => $page,
-            'size'  => $size,
-            'total' => $total,
-            'total_pages' => (int)ceil($total / $size),
-            'has_more' => ($off + count($rows)) < $total,
-        );
-        if ($uid === 0) { cache_set($cacheKey, $out, 45); }
-        ok($out);
+        ok(works_list_page($cat, $board, $q, $page, $size, $uid, true));
         break;
     }
 
@@ -155,40 +103,4 @@ switch ($action) {
         fail(400, '未知操作');
 }
 
-/* ---------- 输出整形 ---------- */
-function work_public(array $r, array $CATS, int $uid): array
-{
-    $score = json_decode((string)$r['score'], true);
-    $voted = false;
-    if ($uid > 0) {
-        $voted = (bool)db_val('SELECT 1 FROM work_votes WHERE work_id = ? AND user_id = ? LIMIT 1', array((int)$r['id'], $uid));
-    }
-    $peak = isset($r['peak_score']) ? (int)$r['peak_score'] : (int)$r['total_score'];
-    $imgs = json_decode((string)(isset($r['images']) ? $r['images'] : ''), true);
-    $cover = '';
-    if (is_array($imgs) && !empty($imgs)) { $cover = img_src((string)$imgs[0]); }
-    return array(
-        'id'         => (int)$r['id'],
-        'title'      => (string)$r['title'],
-        'author'     => (string)$r['author_name'],
-        'avatar'     => identicon_data_uri((string)$r['author_name'], 48),
-        'category'   => (string)$r['category'],
-        'category_name' => isset($CATS[$r['category']]) ? $CATS[$r['category']] : '游戏类',
-        'total'      => (int)$r['total_score'],
-        'peak'       => $peak,
-        'rating'     => (string)$r['rating'],
-        'heat'       => (int)$r['heat_score'],
-        'like'       => (int)$r['like_num'],
-        'comment'    => (int)$r['comment_num'],
-        'collect'    => (int)$r['collect_num'],
-        'votes'      => isset($r['vote_count']) ? (int)$r['vote_count'] : null,
-        'voted'      => $voted,
-        'link'       => work_link($r),
-        'share'      => isset($r['share_link']) ? (string)$r['share_link'] : '',
-        'cover'      => $cover,
-        'intro'      => isset($r['intro']) ? trim((string)$r['intro']) : '',
-        'source_id'  => isset($r['community_id']) ? (string)$r['community_id'] : '',
-        'has_html'   => isset($r['has_html']) ? (int)$r['has_html'] === 1 : false,
-        'updated_at' => to_local((string)$r['updated_at']),
-    );
-}
+/* 输出整形 work_public() 已迁至 app/works_list.php —— 与首屏载荷共用同一份 */

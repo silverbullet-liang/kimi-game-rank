@@ -372,15 +372,35 @@ function prompt_(title, text, confirmLabel = '确定') {
  * 1) 取 CSRF → 2) 有 token 则 verify，失败则落游客 → 3) 无 token 申请游客令牌
  * ============================================================ */
 async function boot() {
+  const t = getToken();
+  if (t) { setToken(t); }
+
+  /* 启动载荷：一次请求拿回 csrf、登录态（无令牌则顺带下发游客令牌）、
+     站内公告、分类计数，以及（榜单页）首屏第一页。
+     此前这些要串行走四个请求，而每次请求后端都要重新引导一遍 —— 首屏慢的主因。 */
+  const want = window.__firstPayload || null;
+  try {
+    const q = { first: want ? 1 : 0 };
+    if (want) { q.category = want.category; q.board = want.board; q.size = want.size; }
+    const d = await api('start.php', 'app', q, { silent: true, tries: 2 });
+    if (d && d.token) { setToken(d.token); }
+    applyIdentity(d);
+    state.announce = (d && d.announce !== undefined) ? String(d.announce || '') : '';
+    state.categories = (d && d.categories) ? d.categories : {};
+    state.firstPage = (d && d.first) ? d.first : null;
+    state.booted = true;
+    return state;
+  } catch (e) {
+    /* 落回旧流程：任何情况下都要能进站 */
+  }
+
   // CSRF（会话级）
   try {
     const d = await fetch('api/auth.php?action=csrf', { credentials: 'same-origin' }).then(r => r.json());
     if (d && d.data && d.data.csrf) state.csrf = d.data.csrf;
   } catch (e) {}
 
-  const t = getToken();
   if (t) {
-    setToken(t);
     try {
       const d = await api('auth.php', 'verify');
       applyIdentity(d);
@@ -893,6 +913,7 @@ const BOARDS = [
   { k: 'cold', name: '冷门榜' },
 ];
 const AI_SUM_FOLD = 240;      // AI 总结折叠阈值（纯文本字数）
+const PAGE_SIZE = 12;  // 小分页：首屏更快，一次别拉太多（服务端按此值返回）
 
 async function renderRank(container, ctx) {
   const params = (ctx && ctx.params) || {};
@@ -904,7 +925,6 @@ async function renderRank(container, ctx) {
   let done = false;
   let totalCount = 0;
   let shownCount = 0;
-  const PAGE_SIZE = 12;          // 小分页：首屏更快，避免一次拉太多
 
   /* 搜索页顶部的 AI 总结：仅在有关键词、且用户没关掉时出现 */
   const showAi = q !== '' && searchAiOn();
@@ -955,7 +975,16 @@ async function renderRank(container, ctx) {
     loading = true;
     if (reset) list.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
     try {
-      const d = await api('works.php', 'list', { category: cat, board: board, q: q, page: page, size: PAGE_SIZE });
+      let d = null;
+      /* 首屏：启动载荷已把「同参数的第一页」带回来了，直接用，省掉一次往返 */
+      if (reset && q === '' && state.firstPage
+          && state.firstPage.cat === cat && state.firstPage.board === board) {
+        d = state.firstPage;
+        state.firstPage = null;
+      }
+      if (!d) {
+        d = await api('works.php', 'list', { category: cat, board: board, q: q, page: page, size: PAGE_SIZE });
+      }
       if (reset) { list.innerHTML = ''; shownCount = 0; }
       const items = d.items || [];
       totalCount = Number(d.total || 0);
@@ -975,13 +1004,22 @@ async function renderRank(container, ctx) {
     }
   }
 
-  // 分类计数
-  try {
-    const d = await api('site.php', 'bootstrap');
+  /* 分类计数：启动载荷已经带回（服务端 60 秒缓存），直接落屏，不再为首屏多打一个请求。
+     万一落到旧后端（没带计数），再补一次查询。 */
+  function paintCounts(cats) {
     let total = 0;
-    Object.keys(d.categories || {}).forEach(k => { total += d.categories[k]; const el = container.querySelector(`[data-cnt="${k}"]`); if (el) el.textContent = d.categories[k]; });
-    const all = container.querySelector('#cntAll'); if (all) all.textContent = total;
-  } catch (e) {}
+    Object.keys(cats || {}).forEach(k => {
+      total += Number(cats[k]) || 0;
+      const el = container.querySelector(`[data-cnt="${k}"]`);
+      if (el) { el.textContent = cats[k]; }
+    });
+    const all = container.querySelector('#cntAll');
+    if (all) { all.textContent = total; }
+  }
+  paintCounts(state.categories);
+  if (!state.categories || !Object.keys(state.categories).length) {
+    api('site.php', 'bootstrap', null, { silent: true }).then(d => paintCounts(d && d.categories)).catch(() => {});
+  }
 
   container.querySelector('#boardSeg').addEventListener('click', e => {
     const b = e.target.closest('[data-b]'); if (!b) return;
@@ -5221,14 +5259,15 @@ function bindEvents() {
 /* ============================================================
  * 公告
  * ============================================================ */
-async function loadAnnounce() {
+/* 公告已由服务端渲染进页面；启动载荷若带回更新的内容就就地更新。
+   这里不再单独发请求 —— 它原本排在首屏关键路径上，白白多一个往返。 */
+function applyAnnounce() {
   try {
-    const d = await api('site.php', 'announce', null, { silent: true });
+    if (state.announce === undefined || state.announce === null) { return; }
     const bar = document.getElementById('announceBar');
     const txt = document.getElementById('announceText');
     if (!bar || !txt) { return; }
-    // 后端有值则以最新为准；否则保留服务端已渲染的内容；两者皆空才隐藏
-    const content = (d && d.announce) ? String(d.announce) : txt.textContent.trim();
+    const content = String(state.announce || '').trim() || txt.textContent.trim();
     if (content) { txt.textContent = content; bar.hidden = false; }
     else { bar.hidden = true; }
   } catch (e) {}
@@ -5392,6 +5431,16 @@ async function main() {
     setTimeout(() => { if (typeof window.__reRenderCurrent === 'function') { window.__reRenderCurrent(); } }, 200);
   });
 
+  /* 首屏参数：榜单页让启动载荷直接把第一页带回来，省掉一次往返 */
+  const firstRoute = parseHash();
+  if (firstRoute.name === 'rank') {
+    window.__firstPayload = {
+      category: firstRoute.params.category || 'all',
+      board: firstRoute.params.board || 'total',
+      size: RANK_PAGE_SIZE,
+    };
+  }
+
   await boot();
   applyTheme();
   /* 返回动画开关（本机偏好，默认开启） */
@@ -5415,7 +5464,7 @@ async function main() {
   } catch (e) {}
   bindEvents();
   renderDrawer();
-  await loadAnnounce();
+  applyAnnounce();
   /* 首屏地址规范化：hash / 裸参数统一改为 ?p= 形式；无参数默认「我的」。
      敏感界面不接受通过地址直达（站内入口仍可正常进入）。 */
   const initial = readRoute();

@@ -51,30 +51,7 @@ switch ($action) {
     case 'verify':
         $id = current_identity();
         if ($id === null) { fail(401, '登录态已失效'); }
-        $data = array('role' => $id['role'], 'uid' => (int)$id['uid']);
-        if ($id['role'] === 'user' || $id['role'] === 'subadmin') {
-            /* 普通用户与副管理员都有真实用户行：同等待遇（含 CSRF，可发言） */
-            $u = current_user_row();
-            if ($u === null) { fail(401, '账号不可用'); }
-            $st = user_settings($u);
-            $data['username'] = (string)$u['username'];
-            $data['avatar'] = identicon_data_uri((string)$u['username'], 80);
-            $data['settings'] = $st;
-            $data['csrf'] = csrf_token();
-            $data['uid8'] = uid_of_user($u, subadmin_seq_of((int)$u['id']));
-            if ($id['role'] === 'subadmin') { $data['is_admin'] = true; $data['subadmin'] = true; }
-        } elseif ($id['role'] === 'admin') {
-            $data['username'] = 'admin';
-            $data['avatar'] = identicon_data_uri('admin', 80);
-            $data['is_admin'] = true;
-            $data['csrf'] = csrf_token();
-            $au = current_user_row();
-            $data['uid8'] = $au !== null ? uid_of_user($au, 0) : UID_ADMIN;
-        } else {
-            $data['username'] = '游客';
-            $data['avatar'] = identicon_data_uri('guest', 80);
-        }
-        ok($data);
+        ok(identity_payload($id));
         break;
 
     default:

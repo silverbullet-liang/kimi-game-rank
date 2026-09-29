@@ -19,6 +19,7 @@ const BOARDS = [
   { k: 'cold', name: '冷门榜' },
 ];
 const AI_SUM_FOLD = 240;      // AI 总结折叠阈值（纯文本字数）
+export const PAGE_SIZE = 12;  // 小分页：首屏更快，一次别拉太多（服务端按此值返回）
 
 export async function renderRank(container, ctx) {
   const params = (ctx && ctx.params) || {};
@@ -30,7 +31,6 @@ export async function renderRank(container, ctx) {
   let done = false;
   let totalCount = 0;
   let shownCount = 0;
-  const PAGE_SIZE = 12;          // 小分页：首屏更快，避免一次拉太多
 
   /* 搜索页顶部的 AI 总结：仅在有关键词、且用户没关掉时出现 */
   const showAi = q !== '' && searchAiOn();
@@ -81,7 +81,16 @@ export async function renderRank(container, ctx) {
     loading = true;
     if (reset) list.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
     try {
-      const d = await api('works.php', 'list', { category: cat, board: board, q: q, page: page, size: PAGE_SIZE });
+      let d = null;
+      /* 首屏：启动载荷已把「同参数的第一页」带回来了，直接用，省掉一次往返 */
+      if (reset && q === '' && state.firstPage
+          && state.firstPage.cat === cat && state.firstPage.board === board) {
+        d = state.firstPage;
+        state.firstPage = null;
+      }
+      if (!d) {
+        d = await api('works.php', 'list', { category: cat, board: board, q: q, page: page, size: PAGE_SIZE });
+      }
       if (reset) { list.innerHTML = ''; shownCount = 0; }
       const items = d.items || [];
       totalCount = Number(d.total || 0);
@@ -101,13 +110,22 @@ export async function renderRank(container, ctx) {
     }
   }
 
-  // 分类计数
-  try {
-    const d = await api('site.php', 'bootstrap');
+  /* 分类计数：启动载荷已经带回（服务端 60 秒缓存），直接落屏，不再为首屏多打一个请求。
+     万一落到旧后端（没带计数），再补一次查询。 */
+  function paintCounts(cats) {
     let total = 0;
-    Object.keys(d.categories || {}).forEach(k => { total += d.categories[k]; const el = container.querySelector(`[data-cnt="${k}"]`); if (el) el.textContent = d.categories[k]; });
-    const all = container.querySelector('#cntAll'); if (all) all.textContent = total;
-  } catch (e) {}
+    Object.keys(cats || {}).forEach(k => {
+      total += Number(cats[k]) || 0;
+      const el = container.querySelector(`[data-cnt="${k}"]`);
+      if (el) { el.textContent = cats[k]; }
+    });
+    const all = container.querySelector('#cntAll');
+    if (all) { all.textContent = total; }
+  }
+  paintCounts(state.categories);
+  if (!state.categories || !Object.keys(state.categories).length) {
+    api('site.php', 'bootstrap', null, { silent: true }).then(d => paintCounts(d && d.categories)).catch(() => {});
+  }
 
   container.querySelector('#boardSeg').addEventListener('click', e => {
     const b = e.target.closest('[data-b]'); if (!b) return;
