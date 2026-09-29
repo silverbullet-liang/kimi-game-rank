@@ -5437,7 +5437,7 @@ async function main() {
     window.__firstPayload = {
       category: firstRoute.params.category || 'all',
       board: firstRoute.params.board || 'total',
-      size: RANK_PAGE_SIZE,
+      size: PAGE_SIZE,
     };
   }
 

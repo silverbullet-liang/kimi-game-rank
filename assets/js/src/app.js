@@ -6,7 +6,7 @@ import { applyTheme, saveTheme, initSystemWatcher, ACCENTS } from './theme.js';
 import { setNavigate } from './router.js';
 import { cacheGet, cacheSet, cacheTouch, cachePrev, runTransition, enablePredictiveBack, setNavAnim } from './transitions.js';
 
-import { renderRank, PAGE_SIZE as RANK_PAGE_SIZE } from './pages/rank.js';
+import { renderRank, PAGE_SIZE } from './pages/rank.js';
 import { renderDetail } from './pages/detail.js';
 import { renderLobby } from './pages/lobby.js';
 import { renderMine } from './pages/mine.js';
@@ -548,7 +548,7 @@ async function main() {
     window.__firstPayload = {
       category: firstRoute.params.category || 'all',
       board: firstRoute.params.board || 'total',
-      size: RANK_PAGE_SIZE,
+      size: PAGE_SIZE,
     };
   }
 

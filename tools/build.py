@@ -46,6 +46,18 @@ def strip_multiline_imports(src):
 
 def check_sources():
     """构建前静态校验：跨文件/同文件重名会互相覆盖，必须拦下"""
+    # 合并器是「整行剥离 import」，因此 `import { A as B }` 的别名会被静默丢弃，
+    # 合并产物里只剩对 B 的使用、没有定义 → 线上 ReferenceError，页面脚本失效。
+    # 这类错误语法检查与重名检查都拦不住，必须在这里显式拦下。
+    for fn in ORDER:
+        p = os.path.join(SRC, fn)
+        if not os.path.isfile(p):
+            continue
+        with open(p, encoding='utf-8') as f:
+            for i, line in enumerate(f, 1):
+                if re.match(r'^\s*import\s', line) and re.search(r'\bas\b', line):
+                    raise SystemExit('构建中止：%s 第 %d 行使用了 import 别名（合并器不支持，会静默丢弃）：%s'
+                                     % (fn, i, line.strip()))
     r = subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'jscheck.py')],
                        capture_output=True, text=True)
     out = (r.stdout or '').strip()
