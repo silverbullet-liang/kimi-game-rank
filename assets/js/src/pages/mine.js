@@ -3,7 +3,7 @@
  */
 import { api, state, esc, toast, dialog, setToken, askNotifyPermission, userName, isAdminish, getPrefs, setPrefs } from '../core.js';
 import { navigate } from '../router.js';
-import { saveTheme, ACCENTS, SKINS, hexToHsl } from '../theme.js';
+import { saveTheme, ACCENTS, SKINS, hexToHsl, festivalInWindow } from '../theme.js';
 import { setNavAnim } from '../transitions.js';
 
 /** 配额上限展示（数据缺失时返回空串，不显示占位符） */
@@ -298,6 +298,12 @@ function mountBlockList(box, isGuest) {
   box.querySelector('#bwClear').addEventListener('click', () => { ta.value = ''; save(''); });
 }
 
+/** 外观设置里展示的皮肤：国庆专版仅在窗口期内出现，且排在最前 */
+function skinKeys() {
+  const keys = Object.keys(SKINS).filter(k => k !== 'festival');
+  return festivalInWindow() ? ['festival'].concat(keys) : keys;
+}
+
 function mountAppearance(box) {
   if (!box) return;
   const theme = state.settings.theme || 'light';
@@ -316,7 +322,7 @@ function mountAppearance(box) {
     <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px">
       <span>设计风格</span>
       <div class="skin-row" id="skinRow">
-        ${Object.keys(SKINS).map(k => `<button class="skin-card ${skin === k ? 'on' : ''}" data-s="${k}">
+        ${skinKeys().map(k => `<button class="skin-card ${skin === k ? 'on' : ''}" data-s="${k}">
           <span class="skin-prev p-${k}" aria-hidden="true"></span>
           <b>${esc(SKINS[k].name)}</b>
           <span class="tiny">${esc(SKINS[k].desc)}</span>
@@ -363,7 +369,17 @@ function mountAppearance(box) {
       const sk = b.dataset.s;
       if (!SKINS[sk]) { return; }
 
-      /* 每种风格是一份独立 CSS 文件，由服务端按 cookie 选择加载，
+      /* 国庆专版是限时皮肤，不写 kimgr_skin（服务端白名单里没有它）：
+         选中它 = 清除「退出标记」；选其它皮肤 = 记为主动退出，窗口期内不再自动启用。 */
+      if (sk === 'festival') {
+        try { document.cookie = 'kimgr_skin_optout=; path=/; max-age=0'; } catch (e) {}
+        toast('正在切换到「' + SKINS[sk].name + '」…');
+        setTimeout(() => location.reload(), 260);
+        return;
+      }
+      try { document.cookie = 'kimgr_skin_optout=1; path=/; max-age=31536000; SameSite=Lax'; } catch (e) {}
+
+      /* 每种风格是一份独立 CSS 文件，由内联脚本按 cookie 选择加载，
          因此切换动作 = 写 cookie（+ 同步账号偏好）→ 刷新页面。 */
       setSkinCookie(sk);
       setPrefs(Object.assign({}, getPrefs(), { skin: sk }));

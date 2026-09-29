@@ -69,10 +69,32 @@ if ($announceText === '') {
    省掉一次跨洋往返与渲染阻塞；皮肤文件同理。动态 HTML 本身不缓存，内联不损失缓存收益。 */
 ?>
 <style><?php readfile(__DIR__ . '/assets/css/app.css'); ?></style>
-<?php $__skinCss = __DIR__ . '/assets/css/skins/' . $SKIN . '.css';
-if ($SKIN !== 'glass' && is_file($__skinCss)): /* 液态玻璃即 app.css 默认样式，无需额外皮肤文件 */ ?>
-<style><?php readfile($__skinCss); ?></style>
-<?php endif; ?>
+<?php
+/* 皮肤：国庆专版由前端按北京时间判断（9/30–10/8）自动启用，窗口结束自动回退到用户所选皮肤。
+   这里输出一段同步脚本而非直接内联皮肤文件 —— 它在 head 解析期同步决定并写入 <link>，
+   不会出现样式闪动；窗口外不产生任何额外请求。 */
+?>
+<script>
+(function () {
+  var V = <?= json_encode(APP_VERSION) ?>;
+  var skin = <?= json_encode($SKIN) ?>;          /* 服务端已按白名单校验过 */
+  /* 北京时间（UTC+8），与访问者本机时区无关 */
+  var t = new Date(Date.now() + (new Date().getTimezoneOffset() + 480) * 60000);
+  var m = t.getMonth() + 1, d = t.getDate();
+  var inWindow = (m === 9 && d === 30) || (m === 10 && d <= 8);
+  /* 用户在窗口内主动切走过皮肤 = 不参与国庆专版，尊重其选择 */
+  var optout = /(?:^|;\s*)kimgr_skin_optout=1/.test(document.cookie);
+  var on = inWindow && !optout;
+
+  document.documentElement.dataset.skin = on ? 'festival' : skin;
+  if (on) { document.documentElement.setAttribute('data-festival', '1'); }
+
+  var file = on ? 'festival' : skin;             /* 液态玻璃 = app.css 默认样式，无需额外文件 */
+  if (file !== 'glass') {
+    document.write('<link rel="stylesheet" href="assets/css/skins/' + file + '.css?v=' + V + '">');
+  }
+})();
+</script>
 <?php
 /* 自定义字体不参与首屏关键路径：首屏先用系统字体渲染（@font-face 本就是 swap 语义），
    浏览器空闲后再注入字体表，避免十几个字体分片抢占首屏连接。禁用 JS 时回退为同步加载。 */
@@ -121,6 +143,18 @@ if ($SKIN !== 'glass' && is_file($__skinCss)): /* 液态玻璃即 app.css 默认
 </script>
 </head>
 <body>
+
+<!-- 国庆专版装饰层（仅国庆皮肤下可见；pointer-events:none，不拦任何交互） -->
+<div class="festival-deco" aria-hidden="true">
+  <span class="fd-lantern fd-lantern--l"><i></i></span>
+  <span class="fd-lantern fd-lantern--r"><i></i></span>
+  <span class="fd-star fd-star--1"></span>
+  <span class="fd-star fd-star--2"></span>
+  <span class="fd-star fd-star--3"></span>
+  <span class="fd-star fd-star--4"></span>
+  <span class="fd-star fd-star--5"></span>
+  <span class="fd-star fd-star--6"></span>
+</div>
 
 <!-- 全局加载条（API 请求自动显隐） -->
 <div id="globalBar" aria-hidden="true"></div>

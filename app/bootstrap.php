@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '2.23.1');
+define('APP_VERSION', '3.0.0');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);

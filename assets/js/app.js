@@ -569,12 +569,27 @@ function mdToHtml(md, inlineExtra) {
 
 /** 设计风格：只改变「结构语言」（圆角/边框/阴影/背景/字体），主题色仍由下方 ACCENTS 控制 */
 const SKINS = {
+  festival: { name: '国庆专版', desc: '盛世红金 · 限时呈现' },
   glass:  { name: '液态玻璃', desc: '磨砂通透' },
   md3:    { name: 'MD3 材质', desc: 'Material You · 色面层级' },
   pixel:  { name: '像素风',   desc: '8-bit 点阵字 · 台阶角' },
   sketch: { name: '手绘风',   desc: '纸纹 · 手绘标题' },
   brutal: { name: '新粗野',   desc: '黑框 · 硬阴影 · 撞色' },
 };
+
+/* ---------- 国庆专版（限时皮肤） ----------
+ * 窗口：北京时间 9/30 00:00 – 10/8 23:59，与 index.php 的同步脚本同一套判断。
+ * 用户在窗口内主动切走皮肤 = 不参与（写 kimgr_skin_optout），此后尊重其选择。 */
+function festivalInWindow() {
+  const t = new Date(Date.now() + (new Date().getTimezoneOffset() + 480) * 60000);
+  const m = t.getMonth() + 1, d = t.getDate();
+  return (m === 9 && d === 30) || (m === 10 && d <= 8);
+}
+
+function festivalActive() {
+  if (!festivalInWindow()) { return false; }
+  try { return !/(?:^|;\s*)kimgr_skin_optout=1/.test(document.cookie); } catch (e) { return true; }
+}
 
 const ACCENTS = {
   // 蓝紫色：以紫为主、偏蓝调
@@ -2689,6 +2704,12 @@ function mountBlockList(box, isGuest) {
   box.querySelector('#bwClear').addEventListener('click', () => { ta.value = ''; save(''); });
 }
 
+/** 外观设置里展示的皮肤：国庆专版仅在窗口期内出现，且排在最前 */
+function skinKeys() {
+  const keys = Object.keys(SKINS).filter(k => k !== 'festival');
+  return festivalInWindow() ? ['festival'].concat(keys) : keys;
+}
+
 function mountAppearance(box) {
   if (!box) return;
   const theme = state.settings.theme || 'light';
@@ -2707,7 +2728,7 @@ function mountAppearance(box) {
     <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px">
       <span>设计风格</span>
       <div class="skin-row" id="skinRow">
-        ${Object.keys(SKINS).map(k => `<button class="skin-card ${skin === k ? 'on' : ''}" data-s="${k}">
+        ${skinKeys().map(k => `<button class="skin-card ${skin === k ? 'on' : ''}" data-s="${k}">
           <span class="skin-prev p-${k}" aria-hidden="true"></span>
           <b>${esc(SKINS[k].name)}</b>
           <span class="tiny">${esc(SKINS[k].desc)}</span>
@@ -2754,7 +2775,17 @@ function mountAppearance(box) {
       const sk = b.dataset.s;
       if (!SKINS[sk]) { return; }
 
-      /* 每种风格是一份独立 CSS 文件，由服务端按 cookie 选择加载，
+      /* 国庆专版是限时皮肤，不写 kimgr_skin（服务端白名单里没有它）：
+         选中它 = 清除「退出标记」；选其它皮肤 = 记为主动退出，窗口期内不再自动启用。 */
+      if (sk === 'festival') {
+        try { document.cookie = 'kimgr_skin_optout=; path=/; max-age=0'; } catch (e) {}
+        toast('正在切换到「' + SKINS[sk].name + '」…');
+        setTimeout(() => location.reload(), 260);
+        return;
+      }
+      try { document.cookie = 'kimgr_skin_optout=1; path=/; max-age=31536000; SameSite=Lax'; } catch (e) {}
+
+      /* 每种风格是一份独立 CSS 文件，由内联脚本按 cookie 选择加载，
          因此切换动作 = 写 cookie（+ 同步账号偏好）→ 刷新页面。 */
       setSkinCookie(sk);
       setPrefs(Object.assign({}, getPrefs(), { skin: sk }));

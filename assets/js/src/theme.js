@@ -6,12 +6,27 @@ import { state, getPrefs, setPrefs, api } from './core.js';
 
 /** 设计风格：只改变「结构语言」（圆角/边框/阴影/背景/字体），主题色仍由下方 ACCENTS 控制 */
 export const SKINS = {
+  festival: { name: '国庆专版', desc: '盛世红金 · 限时呈现' },
   glass:  { name: '液态玻璃', desc: '磨砂通透' },
   md3:    { name: 'MD3 材质', desc: 'Material You · 色面层级' },
   pixel:  { name: '像素风',   desc: '8-bit 点阵字 · 台阶角' },
   sketch: { name: '手绘风',   desc: '纸纹 · 手绘标题' },
   brutal: { name: '新粗野',   desc: '黑框 · 硬阴影 · 撞色' },
 };
+
+/* ---------- 国庆专版（限时皮肤） ----------
+ * 窗口：北京时间 9/30 00:00 – 10/8 23:59，与 index.php 的同步脚本同一套判断。
+ * 用户在窗口内主动切走皮肤 = 不参与（写 kimgr_skin_optout），此后尊重其选择。 */
+export function festivalInWindow() {
+  const t = new Date(Date.now() + (new Date().getTimezoneOffset() + 480) * 60000);
+  const m = t.getMonth() + 1, d = t.getDate();
+  return (m === 9 && d === 30) || (m === 10 && d <= 8);
+}
+
+export function festivalActive() {
+  if (!festivalInWindow()) { return false; }
+  try { return !/(?:^|;\s*)kimgr_skin_optout=1/.test(document.cookie); } catch (e) { return true; }
+}
 
 export const ACCENTS = {
   // 蓝紫色：以紫为主、偏蓝调
