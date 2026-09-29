@@ -5,6 +5,8 @@
 用法：python3 tools/zip.py  →  生成上级目录 kimi-game-rank.zip
 
 交付包里只放「线上运行需要的东西」：
+  · config/config.php 与 config/api_keys.php **随包分发**（完整替换部署需要），
+    但打包前会做一次体检：命中本地测试配置特征（localhost / 测试标记）则拒绝打包；
   · 构建脚本、设计文档、独立展示页、仓库配置（.github）都不进包；
   · 仓库文档（README / CHANGELOG / 贡献指南 / 行为准则 / 安全政策）与安装、诊断脚本
     只留在 GitHub —— 交付包与开源仓库保持完全分开；
@@ -56,6 +58,28 @@ SKELETON = ('.gitkeep', '.htaccess')
 
 RE_STORAGE = re.compile('^' + re.escape(PROJ) + r'/storage/(.+)$')
 
+# 配置体检：以下特征只可能出现在本地测试配置里。
+# 事故背景：本地 config.php 曾被测试脚本改成 host=localhost，而打包脚本照单全收，
+# 结果这份「连本机 socket」的配置被部署到线上，站点直接报 [2002] 连不上库。
+CONFIG_SUSPECTS = (
+    '端到端测试用配置',
+    "'host' => 'localhost'",
+    '"host" => "localhost"',
+    "'name' => 'kimi',",
+)
+
+
+def guard_config():
+    """config.php 随包分发（部署即用），但绝不允许把「本地测试配置」带进包。"""
+    p = os.path.join(ROOT, 'config', 'config.php')
+    if not os.path.isfile(p):
+        raise SystemExit('打包中止：缺少 config/config.php')
+    with open(p, encoding='utf-8', errors='ignore') as f:
+        s = f.read()
+    for bad in CONFIG_SUSPECTS:
+        if bad in s:
+            raise SystemExit('打包中止：config/config.php 疑似本地测试配置（命中 %r），拒绝打包。' % bad)
+
 
 def is_runtime_artifact(arc):
     """storage 下的运行期产物（锁、日志、缓存、时间戳…）不进包，只留骨架。"""
@@ -71,6 +95,7 @@ def ztime(ts):
 
 
 def main():
+    guard_config()
     if os.path.exists(OUT):
         os.remove(OUT)
     n = 0
