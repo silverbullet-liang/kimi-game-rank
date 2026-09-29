@@ -1,0 +1,401 @@
+/* ============================================================
+ * 皮肤：国庆专版 · 盛世红金
+ * ------------------------------------------------------------
+ * 限时呈现：北京时间 9/30 00:00 – 10/8 23:59（前端自行判断，过后自动回退）
+ * 主题色：默认中国红 + 鎏金，但**不锁定** —— 用户可在外观设置里自由更换
+ *
+ * 设计意图
+ *   · 庄重优先于热闹：红取深中国红，金取哑金，避免大红大黄的廉价感
+ *   · 纹样只作底衬：回纹 / 祥云以极低存在感铺底，不抢内容
+ *   · 动效克制且有意义：灯摇曳、星缓落、按钮掠光 —— 全部 transform/opacity，
+ *     不吃主线程，且尊重 prefers-reduced-motion
+ *   · 装饰层 pointer-events:none，绝不拦截交互
+ * ============================================================ */
+
+html[data-skin="festival"] {
+  /* ---------- 主题色：仅作「未设置时的默认」，用户在外观设置里的选择照常生效 ---------- */
+  --accent: #C8102E;
+  --accent-2: #E8B923;
+  --accent-ink: #FFF8E6;
+  --toggle-on: #C8102E;
+  --slider-fill: #C8102E;
+
+  /* ---------- 节日令牌 ---------- */
+  --fj-red: #C8102E;
+  --fj-red-deep: #8E0E20;
+  --fj-red-soft: #E8535F;
+  --fj-gold: #E8B923;
+  --fj-gold-soft: #F5DA8C;
+  --fj-gold-deep: #A87B12;
+
+  --bg-1: #FBF0E7;
+  --bg-2: #F4DCD0;
+  --surface: rgba(255, 252, 247, .84);
+  --surface-solid: #FFFBF5;
+  --border: rgba(200, 16, 46, .16);
+  --border-soft: rgba(140, 30, 40, .10);
+  --text: #2A1215;
+  --text-2: #6C3A38;
+  --text-3: #9E7C72;
+
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+  --shadow: 0 10px 30px rgba(142, 14, 32, .13);
+  --shadow-sm: 0 4px 14px rgba(142, 14, 32, .10);
+
+  --tab-active-bg: rgba(200, 16, 46, .10);
+  --tab-active-fg: var(--fj-red);
+  --msg-bg: rgba(255, 252, 247, .96);
+  --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg, #C8102E, #E8B923);
+  --msg-mine-fg: #FFF8E6;
+  --toast-bg: rgba(42, 18, 21, .95);
+  --toast-fg: #FFF3E2;
+  --toast-err-bg: #A5142A;
+
+  --sk-ease: cubic-bezier(.2, .8, .3, 1);
+}
+
+html[data-skin="festival"][data-theme="dark"] {
+  --bg-1: #170A0D;
+  --bg-2: #220D12;
+  --surface: rgba(38, 18, 22, .74);
+  --surface-solid: #221014;
+  --border: rgba(232, 185, 35, .18);
+  --border-soft: rgba(232, 185, 35, .10);
+  --text: #F7E9DF;
+  --text-2: #D4B3A8;
+  --text-3: #9B7A72;
+  --shadow: 0 10px 30px rgba(0, 0, 0, .45);
+  --shadow-sm: 0 4px 14px rgba(0, 0, 0, .35);
+  --tab-active-bg: rgba(232, 185, 35, .14);
+  --tab-active-fg: var(--fj-gold);
+  --msg-bg: rgba(46, 22, 26, .92);
+  --toast-bg: rgba(240, 230, 220, .95);
+  --toast-fg: #2A1215;
+}
+
+/* ---------- 背景：暖色渐变 + 极淡回纹底衬 ---------- */
+html[data-skin="festival"] body {
+  background-color: #FDF1E9;
+  background-image:
+    /* 顶部正红晕：中国红的分量集中在页面上沿，往下迅速收住，保证正文可读 */
+    radial-gradient(150% 56% at 50% -16%, rgba(200, 16, 46, .46), rgba(200, 16, 46, .15) 44%, transparent 70%),
+    /* 底部金晕 */
+    radial-gradient(125% 46% at 50% 112%, rgba(232, 185, 35, .30), transparent 72%),
+    /* 金色微尘 */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='170'%3E%3Cg fill='%23E8B923' fill-opacity='.55'%3E%3Ccircle cx='18' cy='26' r='1.3'/%3E%3Ccircle cx='98' cy='57' r='1'/%3E%3Ccircle cx='146' cy='119' r='1.2'/%3E%3Ccircle cx='52' cy='138' r='1'/%3E%3Ccircle cx='124' cy='12' r='.9'/%3E%3C/g%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%23C8102E' stroke-opacity='.14' stroke-width='1.1'%3E%3Cpath d='M0 28h12a4 4 0 0 0 4-4V12a4 4 0 0 1 4-4h8'/%3E%3Cpath d='M56 28H44a4 4 0 0 1-4-4V12a4 4 0 0 0-4-4h-8'/%3E%3Cpath d='M0 28h12a4 4 0 0 1 4 4v12a4 4 0 0 0 4 4h8'/%3E%3Cpath d='M56 28H44a4 4 0 0 0-4 4v12a4 4 0 0 1-4 4h-8'/%3E%3C/g%3E%3C/svg%3E");
+  background-attachment: fixed, fixed, fixed, scroll;
+}
+
+/* ---------- 顶栏：缀金描边，庄重不喧哗 ---------- */
+html[data-skin="festival"] .topbar {
+  background: linear-gradient(180deg, rgba(200, 16, 46, .96), rgba(142, 14, 32, .96));
+  border-bottom: 1px solid rgba(232, 185, 35, .55);
+  box-shadow: 0 6px 22px rgba(142, 14, 32, .22);
+}
+html[data-skin="festival"] .topbar .ic { fill: #FFEFC8; }
+html[data-skin="festival"] .topbar .brand-name {
+  color: #FFF3D6;
+  font-weight: 700;
+  letter-spacing: .5px;
+}
+html[data-skin="festival"] .topbar .logo {
+  background: linear-gradient(140deg, #E8B923, #F5DA8C);
+  box-shadow: 0 2px 10px rgba(232, 185, 35, .45);
+}
+html[data-skin="festival"] .topbar .logo .ic { fill: #8E0E20; }
+
+/* ---------- 公告：金底红字，一眼可见 ---------- */
+html[data-skin="festival"] .announce {
+  background: linear-gradient(100deg, #F5DA8C, #E8B923);
+  color: #7A0C1B;
+  border-bottom: 1px solid rgba(142, 14, 32, .18);
+  font-weight: 700;
+}
+
+/* ---------- 卡片 / 面板：暖白纸面 + 细金边 + 角饰 ---------- */
+html[data-skin="festival"] .card,
+html[data-skin="festival"] .rank-item,
+html[data-skin="festival"] .stat-box,
+html[data-skin="festival"] .tool-card,
+html[data-skin="festival"] .panel-plain,
+html[data-skin="festival"] .tp-col,
+html[data-skin="festival"] .block-note,
+html[data-skin="festival"] .guest-box,
+html[data-skin="festival"] .tip-card,
+html[data-skin="festival"] .donate-box {
+  position: relative;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, .6);
+}
+html[data-theme="dark"][data-skin="festival"] .card:not(.glass),
+html[data-theme="dark"][data-skin="festival"] .rank-item {
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+/* 左上 / 右下 双角金饰（纯伪元素，不占布局） */
+html[data-skin="festival"] .card::before,
+html[data-skin="festival"] .rank-item::before {
+  content: "";
+  position: absolute;
+  top: 7px; left: 7px;
+  width: 16px; height: 16px;
+  border-top: 2.5px solid var(--fj-gold);
+  border-left: 2.5px solid var(--fj-gold);
+  border-top-left-radius: 6px;
+  opacity: .82;
+  pointer-events: none;
+}
+html[data-skin="festival"] .card::after,
+html[data-skin="festival"] .rank-item::after {
+  content: "";
+  position: absolute;
+  right: 7px; bottom: 7px;
+  width: 14px; height: 14px;
+  border-bottom: 2px solid var(--fj-gold);
+  border-right: 2px solid var(--fj-gold);
+  border-bottom-right-radius: 6px;
+  opacity: .82;
+  pointer-events: none;
+}
+
+/* 标题：金线收尾，替代生硬的纯色下划线 */
+html[data-skin="festival"] .card-title {
+  color: var(--fj-red-deep);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+html[data-theme="dark"][data-skin="festival"] .card-title { color: var(--fj-gold-soft); }
+html[data-skin="festival"] .card-title::after {
+  content: "";
+  display: block;
+  width: 34px; height: 2px;
+  margin-top: 7px;
+  margin-bottom: -9px;
+  background: linear-gradient(90deg, var(--fj-gold), transparent);
+}
+
+/* ---------- 榜单名次：前三名金红徽记 ---------- */
+html[data-skin="festival"] .rank-no {
+  color: var(--text-3);
+}
+html[data-skin="festival"] .rank-item:nth-child(1) .rank-no,
+html[data-skin="festival"] .rank-item:nth-child(2) .rank-no,
+html[data-skin="festival"] .rank-item:nth-child(3) .rank-no {
+  color: #7A0C1B;
+  background: linear-gradient(140deg, #F5DA8C, #E8B923);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(232, 185, 35, .4);
+}
+
+/* ---------- 按钮：红金主按钮 + 掠光；次级按钮金边 ---------- */
+html[data-skin="festival"] .btn {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #C8102E, #A5142A);
+  color: #FFF3D6;
+  border: 1px solid rgba(232, 185, 35, .72);
+  box-shadow: 0 3px 12px rgba(142, 14, 32, .28), inset 0 1px 0 rgba(255, 255, 255, .18);
+  font-weight: 700;
+  letter-spacing: .3px;
+  transition: transform .16s var(--sk-ease), box-shadow .16s var(--sk-ease);
+}
+html[data-skin="festival"] .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(142, 14, 32, .34), inset 0 1px 0 rgba(255, 255, 255, .24);
+}
+html[data-skin="festival"] .btn:active { transform: translateY(0); }
+/* 掠光：一条斜向高光周期性扫过（transform 驱动，不触发重排） */
+html[data-skin="festival"] .btn::after {
+  content: "";
+  position: absolute;
+  top: -60%; bottom: -60%; left: -30%;
+  width: 34%;
+  background: linear-gradient(100deg, transparent, rgba(255, 245, 210, .55), transparent);
+  transform: translateX(-220%) skewX(-18deg);
+  pointer-events: none;
+  animation: fj-sheen 5.2s var(--sk-ease) infinite;
+}
+html[data-skin="festival"] .btn-ghost,
+html[data-skin="festival"] .pager button,
+html[data-skin="festival"] .back-btn,
+html[data-skin="festival"] .fold-toggle,
+html[data-skin="festival"] .chip {
+  background: var(--surface-solid);
+  color: var(--fj-red-deep);
+  border: 1px solid rgba(200, 16, 46, .28);
+  font-weight: 600;
+}
+html[data-theme="dark"][data-skin="festival"] .btn-ghost,
+html[data-theme="dark"][data-skin="festival"] .pager button,
+html[data-theme="dark"][data-skin="festival"] .chip { color: var(--fj-gold-soft); }
+html[data-skin="festival"] .icon-btn {
+  border: 1px solid rgba(232, 185, 35, .5);
+  background: rgba(255, 255, 255, .10);
+}
+html[data-skin="festival"] .topbar .icon-btn { border-color: rgba(255, 238, 200, .42); }
+html[data-skin="festival"] .icon-btn .ic { fill: var(--fj-red); }
+html[data-skin="festival"] .topbar .icon-btn .ic { fill: #FFEFC8; }
+
+/* ---------- 底栏：选中态金底 ---------- */
+html[data-skin="festival"] .tabbar {
+  border-top: 1px solid rgba(232, 185, 35, .42);
+  box-shadow: 0 -6px 22px rgba(142, 14, 32, .10);
+}
+html[data-skin="festival"] .tab.on { color: var(--fj-red); }
+html[data-skin="festival"] .tab.on .ic { fill: var(--fj-red); }
+html[data-skin="festival"] .tab.on::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 50%;
+  width: 26px; height: 2px;
+  margin-left: -13px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--fj-gold), var(--fj-gold-soft), var(--fj-gold));
+}
+
+/* ---------- 骨架屏：暖色，避免冷灰破坏气氛 ---------- */
+html[data-skin="festival"] .skeleton {
+  background: linear-gradient(100deg, rgba(200, 16, 46, .06), rgba(232, 185, 35, .12), rgba(200, 16, 46, .06));
+  background-size: 220% 100%;
+}
+
+/* ---------- 输入 / 对话框 / 抽屉 ---------- */
+html[data-skin="festival"] .search-panel,
+html[data-skin="festival"] .dialog,
+html[data-skin="festival"] .drawer {
+  border: 1px solid var(--border);
+}
+html[data-skin="festival"] .dialog { box-shadow: 0 18px 50px rgba(142, 14, 32, .22); }
+
+/* ============================================================
+ * 装饰层：灯笼 ×2 + 缓落星点
+ * 常驻 DOM，仅在本皮肤下显示；pointer-events:none 不拦交互
+ * ============================================================ */
+.festival-deco { display: none; }
+
+html[data-skin="festival"] .festival-deco {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* 灯笼：顶部悬挂，极缓摇曳 */
+html[data-skin="festival"] .fd-lantern {
+  position: absolute;
+  top: 2px;
+  width: 72px; height: 94px;
+  transform-origin: 50% -20px;
+  animation: fj-sway 7.5s ease-in-out infinite;
+}
+html[data-skin="festival"] .fd-lantern--l { left: 13px; }
+html[data-skin="festival"] .fd-lantern--r { right: 13px; animation-delay: -2.6s; }
+html[data-skin="festival"] .fd-lantern::before {
+  content: "";
+  position: absolute;
+  left: 50%; top: -16px;
+  width: 1px; height: 20px;
+  margin-left: -.5px;
+  background: linear-gradient(180deg, transparent, rgba(232, 185, 35, .75));
+}
+html[data-skin="festival"] .fd-lantern::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50% / 42%;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 240, 200, .55), transparent 55%),
+    linear-gradient(160deg, #E8535F, #C8102E 62%, #8E0E20);
+  box-shadow: 0 6px 18px rgba(200, 16, 46, .34), inset 0 0 0 1px rgba(232, 185, 35, .55);
+}
+/* 灯笼横纹与金穗走单独的 border 层，避免与渐变冲突 */
+html[data-skin="festival"] .fd-lantern i {
+  position: absolute;
+  left: 50%; bottom: -13px;
+  width: 3px; height: 14px;
+  margin-left: -1.5px;
+  border-radius: 0 0 2px 2px;
+  background: linear-gradient(180deg, #E8B923, #A87B12);
+}
+
+/* 缓落星点：6 枚，错峰 */
+html[data-skin="festival"] .fd-star {
+  position: absolute;
+  top: -8vh;
+  width: 10px; height: 10px;
+  background: linear-gradient(140deg, #FFF3C4, #E8B923);
+  filter: drop-shadow(0 0 5px rgba(232, 185, 35, .6));
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  opacity: 0;
+  animation: fj-fall 11s linear infinite;
+}
+html[data-skin="festival"] .fd-star--1 { left: 12%; animation-delay: -1.2s; }
+html[data-skin="festival"] .fd-star--2 { left: 28%; animation-delay: -5.4s; animation-duration: 13s; }
+html[data-skin="festival"] .fd-star--3 { left: 44%; animation-delay: -8.1s; animation-duration: 10.5s; }
+html[data-skin="festival"] .fd-star--4 { left: 61%; animation-delay: -3.3s; animation-duration: 12.5s; }
+html[data-skin="festival"] .fd-star--5 { left: 76%; animation-delay: -9.6s; animation-duration: 11.5s; }
+html[data-skin="festival"] .fd-star--6 { left: 89%; animation-delay: -6.7s; animation-duration: 14s; }
+
+/* ---------- 动画 ---------- */
+@keyframes fj-sway {
+  0%, 100% { transform: rotate(-1.6deg); }
+  50%      { transform: rotate(1.6deg); }
+}
+@keyframes fj-fall {
+  0%   { transform: translateY(0) rotate(0deg);      opacity: 0; }
+  8%   { opacity: .85; }
+  82%  { opacity: .85; }
+  100% { transform: translateY(112vh) rotate(190deg); opacity: 0; }
+}
+@keyframes fj-sheen {
+  0%, 62% { transform: translateX(-220%) skewX(-18deg); }
+  86%     { transform: translateX(560%) skewX(-18deg); }
+  100%    { transform: translateX(560%) skewX(-18deg); }
+}
+
+/* 窄屏：收起灯笼，避免遮挡内容；星点保留但减半 */
+@media (max-width: 640px) {
+  html[data-skin="festival"] .fd-lantern { display: none; }
+  html[data-skin="festival"] .fd-star--3,
+  html[data-skin="festival"] .fd-star--5 { display: none; }
+}
+
+/* 尊重系统的「减少动态效果」：全部停用，只留静态装饰 */
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin="festival"] .fd-lantern,
+  html[data-skin="festival"] .fd-star,
+  html[data-skin="festival"] .btn::after { animation: none !important; }
+  html[data-skin="festival"] .fd-star { opacity: .5; }
+}
+
+
+/* ---------- 顶部云纹飘带（金线，极淡，只作氛围） ---------- */
+html[data-skin="festival"] .festival-deco::before,
+html[data-skin="festival"] .festival-deco::after {
+  content: "";
+  position: absolute;
+  top: 92px;
+  width: 40vmin; height: 16vmin;
+  opacity: .46;
+  pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 80'%3E%3Cg fill='none' stroke='%23C8102E' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M4 62c22-40 58-40 80 0s58 40 80 0'/%3E%3Cpath d='M4 74c20-30 52-30 72 0s52 30 72 0' stroke-opacity='.55'/%3E%3C/g%3E%3C/svg%3E") no-repeat center / contain;
+}
+html[data-skin="festival"] .festival-deco::before { left: -7vmin; }
+html[data-skin="festival"] .festival-deco::after  { right: -7vmin; transform: scaleX(-1); }
+
+/* ---------- 公告条：加一枚「国庆专版」小标识 ---------- */
+html[data-skin="festival"] .announce-tag::after {
+  content: " · 国庆专版";
+  font-weight: 800;
+  letter-spacing: .5px;
+}
+
+@media (max-width: 640px) {
+  html[data-skin="festival"] .festival-deco::before,
+  html[data-skin="festival"] .festival-deco::after { display: none; }
+}
