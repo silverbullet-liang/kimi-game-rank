@@ -2,7 +2,7 @@
  * 皮肤：国庆专版 · 盛世红金
  * ------------------------------------------------------------
  * 限时呈现：北京时间 9/30 00:00 – 10/8 23:59（前端自行判断，过后自动回退）
- * 主题色：默认中国红 + 鎏金，但**不锁定** —— 用户可在外观设置里自由更换
+ * 主题色：专版期间固定「中国红 + 鎏金」；外观设置里的主题色栏被灰遮罩禁用（见文件末）
  *
  * 设计意图
  *   · 庄重优先于热闹：红取深中国红，金取哑金，避免大红大黄的廉价感
@@ -13,12 +13,12 @@
  * ============================================================ */
 
 html[data-skin="festival"] {
-  /* ---------- 主题色：仅作「未设置时的默认」，用户在外观设置里的选择照常生效 ---------- */
-  --accent: #C8102E;
-  --accent-2: #E8B923;
-  --accent-ink: #FFF8E6;
-  --toggle-on: #C8102E;
-  --slider-fill: #C8102E;
+  /* ---------- 主题色：专版期间固定「中国红 + 鎏金」（外观设置里该栏被禁用） ---------- */
+  --accent: #C8102E !important;
+  --accent-2: #E8B923 !important;
+  --accent-ink: #FFF8E6 !important;
+  --toggle-on: #C8102E !important;
+  --slider-fill: #C8102E !important;
 
   /* ---------- 节日令牌 ---------- */
   --fj-red: #C8102E;
@@ -398,4 +398,31 @@ html[data-skin="festival"] .announce-tag::after {
 @media (max-width: 640px) {
   html[data-skin="festival"] .festival-deco::before,
   html[data-skin="festival"] .festival-deco::after { display: none; }
+}
+
+
+/* ---------- 外观设置：国庆专版下的「主题色」栏 —— 灰遮罩 + 禁用 ---------- */
+html[data-skin="festival"] .fj-locked {
+  position: relative;
+  filter: grayscale(1);
+  opacity: .62;
+  pointer-events: none;
+  user-select: none;
+}
+html[data-skin="festival"] .fj-locked::after {
+  content: "国庆专版期间固定为「中国红 · 鎏金」";
+  position: absolute;
+  inset: -4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent);
+  border-radius: 12px;
+  filter: none;
 }

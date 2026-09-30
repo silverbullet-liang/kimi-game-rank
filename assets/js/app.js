@@ -577,19 +577,7 @@ const SKINS = {
   brutal: { name: '新粗野',   desc: '黑框 · 硬阴影 · 撞色' },
 };
 
-/* ---------- 国庆专版（限时皮肤） ----------
- * 窗口：北京时间 9/30 00:00 – 10/8 23:59，与 index.php 的同步脚本同一套判断。
- * 用户在窗口内主动切走皮肤 = 不参与（写 kimgr_skin_optout），此后尊重其选择。 */
-function festivalInWindow() {
-  const t = new Date(Date.now() + (new Date().getTimezoneOffset() + 480) * 60000);
-  const m = t.getMonth() + 1, d = t.getDate();
-  return (m === 9 && d === 30) || (m === 10 && d <= 8);
-}
-
-function festivalActive() {
-  if (!festivalInWindow()) { return false; }
-  try { return !/(?:^|;\s*)kimgr_skin_optout=1/.test(document.cookie); } catch (e) { return true; }
-}
+/* 国庆专版的日期判定与加载逻辑在 index.php 的内联同步脚本里（避免样式闪动）。 */
 
 const ACCENTS = {
   // 蓝紫色：以紫为主、偏蓝调
@@ -2704,12 +2692,6 @@ function mountBlockList(box, isGuest) {
   box.querySelector('#bwClear').addEventListener('click', () => { ta.value = ''; save(''); });
 }
 
-/** 外观设置里展示的皮肤：国庆专版仅在窗口期内出现，且排在最前 */
-function skinKeys() {
-  const keys = Object.keys(SKINS).filter(k => k !== 'festival');
-  return festivalInWindow() ? ['festival'].concat(keys) : keys;
-}
-
 function mountAppearance(box) {
   if (!box) return;
   const theme = state.settings.theme || 'light';
@@ -2728,14 +2710,14 @@ function mountAppearance(box) {
     <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px">
       <span>设计风格</span>
       <div class="skin-row" id="skinRow">
-        ${skinKeys().map(k => `<button class="skin-card ${skin === k ? 'on' : ''}" data-s="${k}">
+        ${Object.keys(SKINS).map(k => `<button class="skin-card ${skin === k ? 'on' : ''}" data-s="${k}">
           <span class="skin-prev p-${k}" aria-hidden="true"></span>
           <b>${esc(SKINS[k].name)}</b>
           <span class="tiny">${esc(SKINS[k].desc)}</span>
         </button>`).join('')}
       </div>
     </div>
-    <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+    <div class="setting-row ${skin === 'festival' ? 'fj-locked' : ''}" style="flex-direction:column;align-items:flex-start;gap:8px">
       <span>主题色（蓝紫色 / 苹果色 / 自定义）</span>
       <div class="swatch-row" id="accentRow">
         <button class="swatch" data-a="blue-purple" title="蓝紫" style="background:#7C3AED"></button>

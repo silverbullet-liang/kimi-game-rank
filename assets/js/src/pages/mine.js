@@ -3,7 +3,7 @@
  */
 import { api, state, esc, toast, dialog, setToken, askNotifyPermission, userName, isAdminish, getPrefs, setPrefs } from '../core.js';
 import { navigate } from '../router.js';
-import { saveTheme, ACCENTS, SKINS, hexToHsl, festivalInWindow } from '../theme.js';
+import { saveTheme, ACCENTS, SKINS, hexToHsl } from '../theme.js';
 import { setNavAnim } from '../transitions.js';
 
 /** 配额上限展示（数据缺失时返回空串，不显示占位符） */
@@ -298,12 +298,6 @@ function mountBlockList(box, isGuest) {
   box.querySelector('#bwClear').addEventListener('click', () => { ta.value = ''; save(''); });
 }
 
-/** 外观设置里展示的皮肤：国庆专版仅在窗口期内出现，且排在最前 */
-function skinKeys() {
-  const keys = Object.keys(SKINS).filter(k => k !== 'festival');
-  return festivalInWindow() ? ['festival'].concat(keys) : keys;
-}
-
 function mountAppearance(box) {
   if (!box) return;
   const theme = state.settings.theme || 'light';
@@ -322,14 +316,14 @@ function mountAppearance(box) {
     <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px">
       <span>设计风格</span>
       <div class="skin-row" id="skinRow">
-        ${skinKeys().map(k => `<button class="skin-card ${skin === k ? 'on' : ''}" data-s="${k}">
+        ${Object.keys(SKINS).map(k => `<button class="skin-card ${skin === k ? 'on' : ''}" data-s="${k}">
           <span class="skin-prev p-${k}" aria-hidden="true"></span>
           <b>${esc(SKINS[k].name)}</b>
           <span class="tiny">${esc(SKINS[k].desc)}</span>
         </button>`).join('')}
       </div>
     </div>
-    <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+    <div class="setting-row ${skin === 'festival' ? 'fj-locked' : ''}" style="flex-direction:column;align-items:flex-start;gap:8px">
       <span>主题色（蓝紫色 / 苹果色 / 自定义）</span>
       <div class="swatch-row" id="accentRow">
         <button class="swatch" data-a="blue-purple" title="蓝紫" style="background:#7C3AED"></button>

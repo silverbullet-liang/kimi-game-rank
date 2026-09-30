@@ -14,19 +14,7 @@ export const SKINS = {
   brutal: { name: '新粗野',   desc: '黑框 · 硬阴影 · 撞色' },
 };
 
-/* ---------- 国庆专版（限时皮肤） ----------
- * 窗口：北京时间 9/30 00:00 – 10/8 23:59，与 index.php 的同步脚本同一套判断。
- * 用户在窗口内主动切走皮肤 = 不参与（写 kimgr_skin_optout），此后尊重其选择。 */
-export function festivalInWindow() {
-  const t = new Date(Date.now() + (new Date().getTimezoneOffset() + 480) * 60000);
-  const m = t.getMonth() + 1, d = t.getDate();
-  return (m === 9 && d === 30) || (m === 10 && d <= 8);
-}
-
-export function festivalActive() {
-  if (!festivalInWindow()) { return false; }
-  try { return !/(?:^|;\s*)kimgr_skin_optout=1/.test(document.cookie); } catch (e) { return true; }
-}
+/* 国庆专版的日期判定与加载逻辑在 index.php 的内联同步脚本里（避免样式闪动）。 */
 
 export const ACCENTS = {
   // 蓝紫色：以紫为主、偏蓝调
