@@ -577,7 +577,14 @@ const SKINS = {
   brutal: { name: '新粗野',   desc: '黑框 · 硬阴影 · 撞色' },
 };
 
-/* 国庆专版的日期判定与加载逻辑在 index.php 的内联同步脚本里（避免样式闪动）。 */
+/* ---------- 国庆专版（限时皮肤） ----------
+ * 窗口：北京时间 9/30 00:00 – 10/8 23:59；与 index.php 的内联脚本同一套判断。
+ * 只有窗口期内才在外观设置里出现这个选项；窗口外彻底不显示。 */
+function festivalInWindow() {
+  const t = new Date(Date.now() + (new Date().getTimezoneOffset() + 480) * 60000);
+  const m = t.getMonth() + 1, d = t.getDate();
+  return (m === 9 && d === 30) || (m === 10 && d <= 8);
+}
 
 const ACCENTS = {
   // 蓝紫色：以紫为主、偏蓝调
@@ -2692,6 +2699,12 @@ function mountBlockList(box, isGuest) {
   box.querySelector('#bwClear').addEventListener('click', () => { ta.value = ''; save(''); });
 }
 
+/** 外观设置里展示的皮肤：国庆专版只在限时窗口内出现，且排在最前 */
+function skinKeys() {
+  const keys = Object.keys(SKINS).filter(k => k !== 'festival');
+  return festivalInWindow() ? ['festival'].concat(keys) : keys;
+}
+
 function mountAppearance(box) {
   if (!box) return;
   const theme = state.settings.theme || 'light';
@@ -2710,7 +2723,7 @@ function mountAppearance(box) {
     <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px">
       <span>设计风格</span>
       <div class="skin-row" id="skinRow">
-        ${Object.keys(SKINS).map(k => `<button class="skin-card ${skin === k ? 'on' : ''}" data-s="${k}">
+        ${skinKeys().map(k => `<button class="skin-card ${skin === k ? 'on' : ''}" data-s="${k}">
           <span class="skin-prev p-${k}" aria-hidden="true"></span>
           <b>${esc(SKINS[k].name)}</b>
           <span class="tiny">${esc(SKINS[k].desc)}</span>
