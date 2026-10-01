@@ -28,8 +28,8 @@ ok('开关默认开启（正式功能）', smart_link_enabled() === true);
 ok('典型跳转页 → 判为跳转页', smart_link_looks_like_jump($JUMP));
 ok('典型跳转页 → 解析出 kimi.link', smart_link_resolve($JUMP, 'https://share.example.net/p/1') === 'https://abc.ok.kimi.link/');
 
-ok('含 canvas → 不判跳转页', !smart_link_looks_like_jump(
-    '<html><body><h1>游戏</h1><button>开始</button><canvas id="c"></canvas><script>location.href="https://x.kimi.link/"</script></body></html>'));
+ok('含 canvas 且无跳转声明 → 不判跳转页', !smart_link_looks_like_jump(
+    '<html><body><h1>游戏</h1><button>开始</button><canvas id="c"></canvas><script>var g=document.getElementById("c").getContext("2d");</script></body></html>'));
 
 ok('长正文 + 平台分享外链 → 由旁路判为跳转页', smart_link_looks_like_jump(
     '<html><body><h1>攻略</h1><p>' . str_repeat('这是一段很长的正文。', 20) . '</p><a href="https://x.kimi.link/">前往</a></body></html>'));
@@ -40,8 +40,8 @@ ok('长正文 + 作者自建外链 → 不判跳转页', !smart_link_looks_like_
 ok('多个按钮 → 不判跳转页', !smart_link_looks_like_jump(
     '<html><body><h1>标题</h1><a href="https://a.kimi.link/">开始游戏</a><a href="https://b.kimi.link/">说明</a></body></html>'));
 
-ok('脚本含动画 → 不判跳转页', !smart_link_looks_like_jump(
-    '<html><body><h1>标题</h1><button>开始</button><script>requestAnimationFrame(function f(){requestAnimationFrame(f);});location.href="https://x.kimi.link/"</script></body></html>'));
+ok('脚本含动画且无跳转声明 → 不判跳转页', !smart_link_looks_like_jump(
+    '<html><body><h1>标题</h1><button>开始</button><script>requestAnimationFrame(function f(){requestAnimationFrame(f);});</script></body></html>'));
 
 ok('含 iframe → 不判跳转页', !smart_link_looks_like_jump(
     '<html><body><h1>标题</h1><iframe src="/x"></iframe></body></html>'));
@@ -77,6 +77,36 @@ ok('介绍卡带 canvas → 不认', !smart_link_looks_like_jump(
 ok('介绍卡有两个平台外链 → 不认', !smart_link_looks_like_jump(
     '<html><body><div><h1>作品集</h1><p>' . str_repeat('说明文字，', 40) . '</p>'
     . '<a href="https://a.miaoda.online/">一</a><a href="https://b.kimi.link/">二</a></div></body></html>'));
+
+/* ---------- 自动跳转页：加载动画 + 延时跳转 ---------- */
+$LOADING = '<html><head><title>无限深入 - 加载中</title>'
+         . '<style>@keyframes blink{to{opacity:.3}}</style></head><body>'
+         . '<canvas id="pixelCanvas"></canvas>'
+         . '<div class="loader"><p>正在加载</p><p>即将进入地牢世界...</p></div>'
+         . '<script>function animate(){requestAnimationFrame(animate);}animate();'
+         . 'setTimeout(function(){window.location.href="https://qwiu5q4yccbuo.kimi.site/";},1000);</script>'
+         . '</body></html>';
+
+ok('加载页 + 延时跳转 → 判为跳转页', smart_link_looks_like_jump($LOADING));
+ok('加载页 → 解析出 kimi.site', smart_link_resolve($LOADING,
+    'https://kimi-file.moonshot.cn/prod-chat-kimi/kfs/4/1/2026-09-30/1dau8vjd') === 'https://qwiu5q4yccbuo.kimi.site/');
+
+ok('加载页跳去作者自建站 → 不判跳转页', !smart_link_looks_like_jump(
+    '<html><body><h1>加载中</h1><canvas id="c"></canvas>'
+    . '<script>location.href="https://me.github.io/game/";</script></body></html>'));
+
+ok('跳转目标不在平台分享型域名 → 不判跳转页', !smart_link_looks_like_jump(
+    '<html><body><h1>加载中</h1><canvas id="c"></canvas>'
+    . '<script>window.location.replace("https://example.org/next");</script></body></html>'));
+
+/* ---------- MiniMax 作品空间 ---------- */
+ok('MiniMax 作品空间算作品宿主', smart_link_host_trusted('https://abc.space.mcode.cn/x'));
+ok('MiniMax 作品空间进平台分享型白名单', smart_link_priority('https://abc.space.mcode.cn/') >= 20);
+ok('来源在 MiniMax 作品空间 → 不替换', smart_link_resolve($LOADING, 'https://abc.space.mcode.cn/') === '');
+ok('跳转到 MiniMax 作品空间 → 识别', smart_link_resolve(
+    '<html><body><h1>加载中</h1><canvas id="c"></canvas><script>location.href="https://abc.space.mcode.cn/";</script></body></html>',
+    'https://share.example.net/p/7') === 'https://abc.space.mcode.cn/');
+ok('MiniMax 主站不受作品宿主保护', !smart_link_host_trusted('https://www.mcode.cn/'));
 
 /* ---------- 来源保护 ---------- */
 ok('来源是对话分享页 → 不替换', smart_link_resolve($CARD, 'https://kimi.moonshot.cn/share/abc') === '');

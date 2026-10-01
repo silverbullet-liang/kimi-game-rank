@@ -7,8 +7,10 @@
  * 后续的评分、标题、特征全部基于**真实页面**。
  *
  * 判定思路（结构，而不是字符串匹配）：
- *   0. 强信号旁路：页面自身不承载作品，只有一个可点元素，且它指向「平台分享型托管域名」
- *      ——作品介绍卡 + 跳转按钮，文案长、带装饰动画也认；
+ *   0. 强信号旁路（两条，先于「作品特征」判断）：
+ *      · 页面自己声明要跳到某个平台分享型地址（加载页 / 自动跳转页）；
+ *      · 页面自身不承载作品、只有一个可点元素，且它指向平台分享型地址（介绍卡 + 跳转按钮）。
+ *      两种情况下都不再看文案长度与装饰动画。
  *   1. 否则三条硬条件：页面只有一段标题或简介（可见文字极短）；
  *   2. 只有一个按钮 / 链接（只有一个去处）；
  *   3. 页面脚本很短，且不含动画 / 渲染引擎特征——短到只可能是那个按钮的跳转代码；
@@ -76,6 +78,7 @@ function smart_link_trusted_hosts(): array
         'coze.site',                                 // 扣子编程
         'claude.site',                               // Claude Artifacts 发布
         'lovable.app', 'lovable.dev', 'bolt.host',   // 主流 AI 建站
+        'space.mcode.cn',                            // MiniMax 的作品部署空间
         'figma.site', 'base44.app', 'notion.site',   // 设计 / 建站平台
         'ai.studio', 'aistudio.google.com',          // Google AI Studio 部署的应用
         // ---- 静态托管 / 开发者平台 ----
@@ -223,6 +226,40 @@ function smart_link_js_stats(string $html): array
 }
 
 /**
+ * 页面自己声明的「去向」：meta refresh，以及脚本里的跳转语句
+ * （location.href / location.replace / location.assign、window.open）。只认字面量地址。
+ */
+function smart_link_hop_urls(string $html): array
+{
+    $out = array();
+    if (preg_match_all('#<meta[^>]+http-equiv\s*=\s*["\']?\s*refresh[^>]*content\s*=\s*["\']([^"\']+)["\']#i', $html, $m)) {
+        foreach ($m[1] as $c) {
+            if (preg_match('#url\s*=\s*[\'"]?([^\'"\s>;]+)#i', (string)$c, $u)) { $out[] = $u[1]; }
+        }
+    }
+    if (preg_match_all('#(?:location\s*\.\s*(?:href|replace|assign)\s*[=(]\s*|window\s*\.\s*open\s*\(\s*)["\']([^"\']+)["\']#i', $html, $m)) {
+        foreach ($m[1] as $u) { $out[] = (string)$u; }
+    }
+    return array_map(function ($u) {
+        return str_replace(array('\\/', '&amp;'), array('/', '&'), trim($u));
+    }, $out);
+}
+
+/**
+ * 页面自己声明「我要跳到某个平台分享型地址」。
+ * 加载页与自动跳转页就是这种写法：一段加载动画，一秒后 location.href 走人。
+ * 它们常带装饰用的画布、粒子与动画，所以这条判据不看画面，只看去向——
+ * 页面主动要走，比它长什么样更能说明问题。
+ */
+function smart_link_is_hop_page(string $html): bool
+{
+    foreach (smart_link_hop_urls($html) as $u) {
+        if (preg_match('#^https?://#i', $u) && smart_link_priority($u) >= 20) { return true; }
+    }
+    return false;
+}
+
+/**
  * 强信号旁路：页面自身不承载作品（没有画布 / 内嵌框架 / 音视频），只有一个可点元素，
  * 且它指向「平台分享型托管域名」（优先级 ≥ 20：kimi.link、miaoda.online、coze.site、
  * claude.site、ai.studio 等）。这是典型的作品介绍卡 + 跳转按钮——文案长、带装饰动画，
@@ -257,7 +294,10 @@ function smart_link_looks_like_jump(string $html): bool
 {
     if ($html === '') { return false; }
 
-    /* 旁路优先：介绍卡 + 唯一的平台分享型按钮 */
+    /* 旁路一：页面自己声明去向（加载页 / 自动跳转页）——带装饰画布与动画也认 */
+    if (smart_link_is_hop_page($html)) { return true; }
+
+    /* 旁路二：介绍卡 + 唯一的平台分享型按钮 */
     if (smart_link_is_share_hop($html)) { return true; }
 
     if (preg_match('#<(canvas|iframe|video|audio)\b#i', $html)) { return false; }
@@ -395,7 +435,8 @@ function smart_link_priority(string $url): int
     if (smart_link_host_in($host, array('kimi.link', 'kimi.site'))) { return 40; }
     if (smart_link_host_in($host, array('miaoda.online', 'miaoda.cn', 'appmiaoda.com', 'upma.site'))) { return 30; }
     if (smart_link_host_in($host, array('coze.site', 'claude.site', 'ai.studio', 'figma.site',
-                                       'base44.app', 'notion.site', 'lovable.app', 'bolt.host'))) { return 20; }
+                                       'base44.app', 'notion.site', 'lovable.app', 'bolt.host',
+                                       'space.mcode.cn'))) { return 20; }
     if (smart_link_host_trusted($url)) { return 10; }
     return 1;
 }
