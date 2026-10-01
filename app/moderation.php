@@ -125,6 +125,70 @@ function moderation_scan(string $text): string
 }
 
 /**
+ * 表情名清单：取自站内表情库（assets/emoji/index.json，结构为 packs[].items[]）。
+ * 表情在消息里以 [名称] 形式内嵌，名称（含 keywords 里的别名）本身可能含被误判的片段，
+ * 因此凡是能对上表情库的 [名称]，都整段屏蔽、不参与审核。
+ */
+function moderation_emoji_names(): array
+{
+    static $cache = null;
+    if ($cache !== null) { return $cache; }
+    $names = array();
+    $f = APP_ROOT . '/assets/emoji/index.json';
+    if (is_file($f)) {
+        $j = json_decode((string)@file_get_contents($f), true);
+        if (is_array($j) && !empty($j['packs']) && is_array($j['packs'])) {
+            foreach ($j['packs'] as $pack) {
+                if (empty($pack['items']) || !is_array($pack['items'])) { continue; }
+                foreach ($pack['items'] as $it) {
+                    $c = isset($it['code']) ? trim((string)$it['code']) : '';
+                    if ($c !== '') { $names[$c] = true; }
+                    /* 关键词也收进来：用户常按别名发 [2333]，而不是正式名 [笑哭] */
+                    if (!empty($it['keywords']) && is_array($it['keywords'])) {
+                        foreach ($it['keywords'] as $kw) {
+                            $kw = trim((string)$kw);
+                            if ($kw !== '' && mb_strlen($kw, 'UTF-8') <= 12) { $names[$kw] = true; }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return $cache = $names;
+}
+
+/**
+ * AI 模型名及其版本 / 参数规模（Gemma 4 31B、Qwen3.8 27B、GLM-4、DeepSeek-V3…）。
+ * 这类「字母＋数字」串本身毫无恶意，却最容易同时踩中词库与审核模型的误判，
+ * 因此在送审前整段屏蔽：只影响这一段，其余文字照常判定。
+ */
+function moderation_model_name_re(): string
+{
+    $fam = 'gemma|qwen|llama|deepseek|chatglm|glm|phi|mistral|mixtral|baichuan|internlm|minicpm|'
+         . 'grok|claude|gpt|kimi|moonshot|doubao|ernie|hunyuan|gemini|opus|sonnet|haiku|'
+         . 'seed|abab|command|falcon|olmo|smollm|nanbeige|step|spark|nova|minimax|yi';
+    /* 词首边界 + 家族名 + 任意段「版本 / 规模」（可重复，容忍空格与点号，
+       并允许 V3 / K2.5 / 3-32B 这类带字母前缀的写法） */
+    return '/(?<![\w.])(?:' . $fam . ')(?:[\s._-]*[a-zA-Z]{0,2}\d+(?:\.\d+)?[bBmMkWw]?)*/iu';
+}
+
+/** 把整段替换成等长占位符（长度不变，便于与原文逐字对齐排查） */
+function moderation_mask_span(string $text): string
+{
+    $text = (string)preg_replace_callback(moderation_model_name_re(), function ($m) {
+        return str_repeat('·', mb_strlen($m[0], 'UTF-8'));
+    }, $text);
+
+    $names = moderation_emoji_names();
+    if ($names) {
+        $text = (string)preg_replace_callback('/\[([^\[\]\s]{1,12})\]/u', function ($m) use ($names) {
+            return isset($names[$m[1]]) ? str_repeat('·', mb_strlen($m[0], 'UTF-8')) : $m[0];
+        }, $text);
+    }
+    return $text;
+}
+
+/**
  * 常用句式正则：只针对「形态」而非「词义」，因此不受词库覆盖面限制。
  * 返回命中的规则名（空串 = 无命中）。
  */
@@ -230,7 +294,10 @@ function moderation_check3(string $text): array
     $sys = "你是社区内容审核员。判断用户提交的内容是否合规。\n"
          . "判定为不合规的情形：辱骂、人身攻击、歧视、色情、暴力威胁、违法犯罪、\n"
          . "广告引流、无意义刷屏。\n"
-         . "正常讨论游戏、作品、剧情，或表达对作品/评分的不满与批评，都算合规。\n"
+         . "以下一律算合规，不要判违规：\n"
+         . "1) 正常讨论游戏、作品、剧情；表达对作品或评分的不满与批评；\n"
+         . "2) 提及 AI 模型名称及其版本或参数规模，例如 Gemma 4 31B、Qwen3.8 27B、GLM-4、DeepSeek-V3；\n"
+         . "3) 提及作品名、网站名、技术术语，或看起来像代号、编号的字符串。\n"
          . "只输出一个词：合规输出 True，不合规输出 False。不要输出任何其它内容。";
     $user = "待审内容：\n<content>\n" . mb_substr($text, 0, 500, 'UTF-8') . "\n</content>";
     $msgs = array(
@@ -266,10 +333,21 @@ function moderation_check3(string $text): array
  * $scope：'comment' | 'message'，仅用于日志与后续分域调参。
  * 返回 array(ok, stage, reason, cached)。ok=false 时调用方应拒绝写入并给出统一话术。
  */
-function moderate_text(string $text, string $scope = 'comment'): array
+function moderate_text(string $text, string $scope = 'comment', int $uid = 0): array
 {
     $text = trim($text);
     if ($text === '') { return array('ok' => true, 'stage' => 0, 'reason' => '', 'cached' => false); }
+
+    /* 重审凭证优先于一切判定，也优先于「拦截」结论的缓存 —— 否则会出现
+       「重审说可以、发送又被拦」的死循环。 */
+    if ($uid > 0) {
+        $pass = moderation_pass_take($uid, $text);
+        if (is_array($pass)) {
+            return array('ok' => true, 'stage' => 0, 'reason' => 'rechecked',
+                         'cached' => false, 'flag' => (string)(isset($pass['flag']) ? $pass['flag'] : ''));
+        }
+    }
+
     if ((int)cfg('moderation.enabled', 1) !== 1) { return array('ok' => true, 'stage' => 0, 'reason' => 'disabled', 'cached' => false); }
 
     /* 结论缓存：同一内容只验一次（内容改了，指纹就变，自然重验） */
@@ -290,9 +368,13 @@ function moderate_text(string $text, string $scope = 'comment'): array
     $strict  = (int)cfg('moderation.strict', 0) === 1;
     $verdict = array('ok' => true, 'stage' => 0, 'reason' => '');
 
+    /* 送审前屏蔽表情名与模型名（整段等长占位）：这两类内容最容易误判，
+       屏蔽只影响那几段，其余文字照常判定。缓存指纹仍用原文，互不干扰。 */
+    $masked = moderation_mask_span($text);
+
     foreach ($steps as $s) {
         if (!$s['on']) { continue; }
-        $r = call_user_func($s['fn'], $text);
+        $r = call_user_func($s['fn'], $masked);
         if (empty($r['ok'])) {
             $verdict = array('ok' => false, 'stage' => $s['stage'], 'reason' => (string)$r['reason']);
             break;
@@ -312,7 +394,93 @@ function moderate_text(string $text, string $scope = 'comment'): array
         app_log('moderation blocked scope=' . $scope . ' stage=' . $verdict['stage'] . ' reason=' . $verdict['reason']);
     }
     return array('ok' => (bool)$verdict['ok'], 'stage' => (int)$verdict['stage'],
-                 'reason' => (string)$verdict['reason'], 'cached' => false);
+                 'reason' => (string)$verdict['reason'], 'cached' => false, 'flag' => '');
+}
+
+/* ============================================================
+ * AI 重审（用户显式点击触发，不参与自动流程）
+ * ============================================================
+ * 返回三档：true（合规，放行）/ middle（可能有恶意，仍放行并在消息旁标注）/ false（维持拦截）。
+ * 「通过」时签发一次性凭证（绑定用户与内容指纹、15 分钟有效），发送接口凭它放行 ——
+ * 否则会出现「重审说可以、发送又被拦一次」的死循环。
+ */
+
+/** 内容指纹：与结论缓存同源，保证同一段文字的判定前后一致 */
+function moderation_fingerprint(string $text): string
+{
+    return substr(dup_content_norm($text), 0, 40);
+}
+
+function moderation_pass_key(int $uid, string $text): string
+{
+    return 'mrec_' . $uid . '_' . moderation_fingerprint($text);
+}
+
+/** 签发重审通过凭证（PHP 7.0 基线：不使用 void 返回类型） */
+function moderation_pass_issue(int $uid, string $text, string $flag = '')
+{
+    cache_set(moderation_pass_key($uid, $text), array('flag' => $flag, 'at' => now_utc()), 900);
+}
+
+/** 取重审凭证；无或已过期返回 null */
+function moderation_pass_take(int $uid, string $text)
+{
+    $v = cache_get(moderation_pass_key($uid, $text), 900);
+    return is_array($v) ? $v : null;
+}
+
+/**
+ * AI 重审：只由用户点「AI 重审」时触发。
+ * 通道不可用时返回 middle —— 用户已经手动申诉过一次，不该被一次网络抖动判死，
+ * 放行并标注，把最终判断交给读者。
+ */
+function moderation_recheck(string $text, int $uid = 0): array
+{
+    $sys = "你是社区内容审核员，正在复核一条先前被判违规、用户提出申诉的内容。\n"
+         . "请判断它是否真的违规，只输出一个词：\n"
+         . "  true   —— 合规，可以放行；\n"
+         . "  middle —— 可能有恶意或擦边，但仍可放行，需要在旁边标注提醒；\n"
+         . "  false  —— 确实违规，不能放行。\n"
+         . "判 middle 的典型情形：语气尖刻但没有针对具体的人、阴阳怪气、含含糊糊的疑似引流，\n"
+         . "或你无法确定但又觉得不太妥当。\n"
+         . "提及 AI 模型名称及其版本或参数规模（如 Gemma 4 31B、Qwen3.8 27B）属于正常讨论，不得判违规。\n"
+         . "只输出那个词，不要输出任何其它内容。";
+    $user = "待复核内容：\n<content>\n" . mb_substr($text, 0, 500, 'UTF-8') . "\n</content>";
+    $msgs = array(
+        array('role' => 'system', 'content' => $sys),
+        array('role' => 'user',   'content' => $user),
+    );
+
+    try {
+        $r = zhipu_chat($msgs, (string)cfg('moderation.model', 'glm-4-flash'));
+    } catch (Throwable $e) {
+        app_log('moderation_recheck failed: ' . $e->getMessage());
+        return array('verdict' => 'middle', 'flag' => 'middle', 'reason' => 'ai_unavailable');
+    }
+    if (!empty($r['usage'])) { ai_usage_record(0, $r['usage'], 'glm'); }
+
+    $out  = strtolower(trim((string)$r['text']));
+    $head = (string)preg_replace('/[^a-z].*$/s', '', $out);
+    $verdict = '';
+    if ($head === 'true' || $head === 'false' || $head === 'middle') {
+        $verdict = $head;
+    } else {
+        /* 模型多嘴时取最先出现的档位 */
+        $pos = array();
+        foreach (array('middle', 'false', 'true') as $w) {
+            $i = strpos($out, $w);
+            if ($i !== false) { $pos[$w] = $i; }
+        }
+        if ($pos) { asort($pos); $verdict = (string)key($pos); }
+    }
+    if ($verdict === '') {
+        app_log('moderation_recheck unexpected output len=' . strlen($out));
+        $verdict = 'middle';
+    }
+
+    $flag = ($verdict === 'middle') ? 'middle' : '';
+    if ($verdict === 'true' || $verdict === 'middle') { moderation_pass_issue($uid, $text, $flag); }
+    return array('verdict' => $verdict, 'flag' => $flag, 'reason' => '');
 }
 
 /** 拒绝写入时的统一话术（对外只说结论与出路，不透露命中了什么，避免被反向试探） */

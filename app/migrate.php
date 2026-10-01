@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 15);
+define('SCHEMA_VERSION', 16);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -684,6 +684,25 @@ function run_migrations(bool $force = false)
         }
     }
 
+    /* ---------- v16：AI 重审的标注 ----------
+       被审核拦下后，用户可点「AI 重审」，模型给出 true / middle / false 三档。
+       判 middle（可能有恶意）时仍然放行，但要在消息旁标注提醒 ——
+       这个结论必须落在行上，只放缓存会在过期后无声丢失。 */
+    if ($cur < 16) {
+        try {
+            foreach (array('messages', 'comments') as $t) {
+                if (table_exists($t) && !column_exists($t, 'review_flag')) {
+                    db_exec("ALTER TABLE `" . $t . "` ADD COLUMN `review_flag` VARCHAR(12) NOT NULL DEFAULT '' COMMENT 'AI 重审标注：空=正常 middle=可能有恶意'");
+                    table_columns($t, true);
+                }
+            }
+            setting_set('schema_version', '16');
+            app_log('schema migrated to v16（AI 重审标注）');
+        } catch (Throwable $e) {
+            app_log('migrate v16 failed: ' . $e->getMessage());
+        }
+    }
+
     /* 只有结构确认完整才写版本号、落锁：
        否则锁会把「半成品」永久固定下来，此后所有请求都被短路，再也修不回来。 */
     $ok = true;
@@ -714,8 +733,8 @@ function db_report(): array
 {
     $need = array(
         'users'    => array('role', 'uid8'),
-        'messages' => array('msg_type', 'media_url', 'is_recalled'),
-        'comments' => array('content_norm', 'is_deleted', 'deleted_by', 'is_blocked'),
+        'messages' => array('msg_type', 'media_url', 'is_recalled', 'review_flag'),
+        'comments' => array('content_norm', 'is_deleted', 'deleted_by', 'is_blocked', 'review_flag'),
         'feedback' => array('content_norm', 'is_public', 'is_deleted', 'admin_reply', 'replied_at'),
         'works'    => array('vote_count', 'peak_score'),
         'user_visits' => array('country', 'province', 'city'),

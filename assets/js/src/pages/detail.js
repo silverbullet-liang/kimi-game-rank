@@ -252,7 +252,12 @@ async function renderComments(container, workId) {
         ta.value = ''; form.querySelector('#cmtCount').textContent = '0';
         await refresh(true);
         toast('已发表');
-      } catch (e) { toast(e.message, 'err'); }
+      } catch (e) {
+        if (e && e.code === 422) {
+          commentReject(form.parentNode, e.message || '内容未通过审核', v,
+            () => form.querySelector('#cmtSend').click());
+        } else { toast(e.message, 'err'); }
+      }
       finally { btnLoading(btn, false); }
     });
   } else {
@@ -346,6 +351,44 @@ async function renderComments(container, workId) {
   await refresh(true);
 }
 
+/**
+ * 评论被审核拦下时的提示条（与对话区同一套机制）。
+ * 带「AI 重审」按钮：点它让模型单独复核一次，返回 true / middle / false；
+ * false 维持拦截，true 与 middle 都会自动重发（middle 会在评论旁标注「可能有恶意」）。
+ */
+function commentReject(host, text, content, onPass) {
+  if (!host) { return; }
+  const old = host.querySelector('.reject-note');
+  if (old) { old.remove(); }
+  const bar = document.createElement('div');
+  bar.className = 'reject-note';
+  bar.innerHTML = '<span class="rn-text">' + esc(text) + '</span>'
+    + '<button class="btn btn-sm" data-review="1">AI 重审</button>';
+  host.insertBefore(bar, host.firstChild);
+
+  const btn = bar.querySelector('[data-review]');
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.textContent = '重审中…';
+    try {
+      const r = await api('recheck.php', 'run', { content: content }, { timeout: 30000 });
+      const v = (r && r.verdict) || 'false';
+      if (v === 'false') {
+        bar.querySelector('.rn-text').textContent = 'AI 复核后仍判为违规，未发表';
+        btn.remove();
+        return;
+      }
+      bar.remove();
+      if (v === 'middle') { toast('AI 复核通过，将标注「可能有恶意」后发表'); }
+      onPass();
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'AI 重审';
+      bar.querySelector('.rn-text').textContent = (err && err.message) ? err.message : '重审失败，请稍后再试';
+    }
+  });
+}
+
 function commentNode(c, workId, reload) {
   const box = document.createElement('div');
   box.className = 'comment' + (c._sub ? ' sub' : '');
@@ -365,6 +408,7 @@ function commentNode(c, workId, reload) {
       <span class="text">${c.reply_to ? `<span class="reply-to">@${esc(c.reply_to)}</span> ` : ''}${folded
         ? `<span class="blocked-note" data-reveal>${noteText}</span><span class="blocked-body" hidden>${esc(c.content)}</span>`
         : esc(c.content)}</span>
+      ${c.flag === 'middle' ? '<span class="msg-flag" title="AI 复核认为可能有恶意，但仍予放行">可能有恶意</span>' : ''}
       <span class="ops">
         <button data-act="like">赞 ${c.likes || 0}</button>
         ${canPost() ? '<button data-act="reply">回复</button>' : ''}
@@ -400,7 +444,19 @@ function commentNode(c, workId, reload) {
       } catch (e) { toast(e.message, 'err'); }
     } else if (act === 'reply') {
       const text = await promptReply(c.username);
-      if (text) { try { await api('comments.php', 'create', { work_id: workId, content: text, parent_id: c.id }, { timeout: 30000 }); toast('已回复'); reload(true); } catch (e) { toast(e.message, 'err'); } }
+      if (text) {
+        const post = async () => {
+          try {
+            await api('comments.php', 'create', { work_id: workId, content: text, parent_id: c.id }, { timeout: 30000 });
+            toast('已回复');
+            reload(true);
+          } catch (e) {
+            if (e && e.code === 422) { commentReject(box, e.message || '内容未通过审核', text, post); }
+            else { toast(e.message, 'err'); }
+          }
+        };
+        await post();
+      }
     }
   }));
 

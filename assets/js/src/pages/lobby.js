@@ -247,6 +247,8 @@ async function mountWorld(body) {
       + '<span class="bubble-wrap">'
       +   '<span class="who">' + userName(m.username, m.role) + ' · ' + esc(m.time) + recallBtn + '</span>'
       +   '<div class="bubble">' + inner + '</div>'
+      +   (!m.recalled && m.flag === 'middle'
+            ? '<span class="msg-flag" title="AI 复核认为可能有恶意，但仍予放行">可能有恶意</span>' : '')
       + '</span>';
 
     const rb = el.querySelector('[data-recall]');
@@ -311,6 +313,44 @@ async function mountWorld(body) {
     }
   }
 
+  /**
+   * 审核未通过的提示条。
+   * 刻意不用 toast —— toast 几秒就没了，而这里要留下一个「AI 重审」按钮，
+   * 等用户自己决定是否申诉。点它会让模型单独复核一次，返回 true / middle / false。
+   */
+  function rejectNote(text, payload) {
+    const old = stream.parentNode.querySelector('.reject-note');
+    if (old) { old.remove(); }
+    const bar = document.createElement('div');
+    bar.className = 'reject-note';
+    bar.innerHTML = '<span class="rn-text">' + esc(text) + '</span>'
+      + '<button class="btn btn-sm" data-review="1">AI 重审</button>';
+    stream.after(bar);
+
+    const btn = bar.querySelector('[data-review]');
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.textContent = '重审中…';
+      try {
+        const r = await api('recheck.php', 'run', { content: payload.content }, { timeout: 30000 });
+        const v = (r && r.verdict) || 'false';
+        if (v === 'false') {
+          bar.querySelector('.rn-text').textContent = 'AI 复核后仍判为违规，未发送';
+          btn.remove();
+          return;
+        }
+        bar.remove();
+        /* true：直接重发；middle：同样重发，消息会带上「可能有恶意」的标注 */
+        if (v === 'middle') { toast('AI 复核通过，将标注「可能有恶意」后发送'); }
+        submit(payload.type || 'text', payload);
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = 'AI 重审';
+        bar.querySelector('.rn-text').textContent = (e && e.message) ? e.message : '重审失败，请稍后再试';
+      }
+    });
+  }
+
   async function submit(type, payload) {
     if (!canSend) { toast('游客仅可查看，登录后可发言', 'err'); return; }
     btnLoading(sendBtn, true);
@@ -319,7 +359,15 @@ async function mountWorld(body) {
       if (stream.querySelector('.empty')) { stream.innerHTML = ''; seen.clear(); }
       put(m, true);
       picker.hidden = true;
-    } catch (e) { toast(e.message, 'err'); }
+      const bar = stream.parentNode.querySelector('.reject-note');
+      if (bar) { bar.remove(); }
+    } catch (e) {
+      if (e && e.code === 422 && type !== 'image') {
+        rejectNote(e.message || '内容未通过审核', { type: type, content: payload.content });
+      } else {
+        toast(e.message, 'err');
+      }
+    }
     finally { btnLoading(sendBtn, false); }
   }
 

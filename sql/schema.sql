@@ -127,6 +127,7 @@ CREATE TABLE IF NOT EXISTS `comments` (
   `content`    TEXT         NOT NULL,
   `is_deleted` TINYINT(1)   NOT NULL DEFAULT 0,
   `deleted_by` TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '0未删 1用户自删 2管理删除',
+  `review_flag` VARCHAR(12) NOT NULL DEFAULT '' COMMENT 'AI 重审标注：空=正常 middle=可能有恶意',
   `created_at` DATETIME     NOT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_work` (`work_id`, `id`),
@@ -156,6 +157,7 @@ CREATE TABLE IF NOT EXISTS `messages` (
   `msg_type`    VARCHAR(12)  NOT NULL DEFAULT 'text' COMMENT 'text | image',
   `media_url`   VARCHAR(255) NOT NULL DEFAULT '' COMMENT '图片消息的地址（本地或代理）',
   `is_recalled` TINYINT(1)   NOT NULL DEFAULT 0,
+  `review_flag` VARCHAR(12)  NOT NULL DEFAULT '' COMMENT 'AI 重审标注：空=正常 middle=可能有恶意',
   `created_at`  DATETIME     NOT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_time` (`id`, `created_at`)

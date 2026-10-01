@@ -31,6 +31,8 @@ function chat_out(array $r, int $myUid): array
         'msg_type' => (string)($r['msg_type'] ?? 'text'),
         'media'    => (string)($r['media_url'] ?? ''),
         'recalled' => $recalled,
+        /* AI 重审判为 middle 时的标注（撤回后不再提示） */
+        'flag'     => $recalled ? '' : (string)($r['review_flag'] ?? ''),
         'mine'     => $myUid > 0 && (int)$r['user_id'] === $myUid,
         'time'     => to_local((string)$r['created_at'], 'm-d H:i'),
     );
@@ -42,7 +44,8 @@ function chat_msg_cols(): string
     $type  = col_ok('messages', 'msg_type')    ? 'm.msg_type'     : "'text' AS msg_type";
     $media = col_ok('messages', 'media_url')   ? 'm.media_url'    : "'' AS media_url";
     $rec   = col_ok('messages', 'is_recalled') ? 'm.is_recalled'  : '0 AS is_recalled';
-    return 'm.id, m.user_id, m.content, ' . $type . ', ' . $media . ', ' . $rec . ', m.created_at, '
+    $flag  = col_ok('messages', 'review_flag') ? 'm.review_flag'  : "'' AS review_flag";
+    return 'm.id, m.user_id, m.content, ' . $type . ', ' . $media . ', ' . $rec . ', ' . $flag . ', m.created_at, '
          . "COALESCE(u.username, '已注销用户') AS username, COALESCE(u.role, 'user') AS role";
 }
 
@@ -108,10 +111,13 @@ switch ($action) {
 
         cooldown_guard('chat');   // 非管理员：发言冷却
 
-        /* 内容过三关：只针对文本消息（图片消息没有文本可审） */
+        /* 内容过三关：只针对文本消息（图片消息没有文本可审）。
+           传入 uid：AI 重审通过的凭证与用户绑定，凭它放行「重审说可以、发送又被拦」的那条。 */
+        $flag = '';
         if ($type !== 'image' && $content !== '') {
-            $verdict = moderate_text($content, 'message');
+            $verdict = moderate_text($content, 'message', (int)$uid);
             if (empty($verdict['ok'])) { moderate_reject($verdict); }
+            $flag = (string)(isset($verdict['flag']) ? $verdict['flag'] : '');
         }
 
         /* 写入列按存在性拼装：旧库未补齐这些列时仍可正常发言 */
@@ -119,6 +125,7 @@ switch ($action) {
         $vals = array($uid, $content);
         if (col_ok('messages', 'msg_type'))  { $cols[] = 'msg_type';  $vals[] = $type; }
         if (col_ok('messages', 'media_url')) { $cols[] = 'media_url'; $vals[] = $media; }
+        if (col_ok('messages', 'review_flag')) { $cols[] = 'review_flag'; $vals[] = $flag; }
         $ph = array_fill(0, count($cols), '?');
         $mid = db_insert(
             'INSERT INTO messages (`' . implode('`, `', $cols) . '`, created_at) VALUES (' . implode(', ', $ph) . ', UTC_TIMESTAMP())',
@@ -138,6 +145,7 @@ switch ($action) {
             'msg_type' => $type,
             'media'    => $media,
             'recalled' => false,
+            'flag'     => $flag,
             'mine'     => true,
             'time'     => to_local(now_utc(), 'm-d H:i'),
         ));

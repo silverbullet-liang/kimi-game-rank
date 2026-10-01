@@ -19,8 +19,10 @@ switch ($action) {
         $ident = current_identity();
         $uid = $ident['role'] === 'admin' ? admin_uid() : (int)(isset($ident['uid']) ? $ident['uid'] : 0);
 
+        $rflag = col_ok('comments', 'review_flag') ? 'c.review_flag' : "'' AS review_flag";
         $rows = db_all(
-            'SELECT c.id, c.user_id, c.parent_id, c.content, c.is_deleted, c.is_blocked, c.created_at, u.username, u.role
+            'SELECT c.id, c.user_id, c.parent_id, c.content, c.is_deleted, c.is_blocked, c.created_at, '
+            . $rflag . ', u.username, u.role
              FROM comments c JOIN users u ON u.id = c.user_id
              WHERE c.work_id = ? ORDER BY c.id ASC LIMIT 800',
             array($wid)
@@ -75,6 +77,8 @@ switch ($action) {
                 'avatar'   => identicon_data_uri((string)$r['username'], 40),
                 'content'  => (string)$r['content'],
                 'blocked'  => (int)$r['is_blocked'] === 1,
+                /* AI 重审判为 middle 时的标注 */
+                'flag'     => (string)($r['review_flag'] ?? ''),
                 'mine'     => $uid > 0 && (int)$r['user_id'] === $uid,
                 'time'     => to_local((string)$r['created_at'], 'm-d H:i'),
                 'likes'    => isset($counts[(int)$r['id']]) ? $counts[(int)$r['id']] : 0,
@@ -131,15 +135,14 @@ switch ($action) {
 
         /* 内容过三关：词库+句式 → 译后英文脏词 → 模型判定。
            放在扣冷却与查重之后，避免为重复内容白跑外部接口。 */
-        $verdict = moderate_text($content, 'comment');
+        $verdict = moderate_text($content, 'comment', (int)actor_uid($id));
         if (empty($verdict['ok'])) { moderate_reject($verdict); }
+        $flag = (string)(isset($verdict['flag']) ? $verdict['flag'] : '');
 
-        $cid = db_insert_norm(
-            'comments',
-            array('work_id', 'user_id', 'parent_id', 'root_id', 'content'),
-            array($wid, actor_uid($id), $parent, $root, $content),
-            $content
-        );
+        $ccols = array('work_id', 'user_id', 'parent_id', 'root_id', 'content');
+        $cvals = array($wid, actor_uid($id), $parent, $root, $content);
+        if (col_ok('comments', 'review_flag')) { $ccols[] = 'review_flag'; $cvals[] = $flag; }
+        $cid = db_insert_norm('comments', $ccols, $cvals, $content);
         stats_bump('comment_count');
         ok(array('id' => $cid));
         break;

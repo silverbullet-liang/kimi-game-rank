@@ -2,24 +2,47 @@
 /**
  * 智能链接识别（BETA）
  * ------------------------------------------------------------
- * 有些作品的「页面地址」本身只是个跳转页（一句"正在前往…"，真正的作品在别处）。
- * 开启后，收录与更新时会尝试从这类页面里找出真实地址并替换。
+ * 有些作品的「页面地址」本身只是个跳转页：一句标题、一个按钮（「开始游戏」），
+ * 真正的作品在别处。开启后，收录与更新时会尝试从这类页面里找出真实地址并替换，
+ * 后续的评分、标题、特征全部基于**真实页面**。
  *
- * 保守原则（宁可不动，也不要改错）：
- *   1. 先判断这页"像不像跳转页"——要有明确的跳转信号，且正文极短；
- *   2. 候选链接里剔除常见大站与本站自身，只认资产类后缀以外的 http(s) 地址；
- *   3. 候选**有且只有一个**时才替换；0 个或多个一律保持原样。
+ * 判定思路（结构，而不是字符串匹配）：
+ *   1. 页面只有一段标题或简介——去标签后的可见文字极短；
+ *   2. 只有一个按钮 / 链接，且按钮文字是「开始游戏」「前往」这类引导语；
+ *   3. 页面脚本很短，且不含动画 / 渲染引擎特征——短到只可能是那个按钮的跳转代码；
+ *   4. 真实地址从该按钮的脚本（或 href）里提取。
+ *
+ * 候选取舍：
+ *   · 先剔除视频页、AI 对话分享页、各种 API 地址（见 smart_link_excluded）；
+ *   · 多个候选时按域名优先级取最高的那个：kimi.link / kimi.site 最优先，
+ *     其次是各家 AI 平台的托管域名，最后才是普通域名。
+ *
  * 默认关闭（面板可开启，标 BETA）。
  */
 declare(strict_types=1);
 
-define('SMART_LINK_MIN_TEXT', 300);        // 去标签后的正文字数上限：超过就不当跳转页
+define('SMART_LINK_MAX_TEXT', 120);      // 可见文字上限：超过就不像「只有标题或简介」
+define('SMART_LINK_MAX_JS', 4000);       // 内联脚本体量上限：超过就不像「只有按钮的代码」
 define('SMART_LINK_ASSET_RE', '#\.(?:js|mjs|css|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|eot|json|xml|txt|mp3|mp4|webm|map)(?:\?|$)#i');
 
 /** 开关（默认关闭） */
 function smart_link_enabled(): bool
 {
     return setting_get('smart_link', '0') === '1';
+}
+
+/**
+ * 引导按钮的文案特征：跳转页的按钮几乎都长这样。
+ * 命中它只用于「提高确信度」，不是硬性门槛——按钮也可能只有一个图标。
+ */
+function smart_link_button_words(): array
+{
+    return array(
+        '开始游戏', '游戏开始', '立即开始', '马上开始', '点击开始', '开始体验', '立即体验',
+        '开始', '前往', '去往', '进入游戏', '进入作品', '进入', '打开', '立即前往', '继续访问',
+        '立即打开', '查看作品', '试玩', '玩一玩', '出发', '跳转',
+        'start', 'play', 'enter', 'open', 'go', 'continue', 'begin', 'launch',
+    );
 }
 
 /** 常见站点：这些域名下的链接不会被当成"真实作品地址" */
@@ -32,10 +55,11 @@ function smart_link_common_hosts(): array
         // 账号 / 社交 / 即时通讯
         'qq.com', 'weixin.qq.com', 'dingtalk.com', 'feishu.cn', 'telegram.org', 'discord.com',
         // 商城 / 视频
-        'taobao.com', 'tmall.com', 'jd.com', 'youku.com', 'iqiyi.com', 'v.qq.com',
+        'taobao.com', 'tmall.com', 'jd.com', 'youku.com', 'iqiyi.com', 'v.qq.com', 'mgtv.com',
+        'ixigua.com', 'haokan.baidu.com', 'pearvideo.com', 'vimeo.com', 'dailymotion.com',
         // 海外常见
-        'youtube.com', 'youtu.be', 'twitter.com', 'x.com',
-        'facebook.com', 'instagram.com', 'tiktok.com', 'reddit.com', 'medium.com', 'notion.so',
+        'youtube.com', 'youtu.be', 'twitter.com', 'x.com', 'tiktok.com',
+        'facebook.com', 'instagram.com', 'reddit.com', 'medium.com', 'notion.so',
         // 搜索 / 百科 / 通用
         'google.com', 'bing.com', 'wikipedia.org',
         // 代码托管仓库页（Pages 域另见"作品宿主"白名单）
@@ -47,16 +71,25 @@ function smart_link_common_hosts(): array
 }
 
 /**
- * 作品宿主：这些域名下的页面本身就是作品的"家"（作者自己的部署或 AI 平台给作者生成的
+ * 作品宿主：这些域名下的页面本身就是作品的"家"（作者自己的部署，或 AI 平台为作者生成的
  * 子站 / 分享页），因此：
  *   · 来源页落在这些域名 → 一律不当跳转页，绝不替换；
- *   · 出现在跳转页里的这类链接 → 允许作为"真实地址"候选。
- * 目的是不误伤 Kimi 与各 Agent 产品的子站、以及 GitHub Pages 这类托管。
+ *   · 出现在跳转页里的这类链接 → 是"真实地址"的强候选（优先级高于普通域名）。
  */
 function smart_link_trusted_hosts(): array
 {
     return array(
-        // 静态托管 / 开发者平台
+        // ---- AI 平台发布的网站 / 应用 ----
+        'kimi.link',                                 // Kimi 网站一键发布（形如 abc.ok.kimi.link）
+        'kimi.site', 'miaoda.online', 'miaoda.cn',   // Kimi 另一域名 / 妙搭
+        'appmiaoda.com',                             // 百度秒哒托管
+        'upma.site',                                 // 小众静态部署
+        'coze.site',                                 // 扣子编程
+        'claude.site',                               // Claude Artifacts 发布
+        'lovable.app', 'lovable.dev', 'bolt.host',   // 主流 AI 建站
+        'figma.site', 'base44.app', 'notion.site',   // 设计 / 建站平台
+        'ai.studio', 'aistudio.google.com',          // Google AI Studio 部署的应用
+        // ---- 静态托管 / 开发者平台 ----
         'github.io', 'githubusercontent.com', 'gitlab.io', 'gitee.io',
         'vercel.app', 'now.sh', 'netlify.app', 'pages.dev', 'workers.dev',
         'edgeone.ai', 'edgeone.app', 'surge.sh', 'web.app', 'firebaseapp.com',
@@ -65,7 +98,7 @@ function smart_link_trusted_hosts(): array
         'hf.space', 'huggingface.co', 'hf.co',       // HF Spaces：入口页在 huggingface.co，应用在 *.hf.space
         'modelscope.cn',                             // 魔搭创空间
         'streamlit.app', 'gradio.live', 'devfile.cn', 'lovable.app', 'bolt.new', 'v0.dev',
-        // AI 平台 / Agent 产品
+        // ---- AI 平台 / Agent 产品 ----
         'kimi.com', 'kimi.ai', 'moonshot.cn', 'moonshot.ai',
         'z.ai', 'chatglm.cn', 'zhipuai.cn', 'bigmodel.cn', 'ima.qq.com',
         'doubao.com', 'coze.cn', 'coze.com', 'n.cn',
@@ -89,60 +122,248 @@ function smart_link_host_trusted(string $url): bool
     return false;
 }
 
-/** 去掉标签、脚本、样式后的正文长度（判断"是不是只有一句话"） */
-function smart_link_text_len(string $html): int
+/** 宿主是否属于给定域列表之一（含子域） */
+function smart_link_host_in(string $host, array $domains): bool
+{
+    $host = strtolower($host);
+    if ($host === '') { return false; }
+    foreach ($domains as $d) {
+        if ($host === $d || substr($host, -strlen('.' . $d)) === '.' . $d) { return true; }
+    }
+    return false;
+}
+
+/* ============================================================
+ * 一、结构判定：这页是不是「一句标题 + 一个按钮」的跳转页
+ * ============================================================ */
+
+/** 去掉脚本、样式与标签后的可见文字 */
+function smart_link_visible_text(string $html): string
 {
     $s = preg_replace('#<(script|style|noscript)\b[^>]*>.*?</\1>#is', ' ', $html);
     $s = preg_replace('#<[^>]+>#', ' ', (string)$s);
     $s = html_entity_decode((string)$s, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    return mb_strlen(trim(preg_replace('#\s+#u', ' ', $s)), 'UTF-8');
+    return trim((string)preg_replace('#\s+#u', ' ', (string)$s));
+}
+
+/** 可见文字长度 */
+function smart_link_text_len(string $html): int
+{
+    return mb_strlen(smart_link_visible_text($html), 'UTF-8');
 }
 
 /**
- * 像不像"跳转页"。要求同时满足：
- *   有明确跳转信号（meta refresh 或 JS 跳转语句）＋ 标题带跳转字样或正文极短。
+ * 收集页面里的按钮 / 链接：返回 array(array('text' => 文案, 'href' => 地址, 'onclick' => 代码), …)。
+ * 只认会"带用户走"的元素：<a>、<button>，以及被做成按钮的 div/span（带 onclick / data-href）。
+ */
+function smart_link_buttons(string $html): array
+{
+    $out = array();
+    $re = '#<(a|button|div|span)\b([^>]*)>(.*?)</\1>#is';
+    if (!preg_match_all($re, $html, $m, PREG_SET_ORDER)) { return $out; }
+
+    foreach ($m as $one) {
+        $tag  = strtolower($one[1]);
+        $attr = $one[2];
+        $inner = $one[3];
+
+        $href = '';
+        if (preg_match('#\bhref\s*=\s*["\']([^"\']*)["\']#i', $attr, $h)) { $href = trim($h[1]); }
+
+        $onclick = '';
+        if (preg_match('#\bonclick\s*=\s*["\']([^"\']*)["\']#i', $attr, $o)) { $onclick = trim($o[1]); }
+
+        $dataUrl = '';
+        if (preg_match('#\bdata-(?:url|href)\s*=\s*["\']([^"\']*)["\']#i', $attr, $d)) { $dataUrl = trim($d[1]); }
+
+        /* 文案：去标签、去空白 */
+        $text = html_entity_decode(strip_tags($inner), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = trim((string)preg_replace('#\s+#u', ' ', $text));
+
+        /* 只算"真正可点"的元素：带 href / onclick / data-url，或本身就是 button/a；
+           纯文本 div（布局容器）不算按钮，否则一个卡片会被数成十几个按钮。 */
+        $clickable = ($href !== '' || $onclick !== '' || $dataUrl !== '' || $tag === 'button'
+                      || ($tag === 'a' && $href !== ''));
+        if (!$clickable) { continue; }
+
+        /* 排除没有文案也没有地址的空壳 */
+        if ($text === '' && $href === '' && $onclick === '' && $dataUrl === '') { continue; }
+
+        $out[] = array('text' => $text, 'href' => $href, 'onclick' => $onclick, 'data' => $dataUrl, 'tag' => $tag);
+    }
+    return $out;
+}
+
+/**
+ * 内联脚本统计：返回 array(len => 字符数, animated => 是否含动画/渲染特征).
+ * 跳转页的脚本短到只可能是那一行跳转；含动画或 3D 渲染的一律不当跳转页。
+ */
+function smart_link_js_stats(string $html): array
+{
+    $len = 0;
+    $animated = false;
+    if (preg_match_all('#<script\b[^>]*>(.*?)</script>#is', $html, $m)) {
+        foreach ($m[1] as $js) {
+            $len += strlen((string)$js);
+            if (preg_match('#(requestAnimationFrame|setInterval|new\s+THREE|WebGLRenderingContext|three\.module|gsap\.|anime\.|lottie)#i', (string)$js)) {
+                $animated = true;
+            }
+        }
+    }
+    /* 样式里的关键帧动画同样说明它是内容页而非跳转页 */
+    if (preg_match('#@keyframes#i', $html)) { $animated = true; }
+    return array('len' => $len, 'animated' => $animated);
+}
+
+/**
+ * 像不像"跳转页"。三条同时满足才成立：
+ *   ① 可见文字 ≤ SMART_LINK_MAX_TEXT（只有一句标题或简介）
+ *   ② 可点元素恰好 1 个（只有一个按钮）
+ *   ③ 内联脚本 ≤ SMART_LINK_MAX_JS 且不含动画 / 渲染特征（短到只有按钮的代码）
+ * 另外：页面含画布 / 内嵌框架 / 音视频 → 直接当真实作品页，绝不动。
  */
 function smart_link_looks_like_jump(string $html): bool
 {
     if ($html === '') { return false; }
 
-    /* 页面里有画布 / 内嵌框架 / 音视频等作品特征 → 当它是真实作品页，绝不动 */
     if (preg_match('#<(canvas|iframe|video|audio)\b#i', $html)) { return false; }
 
-    $hasRefresh = (bool)preg_match('#<meta[^>]+http-equiv\s*=\s*["\']?\s*refresh#i', $html);
-    $hasJsNav   = (bool)preg_match('#(?:location\s*\.\s*(?:href|replace|assign)\b|window\s*\.\s*open\s*\(|location\s*\.\s*replace\s*\()#i', $html);
-    if (!$hasRefresh && !$hasJsNav) { return false; }
+    if (smart_link_text_len($html) > SMART_LINK_MAX_TEXT) { return false; }
 
-    $titleJump = false;
-    if (preg_match('#<title[^>]*>(.*?)</title>#is', $html, $m)) {
-        $titleJump = (bool)preg_match('#(跳转|前往|正在|即将|redirect|Redirect|leaving|Continue|继续访问)#u', $m[1]);
+    $btns = smart_link_buttons($html);
+    if (count($btns) > 1) { return false; }
+    if (count($btns) === 0) {
+        /* 一个按钮都没有也认，但前提是页面里存在明确的跳转机制
+           （纯 meta refresh 页就是这样，不该因为"没按钮"被放过）。 */
+        $hasMech = (bool)preg_match('#<meta[^>]+http-equiv\s*=\s*["\']?\s*refresh#i', $html)
+                || (bool)preg_match('#(?:location\s*\.\s*(?:href|replace|assign)|window\s*\.\s*open\s*\(|location\s*\.\s*replace\s*\()#i', $html);
+        if (!$hasMech) { return false; }
     }
-    $shortText = smart_link_text_len($html) <= SMART_LINK_MIN_TEXT;
 
-    return ($hasRefresh && $shortText) || ($titleJump && $shortText) || ($hasRefresh && $titleJump);
+    $js = smart_link_js_stats($html);
+    if ($js['len'] > SMART_LINK_MAX_JS || $js['animated']) { return false; }
+
+    return true;
 }
 
-/** 从 HTML 里收集候选链接（绝对 http(s) 地址） */
-function smart_link_candidates(string $html): array
+/* ============================================================
+ * 二、候选地址的提取与剔除
+ * ============================================================ */
+
+/** 从任意文本（脚本、属性）里抠出 http(s) 地址；同时容忍被转义的写法 */
+function smart_link_urls_in(string $text): array
 {
-    $raw = array();
-    $pat = array(
-        '#<meta[^>]+http-equiv\s*=\s*["\']?\s*refresh[^>]*content\s*=\s*["\']([^"\']+)["\']#i',
-        '#(?:location\s*\.\s*(?:href|replace|assign)\s*=\s*|location\s*\.\s*replace\s*\(\s*|window\s*\.\s*open\s*\(\s*)["\']([^"\']+)["\']#i',
-        '#<a\b[^>]*href\s*=\s*["\']([^"\']+)["\']#i',
-        '#(?:data-url|data-href)\s*=\s*["\']([^"\']+)["\']#i',
-    );
-    foreach ($pat as $i => $p) {
-        if (!preg_match_all($p, $html, $m)) { continue; }
-        foreach ($m[1] as $hit) {
-            if ($i === 0) {                              // meta refresh 要再抠出 url=
-                if (!preg_match('#url\s*=\s*[\'"]?([^\'"\s>;]+)#i', $hit, $mm)) { continue; }
-                $hit = $mm[1];
-            }
-            $raw[] = trim(html_entity_decode((string)$hit, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    $out = array();
+    $t = str_replace(array('\\/', '\\u002F', '\\u002f', '&amp;'), array('/', '/', '/', '&'), $text);
+    if (preg_match_all('#https?://[^\s"\'<>)\\}\\]]+#i', $t, $m)) {
+        foreach ($m[0] as $u) {
+            $u = trim($u, " \t\n\r\0\x0B.,;");
+            if ($u !== '') { $out[] = $u; }
         }
     }
-    return $raw;
+    return $out;
+}
+
+/** 视频页路径特征：这些是"作品本体的家"以外的东西，一律不当作真实地址 */
+function smart_link_video_re(): string
+{
+    return '#(?:'
+        // B 站：视频 / 番剧 / 短链
+        . '(?://|\.)bilibili\.com/(?:video|bangumi|read)/'
+        . '|(?://|\.)b23\.tv/'
+        // 抖音 / 快手 / 小红书
+        . '|(?://|\.)douyin\.com/(?:video|note)/|(?://|\.)iesdouyin\.com/share/video/|(?://|\.)v\.douyin\.com/'
+        . '|(?://|\.)kuaishou\.com/(?:short-video|f)/|(?://|\.)v\.kuaishou\.com/|(?://|\.)gifshow\.com/fw/photo/'
+        . '|(?://|\.)xiaohongshu\.com/(?:explore|discovery/item)/|(?://|\.)xhslink\.com/'
+        // 长视频 / 海外
+        . '|(?://|\.)youtube\.com/(?:watch|shorts|embed)/|(?://|\.)youtu\.be/'
+        . '|(?://|\.)youku\.com/v_show/|(?://|\.)iqiyi\.com/|(?://|\.)iq\.com/play/'
+        . '|(?://|\.)v\.qq\.com/x/|(?://|\.)mgtv\.com/b/|(?://|\.)ixigua\.com/'
+        . '|(?://|\.)haokan\.baidu\.com/v|(?://|\.)pearvideo\.com/video_'
+        . '|(?://|\.)vimeo\.com/|(?://|\.)tiktok\.com/@|(?://|\.)vm\.tiktok\.com/'
+        . '|(?://|\.)weibo\.com/|(?://|\.)video\.weibo\.com/'
+        . '|(?://|\.)weixin\.qq\.com/sph/'
+        . ')#i';
+}
+
+/** AI 对话分享页特征：那是"一段对话"，不是作品 */
+function smart_link_chat_share_re(): string
+{
+    return '#(?:'
+        . '(?://|\.)chatgpt\.com/(?:share|s)/'                    // 分享会话 / 排程任务
+        . '|(?://|\.)claude\.ai/(?:share|public/artifacts)/'      // 分享会话
+        . '|(?://|\.)gemini\.google\.com/share/|(?://|\.)g\.co/gemini/share/'
+        . '|(?://|\.)chat\.deepseek\.com/share/'
+        . '|(?://|\.)doubao\.com/thread/'
+        . '|(?://|\.)kimi\.com/share/|(?://|\.)kimi\.moonshot\.cn/share/'
+        . '|(?://|\.)grok\.com/share/|(?://|\.)chat\.mistral\.ai/share/'
+        . '|(?://|\.)perplexity\.ai/.*-share|(?://|\.)yuanbao\.tencent\.com/share/'
+        . ')#i';
+}
+
+/** API 端点特征：按规则识别，不穷举域名 */
+function smart_link_is_api(string $url): bool
+{
+    $host = strtolower((string)parse_url($url, PHP_URL_HOST));
+    $path = strtolower((string)parse_url($url, PHP_URL_PATH));
+    if ($host === '') { return false; }
+
+    /* 主机名以 api. / platform. / open. 开头 */
+    if (preg_match('#^(?:api|platform|open|gateway|endpoint)\.#i', $host)) { return true; }
+    if (strpos($host, 'api.') === 0) { return true; }
+
+    /* 路径特征 */
+    foreach (array('/api/', '/graphql', '/openapi', '/swagger', '/chat/completions',
+                   '/v1/chat', '/embeddings', '/v1/messages', '/api-docs') as $needle) {
+        if (strpos($path, $needle) !== false) { return true; }
+    }
+    return false;
+}
+
+/** 候选地址是否应当被剔除 */
+function smart_link_excluded(string $url): bool
+{
+    if (preg_match(SMART_LINK_ASSET_RE, $url)) { return true; }          // 资源文件
+    if (smart_link_is_api($url)) { return true; }                        // API 地址
+    if (preg_match(smart_link_video_re(), $url)) { return true; }        // 视频页
+    if (preg_match(smart_link_chat_share_re(), $url)) { return true; }   // AI 对话分享页
+    return false;
+}
+
+/** 候选链接是否可用（域名、后缀、与来源页同站等一律排除） */
+function smart_link_acceptable(string $url, string $baseUrl): bool
+{
+    if (!preg_match('#^https?://#i', $url)) { return false; }
+    if (smart_link_excluded($url)) { return false; }
+
+    $host = strtolower((string)parse_url($url, PHP_URL_HOST));
+    if ($host === '' || filter_var($host, FILTER_VALIDATE_IP) !== false) { return false; }
+
+    /* 与来源页同站、或就是本站的地址，都不算"真实作品地址" */
+    foreach (array($baseUrl, (string)cfg('site.url', '')) as $self) {
+        $h = strtolower((string)parse_url((string)$self, PHP_URL_HOST));
+        if ($h !== '' && ($host === $h || substr($host, -strlen('.' . $h)) === '.' . $h)) { return false; }
+    }
+    /* 常见大站排除 */
+    if (smart_link_host_in($host, smart_link_common_hosts())) { return false; }
+    return true;
+}
+
+/**
+ * 候选优先级：数值越大越优先。
+ * 用户实际遇到的多是 Kimi 系跳转页，所以 kimi.link / kimi.site 置顶；
+ * 其次是妙搭、upma 这类平台托管，再到通用静态托管。
+ */
+function smart_link_priority(string $url): int
+{
+    $host = strtolower((string)parse_url($url, PHP_URL_HOST));
+    if ($host === '') { return 0; }
+    if (smart_link_host_in($host, array('kimi.link', 'kimi.site'))) { return 40; }
+    if (smart_link_host_in($host, array('miaoda.online', 'miaoda.cn', 'appmiaoda.com', 'upma.site'))) { return 30; }
+    if (smart_link_host_in($host, array('coze.site', 'claude.site', 'ai.studio', 'figma.site',
+                                       'base44.app', 'notion.site', 'lovable.app', 'bolt.host'))) { return 20; }
+    if (smart_link_host_trusted($url)) { return 10; }
+    return 1;
 }
 
 /** 归一化地址：去掉协议、www.、查询串与末尾斜杠，用于判断"是不是同一个地址" */
@@ -154,26 +375,23 @@ function smart_link_norm(string $u): string
     return strtolower(rtrim($u, '/'));
 }
 
-/** 候选链接是否可用（域名、后缀、与来源页同站等一律排除） */
-function smart_link_acceptable(string $url, string $baseUrl): bool
+/** 相对地址补全成绝对地址 */
+function smart_link_abs(string $url, string $baseUrl): string
 {
-    if (!preg_match('#^https?://#i', $url)) { return false; }
-    if (preg_match(SMART_LINK_ASSET_RE, $url)) { return false; }      // 资源文件不是作品页
-
-    $host = strtolower((string)parse_url($url, PHP_URL_HOST));
-    if ($host === '' || filter_var($host, FILTER_VALIDATE_IP) !== false) { return false; }
-
-    /* 与来源页同站、或就是本站的地址，都不算"真实作品地址" */
-    foreach (array($baseUrl, (string)cfg('site.url', '')) as $self) {
-        $h = strtolower((string)parse_url((string)$self, PHP_URL_HOST));
-        if ($h !== '' && ($host === $h || substr($host, -strlen('.' . $h)) === '.' . $h)) { return false; }
-    }
-    /* 常见大站排除 */
-    foreach (smart_link_common_hosts() as $d) {
-        if ($host === $d || substr($host, -strlen('.' . $d)) === '.' . $d) { return false; }
-    }
-    return true;
+    $url = trim($url);
+    if ($url === '' || preg_match('#^https?://#i', $url)) { return $url; }
+    if (strpos($url, '//') === 0) { return 'https:' . $url; }
+    $p = parse_url($baseUrl);
+    if (!is_array($p) || empty($p['host'])) { return ''; }
+    $scheme = isset($p['scheme']) ? $p['scheme'] : 'https';
+    if (strpos($url, '/') === 0) { return $scheme . '://' . $p['host'] . $url; }
+    $dir = isset($p['path']) ? (string)preg_replace('#/[^/]*$#', '/', (string)$p['path']) : '/';
+    return $scheme . '://' . $p['host'] . $dir . $url;
 }
+
+/* ============================================================
+ * 三、主入口
+ * ============================================================ */
 
 /**
  * 尝试从跳转页里解析真实地址。
@@ -182,17 +400,55 @@ function smart_link_acceptable(string $url, string $baseUrl): bool
 function smart_link_resolve(string $html, string $baseUrl): string
 {
     if ($html === '' || $baseUrl === '') { return ''; }
-    if (smart_link_host_trusted($baseUrl) || smart_link_host_trusted($html)) { return ''; }   // 来源本身就是作品宿主
+    if (smart_link_host_trusted($baseUrl)) { return ''; }   // 来源本身就是作品宿主
     if (!smart_link_looks_like_jump($html)) { return ''; }
 
-    $found = array();
-    foreach (smart_link_candidates($html) as $u) {
-        if (!smart_link_acceptable($u, $baseUrl)) { continue; }
-        $key = smart_link_norm($u);
-        if ($key !== '' && !isset($found[$key])) { $found[$key] = $u; }
+    /* 候选来源：① 那个按钮自己的 href / data-url / onclick；② 全页内联脚本。
+       因为脚本被判为"极短"，整段脚本里的地址可以放心当作这个按钮的去向。 */
+    $raw = array();
+    $btns = smart_link_buttons($html);
+    foreach ($btns as $b) {
+        /* href / data-url：可能是绝对地址，也可能是同站相对路径（跳转页自己就是个入口页） */
+        foreach (array('href', 'data') as $k) {
+            $v = isset($b[$k]) ? trim((string)$b[$k]) : '';
+            if ($v === '' || $v[0] === '#') { continue; }
+            if (preg_match('#^[a-z][a-z0-9+.-]*:#i', $v) && !preg_match('#^https?://#i', $v)) { continue; }
+            $raw[] = preg_match('#^https?://#i', $v) ? $v : smart_link_abs($v, $baseUrl);
+        }
+        if (!empty($b['onclick'])) {
+            foreach (smart_link_urls_in((string)$b['onclick']) as $u) { $raw[] = $u; }
+        }
     }
-    if (count($found) !== 1) { return ''; }          // 唯一才敢替换
+    if (preg_match_all('#<script\b[^>]*>(.*?)</script>#is', $html, $sm)) {
+        foreach ($sm[1] as $js) {
+            foreach (smart_link_urls_in((string)$js) as $u) { $raw[] = $u; }
+        }
+    }
+    /* 顺带认一下 meta refresh —— 有些跳转页只用它 */
+    if (preg_match_all('#<meta[^>]+http-equiv\s*=\s*["\']?\s*refresh[^>]*content\s*=\s*["\']([^"\']+)["\']#i', $html, $mm)) {
+        foreach ($mm[1] as $c) {
+            if (preg_match('#url\s*=\s*[\'"]?([^\'"\s>;]+)#i', $c, $u2)) { $raw[] = $u2[1]; }
+        }
+    }
 
-    $real = (string)reset($found);
-    return smart_link_norm($real) === smart_link_norm($baseUrl) ? '' : $real;
+    /* 过滤 + 去重（保留首次出现的原样地址） */
+    $found = array();
+    foreach ($raw as $u) {
+        $u = smart_link_abs((string)$u, $baseUrl);
+        if ($u === '' || !smart_link_acceptable($u, $baseUrl)) { continue; }
+        $key = smart_link_norm($u);
+        if ($key !== '' && $key !== smart_link_norm($baseUrl) && !isset($found[$key])) {
+            $found[$key] = $u;
+        }
+    }
+    if (empty($found)) { return ''; }
+
+    /* 多个候选时：取域名优先级最高的那个；同级多个则取出现顺序里的第一个 */
+    $best = '';
+    $bestRank = -1;
+    foreach ($found as $u) {
+        $r = smart_link_priority($u);
+        if ($r > $bestRank) { $bestRank = $r; $best = $u; }
+    }
+    return $best;
 }

@@ -1,95 +1,102 @@
 <?php
 /**
- * app/link_smart.php 的校验脚本（BETA 功能，只覆盖关键防线）
+ * 智能链接识别的自检（构造样本，不联网）
  * 跑法：php tools/verify_smart_link.php
- * 说明：tools/ 不进发布包。
+ *
+ * 覆盖面：结构判定（单标题 / 单按钮 / 短脚本）、动画与画布排除、
+ *         视频页 / 对话分享页 / API 地址剔除、域名优先级、同站与宿主保护。
  */
 declare(strict_types=1);
+
 define('APP_ROOT', dirname(__DIR__));
-$GLOBALS['S'] = array();
-function setting_get(string $k, $d = '') { return array_key_exists($k, $GLOBALS['S']) ? $GLOBALS['S'][$k] : $d; }
-function cfg($k, $d = null) { return $k === 'site.url' ? 'https://kimi-game-rank.wuaze.com' : $d; }
-require APP_ROOT . '/app/link_smart.php';
-error_reporting(E_ALL);
-set_error_handler(function ($n, $s, $f, $l) { if (error_reporting() === 0) { return true; } echo "  ⚠ PHP告警: $s @ $f:$l\n"; return true; });
+if (!function_exists('cfg'))       { function cfg($k, $d = null) { return $d; } }
+if (!function_exists('setting_get')) { function setting_get($k, $d = '') { return $d; } }
+require dirname(__DIR__) . '/app/link_smart.php';
 
 $pass = 0; $fail = 0;
-function ok($t, $c) { global $pass, $fail; if ($c) { $pass++; echo "  ✔ $t\n"; } else { $fail++; echo "  ✗ $t\n"; } }
+function ok(string $name, bool $cond) { global $pass, $fail; $cond ? $pass++ : $fail++; printf("%s %s\n", $cond ? 'OK  ' : 'FAIL', $name); }
 
-/** 仿"我正在前往…"那类跳转页：提示文字 + 跳转机制 + 一个可点链接，正文极短 */
-function jump_html($target, $body = '')
-{
-    return '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><title>正在前往 目标站点</title>'
-        . '<meta http-equiv="refresh" content="0;url=' . $target . '">'
-        . '<style>body{margin:0;background:#06070b}</style></head><body>'
-        . '<div class="card"><h1>正在跳转</h1><p>即将前往目标页面…</p>'
-        . '<a href="' . $target . '">如果没反应，点这里</a></div>'
-        . '<script>setTimeout(function(){location.replace("' . $target . '");},300);</script>'
-        . $body . '</body></html>';
-}
+$JUMP = '<html><head><title>某某小游戏</title></head><body><h1>某某小游戏</h1>'
+      . '<p>点下面的按钮开始</p><button id="b">开始游戏</button>'
+      . '<script>document.getElementById("b").onclick=function(){location.href="https://abc.ok.kimi.link/"}</script>'
+      . '</body></html>';
 
-echo "【1】开关默认关闭\n";
-$GLOBALS['S'] = array();
-ok('未设置 → 关闭', smart_link_enabled() === false);
+/* ---------- 结构判定 ---------- */
+ok('典型跳转页 → 判为跳转页', smart_link_looks_like_jump($JUMP));
+ok('典型跳转页 → 解析出 kimi.link', smart_link_resolve($JUMP, 'https://share.example.net/p/1') === 'https://abc.ok.kimi.link/');
 
-echo "\n【2】不误伤作品宿主（这是本轮重点）\n";
-$t = 'https://real.example.com/play';
-foreach (array('https://alice.github.io/game/index.html', 'https://mygame.vercel.app/',
-               'https://kimi.com/artifact/abc', 'https://space.kimi.com/x',
-               'https://chat.z.ai/c/1', 'https://x.netlify.app/', 'https://y.pages.dev/',
-               'https://huggingface.co/spaces/a/b', 'https://modelscope.cn/studios/a/b') as $src) {
-    ok('来源在作品宿主 → 不替换：' . preg_replace('#^https?://#', '', $src),
-        smart_link_resolve(jump_html($t), $src) === '');
-}
-ok('host 判定：github.io / kimi 子域 / vercel.app / HF 命中',
-    smart_link_host_trusted('https://a.github.io/') && smart_link_host_trusted('https://x.kimi.com/p')
-    && smart_link_host_trusted('https://a.vercel.app') && smart_link_host_trusted('https://huggingface.co/spaces/a')
-    && !smart_link_host_trusted('https://a.example.com'));
+ok('含 canvas → 不判跳转页', !smart_link_looks_like_jump(
+    '<html><body><h1>游戏</h1><button>开始</button><canvas id="c"></canvas><script>location.href="https://x.kimi.link/"</script></body></html>'));
 
-echo "\n【3】有作品特征的页面不当跳转页\n";
-ok('含 canvas 的短页面 → 不判跳转页',
-    !smart_link_looks_like_jump('<title>正在前往</title><canvas id="c"></canvas><script>location.href="https://a.example.com/"</script>'));
-ok('含 iframe 的短页面 → 不判跳转页', !smart_link_looks_like_jump('<title>跳转</title><iframe src="/x"></iframe>'));
+ok('正文很长 → 不判跳转页', !smart_link_looks_like_jump(
+    '<html><body><h1>攻略</h1><p>' . str_repeat('这是一段很长的正文。', 20) . '</p><a href="https://x.kimi.link/">前往</a></body></html>'));
 
-echo "\n【3.5】没有任何跳转机制 → 一律不当跳转页（保守红线）\n";
-ok('只有标题像 + 一个外链，但没有 refresh / JS 跳转 → 不动',
-    !smart_link_looks_like_jump('<title>正在前往 某站</title><p>正文</p><a href="https://a.example.com/">去</a>'));
+ok('多个按钮 → 不判跳转页', !smart_link_looks_like_jump(
+    '<html><body><h1>标题</h1><a href="https://a.kimi.link/">开始游戏</a><a href="https://b.kimi.link/">说明</a></body></html>'));
 
-echo "\n【4】真正的跳转页照旧识别\n";
-ok('典型跳转页 → 解析出唯一真实地址',
-    smart_link_resolve(jump_html('https://game.example.com/play'), 'https://jump.example.net/p/1') === 'https://game.example.com/play');
-ok('同址多处出现（meta/JS/链接）只算一个候选',
-    smart_link_resolve(jump_html('https://one.example.com/play'), 'https://jump.example.net/p/2') !== '');
-ok('两个不同候选 → 保持原样', smart_link_resolve(
-    jump_html('https://a.example.com/', '<a href="https://b.example.com/">B</a>'),
-    'https://jump.example.net/p/3') === '');
+ok('脚本含动画 → 不判跳转页', !smart_link_looks_like_jump(
+    '<html><body><h1>标题</h1><button>开始</button><script>requestAnimationFrame(function f(){requestAnimationFrame(f);});location.href="https://x.kimi.link/"</script></body></html>'));
 
-echo "\n【5】排除规则\n";
-ok('唯一候选是 B 站 → 不认', smart_link_resolve(jump_html('https://www.bilibili.com/video/BV1'),
-    'https://jump.example.net/p/4') === '');
-ok('唯一候选是本站 → 不认', smart_link_resolve(jump_html('https://kimi-game-rank.wuaze.com/'),
-    'https://jump.example.net/p/5') === '');
-ok('大站被剔除后只剩一个真站 → 用它', smart_link_resolve(
-    jump_html('https://real-game.example.com/play', '<a href="https://space.bilibili.com/1">作者</a>'),
-    'https://jump.example.net/p/6') === 'https://real-game.example.com/play');
-ok('资源后缀与 IP 不认', smart_link_resolve(jump_html('https://cdn.example.com/a.js'),
-    'https://jump.example.net/p/7') === ''
-    && smart_link_resolve(jump_html('http://10.0.0.2/'), 'https://jump.example.net/p/8') === '');
+ok('含 iframe → 不判跳转页', !smart_link_looks_like_jump(
+    '<html><body><h1>标题</h1><iframe src="/x"></iframe></body></html>'));
 
-echo "\n【6】真实样本（我做的那份跳转页）\n";
-$real = '';
-foreach (array(APP_ROOT . '/standalone/jump.html', '/tmp/jump.html') as $p) {
-    if (is_file($p)) { $real = (string)file_get_contents($p); break; }
-}
-if ($real === '') { echo "  （样本不在项目内，跳过）\n"; }
-else {
-    ok('判定为跳转页', smart_link_looks_like_jump($real));
-    ok('它指向本站 → 不替换', smart_link_resolve($real, 'https://example.com/jump.html') === '');
-    /* 把同一份样本的目标换成外站，验证"真实跳转页 + 唯一外链"能解析出来 */
-    $variant = str_replace('https://kimi-game-rank.wuaze.com', 'https://real-game.example.com/play', $real);
-    ok('换成外站目标时，按这份真实样本解析出该地址',
-        smart_link_resolve($variant, 'https://jump.example.net/p/9') === 'https://real-game.example.com/play');
-}
+/* ---------- 排除清单 ---------- */
+ok('唯一候选是 B 站视频页 → 不认', smart_link_resolve(
+    '<html><body><h1>看视频</h1><a href="https://www.bilibili.com/video/BV1xx">前往</a></body></html>',
+    'https://share.example.net/p/2') === '');
 
-echo "\n结果：通过 " . $pass . "，失败 " . $fail . "\n";
-exit($fail === 0 ? 0 : 1);
+ok('唯一候选是 B 站短链 → 不认', smart_link_resolve(
+    '<html><body><h1>看视频</h1><a href="https://b23.tv/abc">前往</a></body></html>',
+    'https://share.example.net/p/2b') === '');
+
+ok('唯一候选是对话分享页 → 不认', smart_link_resolve(
+    '<html><body><h1>对话</h1><a href="https://chatgpt.com/share/abc-123">查看</a></body></html>',
+    'https://share.example.net/p/3') === '');
+
+ok('Claude / Kimi 分享页同样不认',
+    smart_link_resolve('<html><body><h1>对话</h1><a href="https://claude.ai/share/x">看</a></body></html>', 'https://share.example.net/p/3b') === ''
+    && smart_link_resolve('<html><body><h1>对话</h1><a href="https://www.kimi.com/share/abc">看</a></body></html>', 'https://share.example.net/p/3c') === '');
+
+ok('API 地址被剔除、保留 kimi.link', smart_link_resolve(
+    '<html><body><h1>接口</h1><button>打开</button><script>fetch("https://api.example.com/v1/chat/completions")</script>'
+    . '<script>location.href="https://abc.ok.kimi.link/"</script></body></html>',
+    'https://share.example.net/p/4') === 'https://abc.ok.kimi.link/');
+
+ok('资源文件后缀不认', smart_link_resolve(
+    '<html><body><h1>标题</h1><a href="https://cdn.example.com/a.js">开始</a></body></html>',
+    'https://share.example.net/p/4b') === '');
+
+/* ---------- 优先级 ---------- */
+ok('多候选 → 优先 kimi.link', smart_link_resolve(
+    '<html><body><h1>标题</h1><button id="b">开始游戏</button>'
+    . '<script>var a="https://some-random-site.example.com/play";var b="https://xyz.ok.kimi.link/";'
+    . 'document.getElementById("b").onclick=function(){location.href=b}</script></body></html>',
+    'https://share.example.net/p/5') === 'https://xyz.ok.kimi.link/');
+
+ok('kimi.link 优先于 miaoda', smart_link_resolve(
+    '<html><body><h1>标题</h1><button id="b">开始游戏</button>'
+    . '<script>var a="https://x.miaoda.online/";var b="https://y.ok.kimi.link/";'
+    . 'document.getElementById("b").onclick=function(){location.href=b}</script></body></html>',
+    'https://share.example.net/p/5b') === 'https://y.ok.kimi.link/');
+
+ok('优先级：kimi.link > upma > 普通域名',
+    smart_link_priority('https://a.ok.kimi.link/') > smart_link_priority('https://a.upma.site/')
+    && smart_link_priority('https://a.upma.site/') > smart_link_priority('https://example.org/x'));
+
+/* ---------- 保护 ---------- */
+ok('来源本身是作品宿主 → 不替换', smart_link_resolve($JUMP, 'https://abc.kimi.link/x') === '');
+ok('来源是 kimi.com（AI 对话页）→ 不替换', smart_link_resolve($JUMP, 'https://www.kimi.com/chat/1') === '');
+ok('同站候选 → 不替换', smart_link_resolve(
+    '<html><body><h1>标题</h1><a href="https://share.example.net/other">开始游戏</a></body></html>',
+    'https://share.example.net/p/7') === '');
+ok('相对地址必然同站 → 不替换', smart_link_resolve(
+    '<html><body><h1>标题</h1><a href="/play/index.html">开始游戏</a></body></html>',
+    'https://games.example.net/jump/1') === '');
+
+/* ---------- meta refresh ---------- */
+ok('meta refresh 页（无按钮）→ 识别 kimi.site', smart_link_resolve(
+    '<html><head><meta http-equiv="refresh" content="0;url=https://abc.kimi.site/"></head><body><h1>正在前往</h1></body></html>',
+    'https://share.example.net/p/6') === 'https://abc.kimi.site/');
+
+echo "\n通过 $pass / 失败 $fail\n";
+exit($fail > 0 ? 1 : 0);
