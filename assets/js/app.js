@@ -3592,7 +3592,7 @@ function bindBackup(container) {
 
   const paint = (d) => {
     meta.innerHTML = d.writable
-      ? '共 <b>' + d.items.length + '</b> 份备份 · 单份上限 ' + d.limit_mb + 'MB'
+      ? '共 <b>' + d.items.length + '</b> 份备份 · 单份上限 ' + d.limit_text
       : '<span style="color:var(--danger)">服务器上的备份目录不可写，请检查该目录权限</span>';
     if (!d.items.length) {
       box.innerHTML = '<div class="tiny muted">还没有备份。点「立即备份」生成第一份。</div>';

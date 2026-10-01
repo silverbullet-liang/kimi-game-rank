@@ -509,7 +509,7 @@ switch ($action) {
         ok(array(
             'items'    => backup_list(),
             'writable' => backup_writable(),
-            'limit_mb' => (int)(BACKUP_MAX_BYTES / 1048576),
+            'limit_text' => backup_size_text(BACKUP_MAX_BYTES),
         ));
         break;
     }

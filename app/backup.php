@@ -15,7 +15,7 @@ define('BACKUP_DIR', APP_ROOT . '/storage/backups');
 define('BACKUP_NAME_RE', '/^kimgr-\d{8}-\d{6}-[a-f0-9]{6}\.sql(\.gz)?$/');
 define('BACKUP_CHUNK', 500);              // 每次从库里读多少行
 define('BACKUP_ROWS_PER_INSERT', 200);    // 每条 INSERT 拼多少行
-define('BACKUP_MAX_BYTES', 268435456);    // 256MB 上限（未压缩字节）
+define('BACKUP_MAX_BYTES', 1073741824);   // 1GB 上限（按落盘大小，即压缩后的文件体积）
 
 function backup_dir(): string
 {
@@ -78,15 +78,31 @@ function backup_open(string $path, bool $gz)
     return $h;
 }
 
-function backup_write($h, bool $gz, string $s, int &$bytes)
+/**
+ * 写一段内容。$bytes 累计的是原始文本量（仅供参考），
+ * 真正的上限按**落盘大小**判断：gzip 是流式压缩，只有文件本身的体积才代表真实占用，
+ * 主机的空间限额也正是按它计算的。
+ */
+function backup_write($h, bool $gz, string $s, int &$bytes, string $path)
 {
     if ($s === '') { return; }
     $n = $gz ? @gzwrite($h, $s) : @fwrite($h, $s);
     if ($n === false || $n === 0) { throw new RuntimeException('写入备份文件失败，可能是磁盘空间不足'); }
     $bytes += strlen($s);
-    if ($bytes > BACKUP_MAX_BYTES) {
-        throw new RuntimeException('备份体积超过 ' . (int)(BACKUP_MAX_BYTES / 1048576) . 'MB，已中止');
+
+    clearstatcache(true, $path);
+    $onDisk = @filesize($path);
+    if ($onDisk !== false && $onDisk > BACKUP_MAX_BYTES) {
+        throw new RuntimeException('备份已达 ' . backup_size_text(BACKUP_MAX_BYTES) . ' 上限，已中止');
     }
+}
+
+/** 体积的可读文本 */
+function backup_size_text(int $b): string
+{
+    if ($b >= 1073741824) { return ($b % 1073741824 === 0 ? (string)(int)($b / 1073741824) : round($b / 1073741824, 1)) . 'GB'; }
+    if ($b >= 1048576) { return round($b / 1048576) . 'MB'; }
+    return round($b / 1024) . 'KB';
 }
 
 function backup_close($h, bool $gz)
@@ -149,7 +165,7 @@ function backup_run(): array
               . '-- 表数量：' . count($tables) . "\n"
               . ($snap ? '' : "-- 注意：本次未能开启一致性快照，导出期间的数据变动可能未完全同步\n")
               . "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n\n";
-        backup_write($h, $gz, $head, $bytes);
+        backup_write($h, $gz, $head, $bytes, $path);
 
         $rows = 0;
         foreach ($tables as $t) {
@@ -159,7 +175,7 @@ function backup_run(): array
             backup_write($h, $gz,
                 "-- ---------- 表 `$t` ----------\n"
                 . 'DROP TABLE IF EXISTS `' . $t . "`;\n"
-                . (string)$create[1] . ";\n\n", $bytes);
+                . (string)$create[1] . ";\n\n", $bytes, $path);
 
             $cols = ''; $batch = array();
             for ($off = 0; ; $off += BACKUP_CHUNK) {
@@ -174,7 +190,7 @@ function backup_run(): array
                     $rows++;
                     if (count($batch) >= BACKUP_ROWS_PER_INSERT) {
                         backup_write($h, $gz, 'INSERT INTO `' . $t . '` ' . $cols . " VALUES\n"
-                            . implode(",\n", $batch) . ";\n", $bytes);
+                            . implode(",\n", $batch) . ";\n", $bytes, $path);
                         $batch = array();
                     }
                 }
@@ -182,12 +198,12 @@ function backup_run(): array
             }
             if (!empty($batch)) {
                 backup_write($h, $gz, 'INSERT INTO `' . $t . '` ' . $cols . " VALUES\n"
-                    . implode(",\n", $batch) . ";\n", $bytes);
+                    . implode(",\n", $batch) . ";\n", $bytes, $path);
             }
-            backup_write($h, $gz, "\n", $bytes);
+            backup_write($h, $gz, "\n", $bytes, $path);
         }
 
-        backup_write($h, $gz, "SET FOREIGN_KEY_CHECKS=1;\n-- 导出行数：$rows\n", $bytes);
+        backup_write($h, $gz, "SET FOREIGN_KEY_CHECKS=1;\n-- 导出行数：$rows\n", $bytes, $path);
         backup_close($h, $gz);
         $h = null;
 
