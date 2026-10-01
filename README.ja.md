@@ -1,6 +1,6 @@
 # Kimi ゲームランキング · kimi-game-rank
 
-[English](README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · **日本語**
+[English](README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · **日本語** · [한국어](README.ko.md) · [Italiano](README.it.md) · [Français](README.fr.md)
 
 **Kimi コミュニティ**向けの、6 軸による総合スコアランキングサイト。PHP + MySQL、フロントエンドはビルド不要（素の HTML / CSS / JavaScript）。
 

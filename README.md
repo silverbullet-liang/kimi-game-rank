@@ -1,6 +1,6 @@
 # Kimi Game Rank · kimi-game-rank
 
-**English** · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md)
+**English** · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Italiano](README.it.md) · [Français](README.fr.md)
 
 A six-dimension scoring leaderboard for the **Kimi community**. PHP + MySQL, zero-build frontend (vanilla HTML / CSS / JavaScript).
 
