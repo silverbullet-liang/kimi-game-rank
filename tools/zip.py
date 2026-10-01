@@ -8,8 +8,9 @@
   · config/config.php 与 config/api_keys.php **随包分发**（完整替换部署需要），
     但打包前会做一次体检：命中本地测试配置特征（localhost / 测试标记）则拒绝打包；
   · 构建脚本、设计文档、独立展示页、仓库配置（.github）都不进包；
-  · 仓库文档（README / CHANGELOG / 贡献指南 / 行为准则 / 安全政策）与安装、诊断脚本
-    只留在 GitHub —— 交付包与开源仓库保持完全分开；
+  · 仓库文档（README / CHANGELOG / 贡献指南 / 行为准则 / 安全政策 / 字体说明）与安装、
+    诊断脚本只留在 GitHub —— 交付包与开源仓库保持完全分开；
+  · 前端源码（assets/js/src/）不进包：线上只加载合并后的 assets/js/app.js；
   · storage 下只保留目录骨架（.gitkeep）与访问控制文件（.htaccess），
     锁文件 / 日志 / 缓存 / 时间戳等运行期产物一律排除。
 """
@@ -30,6 +31,7 @@ SKIP = (
     os.path.join(PROJ, 'standalone') + os.sep,     # 更新日志 / 跳转页独立版（另发）
     os.path.join(PROJ, '.github') + os.sep,        # 仓库配置：只属于 GitHub，不进站点
     os.path.join(PROJ, '.git') + os.sep,
+    os.path.join(PROJ, 'assets', 'js', 'src') + os.sep,   # 前端源码：线上只用合并后的 app.js
 )
 
 # 单独文件级的排除
@@ -44,6 +46,7 @@ SKIP_FILES = (
     os.path.join(PROJ, 'CONTRIBUTING.md'),
     os.path.join(PROJ, 'CODE_OF_CONDUCT.md'),
     os.path.join(PROJ, 'SECURITY.md'),
+    os.path.join(PROJ, 'FONTS.md'),         # 字体来源与授权：只留在仓库
     os.path.join(PROJ, 'check.php'),        # 环境自检
     os.path.join(PROJ, 'selfcheck.php'),    # 站点自检
     os.path.join(PROJ, 'mimecheck.php'),    # MIME 自检

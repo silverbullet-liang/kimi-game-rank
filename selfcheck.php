@@ -7,14 +7,12 @@ declare(strict_types=1);
 header('Content-Type: text/html; charset=utf-8');
 
 $expect = array(
-    '根目录' => array('index.php', 'install.php', 'cron.php', '.htaccess', 'README.md'),
+    '根目录' => array('index.php', 'cron.php', '.htaccess'),
     'config/' => array('config.php', 'config.sample.php', 'api_keys.php', 'scoring.php'),
     'app/' => array('bootstrap.php', 'db.php', 'helpers.php', 'crypto.php', 'scoring.php', 'auth.php', 'feed_client.php', 'zhipu.php', 'ip_lookup.php', 'autoinstall.php', 'migrate.php'),
     'api/' => array('auth.php', 'works.php', 'comments.php', 'lobby.php', 'ai.php', 'feedback.php', 'profile.php', 'admin.php', 'dashboard.php', 'site.php', 'start.php', 'img.php', 'media.php'),
     'assets/' => array('css/app.css'),
     'assets/js/' => array('app.js'),
-    'assets/js/src/' => array('app.js', 'core.js', 'md.js', 'router.js', 'theme.js', 'transitions.js'),
-    'assets/js/src/pages/' => array('rank.js', 'detail.js', 'lobby.js', 'mine.js', 'login.js', 'panel.js', 'doc.js', 'feedback.js'),
     'assets/vendor/' => array('liquid-glass@0.3.2.js'),
     'assets/docs/' => array('社区公约.md', '用户协议.md', '隐私政策.md', '功能说明.md', 'AI 使用说明.md', '评分标准.md', '入榜规则.md', '更新日志.md'),
     'sql/' => array('schema.sql', 'schema_admin.sql'),

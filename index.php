@@ -98,35 +98,44 @@ if ($announceText === '') {
 </script>
 <?php
 /* 字体加载策略（均不占首屏关键路径）：
-   1. 默认正文 MiSans 由浏览器直连公共 CDN 取用 —— 不经过本站，也不消耗主机流量与请求数；
-      主源不可用时按顺序回退备用源，全部失败则整体退回系统字体，功能不受影响。
-   2. 皮肤专属字体（手绘 / 像素）仍自托管，但只在当前皮肤下才注入样式表，其余皮肤零字体请求。
-   3. 首屏先用系统字体渲染（@font-face 为 swap 语义），空闲后再注入字体，避免字体抢占首屏连接。 */
+   1. 全部字体（正文 MiSans、手绘 ZCOOL KuaiLe、像素 FusionPixel）都由浏览器直连公共 CDN，
+      本站不存放、也不转发任何字体文件 —— 字体流量完全不占用主机资源与请求数。
+   2. 皮肤专属字体只在选到对应皮肤时才注入，其余皮肤零字体请求。
+   3. 每组按顺序回退备用源，全组失败则退回系统字体；首屏先用系统字体渲染
+      （@font-face 为 swap 语义），空闲后再注入，避免字体抢占首屏连接。 */
 ?>
 <script>
 (function () {
-  var V = <?= json_encode(APP_VERSION) ?>;
   var skin = <?= json_encode($SKIN) ?>;
-  /* MiSans 官方源：公共 CDN，跨域头为 Access-Control-Allow-Origin: *，浏览器可直连 */
-  var MISANS = [
-    'https://gcore.jsdelivr.net/npm/misans@5.0.0/lib/Normal/MiSansVF.min.css',
-    'https://fastly.jsdelivr.net/npm/misans@5.0.0/lib/Normal/MiSansVF.min.css',
-    'https://cdn.jsdelivr.net/npm/misans@5.0.0/lib/Normal/MiSansVF.min.css'
-  ];
-  /* 皮肤专属字体：只有对应皮肤才发起请求 */
-  var OWN = { sketch: 'assets/css/fonts-hand.css', pixel: 'assets/css/fonts-pixel.css' };
-  function inject(href, onfail) {
+  /* 公共 CDN 的跨域头为 Access-Control-Allow-Origin: *，浏览器可直接取用 */
+  var FONTS = {
+    main: [
+      'https://gcore.jsdelivr.net/npm/misans@5.0.0/lib/Normal/MiSansVF.min.css',
+      'https://cdn.jsdelivr.net/npm/misans@5.0.0/lib/Normal/MiSansVF.min.css'
+    ],
+    /* 以下两组只在选到对应皮肤时才发起请求 */
+    sketch: [
+      'https://gcore.jsdelivr.net/npm/@fontsource/zcool-kuaile@5.3.0/400.css',
+      'https://cdn.jsdelivr.net/npm/@fontsource/zcool-kuaile@5.3.0/400.css'
+    ],
+    pixel: [
+      'https://gcore.jsdelivr.net/npm/@fontsource/fusion-pixel-12px-proportional-sc@5.3.0/400.css',
+      'https://cdn.jsdelivr.net/npm/@fontsource/fusion-pixel-12px-proportional-sc@5.3.0/400.css'
+    ]
+  };
+  /* 逐个尝试：当前源失败则换下一个，全组失败就安静地退回系统字体 */
+  function inject(list, i) {
+    if (i >= list.length) { return; }
     var l = document.createElement('link');
     l.rel = 'stylesheet';
-    l.href = href;
-    if (onfail) { l.onerror = onfail; }
+    l.href = list[i];
+    l.onerror = function () { inject(list, i + 1); };
     document.head.appendChild(l);
   }
-  function misans(i) { if (i < MISANS.length) { inject(MISANS[i], function () { misans(i + 1); }); } }
   function run() {
-    /* 像素皮肤全站文字由 FusionPixel 承载，无需 MiSans，省下一次 CSS 请求 */
-    if (skin !== 'pixel') { misans(0); }
-    if (OWN[skin]) { inject(OWN[skin] + '?v=' + V); }
+    /* 像素皮肤全站文字由 FusionPixel 承载，无需 MiSans，省下一次样式请求 */
+    if (skin !== 'pixel') { inject(FONTS.main, 0); }
+    if (FONTS[skin]) { inject(FONTS[skin], 0); }
   }
   if ('requestIdleCallback' in window) { requestIdleCallback(run, { timeout: 2000 }); }
   else { setTimeout(run, 400); }

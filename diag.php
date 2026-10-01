@@ -47,8 +47,8 @@ foreach (array('app/bootstrap.php', 'app/migrate.php', 'app/helpers.php',
    凡不是「正常可读的普通文件」的条目一律列出。 */
 echo "\n  目录扫描（凡不是正常可读文件的条目）：\n";
 $badEntries = array();
-$allowDirs  = array('assets/js/src/pages');   // 这里本来就该有子目录，别误报
-foreach (array('api', 'app', 'assets/js/src', 'assets/js/src/pages') as $dir) {
+$allowDirs  = array();   // 交付包不含源码目录，以下位置不应再有子目录
+foreach (array('api', 'app') as $dir) {
     $dh = @opendir($root . '/' . $dir);
     if ($dh === false) { echo sprintf("  %-24s: 【目录不存在】\n", $dir); continue; }
     while (($e = readdir($dh)) !== false) {

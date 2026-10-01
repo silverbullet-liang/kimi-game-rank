@@ -329,9 +329,9 @@ img, .thumb img, .av img, .avatar img, .msg-img {
  * 修正一：预览截图后的问题修复
  * ============================================================ */
 
-/* 1) 像素点阵字体：自托管 Fusion Pixel（中英文齐全，见 assets/css/fonts-pixel.css）
+/* 1) 像素点阵字体：Fusion Pixel（中英文齐全，由浏览器直连公共 CDN 取用）
       本皮肤下全站文字均由该字体承载，故 index.php 不会再注入 MiSans。 */
-:root { --px-mono: 'FusionPixel', ui-monospace, "Courier New", monospace; }
+:root { --px-mono: 'Fusion Pixel 12px Proportional SC', 'FusionPixel', ui-monospace, "Courier New", monospace; }
 body { font-family: var(--px-mono); font-size: 13px; letter-spacing: 0; }
 .card-title, .rank-title, .btn, .btn-ghost, .badge, .rating, .chip, .pager button { font-size: 11px; letter-spacing: .04em; }
 .tiny, .rank-meta, .tp-c, .tp-i, .tabbar .tab { font-size: 10px; }
