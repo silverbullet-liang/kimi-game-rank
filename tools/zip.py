@@ -58,6 +58,12 @@ SKIP_FILES = (
     os.path.join(PROJ, 'mimecheck.php'),    # MIME 自检
     os.path.join(PROJ, 'changelog.zip'),    # 更新日志独立版的压缩包
     os.path.join(PROJ, 'jump.zip'),         # 跳转页压缩包
+    # 模板文件：只留在仓库。交付包面向「已经部署好的站点」，运行时从不读取它们
+    # （实际加载的是 config.php / api_keys.php 与 app/data/ 下的真实文本）。
+    os.path.join(PROJ, 'config', 'config.sample.php'),
+    os.path.join(PROJ, 'config', 'api_keys.sample.php'),
+    os.path.join(PROJ, 'app', 'data', 'moderation_words.sample.txt'),
+    os.path.join(PROJ, 'app', 'data', 'moderation_allow.sample.txt'),
 )
 
 # 被整目录排除后仍需保留的骨架文件。
