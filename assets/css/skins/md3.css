@@ -90,7 +90,7 @@ html[data-skin="md3"][data-theme="dark"]{
   --radius-sm: var(--md-shape-md);
   --shadow: var(--md-elev-1);
   --shadow-sm: var(--md-elev-1);
-  --sk-font: 'MiSans', "Roboto", "Noto Sans SC", -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --sk-font: 'MiSans VF', "Roboto", "Noto Sans SC", -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
 [data-theme="dark"] {

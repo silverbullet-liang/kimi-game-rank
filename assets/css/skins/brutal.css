@@ -53,7 +53,7 @@ html[data-skin="brutal"] {
 
   /* 字体分工：粗几何标题 / 干净正文 */
   --nb-display: "Archivo Black", "Anton", "Bebas Neue", Impact, "Haettenschweiler", "PingFang SC", "Microsoft YaHei", sans-serif;
-  --nb-body: 'MiSans', system-ui, -apple-system, "Inter", "Roboto", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --nb-body: 'MiSans VF', system-ui, -apple-system, "Inter", "Roboto", "PingFang SC", "Microsoft YaHei", sans-serif;
   --sk-ease: cubic-bezier(.2, .9, .3, 1);
 }
 

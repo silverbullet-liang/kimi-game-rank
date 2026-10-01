@@ -76,11 +76,11 @@ async function mountEmojiPicker(picker, input) {
   });
 }
 
-/** 远程图片统一走服务端代理（解决防盗链） */
+/** 远程图片：默认直连原图（不消耗主机请求数）；直连失败由全局 error 捕获回退到本站代理 */
 function imgSrc(u) {
   if (!u) { return ''; }
   if (/^api\/media\.php/i.test(u)) { return u; }
-  if (/^https?:\/\//i.test(u)) { return 'api/img.php?u=' + encodeURIComponent(u); }
+  if (/^https?:\/\//i.test(u)) { return u; }
   return '';
 }
 
@@ -97,7 +97,7 @@ function richInline(html) {
     });
   }
   return h.replace(/(https?:\/\/[^\s<>"']+\.(?:png|jpe?g|gif|webp|avif)(?:\?[^\s<>"']*)?)/gi, function (u) {
-    return '<img class="msg-img" src="api/img.php?u=' + encodeURIComponent(u) + '" alt="图片" loading="lazy" draggable="false">';
+    return '<img class="msg-img" src="' + esc(u) + '" alt="图片" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false">';
   });
 }
 
@@ -237,7 +237,7 @@ async function mountWorld(body) {
     if (m.recalled) {
       inner = '<span class="recall">该消息已撤回</span>';
     } else if (m.msg_type === 'image' && m.media) {
-      inner = '<img class="msg-img" src="' + imgSrc(m.media) + '" alt="图片消息" loading="lazy" draggable="false">';
+      inner = '<img class="msg-img" src="' + imgSrc(m.media) + '" alt="图片消息" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false">';
     } else {
       inner = renderRich(m.content);
     }

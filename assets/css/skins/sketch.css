@@ -54,8 +54,8 @@ html[data-skin="sketch"] {
   --shadow-sm: none;
 
   /* 字体分工 */
-  --sk-hand: 'ZCOOL KuaiLe', 'MiSans', "Kaiti SC", "STKaiti", "KaiTi", "楷体", cursive;
-  --sk-clean: 'MiSans', system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --sk-hand: 'ZCOOL KuaiLe', 'MiSans VF', "Kaiti SC", "STKaiti", "KaiTi", "楷体", cursive;
+  --sk-clean: 'MiSans VF', system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
   --sk-ease: cubic-bezier(.34, 1.25, .42, 1);
 }
 

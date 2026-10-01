@@ -609,23 +609,39 @@ function cache_flush()
     foreach ((array)@glob($d . '/*.json') as $f) { @unlink($f); }
 }
 
-/** 站外图片 → 走本地代理（带 Referer 绕防盗链）；非白名单域返回原地址 */
+/**
+ * 站外图片 → 决定「浏览器直连」还是「本站代理」。
+ *
+ * 为什么默认直连：服务端每代理一张图，都要在本机抓取再输出一次，在免费主机上
+ * 会迅速吃光请求数（hits）与流量额度。绝大多数图床（各家公有 CDN）并不校验
+ * Referer，浏览器直连既更快也不消耗主机资源。因此这里只对**确知有 Referer
+ * 防盗链**的站点走代理，其余一律返回原地址直连；万一某个站点直连失败，
+ * 前端会自动回退到本站代理（见 assets/js 的全局 error 捕获），
+ * 因此不需要「为了以防万一」对全量图片预先代理。
+ */
 function img_src(string $u): string
 {
     $u = trim($u);
     if ($u === '') { return ''; }
-    if (preg_match('#^(api/|/|#)', $u)) { return $u; }
+    if (preg_match('~^(?:api/|/|#)~', $u)) { return $u; }
     if (!preg_match('#^https?://#i', $u)) { return $u; }
     $host = strtolower((string)parse_url($u, PHP_URL_HOST));
     if ($host === '') { return $u; }
-    static $allow = array('hdslb.com','bilibili.com','b23.tv','moonshot.cn','kimi.com',
-        'aliyuncs.com','myqcloud.com','qpic.cn','gtimg.cn','byteimg.com','zhipuai.cn','bigmodel.cn');
-    foreach ($allow as $d) {
-        if ($host === $d || substr($host, -strlen($d) - 1) === '.' . $d) {
-            return 'api/img.php?u=' . urlencode($u);
-        }
+    return img_needs_proxy($host) ? 'api/img.php?u=' . urlencode($u) : $u;
+}
+
+/**
+ * 确知有 Referer 防盗链、必须由服务端带 Referer 抓取的域名。
+ * 维护原则：**宜短不宜长** —— 每多一个域名，就多一份服务端流量与请求数；
+ * 拿不准确切行为的域名不要加进来，交给「直连失败自动回退」兜底即可。
+ */
+function img_needs_proxy(string $host): bool
+{
+    static $need = array('hdslb.com', 'bilibili.com', 'b23.tv');
+    foreach ($need as $d) {
+        if ($host === $d || substr($host, -strlen($d) - 1) === '.' . $d) { return true; }
     }
-    return $u;
+    return false;
 }
 
 /** 作品访问链接：cdnUrl（html_url）优先，回退分享链接 */

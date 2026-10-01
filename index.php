@@ -39,6 +39,7 @@ if ($announceText === '') {
 <html lang="zh-CN" data-theme="light" data-accent="blue-purple" data-skin="<?= $SKIN ?>">
 <head>
 <meta charset="utf-8">
+<link rel="preconnect" href="https://gcore.jsdelivr.net" crossorigin>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#7C3AED">
 <title><?= e(cfg('site.name', 'Kimi游戏榜')) ?> · 六维综合排行榜</title>
@@ -96,23 +97,42 @@ if ($announceText === '') {
 })();
 </script>
 <?php
-/* 自定义字体不参与首屏关键路径：首屏先用系统字体渲染（@font-face 本就是 swap 语义），
-   浏览器空闲后再注入字体表，避免十几个字体分片抢占首屏连接。禁用 JS 时回退为同步加载。 */
+/* 字体加载策略（均不占首屏关键路径）：
+   1. 默认正文 MiSans 由浏览器直连公共 CDN 取用 —— 不经过本站，也不消耗主机流量与请求数；
+      主源不可用时按顺序回退备用源，全部失败则整体退回系统字体，功能不受影响。
+   2. 皮肤专属字体（手绘 / 像素）仍自托管，但只在当前皮肤下才注入样式表，其余皮肤零字体请求。
+   3. 首屏先用系统字体渲染（@font-face 为 swap 语义），空闲后再注入字体，避免字体抢占首屏连接。 */
 ?>
 <script>
 (function () {
-  var href = 'assets/css/fonts.css?v=<?= APP_VERSION ?>';
-  function inject() {
+  var V = <?= json_encode(APP_VERSION) ?>;
+  var skin = <?= json_encode($SKIN) ?>;
+  /* MiSans 官方源：公共 CDN，跨域头为 Access-Control-Allow-Origin: *，浏览器可直连 */
+  var MISANS = [
+    'https://gcore.jsdelivr.net/npm/misans@5.0.0/lib/Normal/MiSansVF.min.css',
+    'https://fastly.jsdelivr.net/npm/misans@5.0.0/lib/Normal/MiSansVF.min.css',
+    'https://cdn.jsdelivr.net/npm/misans@5.0.0/lib/Normal/MiSansVF.min.css'
+  ];
+  /* 皮肤专属字体：只有对应皮肤才发起请求 */
+  var OWN = { sketch: 'assets/css/fonts-hand.css', pixel: 'assets/css/fonts-pixel.css' };
+  function inject(href, onfail) {
     var l = document.createElement('link');
     l.rel = 'stylesheet';
     l.href = href;
+    if (onfail) { l.onerror = onfail; }
     document.head.appendChild(l);
   }
-  if ('requestIdleCallback' in window) { requestIdleCallback(inject, { timeout: 2000 }); }
-  else { setTimeout(inject, 400); }
+  function misans(i) { if (i < MISANS.length) { inject(MISANS[i], function () { misans(i + 1); }); } }
+  function run() {
+    /* 像素皮肤全站文字由 FusionPixel 承载，无需 MiSans，省下一次 CSS 请求 */
+    if (skin !== 'pixel') { misans(0); }
+    if (OWN[skin]) { inject(OWN[skin] + '?v=' + V); }
+  }
+  if ('requestIdleCallback' in window) { requestIdleCallback(run, { timeout: 2000 }); }
+  else { setTimeout(run, 400); }
 })();
 </script>
-<noscript><link rel="stylesheet" href="assets/css/fonts.css?v=<?= APP_VERSION ?>"></noscript>
+<noscript><link rel="stylesheet" href="https://gcore.jsdelivr.net/npm/misans@5.0.0/lib/Normal/MiSansVF.min.css"></noscript>
 <script>
 /* 全局诊断：脚本或资源加载失败时，直接在页面顶部显示原因（便于截图反馈） */
 (function () {

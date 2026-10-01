@@ -19,6 +19,25 @@ export const state = {
 };
 
 /* ============================================================
+ * 图片加载回退
+ * ============================================================
+ * 站点默认让浏览器直连原图：绝大多数图床不校验 Referer，直连更快，也不消耗
+ * 主机的请求数与流量额度。只有确知有 Referer 防盗链的域名（由后端 img_src()
+ * 判断）才直接给出本站代理地址；其余图片若直连失败，这里统一回退到代理重试
+ * 一次，从而不必为「以防万一」而把全量图片都压到服务端。
+ */
+export function installImageFallback() {
+  var mark = function (t) { t.dataset.fb = '1'; t.src = 'api/img.php?u=' + encodeURIComponent(t.currentSrc || t.src || ''); };
+  document.addEventListener('error', function (e) {
+    var t = e.target;
+    if (!t || t.tagName !== 'IMG' || t.dataset.fb) { return; }
+    if (!/^https?:\/\//i.test(t.currentSrc || t.src || '')) { return; }
+    mark(t);
+  }, true);
+}
+installImageFallback();
+
+/* ============================================================
  * 本地存储
  * ============================================================ */
 export function getToken() {

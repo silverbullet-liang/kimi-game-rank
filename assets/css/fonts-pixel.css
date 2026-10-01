@@ -1,0 +1,16 @@
+/* =========================================================================
+   像素皮肤专用字体 —— FusionPixel 12px 比例字体
+   -------------------------------------------------------------------------
+   来源 npm : @fontsource/fusion-pixel-12px-proportional-sc@5.3.0
+   授权     : SIL Open Font License 1.1 (OFL-1.1)，作者 TakWolf
+   产物     : assets/fonts/fusion-pixel/fusion-pixel-12px-proportional-sc-latin-400-normal.woff2
+
+   只在设计风格为「像素风」时由 index.php 注入，其余皮肤不产生任何请求。
+   ========================================================================= */
+@font-face {
+  font-family: 'FusionPixel';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/fusion-pixel/fusion-pixel-12px-proportional-sc-latin-400-normal.woff2') format('woff2');
+}
