@@ -42,6 +42,9 @@ SKIP_FILES = (
     os.path.join(PROJ, 'diag.php'),         # 诊断入口：运维用，不随交付分发
     # 以下仓库文档只留在 GitHub —— 交付包与开源仓库完全分开
     os.path.join(PROJ, 'README.md'),
+    os.path.join(PROJ, 'README.zh-CN.md'),
+    os.path.join(PROJ, 'README.zh-TW.md'),
+    os.path.join(PROJ, 'README.ja.md'),
     os.path.join(PROJ, 'CHANGELOG.md'),
     os.path.join(PROJ, 'CONTRIBUTING.md'),
     os.path.join(PROJ, 'CODE_OF_CONDUCT.md'),
