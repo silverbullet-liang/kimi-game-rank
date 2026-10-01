@@ -21,6 +21,9 @@ $JUMP = '<html><head><title>某某小游戏</title></head><body><h1>某某小游
       . '<script>document.getElementById("b").onclick=function(){location.href="https://abc.ok.kimi.link/"}</script>'
       . '</body></html>';
 
+/* ---------- 开关 ---------- */
+ok('开关默认开启（正式功能）', smart_link_enabled() === true);
+
 /* ---------- 结构判定 ---------- */
 ok('典型跳转页 → 判为跳转页', smart_link_looks_like_jump($JUMP));
 ok('典型跳转页 → 解析出 kimi.link', smart_link_resolve($JUMP, 'https://share.example.net/p/1') === 'https://abc.ok.kimi.link/');

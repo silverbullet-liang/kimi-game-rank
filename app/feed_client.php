@@ -252,7 +252,7 @@ function work_upsert(array $item, string $html = '', $autoScore = null): array
     // 标题：优先作品 HTML 的 <title>
     if ($html === '' && $item['html_url'] !== '') { $html = fetch_work_html($item['html_url']); }
 
-    /* 智能链接识别（BETA，默认关闭）：原页面只是个跳转页时，改用真实地址，
+    /* 智能链接识别（默认开启）：原页面只是个跳转页时，改用真实地址，
        并重新抓一次真实页面——这样标题与各项特征都基于真实内容而不是那张跳转页 */
     $realLink = '';
     if (smart_link_enabled() && $item['html_url'] !== '') {

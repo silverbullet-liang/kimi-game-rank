@@ -472,8 +472,8 @@ switch ($action) {
         break;
     }
 
-    /* ---------- 智能链接识别（BETA）----------
-       原页面若只是个跳转页，收录/更新时改用其中的真实地址。默认关闭。 */
+    /* ---------- 智能链接识别 ----------
+       原页面若只是个跳转页，收录/更新时改用其中的真实地址。默认开启。 */
     case 'link_mode': {
         ok(array('on' => smart_link_enabled()));
         break;
@@ -486,7 +486,7 @@ switch ($action) {
         setting_set('smart_link', $on ? '1' : '0');
         app_log('smart_link set to ' . ($on ? 'on' : 'off') . ' by admin');
         ok(array('on' => $on), $on
-            ? '已开启智能链接识别（BETA）：收录与更新时会尝试改用真实作品地址'
+            ? '已开启智能链接识别：收录与更新时会尝试改用真实作品地址'
             : '已关闭智能链接识别：作品页一律按原地址收录');
         break;
     }

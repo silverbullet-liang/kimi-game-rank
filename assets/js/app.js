@@ -3773,10 +3773,9 @@ function bindScore(container) {
     .catch(() => { note.textContent = '读取评分方式失败，刷新页面再试'; });
 }
 
-/* 智能链接识别（BETA）：原页面只是个跳转页时，改用其中的真实地址。默认关闭。
+/* 智能链接识别：原页面只是个跳转页时，改用其中的真实地址。默认开启。
    一个开关、三处可见——开关区块本身，以及收录区与批量更新区的状态行。 */
-const linkStateText = (on) => '智能链接识别：<b>' + (on ? '已开启' : '已关闭') + '</b>'
-  + (on ? ' <span class="pill-beta">BETA</span>' : '');
+const linkStateText = (on) => '智能链接识别：<b>' + (on ? '已开启' : '已关闭') + '</b>';
 
 function paintLinkState(container, on) {
   container.querySelectorAll('[data-link-state]').forEach(function (el) { el.innerHTML = linkStateText(on); });
@@ -3802,10 +3801,10 @@ async function refreshLinkState(container, force) {
 function linkBlock() {
   return `
     <div class="panel-plain">
-      <h3>智能链接识别 <span class="pill-beta">BETA</span></h3>
+      <h3>智能链接识别</h3>
       <p class="tiny muted">
         有些作品的「页面地址」只是个跳转页（一句「正在前往…」，真正的作品在别处）。
-        开启后，收录与批量更新会尝试从这类页面里找出<b>真实地址</b>并替换，
+        本功能默认开启：收录与批量更新会尝试从这类页面里找出<b>真实地址</b>并替换，
         标题与评分也改按真实页面来算。
       </p>
       <p class="tiny muted">
@@ -3814,7 +3813,7 @@ function linkBlock() {
       </p>
       <div class="seg" id="linkSeg" style="margin:10px 0 8px">
         <button data-v="0">关闭</button>
-        <button data-v="1">开启（BETA）</button>
+        <button data-v="1">开启</button>
       </div>
       <p class="tiny" id="linkNote"></p>
     </div>`;
@@ -3834,7 +3833,7 @@ function bindLink(container) {
       const d = await api('admin.php', 'link_mode_set', { on: on ? 1 : 0 });
       container.__linkOn = d.on === true;
       paintLinkState(container, container.__linkOn);
-      toast(d.on === true ? '已开启智能链接识别（BETA）' : '已关闭智能链接识别');
+      toast(d.on === true ? '已开启智能链接识别' : '已关闭智能链接识别');
     } catch (e2) {
       toast(e2.message, 'err');
       await refreshLinkState(container, true);

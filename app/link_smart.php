@@ -1,6 +1,6 @@
 <?php
 /**
- * 智能链接识别（BETA）
+ * 智能链接识别
  * ------------------------------------------------------------
  * 有些作品的「页面地址」本身只是个跳转页：一句标题、一个按钮（「开始游戏」），
  * 真正的作品在别处。开启后，收录与更新时会尝试从这类页面里找出真实地址并替换，
@@ -17,7 +17,7 @@
  *   · 多个候选时按域名优先级取最高的那个：kimi.link / kimi.site 最优先，
  *     其次是各家 AI 平台的托管域名，最后才是普通域名。
  *
- * 默认关闭（面板可开启，标 BETA）。
+ * 默认开启（可在控制面板关闭）。
  */
 declare(strict_types=1);
 
@@ -25,10 +25,10 @@ define('SMART_LINK_MAX_TEXT', 120);      // 可见文字上限：超过就不像
 define('SMART_LINK_MAX_JS', 4000);       // 内联脚本体量上限：超过就不像「只有按钮的代码」
 define('SMART_LINK_ASSET_RE', '#\.(?:js|mjs|css|png|jpe?g|gif|webp|svg|ico|woff2?|ttf|eot|json|xml|txt|mp3|mp4|webm|map)(?:\?|$)#i');
 
-/** 开关（默认关闭） */
+/** 开关（默认开启） */
 function smart_link_enabled(): bool
 {
-    return setting_get('smart_link', '0') === '1';
+    return setting_get('smart_link', '1') === '1';
 }
 
 /**

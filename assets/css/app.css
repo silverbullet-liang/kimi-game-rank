@@ -866,8 +866,6 @@ html[data-theme="dark"] .table th, html[data-theme="dark"] .table td { border-co
   box-shadow: inset 0 0 0 1px color-mix(in srgb, #2fb6a8 40%, transparent);
 }
 .badge svg { flex: 0 0 auto; }
-/* BETA 标：用于尚未定型的实验性功能 */
-.pill-beta { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: .04em; vertical-align: 2px; padding: 1px 6px; margin-left: 4px; border-radius: 6px; color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); user-select: none; }
 .uname { font-weight: 600; }
 
 /* ---------- 评论：楼中楼平铺 / @ / 折叠 / 换行 ---------- */
