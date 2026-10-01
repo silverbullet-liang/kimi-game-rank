@@ -31,8 +31,11 @@ ok('典型跳转页 → 解析出 kimi.link', smart_link_resolve($JUMP, 'https:/
 ok('含 canvas → 不判跳转页', !smart_link_looks_like_jump(
     '<html><body><h1>游戏</h1><button>开始</button><canvas id="c"></canvas><script>location.href="https://x.kimi.link/"</script></body></html>'));
 
-ok('正文很长 → 不判跳转页', !smart_link_looks_like_jump(
+ok('长正文 + 平台分享外链 → 由旁路判为跳转页', smart_link_looks_like_jump(
     '<html><body><h1>攻略</h1><p>' . str_repeat('这是一段很长的正文。', 20) . '</p><a href="https://x.kimi.link/">前往</a></body></html>'));
+
+ok('长正文 + 作者自建外链 → 不判跳转页', !smart_link_looks_like_jump(
+    '<html><body><h1>攻略</h1><p>' . str_repeat('这是一段很长的正文。', 20) . '</p><a href="https://me.github.io/x">前往</a></body></html>'));
 
 ok('多个按钮 → 不判跳转页', !smart_link_looks_like_jump(
     '<html><body><h1>标题</h1><a href="https://a.kimi.link/">开始游戏</a><a href="https://b.kimi.link/">说明</a></body></html>'));
@@ -42,6 +45,43 @@ ok('脚本含动画 → 不判跳转页', !smart_link_looks_like_jump(
 
 ok('含 iframe → 不判跳转页', !smart_link_looks_like_jump(
     '<html><body><h1>标题</h1><iframe src="/x"></iframe></body></html>'));
+
+/* ---------- 按钮计数（嵌套结构不得漏数） ---------- */
+ok('纯布局 div 不算按钮', count(smart_link_buttons(
+    '<html><body><div class="a"><div class="b">文字</div></div></body></html>')) === 0);
+
+ok('外层 div 嵌套时 <a> 不漏数', count(smart_link_buttons(
+    '<html><body><div class="wrap"><div class="card"><a href="https://a.miaoda.online/">开始</a></div></div></body></html>')) === 1);
+
+ok('嵌套结构下仍能取出按钮地址', count(smart_link_buttons(
+    '<html><body><div class="wrap"><div class="card"><a href="https://a.miaoda.online/">开始</a></div></div></body></html>')) === 1
+    && smart_link_buttons('<html><body><div class="wrap"><div class="card"><a href="https://a.miaoda.online/">开始</a></div></div></body></html>')[0]['href'] === 'https://a.miaoda.online/');
+
+/* ---------- 介绍卡：长文案 + 装饰动画，靠旁路识别 ---------- */
+$CARD = '<html><head><style>@keyframes float{from{opacity:.2}to{opacity:1}}</style></head><body>'
+      . '<div class="wrap"><div class="card">'
+      . '<h1>像素宝宠世界</h1>'
+      . '<p>' . str_repeat('2.5D像素开放世界 探索无限可能 ', 10) . '</p>'
+      . '<a href="https://app-ejojjjfa2v41.miaoda.online" target="_blank">开始冒险</a>'
+      . '</div></div>'
+      . '<script>var t=0;setInterval(function(){t++;},1000);</script></body></html>';
+
+ok('介绍卡（长文案 + 装饰动画）→ 判为跳转页', smart_link_looks_like_jump($CARD));
+ok('介绍卡 → 解析出妙搭地址', smart_link_resolve($CARD,
+    'https://kimi-file.moonshot.cn/prod-chat-kimi/kfs/4/1/2026-09-29/1datsubl') === 'https://app-ejojjjfa2v41.miaoda.online');
+
+ok('介绍卡带 canvas → 不认', !smart_link_looks_like_jump(
+    '<html><body><div><h1>游戏</h1><p>' . str_repeat('说明文字，', 40) . '</p>'
+    . '<a href="https://a.miaoda.online/">玩</a><canvas id="c"></canvas></div></body></html>'));
+
+ok('介绍卡有两个平台外链 → 不认', !smart_link_looks_like_jump(
+    '<html><body><div><h1>作品集</h1><p>' . str_repeat('说明文字，', 40) . '</p>'
+    . '<a href="https://a.miaoda.online/">一</a><a href="https://b.kimi.link/">二</a></div></body></html>'));
+
+/* ---------- 来源保护 ---------- */
+ok('来源是对话分享页 → 不替换', smart_link_resolve($CARD, 'https://kimi.moonshot.cn/share/abc') === '');
+ok('来源是 Kimi 文件 CDN → 仍参与识别', smart_link_resolve($CARD,
+    'https://kimi-file.moonshot.cn/prod-chat-kimi/kfs/4/1/2026-09-29/1datsubl') !== '');
 
 /* ---------- 排除清单 ---------- */
 ok('唯一候选是 B 站视频页 → 不认', smart_link_resolve(

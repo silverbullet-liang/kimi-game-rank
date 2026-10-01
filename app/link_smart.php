@@ -7,8 +7,10 @@
  * 后续的评分、标题、特征全部基于**真实页面**。
  *
  * 判定思路（结构，而不是字符串匹配）：
- *   1. 页面只有一段标题或简介——去标签后的可见文字极短；
- *   2. 只有一个按钮 / 链接，且按钮文字是「开始游戏」「前往」这类引导语；
+ *   0. 强信号旁路：页面自身不承载作品，只有一个可点元素，且它指向「平台分享型托管域名」
+ *      ——作品介绍卡 + 跳转按钮，文案长、带装饰动画也认；
+ *   1. 否则三条硬条件：页面只有一段标题或简介（可见文字极短）；
+ *   2. 只有一个按钮 / 链接（只有一个去处）；
  *   3. 页面脚本很短，且不含动画 / 渲染引擎特征——短到只可能是那个按钮的跳转代码；
  *   4. 真实地址从该按钮的脚本（或 href）里提取。
  *
@@ -31,19 +33,6 @@ function smart_link_enabled(): bool
     return setting_get('smart_link', '1') === '1';
 }
 
-/**
- * 引导按钮的文案特征：跳转页的按钮几乎都长这样。
- * 命中它只用于「提高确信度」，不是硬性门槛——按钮也可能只有一个图标。
- */
-function smart_link_button_words(): array
-{
-    return array(
-        '开始游戏', '游戏开始', '立即开始', '马上开始', '点击开始', '开始体验', '立即体验',
-        '开始', '前往', '去往', '进入游戏', '进入作品', '进入', '打开', '立即前往', '继续访问',
-        '立即打开', '查看作品', '试玩', '玩一玩', '出发', '跳转',
-        'start', 'play', 'enter', 'open', 'go', 'continue', 'begin', 'launch',
-    );
-}
 
 /** 常见站点：这些域名下的链接不会被当成"真实作品地址" */
 function smart_link_common_hosts(): array
@@ -99,7 +88,10 @@ function smart_link_trusted_hosts(): array
         'modelscope.cn',                             // 魔搭创空间
         'streamlit.app', 'gradio.live', 'devfile.cn', 'lovable.app', 'bolt.new', 'v0.dev',
         // ---- AI 平台 / Agent 产品 ----
-        'kimi.com', 'kimi.ai', 'moonshot.cn', 'moonshot.ai',
+        /* 只认对话分享这等作者产物所在的子域，不用泛域 moonshot.cn：
+           泛域会把 kimi-file.moonshot.cn 这种「存放作品 HTML 的文件 CDN」一并当成
+           作品宿主，而那里的 HTML 本身完全可能是张跳转卡，正需要识别。 */
+        'kimi.com', 'kimi.ai', 'kimi.moonshot.cn', 'moonshot.ai',
         'z.ai', 'chatglm.cn', 'zhipuai.cn', 'bigmodel.cn', 'ima.qq.com',
         'doubao.com', 'coze.cn', 'coze.com', 'n.cn',
         'tongyi.ai', 'tongyi.aliyun.com', 'aliyun.com',
@@ -153,47 +145,62 @@ function smart_link_text_len(string $html): int
 }
 
 /**
- * 收集页面里的按钮 / 链接：返回 array(array('text' => 文案, 'href' => 地址, 'onclick' => 代码), …)。
- * 只认会"带用户走"的元素：<a>、<button>，以及被做成按钮的 div/span（带 onclick / data-href）。
+ * 从一个标签的属性与内容里解析出「可点元素」；不可点的返回 null。
+ * div / span 只有带 onclick / data-url 才算——纯布局容器不算按钮，
+ * 否则一张卡片会被数成十几个按钮。
+ */
+function smart_link_node(string $attr, string $inner, string $tag)
+{
+    $href = '';
+    if (preg_match('#\bhref\s*=\s*["\']([^"\']*)["\']#i', $attr, $h)) { $href = trim($h[1]); }
+
+    $onclick = '';
+    if (preg_match('#\bonclick\s*=\s*["\']([^"\']*)["\']#i', $attr, $o)) { $onclick = trim($o[1]); }
+
+    $dataUrl = '';
+    if (preg_match('#\bdata-(?:url|href)\s*=\s*["\']([^"\']*)["\']#i', $attr, $d)) { $dataUrl = trim($d[1]); }
+
+    $text = html_entity_decode(strip_tags($inner), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $text = trim((string)preg_replace('#\s+#u', ' ', $text));
+
+    /* 可点：带 href / onclick / data-url，或是带文案的 button（去向常由脚本绑在按钮上） */
+    $clickable = ($href !== '' || $onclick !== '' || $dataUrl !== '')
+                 || ($tag === 'button' && $text !== '');
+    if (!$clickable) { return null; }
+
+    return array('text' => $text, 'href' => $href, 'onclick' => $onclick, 'data' => $dataUrl, 'tag' => $tag);
+}
+
+/**
+ * 收集页面里「可点」的元素：<a>、<button>，以及自带 onclick / data-url 的 div、span。
+ * 返回 array(array('text' => 文案, 'href' => 地址, 'onclick' => 代码, 'data' => 地址, 'tag' => 标签), …)。
+ *
+ * 这里刻意让 a / button 各自独立配对：若把它们与 div / span 塞进同一条交替正则，
+ * 外层 <div> 的非贪婪闭合会先匹配到页面里第一个 </div>，把区间内的 <a> 一并吞掉
+ * （同一段文本只被匹配一次），按钮因此漏数。div / span 只扫开标签，不做配对。
  */
 function smart_link_buttons(string $html): array
 {
-    $out = array();
-    $re = '#<(a|button|div|span)\b([^>]*)>(.*?)</\1>#is';
-    if (!preg_match_all($re, $html, $m, PREG_SET_ORDER)) { return $out; }
+    $html = (string)preg_replace('#<(script|style|noscript)\b[^>]*>.*?</\1>#is', ' ', $html);
 
-    foreach ($m as $one) {
-        $tag  = strtolower($one[1]);
-        $attr = $one[2];
-        $inner = $one[3];
-
-        $href = '';
-        if (preg_match('#\bhref\s*=\s*["\']([^"\']*)["\']#i', $attr, $h)) { $href = trim($h[1]); }
-
-        $onclick = '';
-        if (preg_match('#\bonclick\s*=\s*["\']([^"\']*)["\']#i', $attr, $o)) { $onclick = trim($o[1]); }
-
-        $dataUrl = '';
-        if (preg_match('#\bdata-(?:url|href)\s*=\s*["\']([^"\']*)["\']#i', $attr, $d)) { $dataUrl = trim($d[1]); }
-
-        /* 文案：去标签、去空白 */
-        $text = html_entity_decode(strip_tags($inner), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $text = trim((string)preg_replace('#\s+#u', ' ', $text));
-
-        /* 只算"真正可点"的元素：带 href / onclick / data-url，或本身就是 button/a；
-           纯文本 div（布局容器）不算按钮，否则一个卡片会被数成十几个按钮。 */
-        $clickable = ($href !== '' || $onclick !== '' || $dataUrl !== '' || $tag === 'button'
-                      || ($tag === 'a' && $href !== ''));
-        if (!$clickable) { continue; }
-
-        /* 排除没有文案也没有地址的空壳 */
-        if ($text === '' && $href === '' && $onclick === '' && $dataUrl === '') { continue; }
-
-        $out[] = array('text' => $text, 'href' => $href, 'onclick' => $onclick, 'data' => $dataUrl, 'tag' => $tag);
+    $found = array();
+    foreach (array('a', 'button') as $tag) {
+        if (preg_match_all('#<' . $tag . '\b([^>]*)>(.*?)</' . $tag . '>#is', $html, $m, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+            foreach ($m as $one) {
+                $node = smart_link_node((string)$one[1][0], (string)$one[2][0], $tag);
+                if ($node !== null) { $found[$one[0][1]] = $node; }
+            }
+        }
     }
-    return $out;
+    if (preg_match_all('#<(div|span)\b([^>]*)>#is', $html, $m, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+        foreach ($m as $one) {
+            $node = smart_link_node((string)$one[2][0], '', (string)$one[1][0]);
+            if ($node !== null) { $found[$one[0][1]] = $node; }
+        }
+    }
+    ksort($found);                       // 按在页面里出现的顺序返回
+    return array_values($found);
 }
-
 /**
  * 内联脚本统计：返回 array(len => 字符数, animated => 是否含动画/渲染特征).
  * 跳转页的脚本短到只可能是那一行跳转；含动画或 3D 渲染的一律不当跳转页。
@@ -216,7 +223,31 @@ function smart_link_js_stats(string $html): array
 }
 
 /**
- * 像不像"跳转页"。三条同时满足才成立：
+ * 强信号旁路：页面自身不承载作品（没有画布 / 内嵌框架 / 音视频），只有一个可点元素，
+ * 且它指向「平台分享型托管域名」（优先级 ≥ 20：kimi.link、miaoda.online、coze.site、
+ * claude.site、ai.studio 等）。这是典型的作品介绍卡 + 跳转按钮——文案长、带装饰动画，
+ * 走不了下面三条硬条件，但去路足够明确。
+ *
+ * 刻意只认平台分享型域名：作者自建类宿主（github.io / vercel.app 等）不在此列，
+ * 因为真作品页里放一个自建站外链是很常见的事，纳入进来容易误判。
+ */
+function smart_link_is_share_hop(string $html): bool
+{
+    if (preg_match('#<(canvas|iframe|video|audio)\b#i', $html)) { return false; }
+    $btns = smart_link_buttons($html);
+    if (count($btns) !== 1) { return false; }
+    foreach (array('href', 'data') as $k) {
+        $v = (string)$btns[0][$k];
+        if (preg_match('#^https?://#i', $v) && smart_link_priority($v) >= 20) { return true; }
+    }
+    return false;
+}
+
+/**
+ * 像不像「跳转页」。
+ *
+ * 先说旁路：介绍卡 + 唯一的平台分享型按钮，直接成立。
+ * 否则三条硬条件同时满足才成立：
  *   ① 可见文字 ≤ SMART_LINK_MAX_TEXT（只有一句标题或简介）
  *   ② 可点元素恰好 1 个（只有一个按钮）
  *   ③ 内联脚本 ≤ SMART_LINK_MAX_JS 且不含动画 / 渲染特征（短到只有按钮的代码）
@@ -225,6 +256,9 @@ function smart_link_js_stats(string $html): array
 function smart_link_looks_like_jump(string $html): bool
 {
     if ($html === '') { return false; }
+
+    /* 旁路优先：介绍卡 + 唯一的平台分享型按钮 */
+    if (smart_link_is_share_hop($html)) { return true; }
 
     if (preg_match('#<(canvas|iframe|video|audio)\b#i', $html)) { return false; }
 
