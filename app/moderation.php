@@ -286,19 +286,56 @@ function moderation_check2(string $text): array
 }
 
 /**
+ * 解析审核模型的一句话结论，返回 true（放行）/ false（拦截）/ null（无法判断）。
+ *
+ * 模型既可能回英文 True / False，也可能直接回中文「放行 / 拦截」——两种都要认：
+ * 只认英文时，一句「拦截」会被当成解析失败而默认放行，等于没审。
+ * 判断顺序从可靠到宽松，并避开「不需要拦截」这类会被误读的表述。
+ */
+function moderation_verdict_parse(string $out)
+{
+    $s = strtolower(trim($out));
+    if ($s === '') { return null; }
+
+    /* 一、整个回复就是一个结论词（最常见） */
+    $bare = (string)preg_replace('/[^\p{Han}a-z]/u', '', $s);
+    if ($bare === 'true'  || $bare === '放行' || $bare === '合规') { return true; }
+    if ($bare === 'false' || $bare === '拦截' || $bare === '违规') { return false; }
+
+    /* 二、回复以结论词开头 */
+    if (preg_match('/^(?:true|放行|合规|通过)/u', $s))                                  { return true; }
+    if (preg_match('/^(?:false|拦截|不合规|不通过)/u', $s))                             { return false; }
+
+    /* 三、明确否定优先；裸的「违规」不算，免得「不违规」被判成违规。
+       「不需要拦截」这类表述先剔除，否则会被读成否定结论。 */
+    $t = (string)preg_replace('/(?:不|无需|无须|没有|不必|未)(?:需要|会|应|必|再)?\s*拦截/u', '', $s);
+    if (strpos($t, '拦截') !== false || strpos($t, '不合规') !== false
+        || strpos($t, '不通过') !== false || strpos($t, 'false') !== false)             { return false; }
+    if (strpos($s, '放行') !== false || strpos($s, '合规') !== false
+        || strpos($s, 'true') !== false)                                                { return true; }
+
+    return null;
+}
+
+/**
  * 第三关：glm-4-flash 判定，模型只回 True（合规，放行）或 False（拦截）。
  * 走站点自有通道，用量记在站点名下（uid=0），不动任何人的个人额度。
  */
 function moderation_check3(string $text): array
 {
-    $sys = "你是社区内容审核员。判断用户提交的内容是否合规。\n"
-         . "判定为不合规的情形：辱骂、人身攻击、歧视、色情、暴力威胁、违法犯罪、\n"
-         . "广告引流、无意义刷屏。\n"
-         . "以下一律算合规，不要判违规：\n"
-         . "1) 正常讨论游戏、作品、剧情；表达对作品或评分的不满与批评；\n"
-         . "2) 提及 AI 模型名称及其版本或参数规模，例如 Gemma 4 31B、Qwen3.8 27B、GLM-4、DeepSeek-V3；\n"
-         . "3) 提及作品名、网站名、技术术语，或看起来像代号、编号的字符串。\n"
-         . "只输出一个词：合规输出 True，不合规输出 False。不要输出任何其它内容。";
+    $sys = "你是社区内容审核员。判断用户提交的内容是否需要拦截。\n"
+         . "【需要拦截】只有这四类：\n"
+         . "1) 辱骂、人身攻击、歧视；2) 色情、暴力威胁、违法犯罪；\n"
+         . "3) 广告引流（联系方式、推广链接、拉人进群）；4) 同一段内容反复刷屏。\n"
+         . "【一律放行】以下情形不要拦截：\n"
+         . "1) 日常聊天、打招呼、寒暄、简短提问，例如「有人吗」「在吗」「你好」；\n"
+         . "2) 正常讨论游戏、作品、剧情；表达对作品或评分的不满与批评；\n"
+         . "3) 提及 AI 模型名称及其版本或参数规模，例如 Gemma 4 31B、Qwen3.8 27B、GLM-4、DeepSeek-V3；\n"
+         . "4) 提及作品名、网站名、技术术语，或看起来像代号、编号的字符串；\n"
+         . "5) 句子短、信息量少，但既没有骂人也没有针对具体的人。\n"
+         . "注意：骂人、贬损他人属于第 1 类，即使句子很短也必须拦截；\n"
+         . "看不出明确违规迹象时，判放行。\n"
+         . "只输出一个词：放行 或 拦截。不要输出任何其它内容。";
     $user = "待审内容：\n<content>\n" . mb_substr($text, 0, 500, 'UTF-8') . "\n</content>";
     $msgs = array(
         array('role' => 'system', 'content' => $sys),
@@ -313,17 +350,11 @@ function moderation_check3(string $text): array
     }
     if (!empty($r['usage'])) { ai_usage_record(0, $r['usage'], 'glm'); }   // 站点承担
 
-    /* 解析：先看开头那个词（"False." / "True" 都能认），
-       再退回整串查找——但整串里 true 与 false 同时出现时以 true 为准，
-       避免模型多嘴复述「输出 True 或 False」反而把正常内容判死。 */
-    $out  = strtolower(trim((string)$r['text']));
-    $head = (string)preg_replace('/[^a-z].*$/s', '', $out);
-    if ($head === 'false') { return array('ok' => false, 'reason' => 'ai_reject'); }
-    if ($head === 'true')  { return array('ok' => true,  'reason' => ''); }
-    $hasF = strpos($out, 'false') !== false;
-    $hasT = strpos($out, 'true')  !== false;
-    if ($hasF && !$hasT) { return array('ok' => false, 'reason' => 'ai_reject'); }
-    if ($hasT)           { return array('ok' => true,  'reason' => ''); }
+    $out = (string)$r['text'];
+    $v   = moderation_verdict_parse($out);
+    if ($v === false) { return array('ok' => false, 'reason' => 'ai_reject'); }
+    if ($v === true)  { return array('ok' => true,  'reason' => ''); }
+    /* 解析不出结论：默认放行（不因模型多嘴就封住发言），并记日志便于回溯 */
     app_log('moderation_check3 unexpected output len=' . strlen($out));
     return array('ok' => true, 'unknown' => true, 'reason' => 'ai_unexpected');
 }
@@ -436,15 +467,18 @@ function moderation_pass_take(int $uid, string $text)
  */
 function moderation_recheck(string $text, int $uid = 0): array
 {
-    $sys = "你是社区内容审核员，正在复核一条先前被判违规、用户提出申诉的内容。\n"
-         . "请判断它是否真的违规，只输出一个词：\n"
-         . "  true   —— 合规，可以放行；\n"
-         . "  middle —— 可能有恶意或擦边，但仍可放行，需要在旁边标注提醒；\n"
-         . "  false  —— 确实违规，不能放行。\n"
-         . "判 middle 的典型情形：语气尖刻但没有针对具体的人、阴阳怪气、含含糊糊的疑似引流，\n"
-         . "或你无法确定但又觉得不太妥当。\n"
-         . "提及 AI 模型名称及其版本或参数规模（如 Gemma 4 31B、Qwen3.8 27B）属于正常讨论，不得判违规。\n"
-         . "只输出那个词，不要输出任何其它内容。";
+    $sys = "你是社区内容审核员，正在复核一条先前被判违规、用户已提出申诉的内容。\n"
+         . "用户手动申诉过，请从严把握「违规」的界线：只有明确、确凿的违规才维持拦截。\n"
+         . "只输出一个词：\n"
+         . "  true   —— 合规，放行。绝大多数内容都应落在这里，包括日常聊天、打招呼、\n"
+         . "            寒暄、简短提问（「有人吗」「在吗」「你好」）、批评与吐槽、\n"
+         . "            提及模型名或作品名、内容简短或看不出明确含义。\n"
+         . "  middle —— 确实有些不妥但远不到违规，例如明显的阴阳怪气，\n"
+         . "            或疑似引流却看不出明确意图。放行，并在旁边标注提醒。\n"
+         . "  false  —— 明确违规。只有辱骂攻击、色情、暴力威胁、违法犯罪、\n"
+         . "            明确的广告引流（联系方式、推广链接、拉人进群）才可判此档。\n"
+         . "不要因为内容短、信息量少、语气随意就判 middle 或 false。\n"
+         . "拿不准时判 true。只输出那个词，不要输出任何其它内容。";
     $user = "待复核内容：\n<content>\n" . mb_substr($text, 0, 500, 'UTF-8') . "\n</content>";
     $msgs = array(
         array('role' => 'system', 'content' => $sys),
