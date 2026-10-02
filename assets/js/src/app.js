@@ -14,6 +14,7 @@ import { renderLogin } from './pages/login.js';
 import { renderPanel } from './pages/panel.js';
 import { renderDoc } from './pages/doc.js';
 import { renderFeedback } from './pages/feedback.js';
+import { renderViolation, renderDiscipline } from './pages/violation.js';
 
 const view = document.getElementById('view');
 
@@ -44,6 +45,8 @@ const routes = {
   doc: renderDoc,
   feedback: renderFeedback,
   about: renderAbout,
+  violation: renderViolation,
+  discipline: renderDiscipline,
 };
 
 let currentPage = '';
@@ -72,7 +75,7 @@ function readRoute() {
   if (location.hash && location.hash.length > 1) { return location.hash; }   // 旧式链接优先
   const u = new URL(location.href);
   const qs = new URLSearchParams(u.search);
-  const KNOWN = ['rank', 'detail', 'chat', 'mine', 'login', 'doc', 'feedback', 'about'];
+  const KNOWN = ['rank', 'detail', 'chat', 'mine', 'login', 'doc', 'feedback', 'about', 'violation', 'discipline'];
   let p = qs.get('p') || '';
   let arg = qs.get('arg') || '';
   qs.delete('p');
@@ -264,6 +267,7 @@ function drawerItems() {
     { k: 'help', label: '功能说明', ic: I.doc, go: '#/doc/功能说明' },
     { k: 'aihelp', label: 'AI 使用说明', ic: I.plug, go: '#/doc/AI 使用说明' },
     { k: 'charter', label: '社区公约', ic: I.users, go: '#/doc/社区公约' },
+    { k: 'discipline', label: '违纪通报', ic: I.shield, go: '#/discipline' },
     { k: 'score', label: '评分标准', ic: I.rule, go: '#/doc/评分标准' },
     { k: 'join', label: '入榜规则', ic: I.list, go: '#/doc/入榜规则' },
     { k: 'terms', label: '用户协议', ic: I.doc, go: '#/doc/用户协议' },

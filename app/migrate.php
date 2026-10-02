@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 16);
+define('SCHEMA_VERSION', 17);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -81,6 +81,7 @@ function ensure_schema(bool $force = false)
         'users' => array(
             'role' => "ENUM('user','admin','subadmin') NOT NULL DEFAULT 'user'",
             'uid8' => "CHAR(8) NULL COMMENT '8位可逆UID'",
+            'ban_until' => 'DATETIME NULL',
         ),
         'messages' => array(
             'msg_type'    => "VARCHAR(12) NOT NULL DEFAULT 'text'",
@@ -92,6 +93,7 @@ function ensure_schema(bool $force = false)
             'is_deleted'   => 'TINYINT(1) NOT NULL DEFAULT 0',
             'deleted_by'   => 'TINYINT(1) NOT NULL DEFAULT 0',
             'is_blocked'   => 'TINYINT(1) NOT NULL DEFAULT 0',
+            'target_type'  => "ENUM('work','discipline') NOT NULL DEFAULT 'work'",
         ),
         'feedback' => array(
             'content_norm' => "CHAR(64) NULL COMMENT '内容规整指纹'",
@@ -108,6 +110,7 @@ function ensure_schema(bool $force = false)
             'country'  => "VARCHAR(32) NOT NULL DEFAULT ''",
             'province' => "VARCHAR(32) NOT NULL DEFAULT ''",
             'city'     => "VARCHAR(32) NOT NULL DEFAULT ''",
+            'ip_hash'  => "CHAR(64) NOT NULL DEFAULT ''",
         ),
         'ai_usage' => array(
             'provider' => "VARCHAR(12) NOT NULL DEFAULT ''",
@@ -703,6 +706,68 @@ function run_migrations(bool $force = false)
         }
     }
 
+    /* ---------- v17：违纪通报 ----------
+       管理员可对用户一键通报（可写多条理由）并封停账号与访问 IP；
+       被通报者访问站点时跳转到违纪界面，界面下方列出理由，并可像作品一样评论。
+       IP 只存 sha256(盐+IP) 指纹用于匹配，不保留明文。 */
+    if ($cur < 17) {
+        try {
+            db_exec("CREATE TABLE IF NOT EXISTS `discipline_reports` (
+                `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `user_id`     INT UNSIGNED NOT NULL COMMENT '被通报用户',
+                `username`    VARCHAR(64) NOT NULL DEFAULT '' COMMENT '用户名快照',
+                `reasons`     TEXT NOT NULL COMMENT '通报理由（JSON 数组，可多条）',
+                `note`        TEXT NULL COMMENT '补充说明',
+                `banned`      TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否同时封停账号',
+                `ban_days`    INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '封禁天数，0=永久',
+                `ban_until`   DATETIME NULL COMMENT '解封时间，NULL=永久',
+                `purged`      TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否已清理其内容',
+                `ip_banned`   TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否封禁访问 IP',
+                `by_uid`      INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '操作管理员',
+                `views`       INT UNSIGNED NOT NULL DEFAULT 0,
+                `created_at`  DATETIME NOT NULL,
+                PRIMARY KEY (`id`), KEY `idx_user` (`user_id`), KEY `idx_created` (`created_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='违纪通报'");
+
+            db_exec("CREATE TABLE IF NOT EXISTS `banned_ips` (
+                `ip_hash`    CHAR(64) NOT NULL COMMENT 'sha256(盐+IP)，不可逆指纹',
+                `ip_masked`  VARCHAR(64) NOT NULL DEFAULT '' COMMENT '脱敏展示',
+                `report_id`  INT UNSIGNED NULL,
+                `user_id`    INT UNSIGNED NULL,
+                `created_at` DATETIME NOT NULL,
+                PRIMARY KEY (`ip_hash`), KEY `idx_user` (`user_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='被封禁的 IP 指纹'");
+
+            if (table_exists('user_visits') && !column_exists('user_visits', 'ip_hash')) {
+                db_exec("ALTER TABLE `user_visits` ADD COLUMN `ip_hash` CHAR(64) NOT NULL DEFAULT '' COMMENT 'sha256(盐+IP)，用于封禁匹配'");
+                table_columns('user_visits', true);
+            }
+            if (table_exists('comments') && !column_exists('comments', 'target_type')) {
+                db_exec("ALTER TABLE `comments` ADD COLUMN `target_type` ENUM('work','discipline') NOT NULL DEFAULT 'work' COMMENT '评论目标类型'");
+                table_columns('comments', true);
+            }
+            /* 封禁支持设置天数：到期自动解封，NULL 表示永久 */
+            if (table_exists('users') && !column_exists('users', 'ban_until')) {
+                db_exec("ALTER TABLE `users` ADD COLUMN `ban_until` DATETIME NULL COMMENT '解封时间，NULL 且 is_banned=1 表示永久'");
+                table_columns('users', true);
+            }
+            foreach (array(
+                'ban_days'  => 'INT UNSIGNED NOT NULL DEFAULT 0',
+                'ban_until' => 'DATETIME NULL',
+                'purged'    => 'TINYINT(1) NOT NULL DEFAULT 0',
+            ) as $c => $ddl) {
+                if (table_exists('discipline_reports') && !column_exists('discipline_reports', $c)) {
+                    db_exec('ALTER TABLE `discipline_reports` ADD COLUMN `' . $c . '` ' . $ddl);
+                    table_columns('discipline_reports', true);
+                }
+            }
+            setting_set('schema_version', '17');
+            app_log('schema migrated to v17（违纪通报）');
+        } catch (Throwable $e) {
+            app_log('migrate v17 failed: ' . $e->getMessage());
+        }
+    }
+
     /* 只有结构确认完整才写版本号、落锁：
        否则锁会把「半成品」永久固定下来，此后所有请求都被短路，再也修不回来。 */
     $ok = true;
@@ -713,9 +778,14 @@ function run_migrations(bool $force = false)
     foreach (array('country', 'province', 'city') as $c) {
         if (table_exists('user_visits') && !column_exists('user_visits', $c)) { $ok = false; }
     }
-    foreach (array('or_models', 'or_state', 'ai_daily_quota', 'ai_answer_cache') as $t) {
+    foreach (array('or_models', 'or_state', 'ai_daily_quota', 'ai_answer_cache',
+                   'discipline_reports', 'banned_ips') as $t) {
         if (!table_exists($t)) { $ok = false; }
     }
+    if (table_exists('user_visits') && !column_exists('user_visits', 'ip_hash')) { $ok = false; }
+    if (table_exists('users') && !column_exists('users', 'ban_until')) { $ok = false; }
+    if (table_exists('discipline_reports') && !column_exists('discipline_reports', 'ban_until')) { $ok = false; }
+    if (table_exists('comments') && !column_exists('comments', 'target_type')) { $ok = false; }
     if (table_exists('ai_usage') && !column_exists('ai_usage', 'provider')) { $ok = false; }
     if ($ok) {
         setting_set('schema_version', (string)SCHEMA_VERSION);

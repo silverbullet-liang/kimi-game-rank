@@ -25,6 +25,7 @@ A site that collects games, tools, literary works and fan creations from the com
 | Sign-in | Password login / registration / guest mode |
 | Admin panel | Ingest and bulk refresh, database backup, comment moderation, tag management, sub-admins |
 | Smart link resolution | On by default: when a work page is only a redirect page, use the real address behind it |
+| Discipline notices | On by default work page redirect handling; admins can report a user in one click (several reasons, ban duration incl. permanent, IP ban, purge of their comments / chats / images). The reported visitor is sent to a violation page (302) listing the reasons, with a comment section |
 | Skins | Several visual skins; fonts are loaded straight from public CDNs, so they cost your host no traffic |
 
 ## Tech stack and requirements

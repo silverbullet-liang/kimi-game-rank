@@ -9,12 +9,20 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 
 $action = param_str('action', 'list');
 
+/** 评论目标类型：默认作品；通报用 discipline。其余一律回落到 work，避免越权写入未知域 */
+function comment_target_type(): string
+{
+    $t = param_str('target_type', 'work');
+    return $t === 'discipline' ? 'discipline' : 'work';
+}
+
 switch ($action) {
 
     /* 评论列表（含楼中楼树） */
     case 'list': {
         require_token();
-        $wid = param_int('work_id', 0);
+        $wid   = param_int('work_id', 0);
+        $ttype = comment_target_type();
         if ($wid <= 0) { fail(400, '参数错误'); }
         $ident = current_identity();
         $uid = $ident['role'] === 'admin' ? admin_uid() : (int)(isset($ident['uid']) ? $ident['uid'] : 0);
@@ -24,8 +32,8 @@ switch ($action) {
             'SELECT c.id, c.user_id, c.parent_id, c.content, c.is_deleted, c.is_blocked, c.created_at, '
             . $rflag . ', u.username, u.role
              FROM comments c JOIN users u ON u.id = c.user_id
-             WHERE c.work_id = ? ORDER BY c.id ASC LIMIT 800',
-            array($wid)
+             WHERE c.work_id = ? AND c.target_type = ? ORDER BY c.id ASC LIMIT 800',
+            array($wid, $ttype)
         );
 
         $votes = array();
@@ -35,7 +43,7 @@ switch ($action) {
             }
         }
         $counts = array();
-        foreach (db_all('SELECT comment_id, COUNT(*) n FROM comment_votes WHERE comment_id IN (SELECT id FROM comments WHERE work_id = ?) GROUP BY comment_id', array($wid)) as $c) {
+        foreach (db_all('SELECT comment_id, COUNT(*) n FROM comment_votes WHERE comment_id IN (SELECT id FROM comments WHERE work_id = ? AND target_type = ?) GROUP BY comment_id', array($wid, $ttype)) as $c) {
             $counts[(int)$c['comment_id']] = (int)$c['n'];
         }
 
@@ -109,20 +117,31 @@ switch ($action) {
         csrf_verify();
         if (!rate_limit('cmt_' . actor_uid($id), 20, 60)) { fail(429, '发言过于频繁'); }
 
-        $wid = param_int('work_id', 0);
+        $wid   = param_int('work_id', 0);
+        $ttype = comment_target_type();
         $content = trim(strip_invisible(nfc_normalize(param_str('content'))));
         $parent = param_int('parent_id', 0);
         $len = mb_strlen($content, 'UTF-8');
         if ($len < 1) { fail(400, '评论内容不能为空'); }
         if ($len > 300) { fail(400, '评论最长 300 字'); }
 
-        $w = db_one('SELECT id FROM works WHERE id = ? AND is_hidden = 0', array($wid));
-        if ($w === null) { fail(404, '作品不存在'); }
+        /* 目标存在性：作品要未隐藏；通报要真实存在 */
+        if ($ttype === 'discipline') {
+            if (!table_exists('discipline_reports')
+                || db_one('SELECT id FROM discipline_reports WHERE id = ?', array($wid)) === null) {
+                fail(404, '通报不存在');
+            }
+        } else {
+            $w = db_one('SELECT id FROM works WHERE id = ? AND is_hidden = 0', array($wid));
+            if ($w === null) { fail(404, '作品不存在'); }
+        }
 
         $root = 0;
         if ($parent > 0) {
-            $p = db_one('SELECT id, root_id, work_id FROM comments WHERE id = ?', array($parent));
-            if ($p === null || (int)$p['work_id'] !== $wid) { fail(400, '回复目标无效'); }
+            $p = db_one('SELECT id, root_id, work_id, target_type FROM comments WHERE id = ?', array($parent));
+            if ($p === null || (int)$p['work_id'] !== $wid || (string)$p['target_type'] !== $ttype) {
+                fail(400, '回复目标无效');
+            }
             $root = (int)$p['root_id'] > 0 ? (int)$p['root_id'] : (int)$p['id'];
         }
 
@@ -139,8 +158,8 @@ switch ($action) {
         if (empty($verdict['ok'])) { moderate_reject($verdict); }
         $flag = (string)(isset($verdict['flag']) ? $verdict['flag'] : '');
 
-        $ccols = array('work_id', 'user_id', 'parent_id', 'root_id', 'content');
-        $cvals = array($wid, actor_uid($id), $parent, $root, $content);
+        $ccols = array('work_id', 'target_type', 'user_id', 'parent_id', 'root_id', 'content');
+        $cvals = array($wid, $ttype, actor_uid($id), $parent, $root, $content);
         if (col_ok('comments', 'review_flag')) { $ccols[] = 'review_flag'; $cvals[] = $flag; }
         $cid = db_insert_norm('comments', $ccols, $cvals, $content);
         stats_bump('comment_count');

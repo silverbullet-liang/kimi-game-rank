@@ -17,6 +17,29 @@ try {
         . '</div></body>');
 }
 
+/* 违纪拦截：被通报并封停的账号或 IP，访问任何页面都 302 到违纪界面。
+   违纪界面自身（带 violation 参数）放行，避免重定向死循环；
+   管理员与副管理员永不因此被拦，防止同一网络下误伤值班的人。 */
+if (!isset($_GET['violation'])) {
+    try {
+        $__ident = current_identity();
+        $__role  = is_array($__ident) ? (string)($__ident['role'] ?? '') : '';
+        if ($__role !== 'admin' && $__role !== 'subadmin') {
+            $__uid = 0;
+            if (is_array($__ident)) {
+                $__uid = (int)($__ident['uid'] ?? 0);
+            }
+            $__hit = discipline_hit($__uid, discipline_ip_hash(discipline_client_ip()));
+            if (is_array($__hit) && (int)$__hit['id'] > 0) {
+                header('Location: ?violation=' . (int)$__hit['id'], true, 302);
+                exit;
+            }
+        }
+    } catch (Throwable $e) {
+        app_log('discipline guard failed: ' . $e->getMessage());   // 绝不因拦截本身出错而挡住站点
+    }
+}
+
 /* 设计风格：由 cookie 决定加载哪一份皮肤文件（切换时刷新页面即换皮肤）。
    登录用户的偏好在「我的 → 外观设置」中同步到账号，跨设备时由前端写回 cookie。 */
 $__SKINS = array('glass', 'md3', 'pixel', 'sketch', 'brutal');

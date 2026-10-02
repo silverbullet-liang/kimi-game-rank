@@ -25,6 +25,7 @@ Un sito che raccoglie giochi, strumenti, opere letterarie e lavori amatoriali de
 | Accesso | Login con password / registrazione / modalità ospite |
 | Pannello di amministrazione | Acquisizione e aggiornamento in blocco, backup del database, moderazione dei commenti, gestione dei tag, co-amministratori |
 | Risoluzione intelligente dei link | Attiva per impostazione predefinita: se la pagina di un'opera è solo una pagina di reindirizzamento, viene usato l'indirizzo reale dietro di essa |
+| Segnalazioni disciplinari | Segnala un utente con un clic: più motivi, durata del blocco (anche permanente), blocco della provenienza, rimozione dei suoi commenti / chat / immagini. Chi è segnalato viene inviato con 302 a una pagina di violazione con i motivi e i commenti |
 | Temi | Diversi temi visivi; i caratteri tipografici sono scaricati dal browser direttamente da CDN pubbliche, senza consumare traffico del tuo server |
 
 ## Stack tecnico e requisiti

@@ -25,6 +25,7 @@ Un site qui rassemble les jeux, outils, œuvres littéraires et créations déri
 | Connexion | Connexion par mot de passe / inscription / mode invité |
 | Panneau d'administration | Collecte et mise à jour en masse, sauvegarde de la base, modération des commentaires, gestion des étiquettes, co-administrateurs |
 | Résolution intelligente des liens | Activée par défaut : si la page d'une œuvre n'est qu'une page de redirection, l'adresse réelle située derrière est utilisée |
+| Signalements disciplinaires | Signaler un utilisateur en un clic : plusieurs motifs, durée du bannissement (y compris permanent), blocage de la provenance, suppression de ses commentaires / discussions / images. La personne signalée est redirigée en 302 vers une page de violation avec les motifs et les commentaires |
 | Thèmes | Plusieurs thèmes visuels ; les polices sont chargées par le navigateur directement depuis des CDN publiques, sans consommer la bande passante de votre serveur |
 
 ## Pile technique et prérequis

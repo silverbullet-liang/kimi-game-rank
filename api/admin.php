@@ -7,6 +7,8 @@
  *          | comments_deleted | comment_restore | comment_purge（评论回收站，仅主管理员）
  *          | backup | backup_list | backup_delete | backup_download（数据库备份，仅主管理员）
  *          | score_mode（读）| score_mode_set（评分方式：收录与更新是否重算评分）
+ *          | disc_create | disc_list | disc_delete | disc_reasons | disc_reasons_set
+ *          | （违纪通报：一键通报用户、封停账号与 IP，仅主管理员）
  * 权限：主管理员=全部；副管理员=登录凭证即入场（作品搜索/上传/同步 + 只读数据
  *        + 自备社区凭证与其获取脚本），社区 token 各自加密存储、互不共用
  */
@@ -814,6 +816,75 @@ switch ($action) {
         $sid = param_int('id', 0);
         if (!subadmin_delete($sid)) { fail(404, '副管理员不存在'); }
         ok(null, '已删除该副管理员');
+        break;
+    }
+
+    /* ---------- 违纪通报（仅主管理员）----------
+       对用户一键通报：可勾选多条理由、补充说明，并可同时封停账号与访问 IP。
+       被封者访问站点会被 302 到违纪界面，界面下方逐条列出理由，并带评论区。 */
+    case 'disc_create': {
+        require_admin();
+        require_panel();
+        csrf_verify();
+        $ids = json_decode(param_str('user_ids', '[]'), true);
+        $rs  = json_decode(param_str('reasons', '[]'), true);
+        if (!is_array($ids)) { $ids = array(); }
+        if (!is_array($rs))  { $rs = array(); }
+        $note    = trim(strip_invisible(nfc_normalize(param_str('note', ''))));
+        $banAcc  = param_int('ban_account', 1) === 1;
+        $banIp   = param_int('ban_ip', 1) === 1;
+        $banDays = param_int('ban_days', 0);              // 0 = 永久
+        $purge   = param_int('purge', 0) === 1;           // 是否清理其评论 / 对话 / 图片
+        try {
+            $r = discipline_create($ids, $rs, $note, $banAcc, $banIp, (int)admin_uid(), $banDays, $purge);
+        } catch (Throwable $e) {
+            fail(400, $e->getMessage());
+        }
+        $msg = '已通报 ' . (int)$r['created'] . ' 个用户';
+        if ((int)$r['accounts_banned'] > 0) {
+            $msg .= '，封停账号 ' . (int)$r['accounts_banned'] . ' 个（'
+                  . ($banDays > 0 ? $banDays . ' 天后自动解除' : '永久') . '）';
+        }
+        if ((int)$r['ips_banned'] > 0) { $msg .= '，封禁 IP ' . (int)$r['ips_banned'] . ' 个'; }
+        if ((int)$r['no_ip'] > 0)      { $msg .= '；其中 ' . (int)$r['no_ip'] . ' 个暂无可封的 IP，等其下次访问后再通报即可'; }
+        if ($purge) {
+            $msg .= '；已清理评论 ' . (int)$r['purged_comments'] . ' 条、对话 '
+                  . (int)$r['purged_messages'] . ' 条、图片 ' . (int)$r['purged_images'] . ' 张';
+        }
+        ok($r, $msg);
+        break;
+    }
+
+    case 'disc_list': {
+        require_admin();
+        require_panel();
+        ok(discipline_list(max(1, param_int('page', 1)), 20));
+        break;
+    }
+
+    case 'disc_delete': {
+        require_admin();
+        require_panel();
+        csrf_verify();
+        if (!discipline_delete(param_int('id', 0))) { fail(404, '通报不存在'); }
+        ok(null, '已撤销该通报，账号与 IP 一并解封');
+        break;
+    }
+
+    case 'disc_reasons': {
+        require_admin();
+        require_panel();
+        ok(array('items' => discipline_reasons()));
+        break;
+    }
+
+    case 'disc_reasons_set': {
+        require_admin();
+        require_panel();
+        csrf_verify();
+        $list = json_decode(param_str('items', '[]'), true);
+        discipline_reasons_set(is_array($list) ? $list : array());
+        ok(array('items' => discipline_reasons()), '理由清单已保存');
         break;
     }
 

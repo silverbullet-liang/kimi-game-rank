@@ -228,7 +228,8 @@ function openLightbox(images, index) {
 /* ============================================================
  * 评论区
  * ============================================================ */
-async function renderComments(container, workId) {
+export async function renderComments(container, workId, targetType) {
+  const ttype = targetType === 'discipline' ? 'discipline' : 'work';
   const form = container.querySelector('#cmtForm');
   const listBox = container.querySelector('#cmtList');
 
@@ -248,7 +249,7 @@ async function renderComments(container, workId) {
       if (!v) { toast('请输入内容', 'err'); return; }
       btnLoading(btn, true);
       try {
-        await api('comments.php', 'create', { work_id: workId, content: v }, { timeout: 30000 });
+        await api('comments.php', 'create', { work_id: workId, target_type: ttype, content: v }, { timeout: 30000 });
         ta.value = ''; form.querySelector('#cmtCount').textContent = '0';
         await refresh(true);
         toast('已发表');
@@ -279,7 +280,7 @@ async function renderComments(container, workId) {
       return;
     }
     roots.slice(0, st.shown).forEach(c => {
-      listBox.appendChild(commentNode(c, workId, refresh));
+      listBox.appendChild(commentNode(c, workId, refresh, ttype));
       const reps = c.replies || [];
       if (!reps.length) { return; }
       const wrap = document.createElement('div');
@@ -288,7 +289,7 @@ async function renderComments(container, workId) {
       const draw = () => {
         wrap.innerHTML = '';
         (open ? reps : reps.slice(0, FOLD)).forEach(r =>
-          wrap.appendChild(commentNode(Object.assign({}, r, { _sub: 1 }), workId, refresh)));
+          wrap.appendChild(commentNode(Object.assign({}, r, { _sub: 1 }), workId, refresh, ttype)));
         if (reps.length > FOLD) {
           const t = document.createElement('button');
           t.className = 'fold-toggle';
@@ -313,7 +314,7 @@ async function renderComments(container, workId) {
   async function refresh(showSkeleton) {
     if (showSkeleton) { listBox.innerHTML = '<div class="skeleton" style="height:44px"></div>'; }
     try {
-      const d = await api('comments.php', 'list', { work_id: workId }, showSkeleton ? {} : { silent: true });
+      const d = await api('comments.php', 'list', { work_id: workId, target_type: ttype }, showSkeleton ? {} : { silent: true });
       st.roots = d.comments || [];
       st.total = Number(d.total || 0);
       if (st.shown < PAGE) { st.shown = PAGE; }
@@ -336,7 +337,7 @@ async function renderComments(container, workId) {
     if (ae && (ae.id === 'cmtText' || ae.id === 'rpText')) { return; }
     const scrim = document.getElementById('dialogScrim');
     if (scrim && !scrim.hidden) { return; }
-    api('comments.php', 'list', { work_id: workId }, { silent: true, tries: 1 })
+    api('comments.php', 'list', { work_id: workId, target_type: ttype }, { silent: true, tries: 1 })
       .then(d => {
         if (Number(d.total || 0) === st.total) { return; }   // 无新评论 → 不重绘
         st.roots = d.comments || [];
@@ -389,7 +390,7 @@ function commentReject(host, text, content, onPass) {
   });
 }
 
-function commentNode(c, workId, reload) {
+function commentNode(c, workId, reload, ttype) {
   const box = document.createElement('div');
   box.className = 'comment' + (c._sub ? ' sub' : '');
   box.dataset.cid = c.id;
@@ -447,7 +448,7 @@ function commentNode(c, workId, reload) {
       if (text) {
         const post = async () => {
           try {
-            await api('comments.php', 'create', { work_id: workId, content: text, parent_id: c.id }, { timeout: 30000 });
+            await api('comments.php', 'create', { work_id: workId, target_type: ttype, content: text, parent_id: c.id }, { timeout: 30000 });
             toast('已回复');
             reload(true);
           } catch (e) {

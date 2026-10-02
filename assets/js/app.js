@@ -1377,7 +1377,8 @@ function openLightbox(images, index) {
 /* ============================================================
  * 评论区
  * ============================================================ */
-async function renderComments(container, workId) {
+async function renderComments(container, workId, targetType) {
+  const ttype = targetType === 'discipline' ? 'discipline' : 'work';
   const form = container.querySelector('#cmtForm');
   const listBox = container.querySelector('#cmtList');
 
@@ -1397,7 +1398,7 @@ async function renderComments(container, workId) {
       if (!v) { toast('请输入内容', 'err'); return; }
       btnLoading(btn, true);
       try {
-        await api('comments.php', 'create', { work_id: workId, content: v }, { timeout: 30000 });
+        await api('comments.php', 'create', { work_id: workId, target_type: ttype, content: v }, { timeout: 30000 });
         ta.value = ''; form.querySelector('#cmtCount').textContent = '0';
         await refresh(true);
         toast('已发表');
@@ -1428,7 +1429,7 @@ async function renderComments(container, workId) {
       return;
     }
     roots.slice(0, st.shown).forEach(c => {
-      listBox.appendChild(commentNode(c, workId, refresh));
+      listBox.appendChild(commentNode(c, workId, refresh, ttype));
       const reps = c.replies || [];
       if (!reps.length) { return; }
       const wrap = document.createElement('div');
@@ -1437,7 +1438,7 @@ async function renderComments(container, workId) {
       const draw = () => {
         wrap.innerHTML = '';
         (open ? reps : reps.slice(0, FOLD)).forEach(r =>
-          wrap.appendChild(commentNode(Object.assign({}, r, { _sub: 1 }), workId, refresh)));
+          wrap.appendChild(commentNode(Object.assign({}, r, { _sub: 1 }), workId, refresh, ttype)));
         if (reps.length > FOLD) {
           const t = document.createElement('button');
           t.className = 'fold-toggle';
@@ -1462,7 +1463,7 @@ async function renderComments(container, workId) {
   async function refresh(showSkeleton) {
     if (showSkeleton) { listBox.innerHTML = '<div class="skeleton" style="height:44px"></div>'; }
     try {
-      const d = await api('comments.php', 'list', { work_id: workId }, showSkeleton ? {} : { silent: true });
+      const d = await api('comments.php', 'list', { work_id: workId, target_type: ttype }, showSkeleton ? {} : { silent: true });
       st.roots = d.comments || [];
       st.total = Number(d.total || 0);
       if (st.shown < PAGE) { st.shown = PAGE; }
@@ -1485,7 +1486,7 @@ async function renderComments(container, workId) {
     if (ae && (ae.id === 'cmtText' || ae.id === 'rpText')) { return; }
     const scrim = document.getElementById('dialogScrim');
     if (scrim && !scrim.hidden) { return; }
-    api('comments.php', 'list', { work_id: workId }, { silent: true, tries: 1 })
+    api('comments.php', 'list', { work_id: workId, target_type: ttype }, { silent: true, tries: 1 })
       .then(d => {
         if (Number(d.total || 0) === st.total) { return; }   // 无新评论 → 不重绘
         st.roots = d.comments || [];
@@ -1538,7 +1539,7 @@ function commentReject(host, text, content, onPass) {
   });
 }
 
-function commentNode(c, workId, reload) {
+function commentNode(c, workId, reload, ttype) {
   const box = document.createElement('div');
   box.className = 'comment' + (c._sub ? ' sub' : '');
   box.dataset.cid = c.id;
@@ -1596,7 +1597,7 @@ function commentNode(c, workId, reload) {
       if (text) {
         const post = async () => {
           try {
-            await api('comments.php', 'create', { work_id: workId, content: text, parent_id: c.id }, { timeout: 30000 });
+            await api('comments.php', 'create', { work_id: workId, target_type: ttype, content: text, parent_id: c.id }, { timeout: 30000 });
             toast('已回复');
             reload(true);
           } catch (e) {
@@ -4611,6 +4612,134 @@ async function loadVisitsTop(container) {
   }
 }
 
+/* ============================================================
+ * 违纪通报（一键封禁）
+ * ============================================================
+ * 表单全自绘：理由多选、补充理由、说明、封禁时长（可永久）、封 IP、清理内容。
+ * 提交后由后端落实封禁与清理；被通报者再访问站点会被 302 到违纪界面。
+ */
+async function discDialog(ids, names) {
+  let preset = [];
+  try { preset = ((await api('admin.php', 'disc_reasons', {}, { silent: true })).items) || []; } catch (e) { }
+
+  return new Promise(resolve => {
+    const scrim = document.getElementById('dialogScrim');
+    const box = document.getElementById('dialog');
+    box.className = 'dialog glass';
+    const who = names.map(n => '<b>' + esc(n) + '</b>').join('、');
+
+    box.innerHTML = `
+      <h3>违纪通报 · 封禁</h3>
+      <p class="tiny muted">对象：${who}</p>
+
+      <div class="field">
+        <div class="tiny muted" style="margin-bottom:6px">通报理由（可多选，至少一条）</div>
+        <div class="disc-pick" id="discPick">
+          ${preset.map((r, i) => `<button type="button" class="disc-opt${i === 0 ? ' on' : ''}" data-r="${esc(r)}">${esc(r)}</button>`).join('')}
+        </div>
+      </div>
+
+      <div class="field">
+        <input class="input" id="discCustom" type="text" maxlength="60" autocomplete="off" placeholder="补充理由（可留空）">
+      </div>
+
+      <div class="field">
+        <textarea class="input" id="discNote" maxlength="500" placeholder="补充说明（可留空，会显示在通报页上）"></textarea>
+      </div>
+
+      <div class="field">
+        <div class="tiny muted" style="margin-bottom:6px">封禁时长</div>
+        <div class="seg" id="discDays">
+          <button type="button" data-d="1">1 天</button>
+          <button type="button" data-d="7" class="on">7 天</button>
+          <button type="button" data-d="30">30 天</button>
+          <button type="button" data-d="0">永久</button>
+        </div>
+        <input class="input" id="discDaysCustom" type="text" inputmode="numeric" autocomplete="off"
+               placeholder="或直接填写天数（留空则用上面的选择）" style="margin-top:8px">
+      </div>
+
+      <div class="disc-pick">
+        <button type="button" class="disc-opt on" id="discIp">封禁访问 IP</button>
+        <button type="button" class="disc-opt" id="discPurge">删除其全部评论 / 对话 / 图片</button>
+      </div>
+
+      <div class="dialog-actions">
+        <button class="btn-ghost" data-r="0">取消</button>
+        <button class="btn btn-danger" data-r="1">确认通报并封禁</button>
+      </div>`;
+
+    scrim.hidden = false;
+
+    /* 多选：理由可多选，开关型按钮独立切换 */
+    box.querySelectorAll('#discPick .disc-opt').forEach(b => {
+      b.addEventListener('click', () => b.classList.toggle('on'));
+    });
+    const tog = (id) => box.querySelector('#' + id);
+    tog('discIp').addEventListener('click', () => tog('discIp').classList.toggle('on'));
+    tog('discPurge').addEventListener('click', () => tog('discPurge').classList.toggle('on'));
+
+    /* 时长：分段按钮单选；自定义输入优先 */
+    const seg = box.querySelector('#discDays');
+    seg.addEventListener('click', e => {
+      const b = e.target.closest('[data-d]');
+      if (!b) { return; }
+      seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    });
+
+    const close = v => { scrim.hidden = true; box.innerHTML = ''; resolve(v); };
+    box.querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => {
+      if (b.dataset.r === '0') { close(null); return; }
+      const picked = [];
+      box.querySelectorAll('#discPick .disc-opt.on').forEach(x => picked.push(x.dataset.r));
+      const custom = String(box.querySelector('#discCustom').value || '').trim();
+      if (custom) { picked.push(custom); }
+      if (!picked.length) { toast('请至少选择或填写一条理由', 'err'); return; }
+      const cur = seg.querySelector('button.on');
+      const typed = parseInt(String(box.querySelector('#discDaysCustom').value || '').trim(), 10);
+      const days = Number.isFinite(typed) && typed >= 0 ? typed : Number(cur ? cur.dataset.d : 7);
+      close({
+        reasons: picked,
+        note: String(box.querySelector('#discNote').value || '').trim(),
+        days: days,
+        ban_ip: tog('discIp').classList.contains('on') ? 1 : 0,
+        purge: tog('discPurge').classList.contains('on') ? 1 : 0,
+      });
+    }));
+    scrim.onclick = e => { if (e.target === scrim) close(null); };
+  });
+}
+
+/** 一键通报：提交并回显结果（含清理统计） */
+async function submitDiscipline(container, ids, names, q, readOnly, pg) {
+  const form = await discDialog(ids, names);
+  if (!form) { return; }
+  try {
+    const r = await api('admin.php', 'disc_create', {
+      user_ids: JSON.stringify(ids),
+      reasons: JSON.stringify(form.reasons),
+      note: form.note,
+      ban_days: form.days,
+      ban_account: 1,
+      ban_ip: form.ban_ip,
+      purge: form.purge,
+    });
+    let extra = '';
+    if (form.purge) {
+      extra = '<br><br>已清理：评论 <b>' + Number(r.purged_comments || 0) + '</b> 条 · 对话 <b>'
+            + Number(r.purged_messages || 0) + '</b> 条 · 图片 <b>' + Number(r.purged_images || 0) + '</b> 张';
+    }
+    await dialog('通报完成',
+      '已通报 <b>' + Number(r.created || 0) + '</b> 个用户。'
+      + (r.ips_banned ? '<br>封禁 IP <b>' + Number(r.ips_banned) + '</b> 个。' : '')
+      + (r.no_ip ? '<br><span class="tiny">其中 ' + Number(r.no_ip) + ' 个暂无可封的 IP，等其下次访问后再操作即可。</span>' : '')
+      + extra, '知道了');
+    loadUsers(container, q, readOnly, pg);
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
+
 async function loadUsers(container, q, readOnly, page) {
   const box = container.querySelector('#userList');
   if (!box) return;
@@ -4630,7 +4759,7 @@ async function loadUsers(container, q, readOnly, page) {
     }
     const showIp = d.ip_visible === true;
     const opsHead = readOnly ? '' : '<th>操作</th>';
-    box.innerHTML = `<div class="tiny" style="margin-bottom:6px">可按用户名或 8 位 UID 搜索${readOnly ? ' · 只读' : ''}</div>
+    box.innerHTML = `<div class="tiny" style="margin-bottom:6px">可按用户名或 8 位 UID 搜索${readOnly ? ' · 只读' : ' · 点「通报」可写理由并封禁账号与 IP'}</div>
       <table class="table"><thead><tr><th>用户名</th><th>UID</th><th>注册</th><th>最近登录</th>${showIp ? '<th>最近 IP / 归属地</th>' : ''}<th>AI 用量</th>${opsHead}</tr></thead><tbody>` +
       d.items.map(u => `<tr data-id="${u.id}" data-name="${esc(u.username)}">
         <td>${userName(u.username, u.role)}</td>
@@ -4640,6 +4769,8 @@ async function loadUsers(container, q, readOnly, page) {
         ${showIp ? `<td class="tiny">${esc(u.ip_masked || '—')}<br><span class="muted">${esc(u.location || '')}</span></td>` : ''}
         <td>${Number(u.ai_tokens)} tokens / ${Number(u.ai_calls)} 次</td>
         ${readOnly ? '' : `<td>${u.role === 'user'
+              ? '<button class="btn-ghost btn-sm" data-act="disc">通报</button>' : ''}
+          ${u.role === 'user'
               ? '<button class="btn-ghost btn-sm" data-act="promote">设为副管理员</button>' : ''}
           ${u.role === 'user' ? '<button class="btn-ghost btn-sm" data-act="del">删除</button>' : ''}</td>`}</tr>`).join('') + '</tbody></table>';
 
@@ -4651,6 +4782,10 @@ async function loadUsers(container, q, readOnly, page) {
           try { await api('admin.php', 'user_delete', { id: tr.dataset.id }); toast('已删除'); loadUsers(container, q, readOnly, pg); }
           catch (e) { toast(e.message, 'err'); }
         }
+      });
+      const discBtn = tr.querySelector('[data-act="disc"]');
+      if (discBtn) discBtn.addEventListener('click', () => {
+        submitDiscipline(container, [Number(tr.dataset.id)], [uname], q, readOnly, pg);
       });
       const proBtn = tr.querySelector('[data-act="promote"]');
       if (proBtn) proBtn.addEventListener('click', async () => {
@@ -5054,6 +5189,7 @@ function promptText() {
 
 
 
+
 const view = document.getElementById('view');
 
 /* 开源仓库：目录里的「渗透测试」直接跳这里 */
@@ -5083,6 +5219,8 @@ const routes = {
   doc: renderDoc,
   feedback: renderFeedback,
   about: renderAbout,
+  violation: renderViolation,
+  discipline: renderDiscipline,
 };
 
 let currentPage = '';
@@ -5111,7 +5249,7 @@ function readRoute() {
   if (location.hash && location.hash.length > 1) { return location.hash; }   // 旧式链接优先
   const u = new URL(location.href);
   const qs = new URLSearchParams(u.search);
-  const KNOWN = ['rank', 'detail', 'chat', 'mine', 'login', 'doc', 'feedback', 'about'];
+  const KNOWN = ['rank', 'detail', 'chat', 'mine', 'login', 'doc', 'feedback', 'about', 'violation', 'discipline'];
   let p = qs.get('p') || '';
   let arg = qs.get('arg') || '';
   qs.delete('p');
@@ -5303,6 +5441,7 @@ function drawerItems() {
     { k: 'help', label: '功能说明', ic: I.doc, go: '#/doc/功能说明' },
     { k: 'aihelp', label: 'AI 使用说明', ic: I.plug, go: '#/doc/AI 使用说明' },
     { k: 'charter', label: '社区公约', ic: I.users, go: '#/doc/社区公约' },
+    { k: 'discipline', label: '违纪通报', ic: I.shield, go: '#/discipline' },
     { k: 'score', label: '评分标准', ic: I.rule, go: '#/doc/评分标准' },
     { k: 'join', label: '入榜规则', ic: I.list, go: '#/doc/入榜规则' },
     { k: 'terms', label: '用户协议', ic: I.doc, go: '#/doc/用户协议' },

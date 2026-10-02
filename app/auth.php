@@ -318,7 +318,12 @@ function user_login(string $username, string $password): array
     $ok = password_verify_chain($password, (string)$u['registered_at'], (string)$u['salt'], (string)$u['password_hash']);
     login_mark($ip, $ok);
     if (!$ok) { timing_delay(); fail(401, '用户名或密码错误'); }
-    if ((int)$u['is_banned'] === 1) { fail(403, '账号已被封禁'); }
+    if ((int)$u['is_banned'] === 1) {
+        /* 到期就先解除，不必等人工处理 */
+        if (function_exists('discipline_auto_unban')) { discipline_auto_unban((int)$u['id']); }
+        $u2 = db_one('SELECT is_banned FROM users WHERE id = ? LIMIT 1', array((int)$u['id']));
+        if ($u2 !== null && (int)$u2['is_banned'] === 1) { fail(403, '账号已被封禁'); }
+    }
 
     db_exec('UPDATE users SET last_login_at = UTC_TIMESTAMP() WHERE id = ?', array((int)$u['id']));
     stats_bump('logins');
@@ -578,11 +583,13 @@ function record_visit(int $uid)
         $loc = isset($info['location']) ? (string)$info['location'] : '';
         list($co, $pr, $ci) = ip_fields($info);
         $masked = mask_ip($ip);
+        $fp = function_exists('discipline_ip_hash') ? discipline_ip_hash($ip) : '';
         try {
-            /* 结构化列：统计直接按列分组，不再从拼接串里猜省市 */
-            db_exec('INSERT INTO user_visits (user_id, ip_masked, location, country, province, city, created_at)
-                     VALUES (?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())',
-                array($uid, $masked, mb_substr($loc, 0, 128, 'UTF-8'),
+            /* 结构化列：统计直接按列分组，不再从拼接串里猜省市；
+               ip_hash 是不可逆指纹，仅用于违纪封禁的匹配，不保留明文。 */
+            db_exec('INSERT INTO user_visits (user_id, ip_masked, ip_hash, location, country, province, city, created_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())',
+                array($uid, $masked, $fp, mb_substr($loc, 0, 128, 'UTF-8'),
                       mb_substr($co, 0, 32, 'UTF-8'), mb_substr($pr, 0, 32, 'UTF-8'), mb_substr($ci, 0, 32, 'UTF-8')));
         } catch (Throwable $e2) {
             /* 结构尚未升级时退回旧写法，保证访问记录不丢 */
