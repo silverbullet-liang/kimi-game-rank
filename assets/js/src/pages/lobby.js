@@ -6,7 +6,7 @@
  *
  * 注意：本文件为合并构建的源文件，勿出现重复函数名（tools/jscheck.py 会校验）。
  */
-import { api, state, esc, toast, btnLoading, dialog, userName, isAdminish } from '../core.js';
+import { api, state, esc, toast, btnLoading, dialog, userName, isAdminish, bindImageViewer } from '../core.js';
 import { mdToHtml } from '../md.js';
 import { navigate } from '../router.js';
 
@@ -220,6 +220,7 @@ async function mountWorld(body) {
     </div>`;
 
   const stream  = body.querySelector('#wStream');
+  bindImageViewer(stream);          /* 点图片看大图 */
   const input   = body.querySelector('#wInput');
   const sendBtn = body.querySelector('#wSend');
   const count   = body.querySelector('#wCount');
@@ -564,6 +565,7 @@ async function mountAi(body) {
     </div>`;
 
   const stream = body.querySelector('#stream');
+  bindImageViewer(stream);          /* 点图片看大图 */
   const input = body.querySelector('#aiInput');
   const sendBtn = body.querySelector('#aiSend');
   const quotaTip = body.querySelector('#quotaText');

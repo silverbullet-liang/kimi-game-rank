@@ -970,6 +970,32 @@ html[data-theme="dark"] .skin-prev.p-brutal { background: #2b2a22; border-color:
 .skin-prev.p-xinhai    { background: linear-gradient(115deg, #14304A 0 58%, #C08A3E 58% 100%); border: 0; border-radius: 9px; }
 .skin-prev.p-kmyc      { background: linear-gradient(115deg, #43523A 0 58%, #B03A2E 58% 100%); border: 0; border-radius: 9px; }
 .skin-prev.p-halloween { background: linear-gradient(115deg, #1A1024 0 58%, #E9720C 58% 100%); border: 0; border-radius: 9px; }
+.skin-prev.p-chongyang  { background: linear-gradient(115deg, #A85B2B 0 58%, #E0A526 58% 100%); border: 0; border-radius: 9px; }
+
+/* 聊天图片：可点开看大图 */
+.msg-img { cursor: zoom-in; }
+.img-viewer {
+  position: fixed; inset: 0; z-index: 95;
+  display: grid; place-items: center;
+  padding: 20px;
+  background: rgba(8, 8, 14, .88);
+  opacity: 0; transition: opacity .18s ease;
+}
+.img-viewer.on { opacity: 1; }
+.img-viewer img {
+  max-width: min(1100px, 96vw); max-height: 92vh;
+  border-radius: 10px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .62);
+  background: rgba(255, 255, 255, .04);
+}
+.img-viewer .iv-close {
+  position: absolute; top: 14px; right: 14px;
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 0; cursor: pointer;
+  background: rgba(255, 255, 255, .16);
+  display: grid; place-items: center;
+}
+.img-viewer .iv-close .ic { width: 18px; height: 18px; fill: #fff; }
 
 /* 配额分母（如 "1234 / 10000"） */
 .stat-box .v .cap { font-size: 12px; font-weight: 400; opacity: .55; margin-left: 2px; font-style: normal; }

@@ -1,0 +1,257 @@
+/* ============================================================
+ * 皮肤：重阳节 · 登高赏菊
+ * ------------------------------------------------------------
+ * 当日呈现：农历九月初九（公历日期逐年不同，由服务端按农历换算后下发）
+ * 主题色：专版期间固定「菊黄 + 秋赭」，外观设置里的主题色栏被灰遮罩禁用
+ *
+ * 设计意图
+ *   · 秋而不萧瑟：底色取暖米，赭石与菊黄压住暖度，避免整片发黄发旧
+ *   · 菊花只作点景：两朵，缓缓旋转的放射花瓣 —— 重瓣的密比单瓣的艳更像菊花
+ *   · 远山在下：登高是重阳的主事，山只留一道剪影，不抢内容
+ *   · 落英飘摇：四片花瓣缓缓跌落，是全屏唯一的动态
+ *   · 装饰层 pointer-events:none；尊重 prefers-reduced-motion
+ * ============================================================ */
+
+html[data-skin="chongyang"] {
+  --accent: #A85B2B !important;
+  --accent-2: #E0A526 !important;
+  --accent-ink: #FFF8EA !important;
+  --toggle-on: #A85B2B !important;
+  --slider-fill: #A85B2B !important;
+
+  --cy-ochre: #A85B2B;
+  --cy-ochre-deep: #7A3F1B;
+  --cy-ochre-soft: #C87F4A;
+  --cy-chrys: #E0A526;
+  --cy-chrys-soft: #F3CC72;
+  --cy-moss: #6E7A45;
+
+  --bg-1: #FAF3E6;
+  --bg-2: #EFE2CC;
+  --surface: rgba(255, 252, 245, .87);
+  --surface-solid: #FEFAF2;
+  --border: rgba(168, 91, 43, .20);
+  --border-soft: rgba(168, 91, 43, .10);
+  --text: #2C2118;
+  --text-2: #6B5340;
+  --text-3: #9B846C;
+
+  --radius-lg: 18px;
+  --radius-md: 12px;
+  --radius-sm: 9px;
+  --shadow: 0 10px 30px rgba(122, 63, 27, .16);
+  --shadow-sm: 0 4px 14px rgba(122, 63, 27, .11);
+
+  --tab-active-bg: rgba(168, 91, 43, .11);
+  --tab-active-fg: var(--cy-ochre);
+  --msg-bg: rgba(255, 252, 245, .96);
+  --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg, #A85B2B, #E0A526);
+  --msg-mine-fg: #FFF8EA;
+  --toast-bg: rgba(44, 33, 24, .95);
+  --toast-fg: #FBF2E2;
+  --toast-err-bg: #A5392B;
+}
+
+html[data-skin="chongyang"][data-theme="dark"] {
+  --bg-1: #1A1410;
+  --bg-2: #241B14;
+  --surface: rgba(40, 31, 23, .78);
+  --surface-solid: #241B14;
+  --border: rgba(224, 165, 38, .20);
+  --border-soft: rgba(224, 165, 38, .11);
+  --text: #EFE6D8;
+  --text-2: #C4B49E;
+  --text-3: #8E7E6A;
+  --shadow: 0 10px 30px rgba(0, 0, 0, .5);
+  --shadow-sm: 0 4px 14px rgba(0, 0, 0, .4);
+  --tab-active-bg: rgba(224, 165, 38, .16);
+  --tab-active-fg: var(--cy-chrys);
+  --msg-bg: rgba(44, 34, 25, .94);
+  --toast-bg: rgba(239, 230, 216, .95);
+  --toast-fg: #2C2118;
+}
+
+/* ---------- 背景：暖米底 + 顶部赭晕 + 底部菊金 ---------- */
+html[data-skin="chongyang"] body {
+  background-color: #FBF4E8;
+  background-image:
+    radial-gradient(145% 52% at 50% -14%, rgba(168, 91, 43, .34), rgba(168, 91, 43, .10) 46%, transparent 70%),
+    radial-gradient(125% 44% at 50% 114%, rgba(224, 165, 38, .26), transparent 72%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cg fill='%23A85B2B' fill-opacity='.42'%3E%3Ccircle cx='26' cy='34' r='1.2'/%3E%3Ccircle cx='104' cy='66' r='1'/%3E%3Ccircle cx='150' cy='126' r='1.1'/%3E%3Ccircle cx='62' cy='148' r='.9'/%3E%3C/g%3E%3C/svg%3E");
+  background-attachment: fixed, fixed, scroll;
+}
+
+/* ---------- 顶栏：赭石压深，菊金细描边 ---------- */
+html[data-skin="chongyang"] .topbar {
+  background: linear-gradient(180deg, rgba(168, 91, 43, .97), rgba(122, 63, 27, .97));
+  border-bottom: 1px solid rgba(224, 165, 38, .55);
+  box-shadow: 0 6px 22px rgba(122, 63, 27, .24);
+}
+html[data-skin="chongyang"] .topbar .ic { fill: #FFEFC6; }
+html[data-skin="chongyang"] .topbar .brand-name { color: #FFF2D4; font-weight: 700; letter-spacing: .5px; }
+html[data-skin="chongyang"] .topbar .logo {
+  background: linear-gradient(140deg, #E0A526, #F3CC72);
+  box-shadow: 0 2px 10px rgba(224, 165, 38, .45);
+}
+html[data-skin="chongyang"] .topbar .logo .ic { fill: #7A3F1B; }
+
+/* ---------- 公告：菊金底赭字 ---------- */
+html[data-skin="chongyang"] .announce {
+  background: linear-gradient(100deg, #F3CC72, #E0A526);
+  color: #5E2F12;
+  border-bottom: 1px solid rgba(122, 63, 27, .20);
+  font-weight: 700;
+}
+html[data-skin="chongyang"] .announce-tag::after {
+  content: " · 重阳登高";
+  font-weight: 800;
+  letter-spacing: .5px;
+}
+
+/* ---------- 卡片：暖纸面 + 右上角一枝菊（双弧） ---------- */
+html[data-skin="chongyang"] .card,
+html[data-skin="chongyang"] .rank-item,
+html[data-skin="chongyang"] .stat-box,
+html[data-skin="chongyang"] .tool-card,
+html[data-skin="chongyang"] .panel-plain,
+html[data-skin="chongyang"] .tp-col,
+html[data-skin="chongyang"] .block-note,
+html[data-skin="chongyang"] .guest-box,
+html[data-skin="chongyang"] .tip-card,
+html[data-skin="chongyang"] .donate-box {
+  position: relative;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+html[data-skin="chongyang"] .card::before,
+html[data-skin="chongyang"] .rank-item::before {
+  content: "";
+  position: absolute;
+  top: 8px; right: 9px;
+  width: 14px; height: 14px;
+  border-top: 2px solid var(--cy-chrys);
+  border-right: 2px solid var(--cy-chrys);
+  border-top-right-radius: 10px;
+  opacity: .78;
+  pointer-events: none;
+}
+
+html[data-skin="chongyang"] .skeleton {
+  background: linear-gradient(100deg, rgba(168, 91, 43, .07), rgba(224, 165, 38, .13), rgba(168, 91, 43, .07));
+  background-size: 220% 100%;
+}
+html[data-skin="chongyang"] .search-panel,
+html[data-skin="chongyang"] .dialog,
+html[data-skin="chongyang"] .drawer { border: 1px solid var(--border); }
+html[data-skin="chongyang"] .dialog { box-shadow: 0 18px 50px rgba(122, 63, 27, .24); }
+
+/* ============================================================
+ * 装饰层：两朵菊花（缓旋）+ 远山剪影 + 四片落英
+ * ============================================================ */
+.fd-cy-chrys, .fd-cy-hill, .fd-cy-petal { display: none; }
+
+html[data-skin="chongyang"] .festival-deco {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* 菊花：重复锥形渐变做出放射花瓣，中心压一枚花心 */
+html[data-skin="chongyang"] .fd-cy-chrys {
+  display: block;
+  position: absolute;
+  width: 62px; height: 62px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, #B9791A 0 18%, rgba(0, 0, 0, 0) 19%),
+    repeating-conic-gradient(from 0deg,
+      var(--cy-chrys) 0deg 9deg,
+      var(--cy-chrys-soft) 9deg 18deg);
+  box-shadow: 0 4px 16px rgba(168, 91, 43, .28);
+  opacity: .62;
+  animation: cy-spin 64s linear infinite;
+}
+html[data-skin="chongyang"] .fd-cy-chrys--1 { left: 5%;  top: 96px; }
+html[data-skin="chongyang"] .fd-cy-chrys--2 {
+  left: 76%; top: 40%;
+  width: 44px; height: 44px;
+  opacity: .5;
+  animation-duration: 88s;
+  animation-direction: reverse;
+}
+@keyframes cy-spin { to { transform: rotate(360deg); } }
+
+/* 远山：底部一道剪影，像登高望远看到的那道山脊 */
+html[data-skin="chongyang"] .fd-cy-hill {
+  display: block;
+  position: absolute;
+  left: -6%; right: -6%; bottom: 0;
+  height: 18vh;
+  opacity: .2;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 200' preserveAspectRatio='none'%3E%3Cpath d='M0 200 L0 132 L170 54 L330 140 L500 62 L690 148 L860 78 L1030 152 L1200 96 L1200 200 Z' fill='%23A85B2B'/%3E%3C/svg%3E") no-repeat center bottom / 100% 100%;
+}
+
+/* 落英：四片花瓣缓缓跌落，左右轻摆 */
+html[data-skin="chongyang"] .fd-cy-petal {
+  display: block;
+  position: absolute;
+  top: -6vh;
+  width: 11px; height: 11px;
+  background: linear-gradient(140deg, var(--cy-chrys-soft), var(--cy-chrys));
+  border-radius: 62% 38% 58% 42% / 46% 58% 42% 54%;
+  opacity: 0;
+  animation: cy-fall 14s linear infinite;
+}
+html[data-skin="chongyang"] .fd-cy-petal--1 { left: 14%; animation-delay: -1.5s; }
+html[data-skin="chongyang"] .fd-cy-petal--2 { left: 37%; animation-delay: -5.2s; animation-duration: 17s; }
+html[data-skin="chongyang"] .fd-cy-petal--3 { left: 61%; animation-delay: -8.8s; animation-duration: 15.5s; }
+html[data-skin="chongyang"] .fd-cy-petal--4 { left: 84%; animation-delay: -12.1s; animation-duration: 19s; }
+@keyframes cy-fall {
+  0%   { transform: translate(0, 0) rotate(0deg);        opacity: 0; }
+  9%   { opacity: .85; }
+  50%  { transform: translate(26px, 52vh) rotate(200deg); }
+  86%  { opacity: .7; }
+  100% { transform: translate(-14px, 112vh) rotate(420deg); opacity: 0; }
+}
+
+@media (max-width: 640px) {
+  html[data-skin="chongyang"] .fd-cy-chrys--2 { display: none; }
+  html[data-skin="chongyang"] .fd-cy-petal--2,
+  html[data-skin="chongyang"] .fd-cy-petal--4 { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin="chongyang"] .fd-cy-chrys,
+  html[data-skin="chongyang"] .fd-cy-petal { animation: none !important; }
+  html[data-skin="chongyang"] .fd-cy-petal { opacity: .45; }
+}
+
+/* ---------- 外观设置：节日期间固定主题色 ---------- */
+html[data-skin="chongyang"] .fj-locked {
+  position: relative;
+  filter: grayscale(1);
+  opacity: .62;
+  pointer-events: none;
+  user-select: none;
+}
+html[data-skin="chongyang"] .fj-locked::after {
+  content: "重阳节期间固定为「菊黄 · 秋赭」";
+  position: absolute;
+  inset: -4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent);
+  border-radius: 12px;
+  filter: none;
+}

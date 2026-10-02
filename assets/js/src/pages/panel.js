@@ -844,9 +844,12 @@ function bindAiRank(container) {
 
 async function loadStats(range, container) {
   const area = container.querySelector('#chartArea');
+  if (!area) { return; }
+  /* 图例与分布图的容器只有管理员面板才有（副管理员面板不给分布）——
+     必须逐个判空。此前只挡了 chartArea，副管理员一进来就因 distArea 为 null
+     抛「Cannot set properties of null」，再被 catch 吞成「加载失败」。 */
   const legend = container.querySelector('#legend');
-  const dist = container.querySelector('#distArea');
-  if (!area) return;
+  const dist   = container.querySelector('#distArea');
   try {
     const d = await api('dashboard.php', 'stats', { range: range });
     const series = d.series || [];
@@ -856,13 +859,15 @@ async function loadStats(range, container) {
       { k: 'ai_calls', n: 'AI 调用', c: '#ef4444' }, { k: 'comments', n: '评论', c: '#8b5cf6' },
       { k: 'messages', n: '消息', c: '#06b6d4' },
     ];
-    legend.innerHTML = metrics.map(m => `<span><i style="background:${m.c}"></i>${esc(m.n)}</span>`).join('');
+    if (legend) { legend.innerHTML = metrics.map(m => `<span><i style="background:${m.c}"></i>${esc(m.n)}</span>`).join(''); }
     area.innerHTML = lineChart(d.labels || [], series, metrics);
-    dist.innerHTML = `
-      <div class="tiny" style="margin-bottom:6px">作品分类</div>
-      ${barChart((d.category_dist || []).map(c => ({ n: catName(c.category), v: Number(c.n) })))}
-      <div class="tiny" style="margin:10px 0 6px">评级分布</div>
-      ${barChart((d.rating_dist || []).map(r => ({ n: r.rating, v: Number(r.n) })))}`;
+    if (dist) {
+      dist.innerHTML = `
+        <div class="tiny" style="margin-bottom:6px">作品分类</div>
+        ${barChart((d.category_dist || []).map(c => ({ n: catName(c.category), v: Number(c.n) })))}
+        <div class="tiny" style="margin:10px 0 6px">评级分布</div>
+        ${barChart((d.rating_dist || []).map(r => ({ n: r.rating, v: Number(r.n) })))}`;
+    }
   } catch (e) {
     area.innerHTML = `<div class="tiny">加载失败：${esc(e.message)}</div>`;
   }

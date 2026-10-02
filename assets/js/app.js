@@ -498,6 +498,51 @@ async function askNotifyPermission() {
   try { const r = await Notification.requestPermission(); return r === 'granted'; } catch (e) { return false; }
 }
 
+/* ============================================================
+ * 图片大图查看：点聊天里的图片全屏看细节
+ * 点遮罩或关闭按钮退出，Esc 也能关。同一时刻只保留一个查看层。
+ * ============================================================ */
+function imageViewer(src) {
+  if (!src) { return; }
+  const old = document.querySelector('.img-viewer');
+  if (old) { old.remove(); }
+
+  const scrim = document.createElement('div');
+  scrim.className = 'img-viewer';
+  scrim.innerHTML = '<button class="iv-close" type="button" aria-label="关闭">'
+    + '<svg viewBox="0 0 24 24" class="ic"><path d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z"/></svg>'
+    + '</button>'
+    + '<img src="' + esc(src) + '" alt="图片" referrerpolicy="no-referrer" draggable="false">';
+  document.body.appendChild(scrim);
+
+  let closed = false;
+  const close = () => {
+    if (closed) { return; }
+    closed = true;
+    document.removeEventListener('keydown', onKey);
+    scrim.classList.remove('on');
+    setTimeout(() => { try { scrim.remove(); } catch (e) {} }, 180);
+  };
+  const onKey = e => { if (e.key === 'Escape') { close(); } };
+
+  /* 点图片本身不关闭，点遮罩或关闭按钮才关 —— 免得看细节时误触退出 */
+  scrim.addEventListener('click', e => {
+    if (e.target === scrim || (e.target.closest && e.target.closest('.iv-close'))) { close(); }
+  });
+  document.addEventListener('keydown', onKey);
+  requestAnimationFrame(() => scrim.classList.add('on'));
+  return close;
+}
+
+/** 给容器内所有聊天图片挂上「点开看大图」（事件委托，一次绑定管全部） */
+function bindImageViewer(container) {
+  if (!container) { return; }
+  container.addEventListener('click', e => {
+    const img = e.target && e.target.closest ? e.target.closest('img.msg-img') : null;
+    if (img && img.src) { imageViewer(img.src); }
+  });
+}
+
 /* ========== md.js ========== */
 /**
  * Markdown 渲染（文档页与 AI 回复共用）
@@ -2010,6 +2055,7 @@ async function mountWorld(body) {
     </div>`;
 
   const stream  = body.querySelector('#wStream');
+  bindImageViewer(stream);          /* 点图片看大图 */
   const input   = body.querySelector('#wInput');
   const sendBtn = body.querySelector('#wSend');
   const count   = body.querySelector('#wCount');
@@ -2354,6 +2400,7 @@ async function mountAi(body) {
     </div>`;
 
   const stream = body.querySelector('#stream');
+  bindImageViewer(stream);          /* 点图片看大图 */
   const input = body.querySelector('#aiInput');
   const sendBtn = body.querySelector('#aiSend');
   const quotaTip = body.querySelector('#quotaText');
@@ -4229,9 +4276,12 @@ function bindAiRank(container) {
 
 async function loadStats(range, container) {
   const area = container.querySelector('#chartArea');
+  if (!area) { return; }
+  /* 图例与分布图的容器只有管理员面板才有（副管理员面板不给分布）——
+     必须逐个判空。此前只挡了 chartArea，副管理员一进来就因 distArea 为 null
+     抛「Cannot set properties of null」，再被 catch 吞成「加载失败」。 */
   const legend = container.querySelector('#legend');
-  const dist = container.querySelector('#distArea');
-  if (!area) return;
+  const dist   = container.querySelector('#distArea');
   try {
     const d = await api('dashboard.php', 'stats', { range: range });
     const series = d.series || [];
@@ -4241,13 +4291,15 @@ async function loadStats(range, container) {
       { k: 'ai_calls', n: 'AI 调用', c: '#ef4444' }, { k: 'comments', n: '评论', c: '#8b5cf6' },
       { k: 'messages', n: '消息', c: '#06b6d4' },
     ];
-    legend.innerHTML = metrics.map(m => `<span><i style="background:${m.c}"></i>${esc(m.n)}</span>`).join('');
+    if (legend) { legend.innerHTML = metrics.map(m => `<span><i style="background:${m.c}"></i>${esc(m.n)}</span>`).join(''); }
     area.innerHTML = lineChart(d.labels || [], series, metrics);
-    dist.innerHTML = `
-      <div class="tiny" style="margin-bottom:6px">作品分类</div>
-      ${barChart((d.category_dist || []).map(c => ({ n: catName(c.category), v: Number(c.n) })))}
-      <div class="tiny" style="margin:10px 0 6px">评级分布</div>
-      ${barChart((d.rating_dist || []).map(r => ({ n: r.rating, v: Number(r.n) })))}`;
+    if (dist) {
+      dist.innerHTML = `
+        <div class="tiny" style="margin-bottom:6px">作品分类</div>
+        ${barChart((d.category_dist || []).map(c => ({ n: catName(c.category), v: Number(c.n) })))}
+        <div class="tiny" style="margin:10px 0 6px">评级分布</div>
+        ${barChart((d.rating_dist || []).map(r => ({ n: r.rating, v: Number(r.n) })))}`;
+    }
   } catch (e) {
     area.innerHTML = `<div class="tiny">加载失败：${esc(e.message)}</div>`;
   }

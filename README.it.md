@@ -20,14 +20,14 @@ Un sito che raccoglie giochi, strumenti, opere letterarie e lavori amatoriali de
 |---|---|
 | Classifiche | 4 categorie × 4 classifiche (Generale / Voti / Leggende / Gemme nascoste), badge di posizione ed etichette di valutazione |
 | Dettaglio opera | Grafico radar a sei dimensioni, dettaglio per dimensione, descrizione e commenti (risposte annidate senza limiti) |
-| Chat | Chat mondiale (polling in tempo reale) + chat con l'AI (output in streaming, ricerca sul web, regole del sito iniettate) |
+| Chat | Chat mondiale (polling in tempo reale) + chat con l'AI (output in streaming, ricerca sul web, regole del sito iniettate); le immagini si aprono a schermo intero con un tocco |
 | Profilo | Avatar, utilizzo dell'AI, informazioni sull'IP e registro delle visite, impostazioni di aspetto |
 | Accesso | Login con password / registrazione / modalità ospite, con una verifica umana a un clic in accesso e registrazione |
 | Moderazione dei contenuti | Commenti, chat e immagini caricate ricevono un grado di gravità 1–10 prima della pubblicazione: solo i gradi più alti vengono bloccati, quelli intermedi passano con una nota |
 | Pannello di amministrazione | Acquisizione e aggiornamento in blocco, backup del database, moderazione dei commenti, gestione dei tag, co-amministratori |
 | Risoluzione intelligente dei link | Attiva per impostazione predefinita: se la pagina di un'opera è solo una pagina di reindirizzamento, viene usato l'indirizzo reale dietro di essa |
 | Segnalazioni disciplinari | Segnala un utente con un clic: più motivi, durata del blocco (anche permanente e in frazioni di giorno), blocco della provenienza, rimozione dei suoi commenti / chat / immagini. Chi è segnalato può ancora accedere, ma l'interfaccia resta bloccata sulla pagina di violazione e il backend rifiuta tutte le altre API |
-| Temi festivi | Un tema dedicato per ogni ricorrenza — Festa nazionale, Rivoluzione Xinhai (10/10), Commemorazione della guerra di Corea (10/25) e Halloween (31/10, dark forzato). Ognuno con palette e decorazioni proprie, attivo solo nella data |
+| Temi festivi | Un tema dedicato per ogni ricorrenza — Festa nazionale, Rivoluzione Xinhai (10/10), Commemorazione della guerra di Corea (10/25) Halloween (31/10, dark forzato) e Chongyang (9º giorno del 9º mese lunare, convertito di volta in volta). Ognuno con palette e decorazioni proprie, attivo solo nella data |
 | Temi | Diversi temi visivi; i caratteri tipografici sono scaricati dal browser direttamente da CDN pubbliche, senza consumare traffico del tuo server |
 
 ## Stack tecnico e requisiti

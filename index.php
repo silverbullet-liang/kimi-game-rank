@@ -230,6 +230,14 @@ try { $__festival = festival_client(); } catch (Throwable $e) { }
   <span class="fd-km-spark fd-km-spark--1"></span>
   <span class="fd-km-spark fd-km-spark--2"></span>
   <span class="fd-km-spark fd-km-spark--3"></span>
+  <!-- 重阳：菊花 + 远山 + 落英 -->
+  <span class="fd-cy-chrys fd-cy-chrys--1"></span>
+  <span class="fd-cy-chrys fd-cy-chrys--2"></span>
+  <span class="fd-cy-hill"></span>
+  <span class="fd-cy-petal fd-cy-petal--1"></span>
+  <span class="fd-cy-petal fd-cy-petal--2"></span>
+  <span class="fd-cy-petal fd-cy-petal--3"></span>
+  <span class="fd-cy-petal fd-cy-petal--4"></span>
   <!-- 万圣夜：月亮 + 蝙蝠 + 南瓜灯 + 地面雾 -->
   <span class="fd-hw-moon"></span>
   <span class="fd-hw-bat fd-hw-bat--1"></span>

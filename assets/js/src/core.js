@@ -491,3 +491,48 @@ export async function askNotifyPermission() {
   if (Notification.permission === 'denied') return false;
   try { const r = await Notification.requestPermission(); return r === 'granted'; } catch (e) { return false; }
 }
+
+/* ============================================================
+ * 图片大图查看：点聊天里的图片全屏看细节
+ * 点遮罩或关闭按钮退出，Esc 也能关。同一时刻只保留一个查看层。
+ * ============================================================ */
+export function imageViewer(src) {
+  if (!src) { return; }
+  const old = document.querySelector('.img-viewer');
+  if (old) { old.remove(); }
+
+  const scrim = document.createElement('div');
+  scrim.className = 'img-viewer';
+  scrim.innerHTML = '<button class="iv-close" type="button" aria-label="关闭">'
+    + '<svg viewBox="0 0 24 24" class="ic"><path d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z"/></svg>'
+    + '</button>'
+    + '<img src="' + esc(src) + '" alt="图片" referrerpolicy="no-referrer" draggable="false">';
+  document.body.appendChild(scrim);
+
+  let closed = false;
+  const close = () => {
+    if (closed) { return; }
+    closed = true;
+    document.removeEventListener('keydown', onKey);
+    scrim.classList.remove('on');
+    setTimeout(() => { try { scrim.remove(); } catch (e) {} }, 180);
+  };
+  const onKey = e => { if (e.key === 'Escape') { close(); } };
+
+  /* 点图片本身不关闭，点遮罩或关闭按钮才关 —— 免得看细节时误触退出 */
+  scrim.addEventListener('click', e => {
+    if (e.target === scrim || (e.target.closest && e.target.closest('.iv-close'))) { close(); }
+  });
+  document.addEventListener('keydown', onKey);
+  requestAnimationFrame(() => scrim.classList.add('on'));
+  return close;
+}
+
+/** 给容器内所有聊天图片挂上「点开看大图」（事件委托，一次绑定管全部） */
+export function bindImageViewer(container) {
+  if (!container) { return; }
+  container.addEventListener('click', e => {
+    const img = e.target && e.target.closest ? e.target.closest('img.msg-img') : null;
+    if (img && img.src) { imageViewer(img.src); }
+  });
+}
