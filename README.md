@@ -22,7 +22,8 @@ A site that collects games, tools, literary works and fan creations from the com
 | Work details | Six-dimension radar chart, dimension breakdown, description and comment threads (unlimited nesting) |
 | Chat | World chat (live polling) + AI chat (streaming output, web search, site rules injected) |
 | Profile | Avatar, AI usage, IP information and visit log, appearance settings |
-| Sign-in | Password login / registration / guest mode |
+| Sign-in | Password login / registration / guest mode, with a one-click human check on login and sign-up |
+| Content moderation | Comments, world chat messages and uploaded images are checked automatically before they appear; if a channel is unavailable, a fallback takes over |
 | Admin panel | Ingest and bulk refresh, database backup, comment moderation, tag management, sub-admins |
 | Smart link resolution | On by default: when a work page is only a redirect page, use the real address behind it |
 | Discipline notices | On by default work page redirect handling; admins can report a user in one click (several reasons, ban duration incl. permanent, IP ban, purge of their comments / chats / images). The reported visitor is sent to a violation page (302) listing the reasons, with a comment section |

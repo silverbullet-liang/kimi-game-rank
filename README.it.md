@@ -22,7 +22,8 @@ Un sito che raccoglie giochi, strumenti, opere letterarie e lavori amatoriali de
 | Dettaglio opera | Grafico radar a sei dimensioni, dettaglio per dimensione, descrizione e commenti (risposte annidate senza limiti) |
 | Chat | Chat mondiale (polling in tempo reale) + chat con l'AI (output in streaming, ricerca sul web, regole del sito iniettate) |
 | Profilo | Avatar, utilizzo dell'AI, informazioni sull'IP e registro delle visite, impostazioni di aspetto |
-| Accesso | Login con password / registrazione / modalità ospite |
+| Accesso | Login con password / registrazione / modalità ospite, con una verifica umana a un clic in accesso e registrazione |
+| Moderazione dei contenuti | Commenti, chat mondiale e immagini caricate vengono controllati automaticamente prima della pubblicazione, con canali di riserva |
 | Pannello di amministrazione | Acquisizione e aggiornamento in blocco, backup del database, moderazione dei commenti, gestione dei tag, co-amministratori |
 | Risoluzione intelligente dei link | Attiva per impostazione predefinita: se la pagina di un'opera è solo una pagina di reindirizzamento, viene usato l'indirizzo reale dietro di essa |
 | Segnalazioni disciplinari | Segnala un utente con un clic: più motivi, durata del blocco (anche permanente), blocco della provenienza, rimozione dei suoi commenti / chat / immagini. Chi è segnalato viene inviato con 302 a una pagina di violazione con i motivi e i commenti |
