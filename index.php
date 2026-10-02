@@ -57,6 +57,10 @@ try {
 if ($announceText === '') {
     try { $announceText = trim((string)setting_get('announcement', '')); } catch (Throwable $e) { $announceText = ''; }
 }
+
+/* 人机验证的前端配置：通道地址与开关（公共实例无密钥，可安全下发） */
+$__captcha = array('on' => false, 'channels' => array());
+try { $__captcha = captcha_client_config(); } catch (Throwable $e) { }
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="light" data-accent="blue-purple" data-skin="<?= $SKIN ?>">
@@ -72,6 +76,7 @@ if ($announceText === '') {
 <meta property="og:title" content="<?= e(cfg('site.name', 'Kimi游戏榜')) ?> · 六维综合排行榜">
 <meta property="og:description" content="Kimi 社区作品六维评分榜单：创意 / 体验 / 深度 / 成本 / 态度 / 热度。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%236D3BF5'/%3E%3Cpath d='M7 7h10a4 4 0 0 1 4 4v2a3 3 0 0 1-3 3h-.9a2 2 0 0 1-1.6-.8l-.5-.7a1.5 1.5 0 0 0-2.4 0l-.5.7A2 2 0 0 1 10.4 16H10a3 3 0 0 1-3-3v-2a4 4 0 0 1 4-4zm.5 3.5h-1.5v1.5H4.5v1.5h1.5v1.5h1.5v-1.5H9v-1.5H7.5V10.5zm8 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm2.2 2.6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z' fill='%23fff'/%3E%3C/svg%3E">
+<script>window.__CAPTCHA = <?= json_encode($__captcha, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
 <script>
 /* 首屏前应用本机偏好（深浅色 / 设计风格 / 主题色），避免样式闪烁 */
 (function () {

@@ -26,6 +26,7 @@ switch ($action) {
     /* 注册 */
     case 'register':
         csrf_verify();
+        captcha_guard();          // 人机验证：登录与注册都要过这道门
         if (!rate_limit('reg_' . ip_hash(client_ip()), 10, 3600)) { fail(429, '注册过于频繁，请稍后再试'); }
         cooldown_guard('register');
         $r = user_register(param_str('username'), param_str('password'));
@@ -35,6 +36,7 @@ switch ($action) {
     /* 登录（管理员与普通用户统一通道） */
     case 'login':
         csrf_verify();
+        captcha_guard();          // 人机验证：登录与注册都要过这道门
         $r = user_login(param_str('username'), param_str('password'));
         ok(array('token' => $r['token'], 'role' => $r['role'], 'uid' => $r['uid'], 'username' => $r['username']));
         break;

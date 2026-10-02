@@ -323,6 +323,20 @@ function moderation_verdict_parse(string $out)
  */
 function moderation_check3(string $text): array
 {
+    /* 一、Jev 先行：非自回归分类模型，单条 150–220ms，比大模型快一个数量级，
+       且按 IP 免费、无需 Key。它判不了广告（会把「加我微信」判成 normal），
+       但那类内容本来就由词库与句式正则负责，这里只需要它判「有没有骂人」。 */
+    if ((int)cfg('moderation.jev', 1) === 1 && function_exists('jev_classify')) {
+        $j = jev_classify($text);
+        if ($j['ok'] !== null) {
+            return empty($j['ok'])
+                ? array('ok' => false, 'reason' => 'jev_reject')
+                : array('ok' => true,  'reason' => '');
+        }
+        app_log('moderation: jev unavailable (' . $j['reason'] . '), fall back to glm');
+    }
+
+    /* 二、智谱兜底：Jev 不可用（网络 / 限流 / 返回异常）时才走到这里 */
     $sys = "你是社区内容审核员。判断用户提交的内容是否需要拦截。\n"
          . "【需要拦截】只有这四类：\n"
          . "1) 辱骂、人身攻击、歧视；2) 色情、暴力威胁、违法犯罪；\n"

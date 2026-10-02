@@ -52,6 +52,20 @@ if ($method === 'POST') {
     $name = bin2hex(random_bytes(8)) . '.' . $ext;
     if (!@move_uploaded_file($tmp, $dir . '/' . $name)) { fail(500, '保存失败'); }
 
+    /* 图片审核：先感知（OVHcloud 视觉 OCR + 违规标签）、再判断（Jev），
+       任一环不可用自动切智谱视觉作备选。审核不通过就删掉文件再拒绝，
+       不留半成品在磁盘上。 */
+    try {
+        $verdict = image_audit_check($dir . '/' . $name);
+    } catch (Throwable $e) {
+        app_log('image_audit error: ' . $e->getMessage());
+        $verdict = array('ok' => true, 'via' => 'error', 'reason' => '');
+    }
+    if (empty($verdict['ok'])) {
+        @unlink($dir . '/' . $name);
+        fail(422, (string)$verdict['reason'] !== '' ? (string)$verdict['reason'] : '图片未通过审核，请更换后重试');
+    }
+
     $idv = $day . '/' . $name;
     ok(array(
         'id'   => $idv,

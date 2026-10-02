@@ -4,6 +4,7 @@
 import { api, state, esc, toast, setToken, askNotifyPermission, btnLoading } from '../core.js';
 import { navigate } from '../router.js';
 import { applyTheme } from '../theme.js';
+import { mountCaptcha, resetCaptcha, captchaToken, captchaChannel, captchaConfig } from '../captcha.js';
 
 export async function renderLogin(container) {
   let tab = 'password';   // password | guest
@@ -71,6 +72,7 @@ export async function renderLogin(container) {
         <span class="box ${agreed ? 'on' : ''}" id="agreeBox"><svg viewBox="0 0 24 24" class="ic"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></span>
         <span>我已阅读并同意<span class="link" data-doc="用户协议">《用户协议》</span>与<span class="link" data-doc="隐私政策">《隐私政策》</span>（本站为个人兴趣分享，请文明互动）</span>
       </div>
+      <div id="capBox" style="margin-bottom:12px"></div>
       <button class="btn" id="submitBtn" style="width:100%">${sub === 'register' ? '注册并登录' : '登录'}</button>
       <div class="tiny" style="text-align:center;margin-top:10px">${sub === 'register' ? '密码登录的账号可浏览榜单并参与投票' : '忘记密码请联系管理员'}</div>`;
 
@@ -81,6 +83,9 @@ export async function renderLogin(container) {
       const p = pane.querySelector('#uPwd');
       p.type = p.type === 'password' ? 'text' : 'password';
     });
+    const capBox = pane.querySelector('#capBox');
+    mountCaptcha(capBox, () => { /* token 变化时无需额外动作，提交时统一读取 */ });
+
     pane.querySelector('#submitBtn').addEventListener('click', async () => {
       const btn = pane.querySelector('#submitBtn');
       if (btn.disabled) { return; }          // 防重复提交
@@ -88,11 +93,20 @@ export async function renderLogin(container) {
       const pwd = pane.querySelector('#uPwd').value;
       if (!name || !pwd) { toast('请填写用户名与密码', 'err'); return; }
       if (!agreed) { toast('请先勾选同意协议', 'err'); return; }
+      if (captchaConfig().on && !captchaToken()) { toast('请先完成人机验证', 'err'); return; }
       btnLoading(btn, true);
       try {
-        const d = await api('auth.php', sub === 'register' ? 'register' : 'login', { username: name, password: pwd });
+        const d = await api('auth.php', sub === 'register' ? 'register' : 'login', {
+          username: name, password: pwd,
+          cap_token: captchaToken(), cap_channel: captchaChannel(),
+        });
         await finishLogin(d);
-      } catch (e) { toast(e.message, 'err'); btnLoading(btn, false); }
+      } catch (e) {
+        toast(e.message, 'err');
+        btnLoading(btn, false);
+        /* 最终 token 是一次性的：失败后必须重新验证拿新 token */
+        resetCaptcha(capBox);
+      }
     });
   }
 
