@@ -157,14 +157,37 @@ switch ($action) {
         $id = require_member();
         csrf_verify();
         $mid = param_int('id', 0);
-        $m = db_one('SELECT id, user_id FROM messages WHERE id = ?', array($mid));
+        $hasMedia = col_ok('messages', 'media_url');
+        $m = db_one('SELECT id, user_id' . ($hasMedia ? ', media_url' : '') . ' FROM messages WHERE id = ?', array($mid));
         if ($m === null) { fail(404, '消息不存在'); }
         if ((int)$m['user_id'] !== actor_uid($id)) { fail(403, '只能撤回自己的消息'); }
+
+        /* 撤回即删图：图片对本条消息已无意义，留着纯占空间 */
+        if ($hasMedia && function_exists('chat_media_drop')) {
+            chat_media_drop((string)$m['media_url']);
+        }
+
         $sets = array("`content` = ''");
-        if (col_ok('messages', 'media_url'))   { $sets[] = "`media_url` = ''"; }
+        if ($hasMedia) { $sets[] = "`media_url` = ''"; }
         if (col_ok('messages', 'is_recalled')) { $sets[] = '`is_recalled` = 1'; }
         db_exec('UPDATE `messages` SET ' . implode(', ', $sets) . ' WHERE `id` = ?', array($mid));
         ok(null, '已撤回');
+        break;
+    }
+
+    /* ---------- 取消 / 恢复「可能有恶意」标注（管理员） ----------
+       标注不影响内容是否可见，只是给读者一个提示；误标时一键取消，恢复同理。 */
+    case 'flag': {
+        $id = require_member();
+        csrf_verify();
+        if ($id['role'] !== 'admin' && $id['role'] !== 'subadmin') { fail(403, '无权修改标注'); }
+        if (!col_ok('messages', 'review_flag')) { fail(500, '当前数据库尚未支持标注'); }
+        $mid = param_int('id', 0);
+        if ($mid <= 0) { fail(400, '参数错误'); }
+        if (db_one('SELECT id FROM messages WHERE id = ?', array($mid)) === null) { fail(404, '消息不存在'); }
+        $on = param_int('on', 0) === 1 ? 'middle' : '';
+        db_exec('UPDATE `messages` SET `review_flag` = ? WHERE `id` = ?', array($on, $mid));
+        ok(array('flag' => $on), $on ? '已恢复标注' : '已取消标注');
         break;
     }
 

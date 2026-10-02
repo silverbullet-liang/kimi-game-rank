@@ -1478,8 +1478,8 @@ async function discEditDialog(row) {
           <button type="button" data-d="0">永久</button>
           <button type="button" data-d="-1" class="on">不改动</button>
         </div>
-        <input class="input" id="edDaysCustom" type="text" inputmode="numeric" autocomplete="off"
-               placeholder="或直接填天数（留空则按上面的选择）" style="margin-top:8px">
+        <input class="input" id="edDaysCustom" type="text" inputmode="decimal" autocomplete="off"
+               placeholder="或直接填天数，支持小数（如 0.5 = 12 小时、1.5 = 36 小时）" style="margin-top:8px">
       </div>
 
       <div class="disc-pick">
@@ -1528,7 +1528,7 @@ async function discEditDialog(row) {
       if (unB.classList.contains('on')) {
         patch.set_unban = '1'; patch.unban = 1;
       } else {
-        const typed = parseInt(String(box.querySelector('#edDaysCustom').value || '').trim(), 10);
+        const typed = parseFloat(String(box.querySelector('#edDaysCustom').value || '').trim());
         const cur2 = seg.querySelector('button.on');
         const d = Number.isFinite(typed) && typed >= 0 ? typed : Number(cur2 ? cur2.dataset.d : -1);
         if (d >= 0) { patch.set_days = '1'; patch.ban_days = d; }
@@ -1621,8 +1621,8 @@ async function discDialog(ids, names) {
           <button type="button" data-d="30">30 天</button>
           <button type="button" data-d="0">永久</button>
         </div>
-        <input class="input" id="discDaysCustom" type="text" inputmode="numeric" autocomplete="off"
-               placeholder="或直接填写天数（留空则用上面的选择）" style="margin-top:8px">
+        <input class="input" id="discDaysCustom" type="text" inputmode="decimal" autocomplete="off"
+               placeholder="或直接填写天数，支持小数（如 0.5 = 12 小时、1.5 = 36 小时）" style="margin-top:8px">
       </div>
 
       <div class="disc-pick">
@@ -1662,7 +1662,7 @@ async function discDialog(ids, names) {
       if (custom) { picked.push(custom); }
       if (!picked.length) { toast('请至少选择或填写一条理由', 'err'); return; }
       const cur = seg.querySelector('button.on');
-      const typed = parseInt(String(box.querySelector('#discDaysCustom').value || '').trim(), 10);
+      const typed = parseFloat(String(box.querySelector('#discDaysCustom').value || '').trim());
       const days = Number.isFinite(typed) && typed >= 0 ? typed : Number(cur ? cur.dataset.d : 7);
       close({
         reasons: picked,

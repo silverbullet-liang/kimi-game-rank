@@ -411,7 +411,9 @@ function commentNode(c, workId, reload, ttype) {
       <span class="text">${c.reply_to ? `<span class="reply-to">@${esc(c.reply_to)}</span> ` : ''}${folded
         ? `<span class="blocked-note" data-reveal>${noteText}</span><span class="blocked-body" hidden>${esc(c.content)}</span>`
         : esc(c.content)}</span>
-      ${c.flag === 'middle' ? '<span class="msg-flag" title="AI 复核认为可能有恶意，但仍予放行">可能有恶意</span>' : ''}
+      ${c.flag === 'middle' ? '<span class="msg-flag" title="系统认为这条内容可能有恶意，但仍予放行">可能有恶意'
+        + (canModerate() ? ' · <button class="link" data-act="unflag" style="border:0;background:0;font-size:12px;color:inherit;text-decoration:underline">取消标注</button>' : '')
+        + '</span>' : ''}
       <span class="ops">
         <button data-act="like">赞 ${c.likes || 0}</button>
         ${canPost() ? '<button data-act="reply">回复</button>' : ''}
@@ -435,6 +437,12 @@ function commentNode(c, workId, reload, ttype) {
     if (act === 'like') {
       if (!canPost()) { toast('登录后才能点赞', 'err'); return; }
       try { const r = await api('comments.php', 'vote', { id: c.id }); b.textContent = '赞 ' + r.count; } catch (e) { toast(e.message, 'err'); }
+    } else if (act === 'unflag') {
+      try {
+        await api('comments.php', 'flag', { id: c.id, on: 0 });
+        const f = box.querySelector('.msg-flag'); if (f) { f.remove(); }
+        toast('已取消标注');
+      } catch (e) { toast(e.message, 'err'); }
     } else if (act === 'del') {
       if (await dialog('删除评论', '确认删除这条评论吗？删除后会移入回收站，页面不再显示。', '删除', { danger: true })) {
         try { await api('comments.php', 'delete', { id: c.id }); toast('已移入回收站'); reload(true); } catch (e) { toast(e.message, 'err'); }

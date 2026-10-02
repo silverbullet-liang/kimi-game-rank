@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '3.6.0');
+define('APP_VERSION', '3.7.0');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);
@@ -64,6 +64,8 @@ require_once APP_ROOT . '/app/captcha.php';
 require_once APP_ROOT . '/app/image_audit.php';
 require_once APP_ROOT . '/app/jev.php';
 require_once APP_ROOT . '/app/moderation.php';
+require_once APP_ROOT . '/app/festival.php';
+require_once APP_ROOT . '/app/chat_media.php';
 require_once APP_ROOT . '/app/backup.php';
 require_once APP_ROOT . '/app/link_smart.php';
 require_once APP_ROOT . '/app/siteinfo.php';
@@ -97,6 +99,24 @@ try {
     run_migrations();
 } catch (Throwable $e) {
     app_log('migration error: ' . $e->getMessage());
+}
+
+/* ---------- 违纪封禁：API 一律拒绝 ----------
+ * 被通报封停的账号或来源，前端会整体锁在封禁通知界面；这里做后端兜底：
+ * 除违纪界面自身所需的白名单接口外，所有 API 直接拒绝。
+ * 页面入口（index.php）不在此列 —— 否则连封禁通知都显示不出来。
+ * 管理员与副管理员永不因此被拦。 */
+if (is_api_request()) {
+    try {
+        if (function_exists('discipline_visitor_blocked') && discipline_visitor_blocked()) {
+            $__api = basename((string)(isset($_SERVER['SCRIPT_FILENAME']) ? $_SERVER['SCRIPT_FILENAME'] : ''));
+            if (!in_array($__api, array('start.php', 'auth.php', 'discipline.php'), true)) {
+                json_out(403, '账号已被封停，暂时无法使用本站功能');
+            }
+        }
+    } catch (Throwable $e) {
+        app_log('discipline api guard failed: ' . $e->getMessage());
+    }
 }
 
 /* ---------- 全局异常兜底 ---------- */

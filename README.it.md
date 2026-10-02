@@ -26,7 +26,8 @@ Un sito che raccoglie giochi, strumenti, opere letterarie e lavori amatoriali de
 | Moderazione dei contenuti | Commenti, chat e immagini caricate ricevono un grado di gravità 1–10 prima della pubblicazione: solo i gradi più alti vengono bloccati, quelli intermedi passano con una nota |
 | Pannello di amministrazione | Acquisizione e aggiornamento in blocco, backup del database, moderazione dei commenti, gestione dei tag, co-amministratori |
 | Risoluzione intelligente dei link | Attiva per impostazione predefinita: se la pagina di un'opera è solo una pagina di reindirizzamento, viene usato l'indirizzo reale dietro di essa |
-| Segnalazioni disciplinari | Segnala un utente con un clic: più motivi, durata del blocco (anche permanente), blocco della provenienza, rimozione dei suoi commenti / chat / immagini. Chi è segnalato viene inviato con 302 a una pagina di violazione con i motivi e i commenti |
+| Segnalazioni disciplinari | Segnala un utente con un clic: più motivi, durata del blocco (anche permanente e in frazioni di giorno), blocco della provenienza, rimozione dei suoi commenti / chat / immagini. Chi è segnalato può ancora accedere, ma l'interfaccia resta bloccata sulla pagina di violazione e il backend rifiuta tutte le altre API |
+| Temi festivi | Un tema dedicato per ogni ricorrenza — Festa nazionale, Rivoluzione Xinhai (10/10), Commemorazione della guerra di Corea (10/25) e Halloween (31/10, dark forzato). Ognuno con palette e decorazioni proprie, attivo solo nella data |
 | Temi | Diversi temi visivi; i caratteri tipografici sono scaricati dal browser direttamente da CDN pubbliche, senza consumare traffico del tuo server |
 
 ## Stack tecnico e requisiti

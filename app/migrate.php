@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 18);
+define('SCHEMA_VERSION', 19);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -719,7 +719,7 @@ function run_migrations(bool $force = false)
                 `reasons`     TEXT NOT NULL COMMENT '通报理由（JSON 数组，可多条）',
                 `note`        TEXT NULL COMMENT '补充说明',
                 `banned`      TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否同时封停账号',
-                `ban_days`    INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '封禁天数，0=永久',
+                `ban_days`    DECIMAL(7,2) NOT NULL DEFAULT 0 COMMENT '封禁天数（支持小数），0=永久',
                 `ban_until`   DATETIME NULL COMMENT '解封时间，NULL=永久',
                 `purged`      TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否已清理其内容',
                 `ip_banned`   TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否封禁访问 IP',
@@ -752,7 +752,7 @@ function run_migrations(bool $force = false)
                 table_columns('users', true);
             }
             foreach (array(
-                'ban_days'  => 'INT UNSIGNED NOT NULL DEFAULT 0',
+                'ban_days'  => 'DECIMAL(7,2) NOT NULL DEFAULT 0',
                 'ban_until' => 'DATETIME NULL',
                 'purged'    => 'TINYINT(1) NOT NULL DEFAULT 0',
             ) as $c => $ddl) {
@@ -783,6 +783,23 @@ function run_migrations(bool $force = false)
             app_log('schema migrated to v18（违纪通报列表评论区）');
         } catch (Throwable $e) {
             app_log('migrate v18 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v19：封禁时长支持小数 ----------
+       0.5 天、1.5 天这类「小时级冷静期」很常用，整数天粒度太粗。
+       把 ban_days 从 INT 改为 DECIMAL(7,2)（0.01–99999.99 天），
+       存量整数数据在类型转换中原值保持，不需要回填。 */
+    if ($cur < 19) {
+        try {
+            if (table_exists('discipline_reports') && column_exists('discipline_reports', 'ban_days')) {
+                db_exec("ALTER TABLE `discipline_reports` MODIFY `ban_days` DECIMAL(7,2) NOT NULL DEFAULT 0 COMMENT '封禁天数（支持小数），0=永久'");
+                table_columns('discipline_reports', true);
+            }
+            setting_set('schema_version', '19');
+            app_log('schema migrated to v19（封禁时长支持小数）');
+        } catch (Throwable $e) {
+            app_log('migrate v19 failed: ' . $e->getMessage());
         }
     }
 

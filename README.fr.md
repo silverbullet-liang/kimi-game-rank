@@ -26,7 +26,8 @@ Un site qui rassemble les jeux, outils, œuvres littéraires et créations déri
 | Modération des contenus | Commentaires, discussion et images téléversées reçoivent une note de gravité de 1 à 10 avant publication : seuls les niveaux élevés sont bloqués, les niveaux intermédiaires passent avec une mention |
 | Panneau d'administration | Collecte et mise à jour en masse, sauvegarde de la base, modération des commentaires, gestion des étiquettes, co-administrateurs |
 | Résolution intelligente des liens | Activée par défaut : si la page d'une œuvre n'est qu'une page de redirection, l'adresse réelle située derrière est utilisée |
-| Signalements disciplinaires | Signaler un utilisateur en un clic : plusieurs motifs, durée du bannissement (y compris permanent), blocage de la provenance, suppression de ses commentaires / discussions / images. La personne signalée est redirigée en 302 vers une page de violation avec les motifs et les commentaires |
+| Signalements disciplinaires | Signaler un utilisateur en un clic : plusieurs motifs, durée du bannissement (y compris permanent et en fractions de jour), blocage de la provenance, suppression de ses commentaires / discussions / images. La personne signalée peut toujours se connecter, mais l'interface reste verrouillée sur la page de violation et le backend rejette toutes les autres API |
+| Thèmes de fête | Un thème dédié à chaque commémoration — Fête nationale, Révolution de Xinhai (10/10), Commémoration de la guerre de Corée (25/10) et Halloween (31/10, mode sombre forcé). Chacun a sa palette et ses décors, actif uniquement le jour dit |
 | Thèmes | Plusieurs thèmes visuels ; les polices sont chargées par le navigateur directement depuis des CDN publiques, sans consommer la bande passante de votre serveur |
 
 ## Pile technique et prérequis

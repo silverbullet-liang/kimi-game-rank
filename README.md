@@ -26,7 +26,8 @@ A site that collects games, tools, literary works and fan creations from the com
 | Content moderation | Every comment, message and uploaded image is graded 1–10 for severity before it appears: only the top grades are blocked, mid grades pass with a "possibly malicious" note. Fallback channels if a service is unavailable |
 | Admin panel | Ingest and bulk refresh, database backup, comment moderation, tag management, sub-admins |
 | Smart link resolution | On by default: when a work page is only a redirect page, use the real address behind it |
-| Discipline notices | On by default work page redirect handling; admins can report a user in one click (several reasons, ban duration incl. permanent, IP ban, purge of their comments / chats / images). The reported visitor is sent to a violation page (302) listing the reasons, with a comment section |
+| Discipline notices | Admins can report a user in one click (several reasons, ban duration incl. permanent and fractional days, IP ban, purge of their comments / chats / images). A banned user can still sign in, but the UI is locked to the violation notice page and the backend rejects every other API |
+| Festival themes | A dedicated theme for each festival day — National Day, Xinhai Revolution (Oct 10), Korean War Commemoration (Oct 25) and Halloween (Oct 31, forced dark). Each has its own palette and decorations, switching itself on and off by date |
 | Skins | Several visual skins; fonts are loaded straight from public CDNs, so they cost your host no traffic |
 
 ## Tech stack and requirements

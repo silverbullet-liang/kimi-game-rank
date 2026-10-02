@@ -71,6 +71,22 @@ foreach ($cases as $c) {
           $reject === $wantReject && $flag === $wantFlag);
 }
 
+/* 7) 讽刺触发标注（仍放行）；已被拦截的不再标注 */
+$sarcCases = array(
+    array('平铺直叙',     0.02, 1.35, false, ''),
+    array('阴阳怪气',     0.99, 1.35, false, 'middle'),
+    array('讽刺且低档位', 0.91, 4.60, false, 'middle'),
+    array('讽刺但已拦截', 0.93, 6.50, true,  ''),
+);
+foreach ($sarcCases as $c) {
+    list($name, $sarc, $lv, $wantReject, $wantFlag) = $c;
+    $reject = $lv >= jev_reject_level();
+    $flag = (!$reject && ($lv >= jev_flag_level() || $sarc >= jev_sarcasm_at())) ? 'middle' : '';
+    check(sprintf('%s：讽刺 %.2f / 档位 %.2f → 拦截=%s 标注=%s', $name, $sarc, $lv,
+                  $reject ? 'Y' : 'N', $flag ?: '-'),
+          $reject === $wantReject && $flag === $wantFlag);
+}
+
 echo "\n离线用例：通过 " . $pass . "，失败 " . $fail . "\n";
 
 if (in_array('--live', $argv, true)) {
@@ -81,13 +97,15 @@ if (in_array('--live', $argv, true)) {
         'L3' => '这作品就是垃圾。',
         'L4' => '别再发这种东西了，烦不烦。',
         'L5' => '你是不是脑子有问题？',
+        'L6' => '行吧，你说得都对。',
     );
     $liveFail = 0;
     foreach ($samples as $sid => $t) {
         $r = jev_classify($t);
         if ($r['ok'] === null) { echo "  $sid  不可用（" . $r['reason'] . "）\n"; $liveFail++; continue; }
-        printf("  %s  档位=%.2f(%d)  拦截=%s  标注=%s\n", $sid,
-            $r['level'], $r['level_int'], $r['ok'] ? 'N' : 'Y', $r['flag'] ?: '-');
+        printf("  %s  档位=%.2f(%d)  讽刺=%.2f  拦截=%s  标注=%s\n", $sid,
+            $r['level'], $r['level_int'], isset($r['sarcasm']) ? $r['sarcasm'] : 0.0,
+            $r['ok'] ? 'N' : 'Y', $r['flag'] ?: '-');
     }
     echo $liveFail ? "\n有 $liveFail 个样本调用失败（网络或服务不可用）\n" : "\n实时调用全部成功\n";
 }

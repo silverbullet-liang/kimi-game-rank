@@ -965,6 +965,11 @@ html[data-theme="dark"] .table th, html[data-theme="dark"] .table td { border-co
 }
 html[data-theme="dark"] .skin-prev.p-pixel { background: #26262f; border-color: #0c0c10; box-shadow: 3px 3px 0 #0c0c10; }
 html[data-theme="dark"] .skin-prev.p-brutal { background: #2b2a22; border-color: #fdf9ec; box-shadow: 4px 4px 0 #fdf9ec; }
+/* 节日皮肤预览：各节日的两枚主色，一眼分出是哪个节日 */
+.skin-prev.p-festival  { background: linear-gradient(115deg, #C8102E 0 58%, #E8B923 58% 100%); border: 0; border-radius: 9px; }
+.skin-prev.p-xinhai    { background: linear-gradient(115deg, #14304A 0 58%, #C08A3E 58% 100%); border: 0; border-radius: 9px; }
+.skin-prev.p-kmyc      { background: linear-gradient(115deg, #43523A 0 58%, #B03A2E 58% 100%); border: 0; border-radius: 9px; }
+.skin-prev.p-halloween { background: linear-gradient(115deg, #1A1024 0 58%, #E9720C 58% 100%); border: 0; border-radius: 9px; }
 
 /* 配额分母（如 "1234 / 10000"） */
 .stat-box .v .cap { font-size: 12px; font-weight: 400; opacity: .55; margin-left: 2px; font-style: normal; }

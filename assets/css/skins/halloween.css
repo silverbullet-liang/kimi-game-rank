@@ -1,0 +1,293 @@
+/* ============================================================
+ * 皮肤：万圣夜 · 暗夜惊魂
+ * ------------------------------------------------------------
+ * 当日呈现：北京时间 10/31；**强制暗色**（不论用户偏好的深浅色，脚本会把 data-theme 置为 dark）
+ * 主题色：专版期间固定「南瓜橙 + 幽紫」，外观设置里的主题色栏被灰遮罩禁用
+ *
+ * 设计意图
+ *   · 恐怖靠「少光」而不是「多怪物」：底色压到近黑紫，只留几处微光
+ *   · 三种光：月亮的冷白、南瓜灯的暖橙、幽灵的幽绿 —— 冷暖对撞一下就有那味儿
+ *   · 蝙蝠缓慢掠过，不做突然惊吓（不做 flash / 不做高频闪，避免不适）
+ *   · 装饰层 pointer-events:none；尊重 prefers-reduced-motion
+ * ============================================================ */
+
+html[data-skin="halloween"] {
+  --accent: #E9720C !important;
+  --accent-2: #7BAA4F !important;
+  --accent-ink: #1A1024 !important;
+  --toggle-on: #E9720C !important;
+  --slider-fill: #E9720C !important;
+
+  --hw-pumpkin: #E9720C;
+  --hw-pumpkin-soft: #F59B3F;
+  --hw-pumpkin-deep: #A34B06;
+  --hw-ink: #1A1024;
+  --hw-ink-2: #241634;
+  --hw-ghost: #7BAA4F;
+  --hw-blood: #8E2330;
+  --hw-bone: #E6E0D2;
+
+  /* 强制暗色：令牌直接给暗值，不依赖 data-theme */
+  --bg-1: #120B1B;
+  --bg-2: #1B1029;
+  --surface: rgba(33, 21, 47, .80);
+  --surface-solid: #1E1430;
+  --border: rgba(233, 114, 12, .26);
+  --border-soft: rgba(233, 114, 12, .14);
+  --text: #E7E1D6;
+  --text-2: #B3A9BC;
+  --text-3: #847A90;
+
+  --radius-lg: 16px;
+  --radius-md: 11px;
+  --radius-sm: 8px;
+  --shadow: 0 12px 36px rgba(0, 0, 0, .62);
+  --shadow-sm: 0 5px 16px rgba(0, 0, 0, .5);
+
+  --tab-active-bg: rgba(233, 114, 12, .18);
+  --tab-active-fg: var(--hw-pumpkin-soft);
+  --msg-bg: rgba(36, 23, 52, .94);
+  --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg, #A34B06, #E9720C);
+  --msg-mine-fg: #1A1024;
+  --toast-bg: rgba(231, 225, 214, .95);
+  --toast-fg: #1A1024;
+  --toast-err-bg: #8E2330;
+}
+
+html[data-skin="halloween"][data-theme="light"] {
+  /* 兜底：万一脚本未生效而被判为浅色，仍按暗色渲染，避免一半亮一半暗 */
+  --bg-1: #120B1B;
+  --bg-2: #1B1029;
+  --surface: rgba(33, 21, 47, .80);
+  --surface-solid: #1E1430;
+  --text: #E7E1D6;
+  --text-2: #B3A9BC;
+  --text-3: #847A90;
+}
+
+/* ---------- 背景：近黑紫 + 月色冷晕 + 底部南瓜暖光 ---------- */
+html[data-skin="halloween"] body {
+  background-color: #120B1B;
+  background-image:
+    radial-gradient(120% 46% at 82% -8%, rgba(206, 214, 232, .16), transparent 62%),
+    radial-gradient(130% 46% at 50% 118%, rgba(233, 114, 12, .26), transparent 70%),
+    radial-gradient(90% 40% at 12% 24%, rgba(123, 170, 79, .10), transparent 66%);
+  background-attachment: fixed, fixed, fixed;
+  color: var(--text);
+}
+
+/* ---------- 顶栏：黑紫底 + 橙描边 ---------- */
+html[data-skin="halloween"] .topbar {
+  background: linear-gradient(180deg, rgba(26, 16, 36, .97), rgba(18, 11, 27, .98));
+  border-bottom: 1px solid rgba(233, 114, 12, .5);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .55);
+}
+html[data-skin="halloween"] .topbar .ic { fill: #F0C08A; }
+html[data-skin="halloween"] .topbar .brand-name { color: #F6C98F; font-weight: 700; letter-spacing: .6px; }
+html[data-skin="halloween"] .topbar .logo {
+  background: linear-gradient(140deg, #F59B3F, #E9720C);
+  box-shadow: 0 0 14px rgba(233, 114, 12, .5);
+}
+html[data-skin="halloween"] .topbar .logo .ic { fill: #1A1024; }
+
+/* ---------- 公告：南瓜橙底黑字，夜里最显眼的一块 ---------- */
+html[data-skin="halloween"] .announce {
+  background: linear-gradient(100deg, #F59B3F, #E9720C);
+  color: #1A1024;
+  border-bottom: 1px solid rgba(0, 0, 0, .35);
+  font-weight: 800;
+}
+html[data-skin="halloween"] .announce-tag::after {
+  content: " · 万圣夜";
+  font-weight: 800;
+  letter-spacing: .6px;
+}
+
+/* ---------- 卡片：深紫面 + 橙细边 + 四角微光 ---------- */
+html[data-skin="halloween"] .card,
+html[data-skin="halloween"] .rank-item,
+html[data-skin="halloween"] .stat-box,
+html[data-skin="halloween"] .tool-card,
+html[data-skin="halloween"] .panel-plain,
+html[data-skin="halloween"] .tp-col,
+html[data-skin="halloween"] .block-note,
+html[data-skin="halloween"] .guest-box,
+html[data-skin="halloween"] .tip-card,
+html[data-skin="halloween"] .donate-box {
+  position: relative;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, .04);
+}
+html[data-skin="halloween"] .card::before,
+html[data-skin="halloween"] .rank-item::before {
+  content: "";
+  position: absolute;
+  top: -1px; left: 14px;
+  width: 34px; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--hw-pumpkin), transparent);
+  opacity: .75;
+  pointer-events: none;
+}
+
+html[data-skin="halloween"] .skeleton {
+  background: linear-gradient(100deg, rgba(233, 114, 12, .08), rgba(123, 170, 79, .10), rgba(233, 114, 12, .08));
+  background-size: 220% 100%;
+}
+html[data-skin="halloween"] .search-panel,
+html[data-skin="halloween"] .dialog,
+html[data-skin="halloween"] .drawer { border: 1px solid var(--border); }
+html[data-skin="halloween"] .dialog { box-shadow: 0 22px 60px rgba(0, 0, 0, .7); }
+
+/* ============================================================
+ * 装饰层：月亮 + 三只蝙蝠 + 南瓜灯 + 地面雾
+ * ============================================================ */
+.fd-hw-moon, .fd-hw-bat, .fd-hw-pumpkin, .fd-hw-fog { display: none; }
+
+html[data-skin="halloween"] .festival-deco {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* 月亮：右上角，冷白 + 一圈冷晕 */
+html[data-skin="halloween"] .fd-hw-moon {
+  display: block;
+  position: absolute;
+  right: 7%; top: 68px;
+  width: 84px; height: 84px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 34%, #F2EFE4, #CFC9B8 68%, #A9A395);
+  box-shadow: 0 0 42px rgba(226, 222, 208, .34), inset -10px -8px 22px rgba(0, 0, 0, .28);
+  opacity: .92;
+}
+
+/* 蝙蝠：飘忽横掠，只摆动不扑闪（避免突然惊吓） */
+html[data-skin="halloween"] .fd-hw-bat {
+  display: block;
+  position: absolute;
+  left: -8vw;
+  width: 26px; height: 14px;
+  background: #0C0714;
+  /* 一只展翅蝙蝠：两个三角与一个躯干 */
+  clip-path: polygon(0 30%, 26% 0, 46% 62%, 50% 34%, 54% 62%, 74% 0, 100% 30%, 68% 78%, 50% 60%, 32% 78%);
+  opacity: .78;
+  animation: hw-fly 22s linear infinite;
+}
+html[data-skin="halloween"] .fd-hw-bat--1 { top: 16%; animation-delay: -2s; animation-duration: 26s; }
+html[data-skin="halloween"] .fd-hw-bat--2 { top: 30%; transform: scale(.7); animation-delay: -11s; animation-duration: 32s; }
+html[data-skin="halloween"] .fd-hw-bat--3 { top: 24%; transform: scale(.55); animation-delay: -19s; animation-duration: 38s; }
+@keyframes hw-fly {
+  0%   { transform: translateX(0) translateY(0); }
+  25%  { transform: translateX(30vw) translateY(-3vh); }
+  50%  { transform: translateX(60vw) translateY(2vh); }
+  75%  { transform: translateX(88vw) translateY(-2vh); }
+  100% { transform: translateX(122vw) translateY(1vh); }
+}
+
+/* 南瓜灯：底部左下，暖橙呼吸 + 眼睛发光 */
+html[data-skin="halloween"] .fd-hw-pumpkin {
+  display: block;
+  position: absolute;
+  left: 4%; bottom: -6px;
+  width: 92px; height: 78px;
+  border-radius: 50% 50% 46% 46% / 58% 58% 42% 42%;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255, 220, 160, .5), transparent 52%),
+    linear-gradient(160deg, #F59B3F, #E9720C 58%, #A34B06);
+  box-shadow: 0 0 34px rgba(233, 114, 12, .45), inset 0 -8px 18px rgba(0, 0, 0, .3);
+  animation: hw-glow 4.2s ease-in-out infinite;
+}
+/* 南瓜的梗 */
+html[data-skin="halloween"] .fd-hw-pumpkin::before {
+  content: "";
+  position: absolute;
+  left: 50%; top: -9px;
+  width: 8px; height: 12px;
+  margin-left: -4px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, #5C7A3A, #3C5226);
+}
+/* 眼睛与嘴：用内阴影画出，不做位移，保持静态恐怖感 */
+html[data-skin="halloween"] .fd-hw-pumpkin i {
+  position: absolute;
+  left: 18%; right: 18%; top: 30%;
+  height: 26%;
+  background:
+    /* 左眼 */
+    radial-gradient(circle at 18% 0%, #160C06 0 30%, transparent 31%),
+    /* 右眼 */
+    radial-gradient(circle at 82% 0%, #160C06 0 30%, transparent 31%);
+  filter: drop-shadow(0 0 6px rgba(255, 200, 120, .85));
+}
+html[data-skin="halloween"] .fd-hw-pumpkin i::after {
+  content: "";
+  position: absolute;
+  left: 18%; right: 18%; top: 120%;
+  height: 26%;
+  background:
+    linear-gradient(90deg, #160C06 0 22%, transparent 22% 30%, #160C06 30% 44%, transparent 44% 52%, #160C06 52% 66%, transparent 66% 74%, #160C06 74% 100%) no-repeat;
+  filter: drop-shadow(0 0 6px rgba(255, 200, 120, .85));
+}
+@keyframes hw-glow {
+  0%, 100% { filter: brightness(.92); }
+  50%      { filter: brightness(1.12); }
+}
+
+/* 地面雾：两条横向雾带缓慢蠕动 */
+html[data-skin="halloween"] .fd-hw-fog {
+  display: block;
+  position: absolute;
+  left: -20%; right: -20%; bottom: 0;
+  height: 22vh;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='220' viewBox='0 0 1200 220'%3E%3Cpath d='M0 220 Q 150 150 300 190 T 600 176 T 900 196 T 1200 168 L1200 220 Z' fill='%237BAA4F' fill-opacity='.5'/%3E%3C/svg%3E") repeat-x bottom / 1200px 22vh;
+  opacity: .16;
+  animation: hw-mist 26s ease-in-out infinite alternate;
+}
+html[data-skin="halloween"] .fd-hw-fog--2 { height: 15vh; opacity: .11; animation-duration: 34s; animation-delay: -8s; }
+@keyframes hw-mist {
+  from { transform: translateX(-4%); }
+  to   { transform: translateX(4%); }
+}
+
+@media (max-width: 640px) {
+  html[data-skin="halloween"] .fd-hw-moon { width: 56px; height: 56px; right: 5%; top: 58px; }
+  html[data-skin="halloween"] .fd-hw-pumpkin { width: 66px; height: 56px; }
+  html[data-skin="halloween"] .fd-hw-bat--3 { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin="halloween"] .fd-hw-bat,
+  html[data-skin="halloween"] .fd-hw-pumpkin,
+  html[data-skin="halloween"] .fd-hw-fog { animation: none !important; }
+  html[data-skin="halloween"] .fd-hw-bat { opacity: .5; }
+}
+
+/* ---------- 外观设置：节日期间固定主题色 ---------- */
+html[data-skin="halloween"] .fj-locked {
+  position: relative;
+  filter: grayscale(1);
+  opacity: .62;
+  pointer-events: none;
+  user-select: none;
+}
+html[data-skin="halloween"] .fj-locked::after {
+  content: "万圣夜固定为「南瓜橙 · 幽夜紫」并强制暗色";
+  position: absolute;
+  inset: -4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent);
+  border-radius: 12px;
+  filter: none;
+}

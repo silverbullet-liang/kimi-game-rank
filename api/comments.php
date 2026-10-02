@@ -230,6 +230,21 @@ switch ($action) {
         break;
     }
 
+    /* 取消 / 恢复「可能有恶意」标注（管理员）。标注不影响内容是否可见，只是提示读者。 */
+    case 'flag': {
+        $id = require_member();
+        csrf_verify();
+        if ($id['role'] !== 'admin' && $id['role'] !== 'subadmin') { fail(403, '无权修改标注'); }
+        if (!col_ok('comments', 'review_flag')) { fail(500, '当前数据库尚未支持标注'); }
+        $cid = param_int('id', 0);
+        if ($cid <= 0) { fail(400, '参数错误'); }
+        if (db_one('SELECT id FROM comments WHERE id = ?', array($cid)) === null) { fail(404, '评论不存在'); }
+        $on = param_int('on', 0) === 1 ? 'middle' : '';
+        db_exec('UPDATE comments SET review_flag = ? WHERE id = ?', array($on, $cid));
+        ok(array('flag' => $on), $on ? '已恢复标注' : '已取消标注');
+        break;
+    }
+
     /* 评论点赞（单用户唯一） */
     case 'vote': {
         $id = require_member();

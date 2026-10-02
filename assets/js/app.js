@@ -590,24 +590,32 @@ function mdToHtml(md, inlineExtra) {
  */
 
 
-/** 设计风格：只改变「结构语言」（圆角/边框/阴影/背景/字体），主题色仍由下方 ACCENTS 控制 */
-const SKINS = {
-  festival: { name: '国庆专版', desc: '盛世红金 · 限时呈现' },
+/* ---------- 限时节日皮肤 ----------
+ * 规则只在服务端一处（app/festival.php），这里只读下发结果：
+ *   window.__FESTIVAL = { now: 'halloween', list: { halloween: { name, desc, dark }, ... } }
+ * now 为空串 = 当前不在任何节日窗口内。每个节日一套独立主题，互不共用。 */
+const FEST = (typeof window !== 'undefined' && window.__FESTIVAL) || { now: '', list: {} };
+
+/** 全部节日（含未生效的），键即皮肤 key */
+const FESTIVALS = FEST.list || {};
+/** 节日皮肤 key 列表 */
+const FESTIVAL_KEYS = Object.keys(FESTIVALS);
+
+/** 当前生效的节日 key；无则空串 */
+function festivalNow() { return String(FEST.now || ''); }
+
+/** 是否处于节日窗口内：节日皮肤是限时项，只在窗口内出现在外观设置里 */
+function festivalInWindow() { return festivalNow() !== ''; }
+
+/** 设计风格：只改变「结构语言」（圆角/边框/阴影/背景/字体），主题色仍由下方 ACCENTS 控制。
+    节日皮肤由服务端下发并一并并入；窗口外它不会出现在外观设置中。 */
+const SKINS = Object.assign({}, FESTIVALS, {
   glass:  { name: '液态玻璃', desc: '磨砂通透' },
   md3:    { name: 'MD3 材质', desc: 'Material You · 色面层级' },
   pixel:  { name: '像素风',   desc: '8-bit 点阵字 · 台阶角' },
   sketch: { name: '手绘风',   desc: '纸纹 · 手绘标题' },
   brutal: { name: '新粗野',   desc: '黑框 · 硬阴影 · 撞色' },
-};
-
-/* ---------- 国庆专版（限时皮肤） ----------
- * 窗口：北京时间 9/30 00:00 – 10/8 23:59；与 index.php 的内联脚本同一套判断。
- * 只有窗口期内才在外观设置里出现这个选项；窗口外彻底不显示。 */
-function festivalInWindow() {
-  const t = new Date(Date.now() + (new Date().getTimezoneOffset() + 480) * 60000);
-  const m = t.getMonth() + 1, d = t.getDate();
-  return (m === 9 && d === 30) || (m === 10 && d <= 8);
-}
+});
 
 const ACCENTS = {
   // 蓝紫色：以紫为主、偏蓝调
@@ -1701,7 +1709,9 @@ function commentNode(c, workId, reload, ttype) {
       <span class="text">${c.reply_to ? `<span class="reply-to">@${esc(c.reply_to)}</span> ` : ''}${folded
         ? `<span class="blocked-note" data-reveal>${noteText}</span><span class="blocked-body" hidden>${esc(c.content)}</span>`
         : esc(c.content)}</span>
-      ${c.flag === 'middle' ? '<span class="msg-flag" title="AI 复核认为可能有恶意，但仍予放行">可能有恶意</span>' : ''}
+      ${c.flag === 'middle' ? '<span class="msg-flag" title="系统认为这条内容可能有恶意，但仍予放行">可能有恶意'
+        + (canModerate() ? ' · <button class="link" data-act="unflag" style="border:0;background:0;font-size:12px;color:inherit;text-decoration:underline">取消标注</button>' : '')
+        + '</span>' : ''}
       <span class="ops">
         <button data-act="like">赞 ${c.likes || 0}</button>
         ${canPost() ? '<button data-act="reply">回复</button>' : ''}
@@ -1725,6 +1735,12 @@ function commentNode(c, workId, reload, ttype) {
     if (act === 'like') {
       if (!canPost()) { toast('登录后才能点赞', 'err'); return; }
       try { const r = await api('comments.php', 'vote', { id: c.id }); b.textContent = '赞 ' + r.count; } catch (e) { toast(e.message, 'err'); }
+    } else if (act === 'unflag') {
+      try {
+        await api('comments.php', 'flag', { id: c.id, on: 0 });
+        const f = box.querySelector('.msg-flag'); if (f) { f.remove(); }
+        toast('已取消标注');
+      } catch (e) { toast(e.message, 'err'); }
     } else if (act === 'del') {
       if (await dialog('删除评论', '确认删除这条评论吗？删除后会移入回收站，页面不再显示。', '删除', { danger: true })) {
         try { await api('comments.php', 'delete', { id: c.id }); toast('已移入回收站'); reload(true); } catch (e) { toast(e.message, 'err'); }
@@ -2022,7 +2038,9 @@ async function mountWorld(body) {
       +   '<span class="who">' + userName(m.username, m.role) + ' · ' + esc(m.time) + recallBtn + '</span>'
       +   '<div class="bubble">' + inner + '</div>'
       +   (!m.recalled && m.flag === 'middle'
-            ? '<span class="msg-flag" title="AI 复核认为可能有恶意，但仍予放行">可能有恶意</span>' : '')
+            ? '<span class="msg-flag" title="系统认为这条内容可能有恶意，但仍予放行">可能有恶意'
+              + (isAdminish() ? ' · <button class="link" data-unflag="1" style="border:0;background:0;font-size:12px;color:inherit;text-decoration:underline">取消标注</button>' : '')
+              + '</span>' : '')
       + '</span>';
 
     const rb = el.querySelector('[data-recall]');
@@ -2036,6 +2054,20 @@ async function mountWorld(body) {
           if (b) { b.innerHTML = '<span class="recall">该消息已撤回</span>'; }
           rb.remove();
         } catch (e) { rb.disabled = false; toast(e.message, 'err'); }
+      });
+    }
+
+    /* 管理员：一键取消「可能有恶意」标注（系统误标时用） */
+    const ub = el.querySelector('[data-unflag]');
+    if (ub) {
+      ub.addEventListener('click', async () => {
+        ub.disabled = true;
+        try {
+          await api('lobby.php', 'flag', { id: m.id, on: 0 });
+          m.flag = '';
+          const f = el.querySelector('.msg-flag'); if (f) { f.remove(); }
+          toast('已取消标注');
+        } catch (e) { ub.disabled = false; toast(e.message, 'err'); }
       });
     }
     return el;
@@ -2966,10 +2998,11 @@ function mountBlockList(box, isGuest) {
   box.querySelector('#bwClear').addEventListener('click', () => { ta.value = ''; save(''); });
 }
 
-/** 外观设置里展示的皮肤：国庆专版只在限时窗口内出现，且排在最前 */
+/** 外观设置里展示的皮肤：当前的限时节日皮肤排在最前，窗口外不出现 */
 function skinKeys() {
-  const keys = Object.keys(SKINS).filter(k => k !== 'festival');
-  return festivalInWindow() ? ['festival'].concat(keys) : keys;
+  const now = festivalNow();
+  const keys = Object.keys(SKINS).filter(k => FESTIVAL_KEYS.indexOf(k) < 0);
+  return now ? [now].concat(keys) : keys;
 }
 
 function mountAppearance(box) {
@@ -2997,7 +3030,7 @@ function mountAppearance(box) {
         </button>`).join('')}
       </div>
     </div>
-    <div class="setting-row ${skin === 'festival' ? 'fj-locked' : ''}" style="flex-direction:column;align-items:flex-start;gap:8px">
+    <div class="setting-row ${FESTIVAL_KEYS.indexOf(skin) >= 0 ? 'fj-locked' : ''}" style="flex-direction:column;align-items:flex-start;gap:8px">
       <span>主题色（蓝紫色 / 苹果色 / 自定义）</span>
       <div class="swatch-row" id="accentRow">
         <button class="swatch" data-a="blue-purple" title="蓝紫" style="background:#7C3AED"></button>
@@ -3037,9 +3070,9 @@ function mountAppearance(box) {
       const sk = b.dataset.s;
       if (!SKINS[sk]) { return; }
 
-      /* 国庆专版是限时皮肤，不写 kimgr_skin（服务端白名单里没有它）：
+      /* 节日皮肤是限时项，不写 kimgr_skin（服务端白名单里没有它们）：
          选中它 = 清除「退出标记」；选其它皮肤 = 记为主动退出，窗口期内不再自动启用。 */
-      if (sk === 'festival') {
+      if (FESTIVAL_KEYS.indexOf(sk) >= 0) {
         try { document.cookie = 'kimgr_skin_optout=; path=/; max-age=0'; } catch (e) {}
         toast('正在切换到「' + SKINS[sk].name + '」…');
         setTimeout(() => location.reload(), 260);
@@ -4830,8 +4863,8 @@ async function discEditDialog(row) {
           <button type="button" data-d="0">永久</button>
           <button type="button" data-d="-1" class="on">不改动</button>
         </div>
-        <input class="input" id="edDaysCustom" type="text" inputmode="numeric" autocomplete="off"
-               placeholder="或直接填天数（留空则按上面的选择）" style="margin-top:8px">
+        <input class="input" id="edDaysCustom" type="text" inputmode="decimal" autocomplete="off"
+               placeholder="或直接填天数，支持小数（如 0.5 = 12 小时、1.5 = 36 小时）" style="margin-top:8px">
       </div>
 
       <div class="disc-pick">
@@ -4880,7 +4913,7 @@ async function discEditDialog(row) {
       if (unB.classList.contains('on')) {
         patch.set_unban = '1'; patch.unban = 1;
       } else {
-        const typed = parseInt(String(box.querySelector('#edDaysCustom').value || '').trim(), 10);
+        const typed = parseFloat(String(box.querySelector('#edDaysCustom').value || '').trim());
         const cur2 = seg.querySelector('button.on');
         const d = Number.isFinite(typed) && typed >= 0 ? typed : Number(cur2 ? cur2.dataset.d : -1);
         if (d >= 0) { patch.set_days = '1'; patch.ban_days = d; }
@@ -4973,8 +5006,8 @@ async function discDialog(ids, names) {
           <button type="button" data-d="30">30 天</button>
           <button type="button" data-d="0">永久</button>
         </div>
-        <input class="input" id="discDaysCustom" type="text" inputmode="numeric" autocomplete="off"
-               placeholder="或直接填写天数（留空则用上面的选择）" style="margin-top:8px">
+        <input class="input" id="discDaysCustom" type="text" inputmode="decimal" autocomplete="off"
+               placeholder="或直接填写天数，支持小数（如 0.5 = 12 小时、1.5 = 36 小时）" style="margin-top:8px">
       </div>
 
       <div class="disc-pick">
@@ -5014,7 +5047,7 @@ async function discDialog(ids, names) {
       if (custom) { picked.push(custom); }
       if (!picked.length) { toast('请至少选择或填写一条理由', 'err'); return; }
       const cur = seg.querySelector('button.on');
-      const typed = parseInt(String(box.querySelector('#discDaysCustom').value || '').trim(), 10);
+      const typed = parseFloat(String(box.querySelector('#discDaysCustom').value || '').trim());
       const days = Number.isFinite(typed) && typed >= 0 ? typed : Number(cur ? cur.dataset.d : 7);
       close({
         reasons: picked,
@@ -5789,7 +5822,11 @@ function routeKeyOf(name, sub, params) {
 
 async function route(navType) {
   clearPageTimers();                            // 离开上一页时清理其轮询定时器
-  const { name, sub, params } = parseHash();
+  let { name, sub, params } = parseHash();
+  /* 被通报封禁：不论地址栏写什么，一律渲染封禁通知界面（后端同样拒绝所有 API，
+     所以改地址、换设备都绕不过去）。管理员不会命中，服务端已排除。 */
+  const bannedId = Number(window.__BANNED || 0);
+  if (bannedId > 0) { name = 'violation'; sub = String(bannedId); params = {}; }
   const fn = routes[name] || routes.rank;
   const key = routeKeyOf(name, sub, params);
   currentPage = name;

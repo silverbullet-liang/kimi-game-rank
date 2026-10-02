@@ -3,7 +3,7 @@
  */
 import { api, state, esc, toast, dialog, setToken, askNotifyPermission, userName, isAdminish, getPrefs, setPrefs } from '../core.js';
 import { navigate } from '../router.js';
-import { saveTheme, ACCENTS, SKINS, hexToHsl, festivalInWindow } from '../theme.js';
+import { saveTheme, ACCENTS, SKINS, hexToHsl, FESTIVAL_KEYS, festivalNow } from '../theme.js';
 import { setNavAnim } from '../transitions.js';
 
 /** 配额上限展示（数据缺失时返回空串，不显示占位符） */
@@ -298,10 +298,11 @@ function mountBlockList(box, isGuest) {
   box.querySelector('#bwClear').addEventListener('click', () => { ta.value = ''; save(''); });
 }
 
-/** 外观设置里展示的皮肤：国庆专版只在限时窗口内出现，且排在最前 */
+/** 外观设置里展示的皮肤：当前的限时节日皮肤排在最前，窗口外不出现 */
 function skinKeys() {
-  const keys = Object.keys(SKINS).filter(k => k !== 'festival');
-  return festivalInWindow() ? ['festival'].concat(keys) : keys;
+  const now = festivalNow();
+  const keys = Object.keys(SKINS).filter(k => FESTIVAL_KEYS.indexOf(k) < 0);
+  return now ? [now].concat(keys) : keys;
 }
 
 function mountAppearance(box) {
@@ -329,7 +330,7 @@ function mountAppearance(box) {
         </button>`).join('')}
       </div>
     </div>
-    <div class="setting-row ${skin === 'festival' ? 'fj-locked' : ''}" style="flex-direction:column;align-items:flex-start;gap:8px">
+    <div class="setting-row ${FESTIVAL_KEYS.indexOf(skin) >= 0 ? 'fj-locked' : ''}" style="flex-direction:column;align-items:flex-start;gap:8px">
       <span>主题色（蓝紫色 / 苹果色 / 自定义）</span>
       <div class="swatch-row" id="accentRow">
         <button class="swatch" data-a="blue-purple" title="蓝紫" style="background:#7C3AED"></button>
@@ -369,9 +370,9 @@ function mountAppearance(box) {
       const sk = b.dataset.s;
       if (!SKINS[sk]) { return; }
 
-      /* 国庆专版是限时皮肤，不写 kimgr_skin（服务端白名单里没有它）：
+      /* 节日皮肤是限时项，不写 kimgr_skin（服务端白名单里没有它们）：
          选中它 = 清除「退出标记」；选其它皮肤 = 记为主动退出，窗口期内不再自动启用。 */
-      if (sk === 'festival') {
+      if (FESTIVAL_KEYS.indexOf(sk) >= 0) {
         try { document.cookie = 'kimgr_skin_optout=; path=/; max-age=0'; } catch (e) {}
         toast('正在切换到「' + SKINS[sk].name + '」…');
         setTimeout(() => location.reload(), 260);

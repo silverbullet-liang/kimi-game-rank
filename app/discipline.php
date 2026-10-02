@@ -49,6 +49,15 @@ function discipline_reasons_set(array $list)
     setting_set('discipline_reasons', json_encode($out, JSON_UNESCAPED_UNICODE));
 }
 
+/** 由封禁天数算出解封时间（UTC 字符串）；0 表示永久，返回 null。
+    支持小数天：0.5 = 12 小时，1.5 = 36 小时 —— 短时冷静期不必凑整天。 */
+function discipline_ban_until($days)
+{
+    $d = (float)$days;
+    if ($d <= 0) { return null; }
+    return gmdate('Y-m-d H:i:s', time() + (int)round($d * 86400));
+}
+
 /** IP 指纹：加盐单向哈希，够用来匹配，不足以反推 */
 function discipline_ip_hash(string $ip): string
 {
@@ -178,7 +187,7 @@ function discipline_reasons_of(array $row): array
  * 返回 array(created, accounts_banned, ips_banned, no_ip)
  */
 function discipline_create(array $userIds, array $reasons, string $note, bool $banAccount, bool $banIp,
-                            int $byUid, int $banDays = 0, bool $purge = false): array
+                            int $byUid, $banDays = 0, bool $purge = false): array
 {
     $reasons = array_values(array_filter(array_map(function ($r) { return trim((string)$r); }, $reasons)));
     $reasons = array_slice($reasons, 0, 20);
@@ -187,8 +196,9 @@ function discipline_create(array $userIds, array $reasons, string $note, bool $b
     if (mb_strlen($note, 'UTF-8') > 500) { $note = mb_substr($note, 0, 500, 'UTF-8'); }
 
     $now = now_utc();
-    $banDays = max(0, min(36500, $banDays));                       // 0 = 永久
-    $banUntil = ($banAccount && $banDays > 0) ? gmdate('Y-m-d H:i:s', time() + $banDays * 86400) : null;
+    $banDays = (float)$banDays;                                    // 支持小数天：0.5 = 12 小时
+    $banDays = max(0.0, min(36500.0, $banDays));                   // 0 = 永久
+    $banUntil = $banAccount ? discipline_ban_until($banDays) : null;
     $created = 0; $accBanned = 0; $ipBanned = 0; $noIp = 0;
     $purged = array('comments' => 0, 'messages' => 0, 'images' => 0);
 
@@ -361,6 +371,9 @@ function discipline_account_purge(int $uid): bool
     if ((string)$u['role'] !== 'user') { return false; }
 
     try {
+        /* 账号被永久删除 → 针对它的 IP 封禁同时失去意义，立刻取消并清出黑名单，
+           否则同一网络的好人会被一条已不存在的账号连坐。 */
+        db_exec('DELETE FROM banned_ips WHERE user_id = ?', array($uid));
         db_exec('DELETE FROM user_visits WHERE user_id = ?', array($uid));
         db_exec('DELETE FROM comments WHERE user_id = ?', array($uid));
         db_exec('DELETE FROM comment_votes WHERE user_id = ?', array($uid));
@@ -409,13 +422,13 @@ function discipline_update(int $id, array $patch)
     }
 
     $unban    = !empty($patch['unban']);
-    $banDays  = array_key_exists('ban_days', $patch) ? max(0, min(36500, (int)$patch['ban_days'])) : null;
+    $banDays  = array_key_exists('ban_days', $patch) ? max(0.0, min(36500.0, (float)$patch['ban_days'])) : null;
 
     if ($unban) {
         $set[] = 'banned = 0'; $set[] = 'ban_days = 0'; $set[] = 'ban_until = NULL';
         db_exec('UPDATE users SET is_banned = 0, ban_until = NULL WHERE id = ?', array($uid));
     } elseif ($banDays !== null) {
-        $until = $banDays > 0 ? gmdate('Y-m-d H:i:s', time() + $banDays * 86400) : null;
+        $until = discipline_ban_until($banDays);
         $set[] = 'banned = 1'; $set[] = 'ban_days = ?'; $set[] = 'ban_until = ?';
         $args[] = $banDays; $args[] = $until;
         db_exec('UPDATE users SET is_banned = 1, ban_until = ? WHERE id = ?', array($until, $uid));

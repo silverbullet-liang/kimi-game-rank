@@ -82,7 +82,19 @@ if (!preg_match('#^(\d{8})/([a-f0-9]{16})\.(jpg|jpeg|png|gif|webp)$#', $idv, $m)
     http_response_code(400); exit('bad id');
 }
 $path = APP_ROOT . '/storage/uploads/' . $m[1] . '/' . $m[2] . '.' . $m[3];
-if (!is_file($path)) { http_response_code(404); exit('not found'); }
+if (!is_file($path)) {
+    /* 图片已被清理（撤回 / 沉底 / 整条删除）：返回一张占位图而不是裂图，
+       历史消息仍然可读。占位图是常量 SVG，不落盘、不占空间。 */
+    header('Content-Type: image/svg+xml; charset=utf-8');
+    header('Cache-Control: public, max-age=86400');
+    header('X-Content-Type-Options: nosniff');
+    exit('<svg xmlns="http://www.w3.org/2000/svg" width="320" height="140" viewBox="0 0 320 140">'
+       . '<rect width="320" height="140" rx="12" fill="#f1f2f4"/>'
+       . '<path d="M30 98l26-30 20 22 18-16 26 24z" fill="#c9ccd2"/>'
+       . '<circle cx="240" cy="46" r="13" fill="#c9ccd2"/>'
+       . '<text x="160" y="126" font-size="13" fill="#9aa0a6" text-anchor="middle" font-family="sans-serif">图片已清理</text>'
+       . '</svg>');
+}
 
 $types = array('jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp');
 header('Content-Type: ' . $types[$m[3]]);

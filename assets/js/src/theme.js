@@ -4,24 +4,32 @@
  */
 import { state, getPrefs, setPrefs, api } from './core.js';
 
-/** 设计风格：只改变「结构语言」（圆角/边框/阴影/背景/字体），主题色仍由下方 ACCENTS 控制 */
-export const SKINS = {
-  festival: { name: '国庆专版', desc: '盛世红金 · 限时呈现' },
+/* ---------- 限时节日皮肤 ----------
+ * 规则只在服务端一处（app/festival.php），这里只读下发结果：
+ *   window.__FESTIVAL = { now: 'halloween', list: { halloween: { name, desc, dark }, ... } }
+ * now 为空串 = 当前不在任何节日窗口内。每个节日一套独立主题，互不共用。 */
+const FEST = (typeof window !== 'undefined' && window.__FESTIVAL) || { now: '', list: {} };
+
+/** 全部节日（含未生效的），键即皮肤 key */
+export const FESTIVALS = FEST.list || {};
+/** 节日皮肤 key 列表 */
+export const FESTIVAL_KEYS = Object.keys(FESTIVALS);
+
+/** 当前生效的节日 key；无则空串 */
+export function festivalNow() { return String(FEST.now || ''); }
+
+/** 是否处于节日窗口内：节日皮肤是限时项，只在窗口内出现在外观设置里 */
+export function festivalInWindow() { return festivalNow() !== ''; }
+
+/** 设计风格：只改变「结构语言」（圆角/边框/阴影/背景/字体），主题色仍由下方 ACCENTS 控制。
+    节日皮肤由服务端下发并一并并入；窗口外它不会出现在外观设置中。 */
+export const SKINS = Object.assign({}, FESTIVALS, {
   glass:  { name: '液态玻璃', desc: '磨砂通透' },
   md3:    { name: 'MD3 材质', desc: 'Material You · 色面层级' },
   pixel:  { name: '像素风',   desc: '8-bit 点阵字 · 台阶角' },
   sketch: { name: '手绘风',   desc: '纸纹 · 手绘标题' },
   brutal: { name: '新粗野',   desc: '黑框 · 硬阴影 · 撞色' },
-};
-
-/* ---------- 国庆专版（限时皮肤） ----------
- * 窗口：北京时间 9/30 00:00 – 10/8 23:59；与 index.php 的内联脚本同一套判断。
- * 只有窗口期内才在外观设置里出现这个选项；窗口外彻底不显示。 */
-export function festivalInWindow() {
-  const t = new Date(Date.now() + (new Date().getTimezoneOffset() + 480) * 60000);
-  const m = t.getMonth() + 1, d = t.getDate();
-  return (m === 9 && d === 30) || (m === 10 && d <= 8);
-}
+});
 
 export const ACCENTS = {
   // 蓝紫色：以紫为主、偏蓝调

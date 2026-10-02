@@ -138,7 +138,11 @@ function routeKeyOf(name, sub, params) {
 
 async function route(navType) {
   clearPageTimers();                            // 离开上一页时清理其轮询定时器
-  const { name, sub, params } = parseHash();
+  let { name, sub, params } = parseHash();
+  /* 被通报封禁：不论地址栏写什么，一律渲染封禁通知界面（后端同样拒绝所有 API，
+     所以改地址、换设备都绕不过去）。管理员不会命中，服务端已排除。 */
+  const bannedId = Number(window.__BANNED || 0);
+  if (bannedId > 0) { name = 'violation'; sub = String(bannedId); params = {}; }
   const fn = routes[name] || routes.rank;
   const key = routeKeyOf(name, sub, params);
   currentPage = name;

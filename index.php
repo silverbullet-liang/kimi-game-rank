@@ -17,27 +17,20 @@ try {
         . '</div></body>');
 }
 
-/* 违纪拦截：被通报并封停的账号或 IP，访问任何页面都 302 到违纪界面。
-   违纪界面自身（带 violation 参数）放行，避免重定向死循环；
-   管理员与副管理员永不因此被拦，防止同一网络下误伤值班的人。 */
-if (!isset($_GET['violation'])) {
-    try {
-        $__ident = current_identity();
-        $__role  = is_array($__ident) ? (string)($__ident['role'] ?? '') : '';
-        if ($__role !== 'admin' && $__role !== 'subadmin') {
-            $__uid = 0;
-            if (is_array($__ident)) {
-                $__uid = (int)($__ident['uid'] ?? 0);
-            }
-            $__hit = discipline_hit($__uid, discipline_ip_hash(discipline_client_ip()));
-            if (is_array($__hit) && (int)$__hit['id'] > 0) {
-                header('Location: ?violation=' . (int)$__hit['id'], true, 302);
-                exit;
-            }
-        }
-    } catch (Throwable $e) {
-        app_log('discipline guard failed: ' . $e->getMessage());   // 绝不因拦截本身出错而挡住站点
+/* 违纪封禁：不再跳转 —— 被封停者仍可打开站点、甚至登录（便于看清处理结果），
+   但前端会整体锁在封禁通知界面，后端所有 API 也一律拒绝（违纪界面所需接口除外）。
+   管理员与副管理员永不因此受限，防止同一网络下误伤值班的人。 */
+$__bannedId = 0;
+try {
+    $__ident = current_identity();
+    $__role  = is_array($__ident) ? (string)($__ident['role'] ?? '') : '';
+    if ($__role !== 'admin' && $__role !== 'subadmin') {
+        $__uid = is_array($__ident) ? (int)($__ident['uid'] ?? 0) : 0;
+        $__hit = discipline_hit($__uid, discipline_ip_hash(discipline_client_ip()));
+        if (is_array($__hit)) { $__bannedId = max(1, (int)$__hit['id']); }
     }
+} catch (Throwable $e) {
+    app_log('discipline guard failed: ' . $e->getMessage());   // 绝不因拦截本身出错而挡住站点
 }
 
 /* 设计风格：由 cookie 决定加载哪一份皮肤文件（切换时刷新页面即换皮肤）。
@@ -61,6 +54,10 @@ if ($announceText === '') {
 /* 人机验证的前端配置：通道地址与开关（公共实例无密钥，可安全下发） */
 $__captcha = array('on' => false, 'channels' => array());
 try { $__captcha = captcha_client_config(); } catch (Throwable $e) { }
+
+/* 限时节日皮肤：规则在 app/festival.php，这里下发结果（首屏脚本据此决定皮肤） */
+$__festival = array('now' => '', 'list' => array());
+try { $__festival = festival_client(); } catch (Throwable $e) { }
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="light" data-accent="blue-purple" data-skin="<?= $SKIN ?>">
@@ -77,6 +74,8 @@ try { $__captcha = captcha_client_config(); } catch (Throwable $e) { }
 <meta property="og:description" content="Kimi 社区作品六维评分榜单：创意 / 体验 / 深度 / 成本 / 态度 / 热度。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%236D3BF5'/%3E%3Cpath d='M7 7h10a4 4 0 0 1 4 4v2a3 3 0 0 1-3 3h-.9a2 2 0 0 1-1.6-.8l-.5-.7a1.5 1.5 0 0 0-2.4 0l-.5.7A2 2 0 0 1 10.4 16H10a3 3 0 0 1-3-3v-2a4 4 0 0 1 4-4zm.5 3.5h-1.5v1.5H4.5v1.5h1.5v1.5h1.5v-1.5H9v-1.5H7.5V10.5zm8 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm2.2 2.6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z' fill='%23fff'/%3E%3C/svg%3E">
 <script>window.__CAPTCHA = <?= json_encode($__captcha, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
+<script>window.__FESTIVAL = <?= json_encode($__festival, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
+<script>window.__BANNED = <?= (int)$__bannedId ?>;</script>
 <script>
 /* 首屏前应用本机偏好（深浅色 / 设计风格 / 主题色），避免样式闪烁 */
 (function () {
@@ -107,18 +106,21 @@ try { $__captcha = captcha_client_config(); } catch (Throwable $e) { }
 (function () {
   var V = <?= json_encode(APP_VERSION) ?>;
   var skin = <?= json_encode($SKIN) ?>;          /* 服务端已按白名单校验过 */
-  /* 北京时间（UTC+8），与访问者本机时区无关 */
-  var t = new Date(Date.now() + (new Date().getTimezoneOffset() + 480) * 60000);
-  var m = t.getMonth() + 1, d = t.getDate();
-  var inWindow = (m === 9 && d === 30) || (m === 10 && d <= 8);
-  /* 用户在窗口内主动切走过皮肤 = 不参与国庆专版，尊重其选择 */
+  /* 当前节日由服务端（北京时间）判定，前端只负责套用 —— 规则只有 app/festival.php 一处 */
+  var FEST = <?= json_encode($__festival, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+  var now = FEST.now || '';
+  var meta = now ? FEST.list[now] : null;
+  /* 用户在窗口内主动切走过皮肤 = 不参与节日专版，尊重其选择 */
   var optout = /(?:^|;\s*)kimgr_skin_optout=1/.test(document.cookie);
-  var on = inWindow && !optout;
+  var on = now !== '' && !optout;
+  var r = document.documentElement;
 
-  document.documentElement.dataset.skin = on ? 'festival' : skin;
-  if (on) { document.documentElement.setAttribute('data-festival', '1'); }
+  r.dataset.skin = on ? now : skin;
+  if (on) { r.setAttribute('data-festival', '1'); }
+  /* 强制暗色的节日（万圣夜）：窗口内不论用户偏好一律暗色 */
+  if (on && meta && meta.dark) { r.dataset.theme = 'dark'; }
 
-  var file = on ? 'festival' : skin;             /* 液态玻璃 = app.css 默认样式，无需额外文件 */
+  var file = on ? now : skin;                    /* 液态玻璃 = app.css 默认样式，无需额外文件 */
   if (file !== 'glass') {
     document.write('<link rel="stylesheet" href="assets/css/skins/' + file + '.css?v=' + V + '">');
   }
@@ -201,8 +203,10 @@ try { $__captcha = captcha_client_config(); } catch (Throwable $e) { }
 </head>
 <body>
 
-<!-- 国庆专版装饰层（仅国庆皮肤下可见；pointer-events:none，不拦任何交互） -->
+<!-- 节日装饰层：各节日的装饰都放在这里，由皮肤 CSS 决定显示哪一组
+     （默认 display:none；pointer-events:none，绝不拦截任何交互） -->
 <div class="festival-deco" aria-hidden="true">
+  <!-- 国庆：灯笼 + 缓落星点 -->
   <span class="fd-lantern fd-lantern--l"><i></i></span>
   <span class="fd-lantern fd-lantern--r"><i></i></span>
   <span class="fd-star fd-star--1"></span>
@@ -211,6 +215,29 @@ try { $__captcha = captcha_client_config(); } catch (Throwable $e) { }
   <span class="fd-star fd-star--4"></span>
   <span class="fd-star fd-star--5"></span>
   <span class="fd-star fd-star--6"></span>
+  <!-- 辛亥纪念：铁血星芒 + 顶部光晕 -->
+  <span class="fd-xh-glow"></span>
+  <span class="fd-xh-star fd-xh-star--1"></span>
+  <span class="fd-xh-star fd-xh-star--2"></span>
+  <span class="fd-xh-star fd-xh-star--3"></span>
+  <span class="fd-xh-star fd-xh-star--4"></span>
+  <span class="fd-xh-star fd-xh-star--5"></span>
+  <span class="fd-xh-star fd-xh-star--6"></span>
+  <!-- 抗美援朝纪念：红星 + 远山剪影 + 微光 -->
+  <span class="fd-km-star"></span>
+  <span class="fd-km-hill fd-km-hill--1"></span>
+  <span class="fd-km-hill fd-km-hill--2"></span>
+  <span class="fd-km-spark fd-km-spark--1"></span>
+  <span class="fd-km-spark fd-km-spark--2"></span>
+  <span class="fd-km-spark fd-km-spark--3"></span>
+  <!-- 万圣夜：月亮 + 蝙蝠 + 南瓜灯 + 地面雾 -->
+  <span class="fd-hw-moon"></span>
+  <span class="fd-hw-bat fd-hw-bat--1"></span>
+  <span class="fd-hw-bat fd-hw-bat--2"></span>
+  <span class="fd-hw-bat fd-hw-bat--3"></span>
+  <span class="fd-hw-pumpkin"><i></i></span>
+  <span class="fd-hw-fog fd-hw-fog--1"></span>
+  <span class="fd-hw-fog fd-hw-fog--2"></span>
 </div>
 
 <!-- 全局加载条（API 请求自动显隐） -->

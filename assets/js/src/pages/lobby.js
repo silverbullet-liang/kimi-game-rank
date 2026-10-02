@@ -248,7 +248,9 @@ async function mountWorld(body) {
       +   '<span class="who">' + userName(m.username, m.role) + ' · ' + esc(m.time) + recallBtn + '</span>'
       +   '<div class="bubble">' + inner + '</div>'
       +   (!m.recalled && m.flag === 'middle'
-            ? '<span class="msg-flag" title="AI 复核认为可能有恶意，但仍予放行">可能有恶意</span>' : '')
+            ? '<span class="msg-flag" title="系统认为这条内容可能有恶意，但仍予放行">可能有恶意'
+              + (isAdminish() ? ' · <button class="link" data-unflag="1" style="border:0;background:0;font-size:12px;color:inherit;text-decoration:underline">取消标注</button>' : '')
+              + '</span>' : '')
       + '</span>';
 
     const rb = el.querySelector('[data-recall]');
@@ -262,6 +264,20 @@ async function mountWorld(body) {
           if (b) { b.innerHTML = '<span class="recall">该消息已撤回</span>'; }
           rb.remove();
         } catch (e) { rb.disabled = false; toast(e.message, 'err'); }
+      });
+    }
+
+    /* 管理员：一键取消「可能有恶意」标注（系统误标时用） */
+    const ub = el.querySelector('[data-unflag]');
+    if (ub) {
+      ub.addEventListener('click', async () => {
+        ub.disabled = true;
+        try {
+          await api('lobby.php', 'flag', { id: m.id, on: 0 });
+          m.flag = '';
+          const f = el.querySelector('.msg-flag'); if (f) { f.remove(); }
+          toast('已取消标注');
+        } catch (e) { ub.disabled = false; toast(e.message, 'err'); }
       });
     }
     return el;

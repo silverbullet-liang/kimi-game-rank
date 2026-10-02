@@ -586,6 +586,9 @@ function storage_gc(bool $force = false): int
         if ($tail !== false) { @file_put_contents($log, "[日志已截断，仅保留最近部分]\n" . $tail, LOCK_EX); $n++; }
     }
 
+    /* 世界对话图片：孤儿图与沉底图一并清掉（省存储；消息本身保留） */
+    if (function_exists('chat_media_gc')) { $n += chat_media_gc(); }
+
     return $n;
 }
 

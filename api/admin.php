@@ -836,7 +836,7 @@ switch ($action) {
         $note    = trim(strip_invisible(nfc_normalize(param_str('note', ''))));
         $banAcc  = param_int('ban_account', 1) === 1;
         $banIp   = param_int('ban_ip', 1) === 1;
-        $banDays = param_int('ban_days', 0);              // 0 = 永久
+        $banDays = (float)param_str('ban_days', '0');     // 支持小数天（如 0.5、1.5）；0 = 永久
         $purge   = param_int('purge', 0) === 1;           // 是否清理其评论 / 对话 / 图片
         try {
             $r = discipline_create($ids, $rs, $note, $banAcc, $banIp, (int)admin_uid(), $banDays, $purge);
@@ -878,7 +878,7 @@ switch ($action) {
         }
         if (param_str('set_note', '') === '1')    { $patch['note'] = param_str('note', ''); }
         if (param_str('set_unban', '') === '1')   { $patch['unban'] = param_int('unban', 1) === 1; }
-        if (param_str('set_days', '') === '1')    { $patch['ban_days'] = param_int('ban_days', 0); }
+        if (param_str('set_days', '') === '1')    { $patch['ban_days'] = (float)param_str('ban_days', '0'); }
         if (param_str('set_ip', '') === '1')      { $patch['ip_banned'] = param_int('ip_banned', 1) === 1; }
         if (!$patch) { fail(400, '没有要修改的内容'); }
         try {
