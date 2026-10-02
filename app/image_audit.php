@@ -121,7 +121,11 @@ function image_audit_judge(string $text, array $labels): array
 
     $j = jev_classify(mb_substr($t, 0, 2000, 'UTF-8'));
     if ($j['ok'] === null) { return array('ok' => false, 'reason' => (string)$j['reason']); }
-    if (empty($j['ok'])) { return array('ok' => true, 'reject' => true, 'reason' => '图片文字含人身攻击'); }
+    if (empty($j['ok'])) {
+        /* 图上文字判为人身攻击：记档位便于回溯与调阈值，不对外输出 */
+        app_log('image_audit: text jev level=' . (isset($j['level']) ? $j['level'] : '?') . ' blocked');
+        return array('ok' => true, 'reject' => true, 'reason' => '图片文字含人身攻击');
+    }
     return array('ok' => true, 'reject' => false, 'reason' => '');
 }
 

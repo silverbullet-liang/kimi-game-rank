@@ -329,9 +329,15 @@ function moderation_check3(string $text): array
     if ((int)cfg('moderation.jev', 1) === 1 && function_exists('jev_classify')) {
         $j = jev_classify($text);
         if ($j['ok'] !== null) {
-            return empty($j['ok'])
-                ? array('ok' => false, 'reason' => 'jev_reject')
-                : array('ok' => true,  'reason' => '');
+            $lv = isset($j['level']) ? (float)$j['level'] : 0.0;
+            if (empty($j['ok'])) {
+                /* 记档位便于回溯与调阈值；不对外输出 */
+                app_log('moderation: jev level=' . $lv . ' blocked');
+                return array('ok' => false, 'reason' => 'jev_reject', 'level' => $lv);
+            }
+            /* 灰度区：放行，但带上标注，前端会在内容旁显示「可能有恶意」 */
+            return array('ok' => true, 'reason' => '', 'level' => $lv,
+                         'flag' => (string)(isset($j['flag']) ? $j['flag'] : ''));
         }
         app_log('moderation: jev unavailable (' . $j['reason'] . '), fall back to glm');
     }
@@ -381,7 +387,7 @@ function moderation_check3(string $text): array
 function moderate_text(string $text, string $scope = 'comment', int $uid = 0): array
 {
     $text = trim($text);
-    if ($text === '') { return array('ok' => true, 'stage' => 0, 'reason' => '', 'cached' => false); }
+    if ($text === '') { return array('ok' => true, 'stage' => 0, 'reason' => '', 'cached' => false, 'flag' => ''); }
 
     /* 重审凭证优先于一切判定，也优先于「拦截」结论的缓存 —— 否则会出现
        「重审说可以、发送又被拦」的死循环。 */
@@ -393,7 +399,7 @@ function moderate_text(string $text, string $scope = 'comment', int $uid = 0): a
         }
     }
 
-    if ((int)cfg('moderation.enabled', 1) !== 1) { return array('ok' => true, 'stage' => 0, 'reason' => 'disabled', 'cached' => false); }
+    if ((int)cfg('moderation.enabled', 1) !== 1) { return array('ok' => true, 'stage' => 0, 'reason' => 'disabled', 'cached' => false, 'flag' => ''); }
 
     /* 结论缓存：同一内容只验一次（内容改了，指纹就变，自然重验） */
     $ttl = max(3600, (int)cfg('moderation.cache_ttl', 604800));
@@ -401,7 +407,8 @@ function moderate_text(string $text, string $scope = 'comment', int $uid = 0): a
     $hit = cache_get($key, $ttl);
     if (is_array($hit) && isset($hit['ok'])) {
         return array('ok' => (bool)$hit['ok'], 'stage' => (int)($hit['stage'] ?? 0),
-                     'reason' => (string)($hit['reason'] ?? ''), 'cached' => true);
+                     'reason' => (string)($hit['reason'] ?? ''), 'cached' => true,
+                     'flag' => (string)($hit['flag'] ?? ''));
     }
 
     $steps = array(
@@ -411,7 +418,7 @@ function moderate_text(string $text, string $scope = 'comment', int $uid = 0): a
     );
 
     $strict  = (int)cfg('moderation.strict', 0) === 1;
-    $verdict = array('ok' => true, 'stage' => 0, 'reason' => '');
+    $verdict = array('ok' => true, 'stage' => 0, 'reason' => '', 'flag' => '');
 
     /* 送审前屏蔽表情名与模型名（整段等长占位）：这两类内容最容易误判，
        屏蔽只影响那几段，其余文字照常判定。缓存指纹仍用原文，互不干扰。 */
@@ -421,25 +428,29 @@ function moderate_text(string $text, string $scope = 'comment', int $uid = 0): a
         if (!$s['on']) { continue; }
         $r = call_user_func($s['fn'], $masked);
         if (empty($r['ok'])) {
-            $verdict = array('ok' => false, 'stage' => $s['stage'], 'reason' => (string)$r['reason']);
+            $verdict = array('ok' => false, 'stage' => $s['stage'], 'reason' => (string)$r['reason'], 'flag' => '');
             break;
         }
+        /* 灰度标注（第三关分级产生）：放行但标注，不影响是否发布 */
+        if (!empty($r['flag'])) { $verdict['flag'] = (string)$r['flag']; }
         if (!empty($r['unknown'])) {
             /* 外部环节故障：默认放行（社区不该被第三方服务拖停），严格模式则拒绝 */
             app_log('moderation degraded scope=' . $scope . ' stage=' . $s['stage']
                   . ' reason=' . $r['reason'] . ' strict=' . ($strict ? 1 : 0));
-            if ($strict) { $verdict = array('ok' => false, 'stage' => $s['stage'], 'reason' => 'unavailable'); break; }
-            $verdict = array('ok' => true, 'stage' => 0, 'reason' => 'degraded');
+            if ($strict) { $verdict = array('ok' => false, 'stage' => $s['stage'], 'reason' => 'unavailable', 'flag' => ''); break; }
+            $verdict = array('ok' => true, 'stage' => 0, 'reason' => 'degraded', 'flag' => '');
         }
     }
 
     cache_set($key, array('ok' => $verdict['ok'] ? 1 : 0, 'stage' => $verdict['stage'],
-                          'reason' => $verdict['reason']), $ttl);
+                          'reason' => $verdict['reason'],
+                          'flag' => (string)$verdict['flag']), $ttl);
     if (!$verdict['ok']) {
         app_log('moderation blocked scope=' . $scope . ' stage=' . $verdict['stage'] . ' reason=' . $verdict['reason']);
     }
     return array('ok' => (bool)$verdict['ok'], 'stage' => (int)$verdict['stage'],
-                 'reason' => (string)$verdict['reason'], 'cached' => false, 'flag' => '');
+                 'reason' => (string)$verdict['reason'], 'cached' => false,
+                 'flag' => (string)$verdict['flag']);
 }
 
 /* ============================================================

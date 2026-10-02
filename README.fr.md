@@ -23,7 +23,7 @@ Un site qui rassemble les jeux, outils, œuvres littéraires et créations déri
 | Discussion | Discussion mondiale (interrogation en temps réel) + discussion avec l'IA (sortie en flux, recherche web, règles du site injectées) |
 | Profil | Avatar, usage de l'IA, informations IP et historique des visites, réglages d'apparence |
 | Connexion | Connexion par mot de passe / inscription / mode invité, avec une vérification humaine en un clic à la connexion et à l'inscription |
-| Modération des contenus | Les commentaires, la discussion mondiale et les images téléversées sont contrôlés automatiquement avant publication, avec des canaux de secours |
+| Modération des contenus | Commentaires, discussion et images téléversées reçoivent une note de gravité de 1 à 10 avant publication : seuls les niveaux élevés sont bloqués, les niveaux intermédiaires passent avec une mention |
 | Panneau d'administration | Collecte et mise à jour en masse, sauvegarde de la base, modération des commentaires, gestion des étiquettes, co-administrateurs |
 | Résolution intelligente des liens | Activée par défaut : si la page d'une œuvre n'est qu'une page de redirection, l'adresse réelle située derrière est utilisée |
 | Signalements disciplinaires | Signaler un utilisateur en un clic : plusieurs motifs, durée du bannissement (y compris permanent), blocage de la provenance, suppression de ses commentaires / discussions / images. La personne signalée est redirigée en 302 vers une page de violation avec les motifs et les commentaires |

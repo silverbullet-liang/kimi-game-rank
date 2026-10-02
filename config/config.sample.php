@@ -77,4 +77,13 @@ return array(
         'default_mode'  => 'css',      // css | webgl
         'default_accent' => 'blue-purple', // blue-purple | ios-colorful | custom
     ),
+
+    /* ---------- 内容审核 ---------- */
+    'moderation' => array(
+        'enabled' => 1,                // 发送前审核总开关
+        // 违规程度分级（10 档制）的处置阈值：误判偏多就上调，漏放偏多就下调。
+        // 实测标尺：正常寒暄≈1–2，对作品的差评≈3–4，轻度粗鲁≈5，人身攻击≈6–7。
+        'jev_reject_level' => 5.5,     // 达到该档位即拦截
+        'jev_flag_level'   => 4.5,     // 达到该档位放行，但在内容旁标注「可能有恶意」
+    ),
 );
