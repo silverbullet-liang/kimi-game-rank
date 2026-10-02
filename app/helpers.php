@@ -160,16 +160,65 @@ function is_reserved_name(string $normName): bool
 /* ============================================================
  * IP
  * ============================================================ */
+/**
+ * 取客户端 IP。
+ * ------------------------------------------------------------
+ * 默认只信 REMOTE_ADDR。转发头（CF-Connecting-IP / X-Forwarded-For / X-Real-IP）
+ * 全部由客户端自由伪造，直接采信等于把限速与封禁交给攻击者——每换一个请求头
+ * 就是一个新身份，登录防爆破与 IP 封禁同时失效。
+ * 站点确实在 CDN / 反向代理之后时，把代理网段写进 security.trusted_proxies，
+ * 此时才解析转发链，且从「最右」取第一个非受信地址：整条链只有最右端可信，
+ * 左侧全部可伪造，取左起第一个等于没做校验。
+ */
 function client_ip(): string
 {
-    $keys = array('HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP', 'REMOTE_ADDR');
-    foreach ($keys as $k) {
-        if (!empty($_SERVER[$k])) {
-            $ip = trim(explode(',', (string)$_SERVER[$k])[0]);
-            if (filter_var($ip, FILTER_VALIDATE_IP) !== false) { return $ip; }
-        }
+    $remote = isset($_SERVER['REMOTE_ADDR']) ? (string)$_SERVER['REMOTE_ADDR'] : '';
+    $trusted = cfg('security.trusted_proxies', array());
+    if (!is_array($trusted) || !$trusted || !ip_in_ranges($remote, $trusted)) {
+        return $remote !== '' ? $remote : '0.0.0.0';
     }
-    return '0.0.0.0';
+    $chain = array();
+    foreach (array('HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP') as $k) {
+        if (empty($_SERVER[$k])) { continue; }
+        foreach (explode(',', (string)$_SERVER[$k]) as $part) {
+            $ip = trim($part);
+            if (filter_var($ip, FILTER_VALIDATE_IP) !== false) { $chain[] = $ip; }
+        }
+        if ($chain) { break; }   // 只认最先出现的那个头，避免多源头拼出假链
+    }
+    for ($i = count($chain) - 1; $i >= 0; $i--) {
+        if (!ip_in_ranges($chain[$i], $trusted)) { return $chain[$i]; }
+    }
+    return $remote !== '' ? $remote : '0.0.0.0';
+}
+
+/** IP 是否落在任一网段内；支持单地址与 CIDR（IPv4 / IPv6 均可） */
+function ip_in_ranges(string $ip, array $ranges): bool
+{
+    if ($ip === '' || filter_var($ip, FILTER_VALIDATE_IP) === false) { return false; }
+    $ipBin = inet_pton($ip);
+    if ($ipBin === false) { return false; }
+    foreach ($ranges as $r) {
+        $r = trim((string)$r);
+        if ($r === '') { continue; }
+        if (strpos($r, '/') === false) {
+            if ($r === $ip) { return true; }
+            continue;
+        }
+        list($net, $bits) = explode('/', $r, 2);
+        $netBin = @inet_pton(trim($net));
+        if ($netBin === false || strlen($netBin) !== strlen($ipBin)) { continue; }
+        $bits = (int)$bits;
+        $len = strlen($netBin) * 8;
+        if ($bits < 0 || $bits > $len) { continue; }
+        $full = intdiv($bits, 8);
+        if ($full > 0 && substr($netBin, 0, $full) !== substr($ipBin, 0, $full)) { continue; }
+        $rest = $bits % 8;
+        if ($rest === 0) { return true; }
+        $mask = chr((0xFF << (8 - $rest)) & 0xFF);
+        if ((substr($netBin, $full, 1) & $mask) === (substr($ipBin, $full, 1) & $mask)) { return true; }
+    }
+    return false;
 }
 
 /** 脱敏：保留前 3 字符 + 后 2 字符，中间打码 */

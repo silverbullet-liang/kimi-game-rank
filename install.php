@@ -33,18 +33,20 @@ try {
     require_once ROOT . '/app/ip_lookup.php';
     require_once ROOT . '/app/autoinstall.php';
 
-    $already = file_exists($lockFile);
-    if ($already) {
-        $log[] = '检测到已完成安装（storage/installed.lock 存在），跳过。';
-        $done = true;
-    } else {
-        auto_install();
-        $log[] = '数据库连接成功';
-        $log[] = '主库与管理员库表结构就绪';
-        $log[] = '密钥生成完成（RC4 组合密钥 / AES 100 位 / cron key）并已写回 config.php';
-        $log[] = '管理员 admin 凭证已写入独立库（仅存 sha256 之前原文）';
-        $done = true;
+    /* 已安装：本页不该继续对外存在。直接 404 —— 否则任何访客都能读到
+       初始化日志与原始报错（含库名、主机名）。确需重装请先删除
+       storage/installed.lock。 */
+    if (file_exists($lockFile)) {
+        http_response_code(404);
+        exit('Not Found');
     }
+
+    auto_install();
+    $log[] = '数据库连接成功';
+    $log[] = '主库与管理员库表结构就绪';
+    $log[] = '密钥生成完成（RC4 组合密钥 / AES 100 位 / cron key）并已写回 config.php';
+    $log[] = '管理员 admin 凭证已写入独立库（仅存 sha256 之前原文）';
+    $done = true;
 } catch (Throwable $e) {
     $fatal = $e->getMessage();
 }

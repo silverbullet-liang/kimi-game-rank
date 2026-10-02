@@ -224,10 +224,12 @@ CREATE TABLE IF NOT EXISTS `announcements` (
 CREATE TABLE IF NOT EXISTS `login_attempts` (
   `id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `ip_hash`    CHAR(64)     NOT NULL,
+  `user_norm`  VARCHAR(191) NOT NULL DEFAULT '' COMMENT '被尝试的账号规整名',
   `success`    TINYINT(1)   NOT NULL DEFAULT 0,
   `created_at` DATETIME     NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `idx_ip_time` (`ip_hash`, `created_at`)
+  KEY `idx_ip_time` (`ip_hash`, `created_at`),
+  KEY `idx_norm_time` (`user_norm`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='登录尝试';
 
 -- ------------------------------------------------------------

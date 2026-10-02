@@ -1,19 +1,16 @@
 <?php
 /**
- * 部署自检 / 故障诊断
+ * 部署自检 / 故障诊断（一次性排障工具，需口令）
  * ------------------------------------------------------------
- * 完全独立于应用框架：不 require bootstrap、不依赖任何业务代码，
+ * 不 require bootstrap、不依赖任何业务代码，
  * 因此「整站 500」时它仍然能运行，用来看清到底坏在哪一步。
  *
- * 用法：https://你的域名/diag.php?k=kimi-diag-2026
+ * 用法：https://你的域名/diag.php?k=<debug_key>
+ *       口令取自 config/api_keys.php 的 debug_key；未配置即不可访问。
  * ⚠️ 诊断完请立刻删除本文件。
  */
 
-$KEY = 'kimi-diag-2026';
-if (!isset($_GET['k']) || !hash_equals($KEY, (string)$_GET['k'])) {
-    http_response_code(404);
-    exit('Not Found');
-}
+require __DIR__ . '/app/debug_guard.php';
 header('Content-Type: text/plain; charset=utf-8');
 set_time_limit(30);
 

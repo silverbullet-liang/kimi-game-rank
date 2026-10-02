@@ -67,7 +67,9 @@ return array(
     'security' => array(
         'token_ttl'        => 604800,   // 登录 token 有效期（秒，7 天滑动）
         'guest_token_ttl'  => 86400,    // 游客 token 有效期（24h）
-        'login_max_fails'  => 5,        // 同 IP 失败次数
+        'trusted_proxies'  => array(),  // 受信反向代理网段；留空=只信 REMOTE_ADDR（推荐）
+        'login_max_fails'  => 5,        // 同一 IP 在锁定时长内的失败次数上限
+        'login_account_max_fails' => 8, // 同一账号在锁定时长内的失败次数上限（跨 IP 累计）
         'login_lock_time'  => 600,      // 锁定时长（秒）
         'fail_delay_us'    => array(60000, 180000),  // 失败随机延迟区间（微秒）
     ),

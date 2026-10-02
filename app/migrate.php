@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 19);
+define('SCHEMA_VERSION', 20);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -803,6 +803,26 @@ function run_migrations(bool $force = false)
         }
     }
 
+    /* ---------- v20：登录限速补账号维度 ----------
+       原表只记 IP，换个代理就是新身份。加 user_norm 记被尝试的账号，
+       让「同一账号被跨 IP 连续试探」也能累计到锁定阈值。
+       存量行 user_norm 留空（空串不计入账号维度），不影响 IP 维度判定。 */
+    if ($cur < 20) {
+        try {
+            if (table_exists('login_attempts') && !column_exists('login_attempts', 'user_norm')) {
+                db_exec("ALTER TABLE `login_attempts`
+                         ADD COLUMN `user_norm` VARCHAR(191) NOT NULL DEFAULT ''
+                         COMMENT '被尝试的账号规整名' AFTER `ip_hash`,
+                         ADD KEY `idx_norm_time` (`user_norm`, `created_at`)");
+                table_columns('login_attempts', true);
+            }
+            setting_set('schema_version', '20');
+            app_log('schema migrated to v20（登录限速账号维度）');
+        } catch (Throwable $e) {
+            app_log('migrate v20 failed: ' . $e->getMessage());
+        }
+    }
+
     /* 只有结构确认完整才写版本号、落锁：
        否则锁会把「半成品」永久固定下来，此后所有请求都被短路，再也修不回来。 */
     $ok = true;
@@ -818,6 +838,7 @@ function run_migrations(bool $force = false)
         if (!table_exists($t)) { $ok = false; }
     }
     if (table_exists('user_visits') && !column_exists('user_visits', 'ip_hash')) { $ok = false; }
+    if (table_exists('login_attempts') && !column_exists('login_attempts', 'user_norm')) { $ok = false; }
     if (table_exists('users') && !column_exists('users', 'ban_until')) { $ok = false; }
     if (table_exists('discipline_reports') && !column_exists('discipline_reports', 'ban_until')) { $ok = false; }
     if (table_exists('comments') && !column_exists('comments', 'target_type')) { $ok = false; }

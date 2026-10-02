@@ -1,9 +1,11 @@
 <?php
 /**
- * 静态资源响应头检测（用完即删）
- * 从服务器自身请求关键资源，输出 HTTP 状态码与 Content-Type —— 一锤定音。
+ * 静态资源响应头检测（一次性排障工具，需口令）
+ * 访问 /mimecheck.php?k=<debug_key>，从服务器自身请求关键资源，
+ * 输出 HTTP 状态码与 Content-Type —— 一锤定音。排障完毕请删除本文件。
  */
 declare(strict_types=1);
+require __DIR__ . '/app/debug_guard.php';
 header('Content-Type: text/html; charset=utf-8');
 
 $host = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://') . (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '');

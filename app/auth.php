@@ -231,21 +231,33 @@ function current_user_row()
 
 /* ============================================================
  * 登录限速
+ * ------------------------------------------------------------
+ * 双维度计数：IP 与账号各自累计，任一超限即锁。
+ * 只看 IP，攻击者拿代理池换个地址就能一直撞同一个账号；
+ * 只看账号，一个 IP 又能横扫全站账号。两者都要。
+ * login_attempts.user_norm 记录被尝试的账号规整名（管理员通道记为 admin）。
  * ============================================================ */
-function login_locked(): bool
+function login_locked(string $norm = ''): bool
 {
-    $h = ip_hash(client_ip());
     $since = gmdate('Y-m-d H:i:s', time() - (int)cfg('security.login_lock_time', 600));
-    $n = (int)db_val('SELECT COUNT(*) FROM login_attempts WHERE ip_hash = ? AND success = 0 AND created_at > ?', array($h, $since));
-    return $n >= (int)cfg('security.login_max_fails', 5);
+    $n = (int)db_val('SELECT COUNT(*) FROM login_attempts WHERE ip_hash = ? AND success = 0 AND created_at > ?',
+        array(ip_hash(client_ip()), $since));
+    if ($n >= (int)cfg('security.login_max_fails', 5)) { return true; }
+    if ($norm === '') { return false; }
+    $m = (int)db_val('SELECT COUNT(*) FROM login_attempts WHERE user_norm = ? AND success = 0 AND created_at > ?',
+        array($norm, $since));
+    return $m >= (int)cfg('security.login_account_max_fails', 8);
 }
 
-function login_mark(string $ip, bool $success)
+function login_mark(string $ip, bool $success, string $norm = '')
 {
-    db_exec('INSERT INTO login_attempts (ip_hash, success, created_at) VALUES (?, ?, UTC_TIMESTAMP())',
-        array(ip_hash($ip), $success ? 1 : 0));
+    db_exec('INSERT INTO login_attempts (ip_hash, user_norm, success, created_at) VALUES (?, ?, ?, UTC_TIMESTAMP())',
+        array(ip_hash($ip), $norm, $success ? 1 : 0));
     if ($success) {
         db_exec('DELETE FROM login_attempts WHERE ip_hash = ? AND success = 0', array(ip_hash($ip)));
+        if ($norm !== '') {
+            db_exec('DELETE FROM login_attempts WHERE user_norm = ? AND success = 0', array($norm));
+        }
     }
 }
 
@@ -288,17 +300,17 @@ function user_register(string $username, string $password): array
 
 function user_login(string $username, string $password): array
 {
-    if (login_locked()) {
-        timing_delay();
-        fail(429, '尝试次数过多，请稍后再试');
-    }
     $norm = norm_username($username);
     $ip = client_ip();
+    if (login_locked($norm)) {
+        timing_delay();
+        fail(429, '登录尝试过于频繁，请稍后再试');
+    }
 
     // 管理员统一通道：用户名规整后为 admin 时走独立库验证
     if ($norm === 'admin') {
         $ok = admin_verify($password);
-        login_mark($ip, $ok);
+        login_mark($ip, $ok, 'admin');
         if (!$ok) { timing_delay(); fail(401, '用户名或密码错误'); }
         stats_bump('logins');
         return array('uid' => 0, 'role' => 'admin', 'token' => issue_admin_token(), 'username' => 'admin');
@@ -311,12 +323,12 @@ function user_login(string $username, string $password): array
     if ($u === null) {
         // 恒定路径：用哑值跑完整链路，避免用户存在性时序泄露
         password_chain($password, '1970-01-01 00:00:00', str_repeat('0', 32));
-        login_mark($ip, false);
+        login_mark($ip, false, $norm);
         timing_delay();
         fail(401, '用户名或密码错误');
     }
     $ok = password_verify_chain($password, (string)$u['registered_at'], (string)$u['salt'], (string)$u['password_hash']);
-    login_mark($ip, $ok);
+    login_mark($ip, $ok, $norm);
     if (!$ok) { timing_delay(); fail(401, '用户名或密码错误'); }
     if ((int)$u['is_banned'] === 1) {
         /* 到期就先解除，不必等人工处理 */

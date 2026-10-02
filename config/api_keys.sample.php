@@ -31,4 +31,9 @@ return array(
         'reasoning'       => 'low',   // 统一思考等级
         'timeout'         => 90,
     ),
+
+    /* 排障工具口令：check.php / selfcheck.php / mimecheck.php / diag.php 的访问口令，
+       形如 /check.php?k=<debug_key>。留空或删除本项 = 这些工具完全不可访问。
+       请改成一段随机字符串，不要用容易猜到的词。 */
+    'debug_key' => 'CHANGE_ME_DEBUG_KEY',
 );

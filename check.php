@@ -1,9 +1,11 @@
 <?php
 /**
- * 环境诊断（用完即删）
- * 访问 /check.php 逐项输出，定位 500 来源。
+ * 环境诊断（一次性排障工具，需口令）
+ * 访问 /check.php?k=<debug_key> 逐项输出，定位 500 来源。
+ * 排障完毕请删除本文件。
  */
 declare(strict_types=1);
+require __DIR__ . '/app/debug_guard.php';
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
 

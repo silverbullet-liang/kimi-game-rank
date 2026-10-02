@@ -1,9 +1,11 @@
 <?php
 /**
- * 文件完整性自检（用完即删）
- * 访问 /selfcheck.php —— 列出所有应存在的文件，缺哪个一目了然。
+ * 文件完整性自检（一次性排障工具，需口令）
+ * 访问 /selfcheck.php?k=<debug_key> —— 列出所有应存在的文件，缺哪个一目了然。
+ * 排障完毕请删除本文件。
  */
 declare(strict_types=1);
+require __DIR__ . '/app/debug_guard.php';
 header('Content-Type: text/html; charset=utf-8');
 
 $expect = array(

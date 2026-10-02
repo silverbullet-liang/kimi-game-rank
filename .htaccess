@@ -59,8 +59,8 @@ AddDefaultCharset UTF-8
 </IfModule>
 
 # 敏感路径与文件直接 404（mod_alias）
-RedirectMatch 404 ^/(config|storage|sql|docs|app)/.*$
-RedirectMatch 404 \.(sql|log|ini)$
+RedirectMatch 404 ^/(config|storage|sql|docs|app|tools)/.*$
+RedirectMatch 404 \.(sql|log|ini|lock|bak|old|orig|save|swp|zip)$
 
 # ---------- 自定义错误页 ----------
 # 全部指向 error.php：自包含、不依赖 bootstrap 与外部资源，
