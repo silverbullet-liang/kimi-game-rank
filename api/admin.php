@@ -542,7 +542,8 @@ switch ($action) {
             $where .= ' AND (username LIKE ? OR username_norm LIKE ? OR uid8 LIKE ?)';
             $args[] = "%$q%"; $args[] = "%$q%"; $args[] = "%$q%";
         }
-        $rows = db_all("SELECT id, username, role, uid8, is_banned, created_at, last_login_at,
+        $rows = db_all("SELECT id, username, role, uid8, is_banned, ban_until, created_at, last_login_at,
+                        (SELECT COUNT(*) FROM discipline_reports d WHERE d.user_id = users.id AND d.ban_days >= 7) reports,
                         (SELECT COUNT(*) FROM ai_usage a WHERE a.user_id = users.id) ai_calls,
                         (SELECT COALESCE(SUM(total_tokens),0) FROM ai_usage a WHERE a.user_id = users.id) ai_tokens
                         FROM users WHERE $where ORDER BY id DESC LIMIT $size OFFSET $off", $args);
@@ -554,6 +555,8 @@ switch ($action) {
                 'role' => (string)$r['role'], 'uid8' => (string)$r['uid8'],
                 'avatar' => identicon_data_uri((string)$r['username'], 40),
                 'banned' => (int)$r['is_banned'] === 1,
+                'ban_until' => $r['ban_until'] === null ? '' : to_local((string)$r['ban_until']),
+                'reports' => (int)$r['reports'],
                 'created' => to_local((string)$r['created_at'], 'Y-m-d'),
                 'last_login' => $r['last_login_at'] === null ? '—' : to_local((string)$r['last_login_at']),
                 'ai_calls' => (int)$r['ai_calls'], 'ai_tokens' => (int)$r['ai_tokens'],
@@ -859,6 +862,40 @@ switch ($action) {
         require_admin();
         require_panel();
         ok(discipline_list(max(1, param_int('page', 1)), 20));
+        break;
+    }
+
+    /* 通报的二次设置：改理由 / 说明 / 封禁天数（重算解封时间）/ 解封 / IP 封禁开关 */
+    case 'disc_update': {
+        require_admin();
+        require_panel();
+        csrf_verify();
+        $id = param_int('id', 0);
+        $patch = array();
+        if (param_str('set_reasons', '') === '1') {
+            $rs = json_decode(param_str('reasons', '[]'), true);
+            $patch['reasons'] = is_array($rs) ? $rs : array();
+        }
+        if (param_str('set_note', '') === '1')    { $patch['note'] = param_str('note', ''); }
+        if (param_str('set_unban', '') === '1')   { $patch['unban'] = param_int('unban', 1) === 1; }
+        if (param_str('set_days', '') === '1')    { $patch['ban_days'] = param_int('ban_days', 0); }
+        if (param_str('set_ip', '') === '1')      { $patch['ip_banned'] = param_int('ip_banned', 1) === 1; }
+        if (!$patch) { fail(400, '没有要修改的内容'); }
+        try {
+            $row = discipline_update($id, $patch);
+        } catch (Throwable $e) {
+            fail(400, $e->getMessage());
+        }
+        ok(array(
+            'id'        => (int)$row['id'],
+            'reasons'   => discipline_reasons_of($row),
+            'note'      => (string)($row['note'] ?? ''),
+            'banned'    => (int)$row['banned'] === 1,
+            'ban_days'  => (int)$row['ban_days'],
+            'ban_until' => $row['ban_until'] === null ? '' : to_local((string)$row['ban_until']),
+            'ip_banned' => (int)$row['ip_banned'] === 1,
+            'user_count' => discipline_user_count((int)$row['user_id']),
+        ), '已更新该通报');
         break;
     }
 

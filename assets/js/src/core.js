@@ -308,9 +308,13 @@ export function badge(role) {
     + shield + mark + '</svg>' + r.label + '</span>';
 }
 
-/** 用户名 + 徽章（统一入口，role 由后端下发） */
-export function userName(name, role) {
-  return '<span class="uname">' + esc(name) + '</span>' + badge(role);
+/** 用户名 + 徽章（统一入口，role 与通报次数由后端下发） */
+export function userName(name, role, reports) {
+  const n = Number(reports || 0);
+  const tag = n > 0
+    ? '<span class="badge badge-violation" title="累计被通报 ' + n + ' 次">被通报 ' + n + ' 次</span>'
+    : '';
+  return '<span class="uname">' + esc(name) + '</span>' + badge(role) + tag;
 }
 
 /* ============================================================

@@ -23,6 +23,7 @@ ORDER = [
     'core.js', 'md.js', 'theme.js', 'transitions.js',
     'pages/rank.js', 'pages/detail.js', 'pages/lobby.js', 'pages/mine.js',
     'pages/login.js', 'pages/panel.js', 'pages/doc.js', 'pages/feedback.js',
+    'pages/violation.js',
     'app.js',
 ]
 

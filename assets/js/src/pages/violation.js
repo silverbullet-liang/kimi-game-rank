@@ -21,6 +21,28 @@ function banText(row) {
   return '账号已封停 · 至 ' + esc(row.ban_until);
 }
 
+/** 被封禁时给本人的一张说明卡：封禁原因 / 天数 / 解封时间，一眼看全 */
+function banCard(row) {
+  const days = Number(row.ban_days || 0);
+  const until = row.ban_until || '';
+  return `
+    <div class="card" style="margin-top:12px">
+      <h3 style="margin-top:0">封禁信息</h3>
+      <dl class="kv">
+        <dt>封禁原因</dt><dd>${reasonListInline(row.reasons)}</dd>
+        <dt>封禁天数</dt><dd>${days > 0 ? days + ' 天' : '永久'}</dd>
+        <dt>解封时间</dt><dd>${until ? esc(until) : '不会自动解封（永久）'}</dd>
+        ${row.ip_banned ? '<dt>来源地址</dt><dd>已一并封禁</dd>' : ''}
+        ${Number(row.user_count || 0) > 0 ? '<dt>累计通报</dt><dd>' + Number(row.user_count) + ' 次</dd>' : ''}
+      </dl>
+    </div>`;
+}
+
+function reasonListInline(reasons) {
+  if (!reasons || !reasons.length) { return '未填写'; }
+  return esc(reasons.join('；'));
+}
+
 /** 违纪界面 / 通报详情：$mine 为真时是「你被通报了」的口吻 */
 async function paintDetail(container, id, mine) {
   const d = await api('discipline.php', 'get', { id: id }, { silent: true });
@@ -43,26 +65,32 @@ async function paintDetail(container, id, mine) {
       </div>
     </div>
 
+    ${mine ? banCard(d) : ''}
+
     <div class="card" style="margin-top:12px">
       <h3 style="margin-top:0">通报理由</h3>
       ${reasonList(d.reasons)}
       ${d.note ? '<p class="tiny" style="margin-top:10px">补充说明：' + esc(d.note) + '</p>' : ''}
-      <p class="tiny muted" style="margin-top:10px">${esc(banText(d))}${d.ip_banned ? ' · 来源地址已封禁' : ''}</p>
+      ${mine ? '' : '<p class="tiny muted" style="margin-top:10px">' + esc(banText(d)) + (d.ip_banned ? ' · 来源地址已封禁' : '') + '</p>'}
     </div>
 
-    <div class="card" id="discCmt" style="margin-top:12px">
-      <h3 style="margin-top:0">评论 <span class="tiny muted" id="cmtTotal">0</span></h3>
-      <div id="cmtForm"></div>
-      <div id="cmtList" style="margin-top:12px"></div>
-    </div>`;
+    ${mine ? '' : '<p class="tiny muted" style="margin-top:12px">相关讨论在「违纪通报」列表页下方。</p>'}
+    ${mine ? '' : '<div class="card" style="margin-top:12px"><h3 style="margin-top:0">评论 <span class="tiny muted" id="cmtTotal">0</span></h3><div id="cmtForm"></div><div id="cmtList" style="margin-top:12px"></div></div>'}
+    `;
 
   container.appendChild(wrap);
 
-  try {
-    await renderComments(wrap.querySelector('#discCmt'), d.id, 'discipline');
-  } catch (e) {
-    const box = wrap.querySelector('#cmtList');
-    if (box) { box.innerHTML = '<div class="empty tiny">评论加载失败</div>'; }
+  /* 被通报者看的是自己的处理结果，不参与讨论 —— 评论区对他不可见（服务端同样拦）。 */
+  if (mine) { return; }
+
+  const cmt = wrap.querySelector('#cmtForm');
+  if (cmt) {
+    try {
+      await renderComments(cmt.parentNode, d.id, 'discipline');
+    } catch (e) {
+      const box = wrap.querySelector('#cmtList');
+      if (box) { box.innerHTML = '<div class="empty tiny">评论加载失败</div>'; }
+    }
   }
 }
 
@@ -109,6 +137,20 @@ export async function renderDiscipline(container, ctx) {
       el.addEventListener('click', () => navigate('#/discipline/' + it.id));
       list.appendChild(el);
     });
+
+    /* 目录级评论区：挂在「违纪通报」列表上，全站一处 */
+    const cmt = document.createElement('div');
+    cmt.className = 'card';
+    cmt.style.marginTop = '16px';
+    cmt.innerHTML = '<h3 style="margin-top:0">讨论 <span class="tiny muted" id="cmtTotal">0</span></h3>'
+      + '<div id="cmtForm"></div><div id="cmtList" style="margin-top:12px"></div>';
+    box.appendChild(cmt);
+    try {
+      await renderComments(cmt, 0, 'discipline_list');
+    } catch (e) {
+      const c = cmt.querySelector('#cmtList');
+      if (c) { c.innerHTML = '<div class="empty tiny">评论加载失败</div>'; }
+    }
   } catch (e) {
     list.innerHTML = '<div class="empty"><p>' + esc(e.message) + '</p></div>';
   }

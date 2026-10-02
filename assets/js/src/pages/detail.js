@@ -403,7 +403,7 @@ function commentNode(c, workId, reload, ttype) {
     <span class="av"><img src="${esc(c.avatar)}" alt="" draggable="false"></span>
     <span class="body">
       <span class="head">
-        ${userName(c.username, c.role)}
+        ${userName(c.username, c.role, c.reports)}
         <span class="tiny">${esc(c.time)}</span>
       </span>
       <span class="text">${c.reply_to ? `<span class="reply-to">@${esc(c.reply_to)}</span> ` : ''}${folded

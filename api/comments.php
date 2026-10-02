@@ -13,7 +13,18 @@ $action = param_str('action', 'list');
 function comment_target_type(): string
 {
     $t = param_str('target_type', 'work');
-    return $t === 'discipline' ? 'discipline' : 'work';
+    return in_array($t, array('discipline', 'discipline_list'), true) ? $t : 'work';
+}
+
+/* 被通报封禁的访问者：通报类评论区看不到，也不能发表任何评论。
+   前端隐藏只是体验，这里才是真正的门。 */
+if (function_exists('discipline_visitor_blocked') && discipline_visitor_blocked()) {
+    $t = param_str('target_type', 'work');
+    if ($action === 'list') {
+        if ($t === 'discipline' || $t === 'discipline_list') { ok(array('comments' => array(), 'total' => 0)); }
+    } elseif ($action === 'create') {
+        fail(403, '账号已被封禁，暂时无法发言');
+    }
 }
 
 switch ($action) {
@@ -23,7 +34,8 @@ switch ($action) {
         require_token();
         $wid   = param_int('work_id', 0);
         $ttype = comment_target_type();
-        if ($wid <= 0) { fail(400, '参数错误'); }
+        if ($ttype === 'discipline_list') { $wid = 0; }          // 列表评论区固定挂在 work_id=0
+        if ($ttype !== 'discipline_list' && $wid <= 0) { fail(400, '参数错误'); }
         $ident = current_identity();
         $uid = $ident['role'] === 'admin' ? admin_uid() : (int)(isset($ident['uid']) ? $ident['uid'] : 0);
 
@@ -49,6 +61,17 @@ switch ($action) {
 
         $raw = array(); $nameOf = array();
         foreach ($rows as $r) { $raw[(int)$r['id']] = $r; $nameOf[(int)$r['id']] = (string)$r['username']; }
+
+        /* 作者累计被通报次数（一次聚合，不做 N+1 查询） */
+        $reports = array();
+        if ($raw) {
+            $ids = array_values(array_unique(array_map(function ($r) { return (int)$r['user_id']; }, $raw)));
+            $ph  = implode(',', array_fill(0, count($ids), '?'));
+            foreach (db_all("SELECT user_id, COUNT(*) n FROM discipline_reports
+                             WHERE ban_days >= 7 AND user_id IN ($ph) GROUP BY user_id", $ids) as $x) {
+                $reports[(int)$x['user_id']] = (int)$x['n'];
+            }
+        }
 
         /* 删除 = 入回收站：被删评论**及其全部后代**都不再返回，前端完全不显示。
            注意这与「屏蔽」不同：屏蔽只是折叠，内容仍可见。 */
@@ -76,12 +99,13 @@ switch ($action) {
             return array_keys($out);
         };
 
-        $make = function ($r, $replyTo) use ($votes, $counts, $uid) {
+        $make = function ($r, $replyTo) use ($votes, $counts, $uid, $reports) {
             return array(
                 'id'       => (int)$r['id'],
                 'uid'      => (int)$r['user_id'],
                 'username' => (string)$r['username'],
                 'role'     => (string)$r['role'],
+                'reports'  => isset($reports[(int)$r['user_id']]) ? $reports[(int)$r['user_id']] : 0,
                 'avatar'   => identicon_data_uri((string)$r['username'], 40),
                 'content'  => (string)$r['content'],
                 'blocked'  => (int)$r['is_blocked'] === 1,
@@ -125,8 +149,10 @@ switch ($action) {
         if ($len < 1) { fail(400, '评论内容不能为空'); }
         if ($len > 300) { fail(400, '评论最长 300 字'); }
 
-        /* 目标存在性：作品要未隐藏；通报要真实存在 */
-        if ($ttype === 'discipline') {
+        /* 目标存在性：作品要未隐藏；通报要真实存在；通报列表固定 work_id=0 */
+        if ($ttype === 'discipline_list') {
+            $wid = 0;
+        } elseif ($ttype === 'discipline') {
             if (!table_exists('discipline_reports')
                 || db_one('SELECT id FROM discipline_reports WHERE id = ?', array($wid)) === null) {
                 fail(404, '通报不存在');

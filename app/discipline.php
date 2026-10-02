@@ -11,6 +11,9 @@
  */
 declare(strict_types=1);
 
+define('DISC_MIN_DAYS_FOR_COUNT', 7);   // 计入累计次数的封禁天数下限（≥ 该值才算一次）
+define('DISC_PURGE_THRESHOLD', 10);      // 累计达到该次数后永久删除账号
+
 /** 预置理由（面板可增删，存 settings；这里只给默认值） */
 function discipline_reasons(): array
 {
@@ -239,11 +242,20 @@ function discipline_create(array $userIds, array $reasons, string $note, bool $b
         app_log('discipline: user #' . $uid . ' reported by #' . $byUid . ' (report #' . $rid . ')');
     }
 
+    /* 累计达到阈值 → 永久删除账号（不可恢复的终局处理） */
+    $deleted = array();
+    foreach (array_slice($userIds, 0, 50) as $uidRaw) {
+        $uid2 = (int)$uidRaw;
+        if ($uid2 <= 0 || in_array($uid2, $deleted, true)) { continue; }
+        if (discipline_maybe_purge_account($uid2)) { $deleted[] = $uid2; }
+    }
+
     return array('created' => $created, 'accounts_banned' => $accBanned,
                  'ips_banned' => $ipBanned, 'no_ip' => $noIp,
                  'purged_comments' => $purged['comments'],
                  'purged_messages' => $purged['messages'],
-                 'purged_images'   => $purged['images']);
+                 'purged_images'   => $purged['images'],
+                 'accounts_deleted' => count($deleted));
 }
 
 /** 通报列表（含被通报者当前状态与命中数） */
@@ -270,6 +282,8 @@ function discipline_list(int $page, int $size = 20): array
             'views'      => (int)$r['views'],
             'comments'   => (int)db_val('SELECT COUNT(*) FROM comments WHERE target_type = ? AND work_id = ? AND is_deleted = 0',
                                         array('discipline', (int)$r['id'])),
+            'user_count' => discipline_user_count((int)$r['user_id']),
+            'user_alive' => db_val('SELECT 1 FROM users WHERE id = ? LIMIT 1', array((int)$r['user_id'])) !== null,
             'created'    => to_local((string)$r['created_at']),
         );
     }
@@ -289,6 +303,136 @@ function discipline_view_count(int $id)
 {
     if ($id <= 0) { return; }
     try { db_exec('UPDATE discipline_reports SET views = views + 1 WHERE id = ?', array($id)); } catch (Throwable $e) { }
+}
+
+/**
+ * 当前访问者是否处于被封禁状态（管理员与副管理员豁免）。
+ * 用于评论等接口的服务端拦截 —— 前端做了限制不算数，这里才是真正的门。
+ */
+function discipline_visitor_blocked(): bool
+{
+    try {
+        $ident = current_identity();
+        if (is_array($ident) && in_array((string)($ident['role'] ?? ''), array('admin', 'subadmin'), true)) {
+            return false;
+        }
+        $uid = is_array($ident) ? (int)($ident['uid'] ?? 0) : 0;
+        return discipline_hit($uid, discipline_ip_hash(discipline_client_ip())) !== null;
+    } catch (Throwable $e) {
+        return false;      // 判断本身出错时放行，绝不因拦截逻辑故障而挡人
+    }
+}
+
+/** 通报列表的统一评论区目标：挂在「违纪通报」目录上（work_id 固定 0） */
+function discipline_list_target(): array
+{
+    return array('target_type' => 'discipline_list', 'work_id' => 0);
+}
+
+/**
+ * 该用户计入累计的通报次数。
+ * 只统计「单次封禁天数 ≥ DISC_MIN_DAYS_FOR_COUNT」的通报 —— 短期封禁只是提醒，不该累积成重罚。
+ */
+function discipline_user_count(int $uid): int
+{
+    if ($uid <= 0 || !table_exists('discipline_reports')) { return 0; }
+    return (int)db_val('SELECT COUNT(*) FROM discipline_reports WHERE user_id = ? AND ban_days >= ?',
+                       array($uid, DISC_MIN_DAYS_FOR_COUNT));
+}
+
+/** 该用户全部通报数（含短期） */
+function discipline_user_count_all(int $uid): int
+{
+    if ($uid <= 0 || !table_exists('discipline_reports')) { return 0; }
+    return (int)db_val('SELECT COUNT(*) FROM discipline_reports WHERE user_id = ?', array($uid));
+}
+
+/**
+ * 永久删除账号及其全部数据。
+ * 与「通报」不同：这是不可恢复的终局处理，只在该用户累计达到阈值时自动触发。
+ * 通报记录保留（作为违规历史），用户行与个人数据一并清除。
+ */
+function discipline_account_purge(int $uid): bool
+{
+    if ($uid <= 0) { return false; }
+    $u = db_one('SELECT id, username, role FROM users WHERE id = ? LIMIT 1', array($uid));
+    if ($u === null) { return false; }
+    /* 管理员与副管理员绝不在此处置范围内 */
+    if ((string)$u['role'] !== 'user') { return false; }
+
+    try {
+        db_exec('DELETE FROM user_visits WHERE user_id = ?', array($uid));
+        db_exec('DELETE FROM comments WHERE user_id = ?', array($uid));
+        db_exec('DELETE FROM comment_votes WHERE user_id = ?', array($uid));
+        db_exec('DELETE FROM work_votes WHERE user_id = ?', array($uid));
+        db_exec('DELETE FROM messages WHERE user_id = ?', array($uid));
+        db_exec('DELETE FROM ai_messages WHERE user_id = ?', array($uid));
+        db_exec('DELETE FROM feedback WHERE user_id = ?', array($uid));
+        db_exec('DELETE FROM users WHERE id = ?', array($uid));
+        app_log('discipline: user #' . $uid . ' permanently deleted (reached ' . DISC_PURGE_THRESHOLD . ' reports)');
+        return true;
+    } catch (Throwable $e) {
+        app_log('discipline account purge failed #' . $uid . ': ' . $e->getMessage());
+        return false;
+    }
+}
+
+/** 累计达阈值就永久删号；返回是否已删除 */
+function discipline_maybe_purge_account(int $uid): bool
+{
+    if (discipline_user_count($uid) < DISC_PURGE_THRESHOLD) { return false; }
+    return discipline_account_purge($uid);
+}
+
+/**
+ * 通报二次设置。$patch 支持：
+ *   reasons（字符串数组）、note、ban_days（0=永久）、unban（true 立即解封）、ip_banned（bool）
+ * 返回更新后的通报行。
+ */
+function discipline_update(int $id, array $patch)
+{
+    $row = discipline_get($id);
+    if ($row === null) { throw new InvalidArgumentException('通报不存在'); }
+    $uid = (int)$row['user_id'];
+
+    $set = array(); $args = array();
+
+    if (array_key_exists('reasons', $patch)) {
+        $rs = is_array($patch['reasons']) ? $patch['reasons'] : array();
+        $rs = array_slice(array_values(array_filter(array_map(function ($r) { return trim((string)$r); }, $rs))), 0, 20);
+        if (!$rs) { throw new InvalidArgumentException('请至少保留一条理由'); }
+        $set[] = 'reasons = ?'; $args[] = json_encode($rs, JSON_UNESCAPED_UNICODE);
+    }
+    if (array_key_exists('note', $patch)) {
+        $set[] = 'note = ?';
+        $args[] = mb_substr(trim((string)$patch['note']), 0, 500, 'UTF-8');
+    }
+
+    $unban    = !empty($patch['unban']);
+    $banDays  = array_key_exists('ban_days', $patch) ? max(0, min(36500, (int)$patch['ban_days'])) : null;
+
+    if ($unban) {
+        $set[] = 'banned = 0'; $set[] = 'ban_days = 0'; $set[] = 'ban_until = NULL';
+        db_exec('UPDATE users SET is_banned = 0, ban_until = NULL WHERE id = ?', array($uid));
+    } elseif ($banDays !== null) {
+        $until = $banDays > 0 ? gmdate('Y-m-d H:i:s', time() + $banDays * 86400) : null;
+        $set[] = 'banned = 1'; $set[] = 'ban_days = ?'; $set[] = 'ban_until = ?';
+        $args[] = $banDays; $args[] = $until;
+        db_exec('UPDATE users SET is_banned = 1, ban_until = ? WHERE id = ?', array($until, $uid));
+    }
+
+    if (array_key_exists('ip_banned', $patch)) {
+        $on = !empty($patch['ip_banned']);
+        $set[] = 'ip_banned = ?'; $args[] = $on ? 1 : 0;
+        if (!$on) { db_exec('DELETE FROM banned_ips WHERE report_id = ?', array($id)); }
+    }
+
+    if ($set) {
+        $args[] = $id;
+        db_exec('UPDATE discipline_reports SET ' . implode(', ', $set) . ' WHERE id = ?', $args);
+        app_log('discipline: report #' . $id . ' updated');
+    }
+    return discipline_get($id);
 }
 
 /** 撤销：删记录并解除账号封停与 IP 黑名单 */

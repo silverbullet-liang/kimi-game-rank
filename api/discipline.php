@@ -38,6 +38,9 @@ switch ($action) {
             'note'      => (string)($row['note'] ?? ''),
             'banned'    => (int)$row['banned'] === 1,
             'ip_banned' => (int)$row['ip_banned'] === 1,
+            'ban_days'  => (int)$row['ban_days'],
+            'ban_until' => $row['ban_until'] === null ? '' : to_local((string)$row['ban_until']),
+            'user_count' => discipline_user_count((int)$row['user_id']),
             'views'     => (int)$row['views'],
             'created'   => to_local((string)$row['created_at']),
         ));

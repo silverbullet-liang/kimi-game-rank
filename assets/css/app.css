@@ -1182,3 +1182,13 @@ html[data-skin="sketch"]::view-transition-group(hero) { animation-duration: .4s;
 .disc-opt.on { color: var(--accent); font-weight: 600;
   border-color: color-mix(in srgb, var(--accent) 55%, transparent);
   background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+/* 违纪通报 · 键值表（封禁信息） */
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: 13px; }
+.kv dt { color: var(--text-2, var(--muted)); white-space: nowrap; }
+.kv dd { margin: 0; }
+
+/* 被通报用户的标记：比身份徽章更醒目，用于提醒其他读者 */
+.badge-violation { color: var(--danger); font-weight: 600;
+  border: 1px solid color-mix(in srgb, var(--danger) 42%, transparent);
+  background: color-mix(in srgb, var(--danger) 10%, transparent); }

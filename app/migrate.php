@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 17);
+define('SCHEMA_VERSION', 18);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -93,7 +93,7 @@ function ensure_schema(bool $force = false)
             'is_deleted'   => 'TINYINT(1) NOT NULL DEFAULT 0',
             'deleted_by'   => 'TINYINT(1) NOT NULL DEFAULT 0',
             'is_blocked'   => 'TINYINT(1) NOT NULL DEFAULT 0',
-            'target_type'  => "ENUM('work','discipline') NOT NULL DEFAULT 'work'",
+            'target_type'  => "ENUM('work','discipline','discipline_list') NOT NULL DEFAULT 'work'",
         ),
         'feedback' => array(
             'content_norm' => "CHAR(64) NULL COMMENT '内容规整指纹'",
@@ -765,6 +765,24 @@ function run_migrations(bool $force = false)
             app_log('schema migrated to v17（违纪通报）');
         } catch (Throwable $e) {
             app_log('migrate v17 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v18：违纪通报的累计与列表评论区 ----------
+       通报列表需要一处统一的评论区（挂在「违纪通报」这个目录上），
+       因此把 target_type 扩展出 discipline_list。 */
+    if ($cur < 18) {
+        try {
+            if (table_exists('comments') && column_exists('comments', 'target_type')) {
+                db_exec("ALTER TABLE `comments` MODIFY COLUMN `target_type`
+                         ENUM('work','discipline','discipline_list') NOT NULL DEFAULT 'work'
+                         COMMENT '评论目标类型：work 作品 discipline 单条通报 discipline_list 通报列表'");
+                table_columns('comments', true);
+            }
+            setting_set('schema_version', '18');
+            app_log('schema migrated to v18（违纪通报列表评论区）');
+        } catch (Throwable $e) {
+            app_log('migrate v18 failed: ' . $e->getMessage());
         }
     }
 

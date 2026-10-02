@@ -314,9 +314,13 @@ function badge(role) {
     + shield + mark + '</svg>' + r.label + '</span>';
 }
 
-/** 用户名 + 徽章（统一入口，role 由后端下发） */
-function userName(name, role) {
-  return '<span class="uname">' + esc(name) + '</span>' + badge(role);
+/** 用户名 + 徽章（统一入口，role 与通报次数由后端下发） */
+function userName(name, role, reports) {
+  const n = Number(reports || 0);
+  const tag = n > 0
+    ? '<span class="badge badge-violation" title="累计被通报 ' + n + ' 次">被通报 ' + n + ' 次</span>'
+    : '';
+  return '<span class="uname">' + esc(name) + '</span>' + badge(role) + tag;
 }
 
 /* ============================================================
@@ -1552,7 +1556,7 @@ function commentNode(c, workId, reload, ttype) {
     <span class="av"><img src="${esc(c.avatar)}" alt="" draggable="false"></span>
     <span class="body">
       <span class="head">
-        ${userName(c.username, c.role)}
+        ${userName(c.username, c.role, c.reports)}
         <span class="tiny">${esc(c.time)}</span>
       </span>
       <span class="text">${c.reply_to ? `<span class="reply-to">@${esc(c.reply_to)}</span> ` : ''}${folded
@@ -3242,6 +3246,7 @@ async function renderPanel(container) {
     bindReclassify(container);
     bindDb(container);
     bindBackup(container);
+    loadDisc(container);
     bindAiRank(container);
     startPanelPolling(container);
   } else {
@@ -3331,6 +3336,8 @@ function adminLayout() {
       <div id="userList"><div class="skeleton" style="height:80px"></div></div>
       <div class="pager" id="userPager"></div>
     </div>
+
+    ${discBlock()}
 
     ${commentBinBlock()}
     ${visitsBlock()}
@@ -4613,6 +4620,164 @@ async function loadVisitsTop(container) {
 }
 
 /* ============================================================
+ * 违纪通报管理
+ * ============================================================
+ * 列出全部通报，可「设置」二次调整：理由、说明、封禁天数（重算解封时间）、
+ * 立即解封、IP 封禁开关。累计被通报（单次封禁 ≥7 天）达 10 次的账号会被永久删除。
+ */
+function discBlock() {
+  return `
+    <div class="panel-plain">
+      <h3>违纪通报</h3>
+      <p class="tiny muted">
+        被通报过的用户都在这里。可以随时「设置」调整理由、封禁天数或直接解封。
+        累计被通报 <b>10 次</b>（单次封禁 ≥ 7 天才计入）的账号会被<b>永久删除</b>。
+      </p>
+      <div class="prow"><button class="btn btn-sm" id="discRefresh">刷新列表</button></div>
+      <div id="discListBox" style="margin-top:12px"><div class="skeleton" style="height:80px"></div></div>
+    </div>`;
+}
+
+async function discEditDialog(row) {
+  let preset = [];
+  try { preset = ((await api('admin.php', 'disc_reasons', {}, { silent: true })).items) || []; } catch (e) { }
+  const cur = row.reasons || [];
+  const opts = [];
+  preset.concat(cur).forEach(r => { if (r && opts.indexOf(r) < 0) { opts.push(r); } });
+
+  return new Promise(resolve => {
+    const scrim = document.getElementById('dialogScrim');
+    const box = document.getElementById('dialog');
+    box.className = 'dialog glass';
+    const banState = row.banned ? (row.ban_until ? '封停至 ' + esc(row.ban_until) : '永久封停') : '未封停';
+
+    box.innerHTML = `
+      <h3>设置通报 · ${esc(row.username)}</h3>
+      <p class="tiny muted">累计 ${Number(row.user_count || 0)} 次 · 当前 ${banState}</p>
+
+      <div class="field">
+        <div class="tiny muted" style="margin-bottom:6px">通报理由（可多选）</div>
+        <div class="disc-pick" id="edPick">
+          ${opts.map(r => `<button type="button" class="disc-opt${cur.indexOf(r) >= 0 ? ' on' : ''}" data-r="${esc(r)}">${esc(r)}</button>`).join('')}
+        </div>
+        <input class="input" id="edCustom" type="text" maxlength="60" autocomplete="off"
+               placeholder="补充一条理由（可留空）" style="margin-top:8px">
+      </div>
+
+      <div class="field">
+        <textarea class="input" id="edNote" maxlength="500" placeholder="补充说明（可留空）">${esc(row.note || '')}</textarea>
+      </div>
+
+      <div class="field">
+        <div class="tiny muted" style="margin-bottom:6px">封禁时长（改动会重新计算解封时间）</div>
+        <div class="seg" id="edDays">
+          <button type="button" data-d="1">1 天</button>
+          <button type="button" data-d="7">7 天</button>
+          <button type="button" data-d="30">30 天</button>
+          <button type="button" data-d="0">永久</button>
+          <button type="button" data-d="-1" class="on">不改动</button>
+        </div>
+        <input class="input" id="edDaysCustom" type="text" inputmode="numeric" autocomplete="off"
+               placeholder="或直接填天数（留空则按上面的选择）" style="margin-top:8px">
+      </div>
+
+      <div class="disc-pick">
+        <button type="button" class="disc-opt${row.ip_banned ? ' on' : ''}" id="edIp">封禁访问 IP</button>
+        <button type="button" class="disc-opt" id="edUnban">立即解封账号</button>
+      </div>
+
+      <div class="dialog-actions">
+        <button class="btn-ghost" data-r="0">取消</button>
+        <button class="btn" data-r="1">保存</button>
+      </div>`;
+
+    scrim.hidden = false;
+    box.querySelectorAll('#edPick .disc-opt').forEach(b => b.addEventListener('click', () => b.classList.toggle('on')));
+    const ipB = box.querySelector('#edIp');
+    const unB = box.querySelector('#edUnban');
+    ipB.addEventListener('click', () => ipB.classList.toggle('on'));
+    unB.addEventListener('click', () => {
+      const on = !unB.classList.contains('on');
+      unB.classList.toggle('on', on);
+      if (on) { box.querySelector('#edDays').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.d === '-1')); }
+    });
+    const seg = box.querySelector('#edDays');
+    seg.addEventListener('click', e => {
+      const b = e.target.closest('[data-d]');
+      if (!b) { return; }
+      seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      if (b.dataset.d !== '-1') { unB.classList.remove('on'); }
+    });
+
+    const close = v => { scrim.hidden = true; box.innerHTML = ''; resolve(v); };
+    box.querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => {
+      if (b.dataset.r === '0') { close(null); return; }
+      const picked = [];
+      box.querySelectorAll('#edPick .disc-opt.on').forEach(x => picked.push(x.dataset.r));
+      const custom = String(box.querySelector('#edCustom').value || '').trim();
+      if (custom) { picked.push(custom); }
+      if (!picked.length) { toast('请至少保留一条理由', 'err'); return; }
+
+      const patch = {
+        id: row.id,
+        set_reasons: '1', reasons: JSON.stringify(picked),
+        set_note: '1', note: String(box.querySelector('#edNote').value || '').trim(),
+        set_ip: '1', ip_banned: ipB.classList.contains('on') ? 1 : 0,
+      };
+      if (unB.classList.contains('on')) {
+        patch.set_unban = '1'; patch.unban = 1;
+      } else {
+        const typed = parseInt(String(box.querySelector('#edDaysCustom').value || '').trim(), 10);
+        const cur2 = seg.querySelector('button.on');
+        const d = Number.isFinite(typed) && typed >= 0 ? typed : Number(cur2 ? cur2.dataset.d : -1);
+        if (d >= 0) { patch.set_days = '1'; patch.ban_days = d; }
+      }
+      close(patch);
+    }));
+    scrim.onclick = e => { if (e.target === scrim) close(null); };
+  });
+}
+
+async function loadDisc(container) {
+  const box = container.querySelector('#discListBox');
+  if (!box) { return; }
+  try {
+    const d = await api('admin.php', 'disc_list', { page: 1 });
+    const items = d.items || [];
+    if (!items.length) { box.innerHTML = '<div class="tiny muted">还没有通报记录。</div>'; return; }
+
+    box.innerHTML = '<table class="table"><thead><tr><th>用户</th><th>理由</th><th>处理</th><th>累计</th><th>时间</th><th>操作</th></tr></thead><tbody>'
+      + items.map(it => `<tr data-rid="${it.id}">
+        <td>${userName(it.username, 'user', it.user_count)}${it.user_alive ? '' : ' <span class="tiny muted">（账号已删）</span>'}</td>
+        <td class="tiny">${esc((it.reasons || []).join('；'))}</td>
+        <td class="tiny">${it.banned ? (it.ban_until ? '至 ' + esc(it.ban_until) : '永久') : '未封停'}${it.ip_banned ? ' · IP' : ''}</td>
+        <td class="tiny">${Number(it.user_count || 0)} 次</td>
+        <td class="tiny">${esc(it.created)}</td>
+        <td><button class="btn-ghost btn-sm" data-act="edit">设置</button>
+            <button class="btn-ghost btn-sm" data-act="revoke">撤销</button></td></tr>`).join('')
+      + '</tbody></table>';
+
+    box.querySelectorAll('tr[data-rid]').forEach(tr => {
+      const row = items.filter(x => String(x.id) === tr.dataset.rid)[0];
+      if (!row) { return; }
+      tr.querySelector('[data-act="edit"]').addEventListener('click', async () => {
+        const patch = await discEditDialog(row);
+        if (!patch) { return; }
+        try { await api('admin.php', 'disc_update', patch); toast('已更新该通报'); loadDisc(container); }
+        catch (e) { toast(e.message, 'err'); }
+      });
+      tr.querySelector('[data-act="revoke"]').addEventListener('click', async () => {
+        if (!(await dialog('撤销通报', '将删除该通报并解除其账号与 IP 封禁，确认？', '撤销', { danger: true }))) { return; }
+        try { await api('admin.php', 'disc_delete', { id: row.id }); toast('已撤销'); loadDisc(container); }
+        catch (e) { toast(e.message, 'err'); }
+      });
+    });
+  } catch (e) {
+    box.innerHTML = '<div class="tiny">加载失败：' + esc(e.message) + '</div>';
+  }
+}
+
+/* ============================================================
  * 违纪通报（一键封禁）
  * ============================================================
  * 表单全自绘：理由多选、补充理由、说明、封禁时长（可永久）、封 IP、清理内容。
@@ -4762,7 +4927,7 @@ async function loadUsers(container, q, readOnly, page) {
     box.innerHTML = `<div class="tiny" style="margin-bottom:6px">可按用户名或 8 位 UID 搜索${readOnly ? ' · 只读' : ' · 点「通报」可写理由并封禁账号与 IP'}</div>
       <table class="table"><thead><tr><th>用户名</th><th>UID</th><th>注册</th><th>最近登录</th>${showIp ? '<th>最近 IP / 归属地</th>' : ''}<th>AI 用量</th>${opsHead}</tr></thead><tbody>` +
       d.items.map(u => `<tr data-id="${u.id}" data-name="${esc(u.username)}">
-        <td>${userName(u.username, u.role)}</td>
+        <td>${userName(u.username, u.role, u.reports)}</td>
         <td class="uid-cell">${esc(u.uid8 || '—')}</td>
         <td>${esc(u.created)}</td>
         <td>${esc(u.last_login)}</td>
@@ -5169,6 +5334,165 @@ function promptText() {
     box.querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => close(b.dataset.r === '1' ? ta.value.trim() : null)));
     scrim.onclick = e => { if (e.target === scrim) close(null); };
   });
+}
+
+/* ========== pages/violation.js ========== */
+/**
+ * 违纪通报页面
+ * ------------------------------------------------------------
+ * 两个入口共用一套渲染：
+ *   · renderViolation —— 被通报者访问站点时被 302 到这里（?violation=<id>），
+ *     顶部给出说明，下方逐条列出理由，再往下是评论区；
+ *   · renderDiscipline —— 公开的通报列表与单条详情（#/discipline[/id]）。
+ */
+
+
+
+
+function reasonList(reasons) {
+  if (!reasons || !reasons.length) { return '<p class="tiny muted">（未填写理由）</p>'; }
+  return '<ol class="disc-reasons">' + reasons.map(r => '<li>' + esc(r) + '</li>').join('') + '</ol>';
+}
+
+function banText(row) {
+  if (!row.banned) { return '未封停账号'; }
+  if (!row.ban_until) { return '账号已封停 · 永久'; }
+  return '账号已封停 · 至 ' + esc(row.ban_until);
+}
+
+/** 被封禁时给本人的一张说明卡：封禁原因 / 天数 / 解封时间，一眼看全 */
+function banCard(row) {
+  const days = Number(row.ban_days || 0);
+  const until = row.ban_until || '';
+  return `
+    <div class="card" style="margin-top:12px">
+      <h3 style="margin-top:0">封禁信息</h3>
+      <dl class="kv">
+        <dt>封禁原因</dt><dd>${reasonListInline(row.reasons)}</dd>
+        <dt>封禁天数</dt><dd>${days > 0 ? days + ' 天' : '永久'}</dd>
+        <dt>解封时间</dt><dd>${until ? esc(until) : '不会自动解封（永久）'}</dd>
+        ${row.ip_banned ? '<dt>来源地址</dt><dd>已一并封禁</dd>' : ''}
+        ${Number(row.user_count || 0) > 0 ? '<dt>累计通报</dt><dd>' + Number(row.user_count) + ' 次</dd>' : ''}
+      </dl>
+    </div>`;
+}
+
+function reasonListInline(reasons) {
+  if (!reasons || !reasons.length) { return '未填写'; }
+  return esc(reasons.join('；'));
+}
+
+/** 违纪界面 / 通报详情：$mine 为真时是「你被通报了」的口吻 */
+async function paintDetail(container, id, mine) {
+  const d = await api('discipline.php', 'get', { id: id }, { silent: true });
+  const wrap = document.createElement('div');
+
+  wrap.innerHTML = `
+    <div class="violation-hero">
+      <p class="vh-tag">${mine ? '你的访问已被限制' : '公开通报'}</p>
+      <h2>违纪通报</h2>
+      <p class="tiny">因下列原因，本站已对相关账号与来源地址作出处理。</p>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <div class="row" style="align-items:center;gap:10px">
+        <img class="avatar" src="${esc(d.avatar)}" width="40" height="40" draggable="false" alt="">
+        <div style="flex:1">
+          <div><b>${esc(d.username || '（未知用户）')}</b></div>
+          <div class="tiny muted">通报于 ${esc(d.created)} · 浏览 ${Number(d.views || 0)}</div>
+        </div>
+      </div>
+    </div>
+
+    ${mine ? banCard(d) : ''}
+
+    <div class="card" style="margin-top:12px">
+      <h3 style="margin-top:0">通报理由</h3>
+      ${reasonList(d.reasons)}
+      ${d.note ? '<p class="tiny" style="margin-top:10px">补充说明：' + esc(d.note) + '</p>' : ''}
+      ${mine ? '' : '<p class="tiny muted" style="margin-top:10px">' + esc(banText(d)) + (d.ip_banned ? ' · 来源地址已封禁' : '') + '</p>'}
+    </div>
+
+    ${mine ? '' : '<p class="tiny muted" style="margin-top:12px">相关讨论在「违纪通报」列表页下方。</p>'}
+    ${mine ? '' : '<div class="card" style="margin-top:12px"><h3 style="margin-top:0">评论 <span class="tiny muted" id="cmtTotal">0</span></h3><div id="cmtForm"></div><div id="cmtList" style="margin-top:12px"></div></div>'}
+    `;
+
+  container.appendChild(wrap);
+
+  /* 被通报者看的是自己的处理结果，不参与讨论 —— 评论区对他不可见（服务端同样拦）。 */
+  if (mine) { return; }
+
+  const cmt = wrap.querySelector('#cmtForm');
+  if (cmt) {
+    try {
+      await renderComments(cmt.parentNode, d.id, 'discipline');
+    } catch (e) {
+      const box = wrap.querySelector('#cmtList');
+      if (box) { box.innerHTML = '<div class="empty tiny">评论加载失败</div>'; }
+    }
+  }
+}
+
+/** 被通报者被拦下后进入的界面：默认取 302 带来的 id */
+async function renderViolation(container, ctx) {
+  const params = (ctx && ctx.params) || {};
+  const id = Number((ctx && ctx.sub) || params.violation || params.id || 0);
+  if (id <= 0) {
+    container.innerHTML = '<div class="empty"><p>没有可显示的通报</p></div>';
+    return;
+  }
+  await paintDetail(container, id, true);
+}
+
+/** 公开的通报列表；带 id 参数时直接看单条 */
+async function renderDiscipline(container, ctx) {
+  const sub = String((ctx && ctx.sub) || '');
+  if (/^\d+$/.test(sub)) { await paintDetail(container, Number(sub), false); return; }
+
+  const box = document.createElement('div');
+  box.innerHTML = '<h2 style="margin:0 0 4px">违纪通报</h2>'
+    + '<p class="tiny muted" style="margin:0 0 14px">这里记录本站对违规账号的处理，每一条都可以评论。</p>'
+    + '<div id="discList"><div class="skeleton" style="height:64px"></div><div class="skeleton"></div></div>';
+  container.appendChild(box);
+
+  const list = box.querySelector('#discList');
+  try {
+    const d = await api('discipline.php', 'list', { page: 1 }, { silent: true });
+    const items = d.items || [];
+    if (!items.length) { list.innerHTML = '<div class="empty">还没有通报记录</div>'; return; }
+    list.innerHTML = '';
+    items.forEach(it => {
+      const el = document.createElement('div');
+      el.className = 'card disc-item';
+      el.innerHTML = `
+        <div class="row" style="align-items:center;gap:10px">
+          <img class="avatar" src="${esc(it.avatar)}" width="36" height="36" draggable="false" alt="">
+          <div style="flex:1;min-width:0">
+            <div><b>${esc(it.username || '（未知用户）')}</b>${it.banned ? ' <span class="tiny muted">· 已封停</span>' : ''}</div>
+            <div class="tiny muted">${esc(it.created)} · 评论 ${Number(it.comments || 0)}</div>
+          </div>
+        </div>
+        ${reasonList(it.reasons.slice(0, 3))}`;
+      el.addEventListener('click', () => navigate('#/discipline/' + it.id));
+      list.appendChild(el);
+    });
+
+    /* 目录级评论区：挂在「违纪通报」列表上，全站一处 */
+    const cmt = document.createElement('div');
+    cmt.className = 'card';
+    cmt.style.marginTop = '16px';
+    cmt.innerHTML = '<h3 style="margin-top:0">讨论 <span class="tiny muted" id="cmtTotal">0</span></h3>'
+      + '<div id="cmtForm"></div><div id="cmtList" style="margin-top:12px"></div>';
+    box.appendChild(cmt);
+    try {
+      await renderComments(cmt, 0, 'discipline_list');
+    } catch (e) {
+      const c = cmt.querySelector('#cmtList');
+      if (c) { c.innerHTML = '<div class="empty tiny">评论加载失败</div>'; }
+    }
+  } catch (e) {
+    list.innerHTML = '<div class="empty"><p>' + esc(e.message) + '</p></div>';
+  }
 }
 
 /* ========== app.js ========== */

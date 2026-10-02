@@ -47,6 +47,7 @@ export async function renderPanel(container) {
     bindReclassify(container);
     bindDb(container);
     bindBackup(container);
+    loadDisc(container);
     bindAiRank(container);
     startPanelPolling(container);
   } else {
@@ -136,6 +137,8 @@ function adminLayout() {
       <div id="userList"><div class="skeleton" style="height:80px"></div></div>
       <div class="pager" id="userPager"></div>
     </div>
+
+    ${discBlock()}
 
     ${commentBinBlock()}
     ${visitsBlock()}
@@ -1418,6 +1421,164 @@ async function loadVisitsTop(container) {
 }
 
 /* ============================================================
+ * 违纪通报管理
+ * ============================================================
+ * 列出全部通报，可「设置」二次调整：理由、说明、封禁天数（重算解封时间）、
+ * 立即解封、IP 封禁开关。累计被通报（单次封禁 ≥7 天）达 10 次的账号会被永久删除。
+ */
+function discBlock() {
+  return `
+    <div class="panel-plain">
+      <h3>违纪通报</h3>
+      <p class="tiny muted">
+        被通报过的用户都在这里。可以随时「设置」调整理由、封禁天数或直接解封。
+        累计被通报 <b>10 次</b>（单次封禁 ≥ 7 天才计入）的账号会被<b>永久删除</b>。
+      </p>
+      <div class="prow"><button class="btn btn-sm" id="discRefresh">刷新列表</button></div>
+      <div id="discListBox" style="margin-top:12px"><div class="skeleton" style="height:80px"></div></div>
+    </div>`;
+}
+
+async function discEditDialog(row) {
+  let preset = [];
+  try { preset = ((await api('admin.php', 'disc_reasons', {}, { silent: true })).items) || []; } catch (e) { }
+  const cur = row.reasons || [];
+  const opts = [];
+  preset.concat(cur).forEach(r => { if (r && opts.indexOf(r) < 0) { opts.push(r); } });
+
+  return new Promise(resolve => {
+    const scrim = document.getElementById('dialogScrim');
+    const box = document.getElementById('dialog');
+    box.className = 'dialog glass';
+    const banState = row.banned ? (row.ban_until ? '封停至 ' + esc(row.ban_until) : '永久封停') : '未封停';
+
+    box.innerHTML = `
+      <h3>设置通报 · ${esc(row.username)}</h3>
+      <p class="tiny muted">累计 ${Number(row.user_count || 0)} 次 · 当前 ${banState}</p>
+
+      <div class="field">
+        <div class="tiny muted" style="margin-bottom:6px">通报理由（可多选）</div>
+        <div class="disc-pick" id="edPick">
+          ${opts.map(r => `<button type="button" class="disc-opt${cur.indexOf(r) >= 0 ? ' on' : ''}" data-r="${esc(r)}">${esc(r)}</button>`).join('')}
+        </div>
+        <input class="input" id="edCustom" type="text" maxlength="60" autocomplete="off"
+               placeholder="补充一条理由（可留空）" style="margin-top:8px">
+      </div>
+
+      <div class="field">
+        <textarea class="input" id="edNote" maxlength="500" placeholder="补充说明（可留空）">${esc(row.note || '')}</textarea>
+      </div>
+
+      <div class="field">
+        <div class="tiny muted" style="margin-bottom:6px">封禁时长（改动会重新计算解封时间）</div>
+        <div class="seg" id="edDays">
+          <button type="button" data-d="1">1 天</button>
+          <button type="button" data-d="7">7 天</button>
+          <button type="button" data-d="30">30 天</button>
+          <button type="button" data-d="0">永久</button>
+          <button type="button" data-d="-1" class="on">不改动</button>
+        </div>
+        <input class="input" id="edDaysCustom" type="text" inputmode="numeric" autocomplete="off"
+               placeholder="或直接填天数（留空则按上面的选择）" style="margin-top:8px">
+      </div>
+
+      <div class="disc-pick">
+        <button type="button" class="disc-opt${row.ip_banned ? ' on' : ''}" id="edIp">封禁访问 IP</button>
+        <button type="button" class="disc-opt" id="edUnban">立即解封账号</button>
+      </div>
+
+      <div class="dialog-actions">
+        <button class="btn-ghost" data-r="0">取消</button>
+        <button class="btn" data-r="1">保存</button>
+      </div>`;
+
+    scrim.hidden = false;
+    box.querySelectorAll('#edPick .disc-opt').forEach(b => b.addEventListener('click', () => b.classList.toggle('on')));
+    const ipB = box.querySelector('#edIp');
+    const unB = box.querySelector('#edUnban');
+    ipB.addEventListener('click', () => ipB.classList.toggle('on'));
+    unB.addEventListener('click', () => {
+      const on = !unB.classList.contains('on');
+      unB.classList.toggle('on', on);
+      if (on) { box.querySelector('#edDays').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.d === '-1')); }
+    });
+    const seg = box.querySelector('#edDays');
+    seg.addEventListener('click', e => {
+      const b = e.target.closest('[data-d]');
+      if (!b) { return; }
+      seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      if (b.dataset.d !== '-1') { unB.classList.remove('on'); }
+    });
+
+    const close = v => { scrim.hidden = true; box.innerHTML = ''; resolve(v); };
+    box.querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => {
+      if (b.dataset.r === '0') { close(null); return; }
+      const picked = [];
+      box.querySelectorAll('#edPick .disc-opt.on').forEach(x => picked.push(x.dataset.r));
+      const custom = String(box.querySelector('#edCustom').value || '').trim();
+      if (custom) { picked.push(custom); }
+      if (!picked.length) { toast('请至少保留一条理由', 'err'); return; }
+
+      const patch = {
+        id: row.id,
+        set_reasons: '1', reasons: JSON.stringify(picked),
+        set_note: '1', note: String(box.querySelector('#edNote').value || '').trim(),
+        set_ip: '1', ip_banned: ipB.classList.contains('on') ? 1 : 0,
+      };
+      if (unB.classList.contains('on')) {
+        patch.set_unban = '1'; patch.unban = 1;
+      } else {
+        const typed = parseInt(String(box.querySelector('#edDaysCustom').value || '').trim(), 10);
+        const cur2 = seg.querySelector('button.on');
+        const d = Number.isFinite(typed) && typed >= 0 ? typed : Number(cur2 ? cur2.dataset.d : -1);
+        if (d >= 0) { patch.set_days = '1'; patch.ban_days = d; }
+      }
+      close(patch);
+    }));
+    scrim.onclick = e => { if (e.target === scrim) close(null); };
+  });
+}
+
+async function loadDisc(container) {
+  const box = container.querySelector('#discListBox');
+  if (!box) { return; }
+  try {
+    const d = await api('admin.php', 'disc_list', { page: 1 });
+    const items = d.items || [];
+    if (!items.length) { box.innerHTML = '<div class="tiny muted">还没有通报记录。</div>'; return; }
+
+    box.innerHTML = '<table class="table"><thead><tr><th>用户</th><th>理由</th><th>处理</th><th>累计</th><th>时间</th><th>操作</th></tr></thead><tbody>'
+      + items.map(it => `<tr data-rid="${it.id}">
+        <td>${userName(it.username, 'user', it.user_count)}${it.user_alive ? '' : ' <span class="tiny muted">（账号已删）</span>'}</td>
+        <td class="tiny">${esc((it.reasons || []).join('；'))}</td>
+        <td class="tiny">${it.banned ? (it.ban_until ? '至 ' + esc(it.ban_until) : '永久') : '未封停'}${it.ip_banned ? ' · IP' : ''}</td>
+        <td class="tiny">${Number(it.user_count || 0)} 次</td>
+        <td class="tiny">${esc(it.created)}</td>
+        <td><button class="btn-ghost btn-sm" data-act="edit">设置</button>
+            <button class="btn-ghost btn-sm" data-act="revoke">撤销</button></td></tr>`).join('')
+      + '</tbody></table>';
+
+    box.querySelectorAll('tr[data-rid]').forEach(tr => {
+      const row = items.filter(x => String(x.id) === tr.dataset.rid)[0];
+      if (!row) { return; }
+      tr.querySelector('[data-act="edit"]').addEventListener('click', async () => {
+        const patch = await discEditDialog(row);
+        if (!patch) { return; }
+        try { await api('admin.php', 'disc_update', patch); toast('已更新该通报'); loadDisc(container); }
+        catch (e) { toast(e.message, 'err'); }
+      });
+      tr.querySelector('[data-act="revoke"]').addEventListener('click', async () => {
+        if (!(await dialog('撤销通报', '将删除该通报并解除其账号与 IP 封禁，确认？', '撤销', { danger: true }))) { return; }
+        try { await api('admin.php', 'disc_delete', { id: row.id }); toast('已撤销'); loadDisc(container); }
+        catch (e) { toast(e.message, 'err'); }
+      });
+    });
+  } catch (e) {
+    box.innerHTML = '<div class="tiny">加载失败：' + esc(e.message) + '</div>';
+  }
+}
+
+/* ============================================================
  * 违纪通报（一键封禁）
  * ============================================================
  * 表单全自绘：理由多选、补充理由、说明、封禁时长（可永久）、封 IP、清理内容。
@@ -1567,7 +1728,7 @@ async function loadUsers(container, q, readOnly, page) {
     box.innerHTML = `<div class="tiny" style="margin-bottom:6px">可按用户名或 8 位 UID 搜索${readOnly ? ' · 只读' : ' · 点「通报」可写理由并封禁账号与 IP'}</div>
       <table class="table"><thead><tr><th>用户名</th><th>UID</th><th>注册</th><th>最近登录</th>${showIp ? '<th>最近 IP / 归属地</th>' : ''}<th>AI 用量</th>${opsHead}</tr></thead><tbody>` +
       d.items.map(u => `<tr data-id="${u.id}" data-name="${esc(u.username)}">
-        <td>${userName(u.username, u.role)}</td>
+        <td>${userName(u.username, u.role, u.reports)}</td>
         <td class="uid-cell">${esc(u.uid8 || '—')}</td>
         <td>${esc(u.created)}</td>
         <td>${esc(u.last_login)}</td>
