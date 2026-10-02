@@ -1519,7 +1519,9 @@ function openLightbox(images, index) {
  * 评论区
  * ============================================================ */
 async function renderComments(container, workId, targetType) {
-  const ttype = targetType === 'discipline' ? 'discipline' : 'work';
+  /* 目标类型三选一，与后端 comment_target_type() 的白名单一致。
+     切勿把 discipline_list 降级成 work：列表区固定在 work_id=0，降级后必被后端判为参数错误。 */
+  const ttype = ['discipline', 'discipline_list'].indexOf(targetType) >= 0 ? targetType : 'work';
   const form = container.querySelector('#cmtForm');
   const listBox = container.querySelector('#cmtList');
 
