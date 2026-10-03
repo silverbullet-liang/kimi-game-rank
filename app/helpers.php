@@ -231,34 +231,6 @@ function mask_ip(string $ip): string
 
 function ip_hash(string $ip): string { return hash('sha256', $ip); }
 
-/* ============================================================
- * 出站请求
- * ------------------------------------------------------------
- * 站点若部署在共享主机，对外的源地址由主机决定，可能因为同主机其他站点的
- * 行为被第三方限流 —— 而这类限制按地址计算，你无从申辩。
- * 此时可在 security.outbound_proxy 填一个**你自己控制的**出口，
- * 形如 http://host:port 或 socks5h://host:port，外部请求就从那里发出。
- * 留空即直连，这是默认值，也是绝大多数情形该用的值。
- * 只接受单个固定出口 —— 换出口只是把受限范围扩大，不解决问题。
- * ============================================================ */
-function net_outbound_proxy(): string
-{
-    return trim((string)cfg('security.outbound_proxy', ''));
-}
-
-/** 建一个已套用出口配置的 curl 句柄 */
-function net_curl_init(string $url)
-{
-    $ch = curl_init($url);
-    $proxy = net_outbound_proxy();
-    if ($proxy !== '') {
-        curl_setopt($ch, CURLOPT_PROXY, $proxy);
-        curl_setopt($ch, CURLOPT_PROXYTYPE,
-            stripos($proxy, 'socks') === 0 ? CURLPROXY_SOCKS5_HOSTNAME : CURLPROXY_HTTP);
-    }
-    return $ch;
-}
-
 /**
  * 通道是否处于冷却中。
  * ------------------------------------------------------------

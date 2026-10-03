@@ -121,6 +121,17 @@ function image_audit_vision_ovh(string $path): array
  */
 function image_audit_judge(string $text, array $labels): array
 {
+    /* 零、本地初筛：图上文字里若出现可疑域名，直接拒。
+       图片里挂网址基本只有导流一种用途，而这一步不花任何外部调用 ——
+       本地能判定的事就不必再占用外部服务的额度。 */
+    if (function_exists('link_guard_check')) {
+        $hits = link_guard_check($text);
+        if ($hits) {
+            app_log('image_audit: blocked host ' . $hits[0]['host'] . ' via ' . $hits[0]['why']);
+            return array('ok' => true, 'reject' => true, 'reason' => '图片含可疑网址');
+        }
+    }
+
     /* 一、标签直判：感知阶段已经给出的明确信号 */
     foreach (array('porn' => '色情', 'violence' => '暴力', 'illegal' => '违禁品', 'politics' => '政治敏感') as $k => $cn) {
         if (isset($labels[$k]) && (float)$labels[$k] >= IMG_AUDIT_LABEL_AT) {

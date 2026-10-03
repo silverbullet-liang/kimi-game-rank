@@ -75,7 +75,7 @@ if (is_file($metaFile) && is_file($binFile)) {
 $referer = 'https://www.bilibili.com/';
 if (strpos($host, 'moonshot.cn') !== false || strpos($host, 'kimi') !== false) { $referer = 'https://www.kimi.com/'; }
 
-$ch = net_curl_init($url);
+$ch = curl_init($url);
 curl_setopt_array($ch, array(
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_FOLLOWLOCATION => true,

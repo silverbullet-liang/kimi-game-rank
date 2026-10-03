@@ -233,7 +233,7 @@ function moderation_http(string $url, int $timeout = 4, int $maxBytes = 20000): 
 {
     if (!function_exists('curl_init')) { return ''; }
     $body = '';
-    $ch = net_curl_init($url);
+    $ch = curl_init($url);
     curl_setopt_array($ch, array(
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => false,
@@ -409,6 +409,17 @@ function moderate_text(string $text, string $scope = 'comment', int $uid = 0): a
         return array('ok' => (bool)$hit['ok'], 'stage' => (int)($hit['stage'] ?? 0),
                      'reason' => (string)($hit['reason'] ?? ''), 'cached' => true,
                      'flag' => (string)($hit['flag'] ?? ''));
+    }
+
+    /* 第 0 关：本地链接初筛 —— 规律数字域名（111111.com 这类）与广告/恶意域名
+       规则集。全部在本地完成：不外发内容，也不占用任何外部额度。
+       放在词库与模型之前，是因为这一步最便宜，且能拦下一整类导流内容。 */
+    if ((int)cfg('link_guard.block_text', 1) === 1 && function_exists('link_guard_check')) {
+        $lh = link_guard_check($text);
+        if ($lh) {
+            app_log('moderate_text: blocked host ' . $lh[0]['host'] . ' via ' . $lh[0]['why']);
+            return array('ok' => false, 'stage' => 0, 'reason' => '内容含可疑网址', 'cached' => false, 'flag' => '');
+        }
     }
 
     $steps = array(

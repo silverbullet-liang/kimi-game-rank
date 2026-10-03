@@ -8,6 +8,11 @@ config/api_keys.php
 app/data/moderation_words.txt
 app/data/moderation_allow.txt
 
+# ---------- 广告/恶意域名规则集：随交付包分发，不进源码仓库 ----------
+# 17 万条公开规则、约 4.5MB，进仓库会拖慢克隆且每次更新产生巨大 diff；
+# 部署时由 tools/build_adblock.py 生成，或由面板一键更新。
+app/data/adblock/
+
 # ---------- 内部归档与逆向研究稿（不对外） ----------
 docs/archive/
 docs/Kimi API详解与研究指南.md

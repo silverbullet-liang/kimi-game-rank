@@ -4,6 +4,7 @@
  * 运行：php tools/verify_security.php
  */
 declare(strict_types=1);
+if (!defined('APP_ROOT')) { define('APP_ROOT', sys_get_temp_dir() . '/kimgr_verify_' . getmypid()); }
 require __DIR__ . '/../app/helpers.php';
 
 $GLOBALS['fail_n'] = 0;
@@ -82,22 +83,7 @@ ck('ip_hash 同输入同输出',  ip_hash('1.2.3.4') === ip_hash('1.2.3.4'), tru
 ck('ip_hash 不同输入不同输出', ip_hash('1.2.3.4') === ip_hash('1.2.3.5'), false);
 ck('ip_hash 长度 64',       strlen(ip_hash('::1')), 64);
 
-/* ---------- 5. 出站出口配置（默认直连，由使用者自填） ---------- */
-if (!defined('APP_ROOT')) { define('APP_ROOT', sys_get_temp_dir() . '/kimgr_verify_' . getmypid()); }
-
-$GLOBALS['APP_CONFIG'] = array();
-ck('未配置出口 → 直连',      net_outbound_proxy(), '');
-$GLOBALS['APP_CONFIG'] = array('security' => array('outbound_proxy' => ''));
-ck('空串出口 → 直连',        net_outbound_proxy(), '');
-$GLOBALS['APP_CONFIG'] = array('security' => array('outbound_proxy' => '   '));
-ck('纯空白出口 → 直连',      net_outbound_proxy(), '');
-$GLOBALS['APP_CONFIG'] = array('security' => array('outbound_proxy' => 'http://127.0.0.1:8080'));
-ck('http 出口被原样读出',    net_outbound_proxy(), 'http://127.0.0.1:8080');
-$GLOBALS['APP_CONFIG'] = array('security' => array('outbound_proxy' => "  socks5h://127.0.0.1:1080\n"));
-ck('socks5h 出口去空白后读出', net_outbound_proxy(), 'socks5h://127.0.0.1:1080');
-$GLOBALS['APP_CONFIG'] = array();
-
-/* ---------- 6. 通道冷却（限流后短路，避免反复白等超时） ---------- */
+/* ---------- 5. 通道冷却（限流后短路，避免反复白等超时） ---------- */
 $cool = 'verify_chan_' . getmypid();
 $coolFile = cache_dir() . '/cool_' . $cool . '.json';
 @unlink($coolFile);
@@ -112,20 +98,6 @@ net_channel_cool($cool, 99999);      // 上限 1800 秒
 $v = cache_get('cool_' . $cool, 3600);
 ck('冷却上限被夹到 1800 秒', (int)$v['until'] - time() <= 1800, true);
 @unlink($coolFile);
-
-/* ---------- 7. 出站句柄确实套用了出口配置 ---------- */
-if (!function_exists('curl_init')) {
-    ck('curl 扩展缺失，跳过句柄用例', true, true);
-} else {
-    $GLOBALS['APP_CONFIG'] = array('security' => array('outbound_proxy' => 'http://127.0.0.1:9'));
-    $ch = net_curl_init('http://example.com/');
-    ck('出口配置下仍能建句柄', is_object($ch) || is_resource($ch), true);
-    curl_close($ch);
-    $GLOBALS['APP_CONFIG'] = array();
-    $ch2 = net_curl_init('http://example.com/');
-    ck('直连模式仍能建句柄',   is_object($ch2) || is_resource($ch2), true);
-    curl_close($ch2);
-}
 
 printf("\n通过 %d，失败 %d\n", $GLOBALS['pass_n'], $GLOBALS['fail_n']);
 exit($GLOBALS['fail_n'] === 0 ? 0 : 1);

@@ -745,7 +745,7 @@ function http_fetch(string $url, int $timeout = 8, int $maxBytes = 300000): arra
 
     $headers = array();
     $body = '';
-    $ch = net_curl_init($url);
+    $ch = curl_init($url);
     curl_setopt_array($ch, array(
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => false,          // 重定向由 http_fetch_follow 逐跳校验后跟随

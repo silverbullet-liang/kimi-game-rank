@@ -54,12 +54,28 @@ if ($method === 'POST') {
 
     /* 图片审核：先感知（OVHcloud 视觉 OCR + 违规标签）、再判断（Jev），
        任一环不可用自动切智谱视觉作备选。审核不通过就删掉文件再拒绝，
-       不留半成品在磁盘上。 */
-    try {
-        $verdict = image_audit_check($dir . '/' . $name);
-    } catch (Throwable $e) {
-        app_log('image_audit error: ' . $e->getMessage());
-        $verdict = array('ok' => true, 'via' => 'error', 'reason' => '');
+       不留半成品在磁盘上。
+
+       同一张图被重复上传是常态（表情包、转发、失败重试），按**文件内容哈希**
+       复用结论：既省下第三方配额（额度本就紧张时这比什么都实在），也省掉用户
+       的等待。只缓存**有明确结论**的那次 —— 全部通道不可用时的「降级放行」
+       绝不写缓存，否则那张图往后就再也不会被审了。 */
+    $sha   = @hash_file('sha256', $dir . '/' . $name);
+    $ckey  = $sha !== false ? 'audit_img_' . $sha : '';
+    $hit   = $ckey !== '' ? cache_get($ckey, 86400) : null;   // 与 storage_gc 的 1 天窗口一致
+
+    if (is_array($hit) && isset($hit['ok'])) {
+        $verdict = array('ok' => !empty($hit['ok']), 'via' => 'cache', 'reason' => (string)($hit['reason'] ?? ''));
+    } else {
+        try {
+            $verdict = image_audit_check($dir . '/' . $name);
+        } catch (Throwable $e) {
+            app_log('image_audit error: ' . $e->getMessage());
+            $verdict = array('ok' => true, 'via' => 'error', 'reason' => '');
+        }
+        if ($ckey !== '' && !in_array((string)$verdict['via'], array('degraded', 'none', 'error'), true)) {
+            cache_set($ckey, array('ok' => !empty($verdict['ok']), 'reason' => (string)$verdict['reason']), 86400);
+        }
     }
     if (empty($verdict['ok'])) {
         @unlink($dir . '/' . $name);
