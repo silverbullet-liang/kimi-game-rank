@@ -891,7 +891,7 @@ switch ($action) {
             'reasons'   => discipline_reasons_of($row),
             'note'      => (string)($row['note'] ?? ''),
             'banned'    => (int)$row['banned'] === 1,
-            'ban_days'  => (int)$row['ban_days'],
+            'ban_days'  => (float)$row['ban_days'],
             'ban_until' => $row['ban_until'] === null ? '' : to_local((string)$row['ban_until']),
             'ip_banned' => (int)$row['ip_banned'] === 1,
             'user_count' => discipline_user_count((int)$row['user_id']),

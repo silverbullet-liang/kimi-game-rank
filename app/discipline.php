@@ -288,6 +288,8 @@ function discipline_list(int $page, int $size = 20): array
             'reasons'    => discipline_reasons_of($r),
             'note'       => (string)($r['note'] ?? ''),
             'banned'     => (int)$r['banned'] === 1,
+            'ban_days'   => (float)$r['ban_days'],
+            'ban_until'  => $r['ban_until'] === null ? '' : to_local((string)$r['ban_until']),
             'ip_banned'  => (int)$r['ip_banned'] === 1,
             'views'      => (int)$r['views'],
             'comments'   => (int)db_val('SELECT COUNT(*) FROM comments WHERE target_type = ? AND work_id = ? AND is_deleted = 0',
