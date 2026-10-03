@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 20);
+define('SCHEMA_VERSION', 21);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -823,6 +823,42 @@ function run_migrations(bool $force = false)
         }
     }
 
+    /* ---------- v21：站点互通（peers / sync_ids / sync_tombs）----------
+       互通不碰任何内容表：跨站行标识走侧表 sync_ids（table_name+local_id → gid），
+       真删走墓碑 sync_tombs。只新增三张空表，风险为零。 */
+    if ($cur < 21) {
+        try {
+            db_exec("CREATE TABLE IF NOT EXISTS `peers` (
+                `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `name` VARCHAR(64) NOT NULL DEFAULT '',
+                `base_url` VARCHAR(255) NOT NULL DEFAULT '',
+                `pubkey` CHAR(64) NOT NULL DEFAULT '',
+                `enabled` TINYINT(1) NOT NULL DEFAULT 1,
+                `last_sync_at` DATETIME NULL,
+                `last_status` VARCHAR(255) NOT NULL DEFAULT '',
+                `created_at` DATETIME NOT NULL,
+                PRIMARY KEY (`id`), UNIQUE KEY `uk_peer_url` (`base_url`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            db_exec("CREATE TABLE IF NOT EXISTS `sync_ids` (
+                `table_name` VARCHAR(32) NOT NULL,
+                `local_id` VARCHAR(64) NOT NULL,
+                `gid` CHAR(32) NOT NULL,
+                `at` DATETIME NOT NULL,
+                PRIMARY KEY (`table_name`,`local_id`), UNIQUE KEY `uk_gid` (`gid`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            db_exec("CREATE TABLE IF NOT EXISTS `sync_tombs` (
+                `gid` CHAR(32) NOT NULL,
+                `table_name` VARCHAR(32) NOT NULL,
+                `at` DATETIME NOT NULL,
+                PRIMARY KEY (`gid`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            setting_set('schema_version', '21');
+            app_log('schema migrated to v21（站点互通）');
+        } catch (Throwable $e) {
+            app_log('migrate v21 failed: ' . $e->getMessage());
+        }
+    }
+
     /* 只有结构确认完整才写版本号、落锁：
        否则锁会把「半成品」永久固定下来，此后所有请求都被短路，再也修不回来。 */
     $ok = true;
@@ -834,7 +870,8 @@ function run_migrations(bool $force = false)
         if (table_exists('user_visits') && !column_exists('user_visits', $c)) { $ok = false; }
     }
     foreach (array('or_models', 'or_state', 'ai_daily_quota', 'ai_answer_cache',
-                   'discipline_reports', 'banned_ips') as $t) {
+                   'discipline_reports', 'banned_ips',
+                   'peers', 'sync_ids', 'sync_tombs') as $t) {
         if (!table_exists($t)) { $ok = false; }
     }
     if (table_exists('user_visits') && !column_exists('user_visits', 'ip_hash')) { $ok = false; }

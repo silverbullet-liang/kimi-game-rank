@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '3.11.1');
+define('APP_VERSION', '3.13.0');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);
@@ -77,6 +77,8 @@ require_once APP_ROOT . '/app/checkin.php';
 require_once APP_ROOT . '/app/uid.php';
 require_once APP_ROOT . '/app/ip_lookup.php';
 require_once APP_ROOT . '/app/discipline.php';
+require_once APP_ROOT . '/app/peer_crypto.php';
+require_once APP_ROOT . '/app/peer_sync.php';
 require_once APP_ROOT . '/app/migrate.php';
 require_once APP_ROOT . '/app/autoinstall.php';
 

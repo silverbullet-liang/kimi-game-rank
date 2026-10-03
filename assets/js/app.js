@@ -25,20 +25,17 @@ const state = {
 };
 
 /* ============================================================
- * 图片加载回退
+ * 图片加载降级
  * ============================================================
- * 站点默认让浏览器直连原图：绝大多数图床不校验 Referer，直连更快，也不消耗
- * 主机的请求数与流量额度。只有确知有 Referer 防盗链的域名（由后端 img_src()
- * 判断）才直接给出本站代理地址；其余图片若直连失败，这里统一回退到代理重试
- * 一次，从而不必为「以防万一」而把全量图片都压到服务端。
+ * 本站不再做服务端图片代理（避免被主机判定为代理滥用与流量超支），
+ * 所有图片一律浏览器直连。直连失败时不再回源本站重试，只把破损的图隐藏掉，
+ * 避免页面留下裂图占位。
  */
 function installImageFallback() {
-  var mark = function (t) { t.dataset.fb = '1'; t.src = 'api/img.php?u=' + encodeURIComponent(t.currentSrc || t.src || ''); };
   document.addEventListener('error', function (e) {
     var t = e.target;
-    if (!t || t.tagName !== 'IMG' || t.dataset.fb) { return; }
-    if (!/^https?:\/\//i.test(t.currentSrc || t.src || '')) { return; }
-    mark(t);
+    if (!t || t.tagName !== 'IMG') { return; }
+    t.style.visibility = 'hidden';
   }, true);
 }
 installImageFallback();
@@ -3481,6 +3478,7 @@ async function renderPanel(container) {
     bindBackup(container);
     loadDisc(container);
     loadAdBlock(container);
+    loadPeer(container);
     bindAiRank(container);
     startPanelPolling(container);
   } else {
@@ -3574,6 +3572,8 @@ function adminLayout() {
     ${discBlock()}
 
     ${adBlock()}
+
+    ${peerBlock()}
 
     ${commentBinBlock()}
     ${visitsBlock()}
@@ -4910,6 +4910,130 @@ async function loadAdBlock(container) {
       toast(e.message || '更新失败', 'err');
       el.textContent = '更新失败，可稍后重试';
     } finally { btn.disabled = false; }
+  });
+}
+
+/* ============================================================
+ * 站点互通（多站互为镜像）
+ * ============================================================
+ * 站点列表 + 一键互通。数据传输先压缩再用非对称加密（每站一把 64 位私钥），
+ * 两边密钥对不上就同步不了；世界对话 / AI 对话等实时数据不参与。
+ */
+function peerBlock() {
+  return `
+    <div class="panel-plain">
+      <h3>站点互通</h3>
+      <p class="tiny muted">
+        把几个站点配成一组、互为镜像：作品、评分、评论、账号双向同步，最终内容一致。
+        站间数据先压缩再加密，两边密钥对不上就同步不了；世界对话、AI 对话等实时数据不参与。
+      </p>
+      <div class="prow" style="flex-wrap:wrap;gap:8px">
+        <span class="tiny">本站公钥：<code id="peerMyKey" style="user-select:all">读取中…</code></span>
+      </div>
+      <div class="prow" style="margin-top:8px;gap:8px">
+        <button class="btn btn-sm" id="peerSyncAll">一键互通</button>
+        <button class="btn btn-sm" id="peerAdd">添加站点</button>
+      </div>
+      <div id="peerForm"></div>
+      <div id="peerList" style="margin-top:10px"></div>
+    </div>`;
+}
+
+async function loadPeer(container) {
+  const keyEl   = container.querySelector('#peerMyKey');
+  const listEl  = container.querySelector('#peerList');
+  const formEl  = container.querySelector('#peerForm');
+  const syncBtn = container.querySelector('#peerSyncAll');
+  const addBtn  = container.querySelector('#peerAdd');
+  if (!listEl) { return; }
+
+  const st = await api('admin.php', 'peers_state', {}, { silent: true }).catch(() => null);
+  if (!st) { listEl.innerHTML = '<div class="tiny muted">读取失败</div>'; return; }
+  keyEl.textContent = !st.sodium
+    ? '主机未启用 sodium 扩展，互通不可用'
+    : (st.my_key_set ? (st.my_pubkey || '推导失败') : '未配置私钥（请在 config 的 peers.private_key 填 64 位十六进制）');
+
+  let rows = st.peers || [];
+  const drawList = () => {
+    if (!rows.length) { listEl.innerHTML = '<div class="tiny muted">还没有配置任何站点。</div>'; return; }
+    listEl.innerHTML = rows.map(p => `
+      <div class="prow" style="padding:8px 0;align-items:center;flex-wrap:wrap;gap:6px">
+        <span class="tiny" style="flex:1;min-width:180px">
+          <b>${esc(p.name || p.base_url)}</b> · ${esc(p.base_url)}<br>
+          <span class="muted">${p.enabled ? '' : '[已停用] '}${p.last_sync_at ? '上次同步 ' + esc(p.last_sync_at) + ' UTC' : '尚未同步'}${p.last_status ? ' · ' + esc(p.last_status) : ''}</span>
+        </span>
+        <button class="btn btn-sm" data-a="test" data-id="${p.id}">测试</button>
+        <button class="btn btn-sm" data-a="edit" data-id="${p.id}">编辑</button>
+        <button class="btn btn-sm" data-a="del" data-id="${p.id}">删除</button>
+      </div>`).join('');
+  };
+  drawList();
+
+  const refresh = async () => {
+    const s = await api('admin.php', 'peers_state', {}, { silent: true }).catch(() => null);
+    if (s && s.peers) { rows = s.peers; drawList(); }
+  };
+
+  const openForm = p => {
+    p = p || { id: 0, name: '', base_url: '', pubkey: '', enabled: 1 };
+    formEl.innerHTML = `
+      <div class="panel-plain" style="margin-top:10px">
+        <div class="prow"><input class="inp" id="pName" placeholder="站点名称" value="${esc(p.name)}"></div>
+        <div class="prow"><input class="inp" id="pUrl" placeholder="https://对端域名（不带结尾斜杠）" value="${esc(p.base_url)}"></div>
+        <div class="prow"><input class="inp" id="pKey" placeholder="对端公钥（64 位十六进制）" value="${esc(p.pubkey)}"></div>
+        <div class="prow" style="gap:8px">
+          <label class="tiny"><input type="checkbox" id="pEn" ${p.enabled ? 'checked' : ''}> 启用</label>
+          <button class="btn btn-sm" id="pSave">保存</button>
+          <button class="btn btn-sm" id="pCancel">取消</button>
+        </div>
+      </div>`;
+    formEl.querySelector('#pCancel').addEventListener('click', () => { formEl.innerHTML = ''; });
+    formEl.querySelector('#pSave').addEventListener('click', async () => {
+      const payload = {
+        id: p.id,
+        name: formEl.querySelector('#pName').value.trim(),
+        base_url: formEl.querySelector('#pUrl').value.trim(),
+        pubkey: formEl.querySelector('#pKey').value.trim(),
+        enabled: formEl.querySelector('#pEn').checked ? 1 : 0,
+      };
+      try { await api('admin.php', 'peer_save', payload); toast('已保存'); formEl.innerHTML = ''; await refresh(); }
+      catch (e) { toast(e.message || '保存失败', 'err'); }
+    });
+  };
+
+  listEl.addEventListener('click', async e => {
+    const b = e.target.closest('button[data-a]');
+    if (!b) { return; }
+    const id = Number(b.dataset.id);
+    if (b.dataset.a === 'edit') { openForm(rows.find(r => Number(r.id) === id)); return; }
+    if (b.dataset.a === 'del') {
+      if (!(await dialog('删除站点', '将从列表中移除该站点，不影响已同步的数据。确定？', '删除'))) { return; }
+      try { await api('admin.php', 'peer_del', { id }); toast('已删除'); await refresh(); }
+      catch (e) { toast(e.message || '删除失败', 'err'); }
+      return;
+    }
+    if (b.dataset.a === 'test') {
+      b.disabled = true; b.textContent = '测试中…';
+      try { await api('admin.php', 'peer_test', { id }, { timeout: 30000 }); toast('连接正常，密钥校验通过'); }
+      catch (e) { toast(e.message || '连接失败', 'err'); }
+      finally { b.disabled = false; b.textContent = '测试'; }
+    }
+  });
+
+  addBtn.addEventListener('click', () => openForm(null));
+
+  syncBtn.addEventListener('click', async () => {
+    if (!(await dialog('一键互通', '将与列表中所有启用站点双向同步数据，期间不要关闭页面。确定继续？', '开始'))) { return; }
+    syncBtn.disabled = true; syncBtn.textContent = '互通中…';
+    try {
+      const r = await api('admin.php', 'peer_sync', {}, { timeout: 300000 });
+      const list = (r.results || []).map(x => x.ok
+        ? x.name + '：拉取 ' + x.pulled + ' / 推送 ' + x.pushed + '（' + x.tables + ' 张表）'
+        : x.name + '：失败' + (x.msg ? '（' + x.msg + '）' : ''));
+      toast(list.length ? list.join('；') : '没有启用中的站点');
+      await refresh();
+    } catch (e) { toast(e.message || '互通失败', 'err'); }
+    finally { syncBtn.disabled = false; syncBtn.textContent = '一键互通'; }
   });
 }
 

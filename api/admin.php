@@ -101,7 +101,7 @@ switch ($action) {
         $mode = param_str('mode', 'manual');
         try {
             if ($mode === 'auto') {
-                $r = sync_from_feeds($token, 'recommend', 3, 60);
+                $r = sync_from_feeds($token, 'recommend', 3, 60, true);
                 ok($r, '自动同步完成：新增 ' . $r['inserted'] . '，更新 ' . $r['updated']);
             }
             $workId = trim(param_str('work_id'));
@@ -704,39 +704,66 @@ switch ($action) {
         break;
     }
 
-    /* 下载「Token 获取」用户脚本（服务端中转）。
-       源站不带 CORS 允许头，浏览器直连既无法 fetch 成 blob，
-       跨域情况下 download 属性也会被忽略 —— 只能由服务端取回再原样下发。 */
+    /* 「Token 获取」用户脚本：直接 302 到源站，由浏览器自己取。
+       以前由服务端取回再原样下发（因源站无 CORS，跨域下 download 属性会失效）——
+       但「替访客取第三方内容再转发」正是代理行为，在共享主机上属高风险特征，故改为跳转。 */
     case 'userscript': {
         require_panel();
-        $src = 'https://harbor-ljmr.upma.site/Token_acquisition.js';
-        $raw = null; $code = 0;
-        if (function_exists('curl_init')) {
-            $ch = curl_init($src);
-            curl_setopt_array($ch, array(
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_MAXREDIRS      => 3,
-                CURLOPT_TIMEOUT        => 20,
-                CURLOPT_CONNECTTIMEOUT => 6,
-                CURLOPT_SSL_VERIFYPEER => true,
-                CURLOPT_USERAGENT      => 'KimiGameRank/' . APP_VERSION,
-            ));
-            $raw = curl_exec($ch);
-            $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-        }
-        if (!is_string($raw) || $raw === '' || $code >= 400) {
-            fail(502, '脚本下载失败，请稍后重试');
-        }
-        if (strlen($raw) > 512000) { fail(502, '脚本体积异常，已中止下载'); }
-
-        header('Content-Type: text/javascript; charset=utf-8');
-        header('Content-Disposition: attachment; filename="Token_acquisition.js"');
-        header('Content-Length: ' . strlen($raw));
-        header('Cache-Control: no-store');
-        echo $raw;
+        header('Location: https://harbor-ljmr.upma.site/Token_acquisition.js', true, 302);
         exit;
+    }
+
+    /* ---------- 站点互通 ---------- */
+    case 'peers_state': {
+        require_panel();
+        ok(array(
+            'my_pubkey'  => peer_my_public(),
+            'my_key_set' => peer_key_valid(peer_my_private()),
+            'sodium'     => peer_crypto_ready(),
+            'peers'      => db_all('SELECT id, name, base_url, pubkey, enabled, last_sync_at, last_status FROM peers ORDER BY id'),
+        ));
+        break;
+    }
+    case 'peer_save': {
+        require_panel();
+        $id   = (int)param_str('id');
+        $name = trim(param_str('name'));
+        $url  = rtrim(trim(param_str('base_url')), '/');
+        $pk   = strtolower(trim(param_str('pubkey')));
+        $en   = ((int)param_str('enabled', '1')) ? 1 : 0;
+        if ($url === '' || !preg_match('#^https?://#i', $url)) { fail(400, '请填写 http(s) 开头的站点地址'); }
+        if (!peer_key_valid($pk)) { fail(400, '公钥须为 64 位十六进制'); }
+        if ($id > 0) {
+            db_exec('UPDATE peers SET name = ?, base_url = ?, pubkey = ?, enabled = ? WHERE id = ?',
+                array($name, $url, $pk, $en, $id));
+        } else {
+            db_exec('INSERT INTO peers (name, base_url, pubkey, enabled, created_at) VALUES (?, ?, ?, ?, ?)',
+                array($name, $url, $pk, $en, now_utc()));
+        }
+        ok(array(), '已保存');
+        break;
+    }
+    case 'peer_del': {
+        require_panel();
+        db_exec('DELETE FROM peers WHERE id = ?', array((int)param_str('id')));
+        ok(array(), '已删除');
+        break;
+    }
+    case 'peer_test': {
+        require_panel();
+        $peer = db_one('SELECT * FROM peers WHERE id = ? LIMIT 1', array((int)param_str('id')));
+        if ($peer === null) { fail(404, '站点不存在'); }
+        $r = peer_call($peer, 'hello');
+        $m = isset($r['manifest']) && is_array($r['manifest']) ? $r['manifest'] : array();
+        ok(array('tables' => count($m)), '连接正常，密钥校验通过');
+        break;
+    }
+    case 'peer_sync': {
+        require_panel();
+        @set_time_limit(300);
+        $res = peer_sync_all();
+        ok(array('results' => $res), '互通完成');
+        break;
     }
 
     case 'announce_get': {

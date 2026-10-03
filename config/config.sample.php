@@ -37,6 +37,15 @@ return array(
         'force_https' => true,
     ),
 
+    /* ---------- 站点互通（多站互为镜像） ---------- */
+    'peers' => array(
+        // 本站私钥：64 位十六进制（32 字节）。留空则互通功能整体不可用。
+        // 生成命令：openssl rand -hex 32
+        'private_key'   => '',
+        // 需要一并互通的 settings 键（默认不同步任何设置；密钥类键永不互通）
+        'sync_settings' => array(),
+    ),
+
     /* ---------- 密钥（install.php 生成后自动回填，请勿手改） ---------- */
     'secrets' => array(
         'rc4_key'      => '',   // RC4 密钥（admin密钥sha256 + md5(1970101) + sha256(jgybhjhjh:jji) + 512位随机串）

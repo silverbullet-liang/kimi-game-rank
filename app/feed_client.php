@@ -212,6 +212,9 @@ function kimi_normalize_item(array $item): array
 function fetch_work_html(string $url): string
 {
     if ($url === '' || !preg_match('#^https?://#i', $url)) { return ''; }
+    /* 抓取预算：一次批量入库会逐条抓作品页，对外请求必须设上限 —— 免费主机上
+       「像在抓取 / 过载」是最常见的暂停理由。超出当小时预算就不再抓，标题回退信息流数据。 */
+    if (!net_budget_allow('work_html', (int)cfg('feed.fetch_max_per_hour', 150), 3600)) { return ''; }
     $ch = curl_init($url);
     curl_setopt_array($ch, array(
         CURLOPT_RETURNTRANSFER => true,
@@ -375,8 +378,20 @@ function work_upsert(array $item, string $html = '', $autoScore = null): array
 /**
  * 自动同步：按信息流翻页发现新作品（供管理面板与 cron 调用）
  */
-function sync_from_feeds(string $token, string $category = 'recommend', int $maxPages = 3, int $maxItems = 60): array
+function sync_from_feeds(string $token, string $category = 'recommend', int $maxPages = 3, int $maxItems = 60, bool $force = false): array
 {
+    /* 自动同步限频：主机的计划任务若触发得比预期勤，这里兜底 —— 非强制调用在最小
+       间隔内直接跳过，避免对社区接口高频抓取（面板手动刷新传 $force=true 不受限）。 */
+    $minGap = (int)cfg('feed.min_interval', 300);
+    if (!$force && $minGap > 0) {
+        $last = cache_get('feed_sync_last', 86400);
+        if (is_array($last) && isset($last['at']) && (time() - (int)$last['at']) < $minGap) {
+            return array('found' => 0, 'inserted' => 0, 'updated' => 0,
+                         'scored' => score_auto_enabled(), 'skipped' => true);
+        }
+    }
+    cache_set('feed_sync_last', array('at' => time()), 86400);
+
     $inserted = 0; $updated = 0; $found = 0;
     $pageToken = '';
     for ($p = 0; $p < $maxPages; $p++) {

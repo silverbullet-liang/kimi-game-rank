@@ -6,6 +6,8 @@
 
 | 版本 | 日期 | 要点 |
 |---|---|---|
+| v3.13.0 | 2026-10-03 | 新增站点互通（多站互为镜像）：app/peer_crypto.php（Curve25519 + gzip + AEAD，私钥 64 位十六进制，公钥公开）、app/peer_sync.php（声明式表清单 + sync_ids 侧表 gid + 双向补齐 + 墓碑）、api/peer.php（hello / fetch / apply）、api/admin.php 面板动作、面板「站点互通」区块；迁移 v21 仅新增 peers / sync_ids / sync_tombs 三张空表。排除实时性与密钥类数据 |
+| v3.12.0 | 2026-10-03 | 去服务端代理：删除 api/img.php，img_src() 改为原样返回，前端不再回退代理（改隐藏裂图），api/admin.php 的 userscript 由服务端中转改 302 跳转；外发收敛：新增 net_budget_allow() 出站预算，fetch_work_html 限 150 次/小时，sync_from_feeds 加最小间隔（feed.min_interval=300s，面板手动刷新传 force 旁路）。适配共享主机防「代理 / 抓取」类滥用封号 |
 | v3.11.1 | 2026-10-03 | 与 v3.11.0 代码相同，重新标识修复后的构建。v3.11.0 的修复（补齐 image_audit / jev 两处遗漏的调用点还原，提交 b22c708）此前已合入但构建号未变；本版为与早期构建区分而单独发布 |
 | v3.11.0 | 2026-10-03 | 新增本地链接初筛：规律数字域名（重复/回文/连续，限 .com/.cc）+ AdGuard 公开规则集（17 万条，crc32 分片 128 桶索引）；图片与文本发送前拦截；面板可一键更新规则。同时移除出站代理模块 |
 | v3.10.0 | 2026-10-03 | 新增 security.outbound_proxy（默认空=直连，供使用者自填固定出口，不做轮换）；出站调用统一经 net_curl_init；审核链路识别 429 并做通道冷却（避免白等超时）；备用视觉模型判定口径改为「拿不准就放行」 |

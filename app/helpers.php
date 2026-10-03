@@ -250,6 +250,29 @@ function net_channel_cool(string $name, int $sec)
     app_log('net: channel ' . $name . ' cooling ' . $sec . 's');
 }
 
+/**
+ * 出站抓取预算：滑动窗口内限制某类对外请求的次数。
+ * 免费主机上「看起来像抓取 / 过载」是最常见的暂停理由，所有自动抓取都必须限量。
+ * 计数落在 storage/cache，窗口过期自动归零。返回 true = 放行并计数，false = 已用满。
+ */
+function net_budget_allow(string $name, int $max, int $windowSec): bool
+{
+    if ($max <= 0 || $windowSec <= 0) { return false; }
+    $key = 'budget_' . preg_replace('/[^a-z0-9_]/i', '', $name);
+    $f = APP_ROOT . '/storage/cache/' . $key . '.txt';
+    $now = time();
+    $start = $now; $n = 0;
+    if (is_file($f)) {
+        $j = json_decode((string)@file_get_contents($f), true);
+        if (is_array($j) && isset($j['start'], $j['n']) && ($now - (int)$j['start']) < $windowSec) {
+            $start = (int)$j['start']; $n = (int)$j['n'];
+        }
+    }
+    if ($n >= $max) { return false; }
+    @file_put_contents($f, json_encode(array('start' => $start, 'n' => $n + 1)), LOCK_EX);
+    return true;
+}
+
 /* ============================================================
  * CSRF
  * ============================================================ */
@@ -681,38 +704,17 @@ function cache_flush()
 }
 
 /**
- * 站外图片 → 决定「浏览器直连」还是「本站代理」。
+ * 站外图片地址收口：一律返回原地址，由浏览器直连。
  *
- * 为什么默认直连：服务端每代理一张图，都要在本机抓取再输出一次，在免费主机上
- * 会迅速吃光请求数（hits）与流量额度。绝大多数图床（各家公有 CDN）并不校验
- * Referer，浏览器直连既更快也不消耗主机资源。因此这里只对**确知有 Referer
- * 防盗链**的站点走代理，其余一律返回原地址直连；万一某个站点直连失败，
- * 前端会自动回退到本站代理（见 assets/js 的全局 error 捕获），
- * 因此不需要「为了以防万一」对全量图片预先代理。
+ * 本站曾对确知有 Referer 防盗链的域名做「服务端代理抓取」——即由主机替访客去
+ * 第三方取图再转发。这条链路让主机看起来像代理脚本，而且是**成倍**的对外请求
+ * （每张图一次抓取 + 一次转发），在共享主机上极易触碰滥用判定与流量额度。
+ * 现已**彻底取消服务端代理**：能直连就直连，直连失败由前端优雅降级（隐藏裂图），
+ * 不再回源本站中转。保留本函数只作为地址的单一收口，便于日后统一改写。
  */
 function img_src(string $u): string
 {
-    $u = trim($u);
-    if ($u === '') { return ''; }
-    if (preg_match('~^(?:api/|/|#)~', $u)) { return $u; }
-    if (!preg_match('#^https?://#i', $u)) { return $u; }
-    $host = strtolower((string)parse_url($u, PHP_URL_HOST));
-    if ($host === '') { return $u; }
-    return img_needs_proxy($host) ? 'api/img.php?u=' . urlencode($u) : $u;
-}
-
-/**
- * 确知有 Referer 防盗链、必须由服务端带 Referer 抓取的域名。
- * 维护原则：**宜短不宜长** —— 每多一个域名，就多一份服务端流量与请求数；
- * 拿不准确切行为的域名不要加进来，交给「直连失败自动回退」兜底即可。
- */
-function img_needs_proxy(string $host): bool
-{
-    static $need = array('hdslb.com', 'bilibili.com', 'b23.tv');
-    foreach ($need as $d) {
-        if ($host === $d || substr($host, -strlen($d) - 1) === '.' . $d) { return true; }
-    }
-    return false;
+    return trim($u);
 }
 
 /** 作品访问链接：cdnUrl（html_url）优先，回退分享链接 */
