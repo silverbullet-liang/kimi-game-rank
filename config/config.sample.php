@@ -68,6 +68,12 @@ return array(
         'token_ttl'        => 604800,   // 登录 token 有效期（秒，7 天滑动）
         'guest_token_ttl'  => 86400,    // 游客 token 有效期（24h）
         'trusted_proxies'  => array(),  // 受信反向代理网段；留空=只信 REMOTE_ADDR（推荐）
+        /* 出站请求走哪个出口。留空 = 直连（默认）。
+           共享主机上，对外的源地址由主机决定，可能因同主机其他站点的行为被第三方
+           限流；此时填一个你自己控制的代理，形如 http://host:port 或
+           socks5h://host:port，外部请求就从那里发出。
+           只填一个固定出口 —— 换出口只是把受限范围扩大，解决不了问题。 */
+        'outbound_proxy'   => '',
         'login_max_fails'  => 5,        // 同一 IP 在锁定时长内的失败次数上限
         'login_account_max_fails' => 8, // 同一账号在锁定时长内的失败次数上限（跨 IP 累计）
         'login_lock_time'  => 600,      // 锁定时长（秒）

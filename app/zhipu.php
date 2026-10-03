@@ -108,7 +108,7 @@ function zhipu_chat(array $messages, string $model = ''): array
     for ($i = 0; $i < $tries; $i++) {
         $key = zhipu_pick_key();
         $payload = zhipu_payload($messages, $model);
-        $ch = curl_init((string)$cfg['endpoint']);
+        $ch = net_curl_init((string)$cfg['endpoint']);
         curl_setopt_array($ch, array(
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),
@@ -160,7 +160,7 @@ function zhipu_chat_stream(array $messages, callable $onDelta): string
         $buffer = '';
         $full = '';
 
-        $ch = curl_init((string)$cfg['endpoint']);
+        $ch = net_curl_init((string)$cfg['endpoint']);
         curl_setopt_array($ch, array(
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),

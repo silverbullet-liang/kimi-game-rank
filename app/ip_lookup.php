@@ -121,7 +121,7 @@ function ip_api_fetch_backup(string $ip): array
     $url = 'http://ip-api.com/json/' . urlencode($ip) . '?lang=zh-CN';
     $raw = null;
     if (function_exists('curl_init')) {
-        $ch = curl_init($url);
+        $ch = net_curl_init($url);
         curl_setopt_array($ch, array(
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 4,
@@ -184,7 +184,7 @@ function ip_api_fetch(string $ip): array
     $url = IP_API_ENDPOINT . '?ip=' . urlencode($ip);
     $raw = null;
     if (function_exists('curl_init')) {
-        $ch = curl_init($url);
+        $ch = net_curl_init($url);
         curl_setopt_array($ch, array(
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 4,

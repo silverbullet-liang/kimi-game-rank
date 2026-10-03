@@ -59,7 +59,7 @@ function captcha_client_config(): array
 /** 向某个实例校验 token */
 function captcha_validate_at(string $url, string $token): bool
 {
-    $ch = curl_init($url);
+    $ch = net_curl_init($url);
     curl_setopt_array($ch, array(
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => json_encode(array('token' => $token, 'secret' => ''), JSON_UNESCAPED_UNICODE),

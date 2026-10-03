@@ -133,7 +133,9 @@ function jev_classify(string $text): array
         ),
     ), JSON_UNESCAPED_UNICODE);
 
-    $ch = curl_init(jev_endpoint());
+    if (net_channel_cooling('jev')) { return array('ok' => null, 'reason' => 'jev_cooling'); }
+
+    $ch = net_curl_init(jev_endpoint());
     curl_setopt_array($ch, array(
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => $payload,
@@ -145,8 +147,14 @@ function jev_classify(string $text): array
     ));
     $resp = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = (int)curl_errno($ch);
     curl_close($ch);
+    if ($code === 429) {
+        net_channel_cool('jev', 60);
+        return array('ok' => null, 'reason' => 'jev_rate_limited');
+    }
     if (!is_string($resp) || $code !== 200) {
+        if ($err !== 0 || $code === 0) { net_channel_cool('jev', 30); }
         return array('ok' => null, 'reason' => 'jev_unavailable:' . $code);
     }
 

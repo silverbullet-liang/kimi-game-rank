@@ -233,7 +233,7 @@ function moderation_http(string $url, int $timeout = 4, int $maxBytes = 20000): 
 {
     if (!function_exists('curl_init')) { return ''; }
     $body = '';
-    $ch = curl_init($url);
+    $ch = net_curl_init($url);
     curl_setopt_array($ch, array(
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => false,

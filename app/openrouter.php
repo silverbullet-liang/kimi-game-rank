@@ -39,7 +39,7 @@ function or_headers(bool $auth = true): array
 function or_http(string $method, string $path, $payload = null, int $timeout = 30, bool $auth = true): array
 {
     $url = or_base() . '/' . ltrim($path, '/');
-    $ch = curl_init($url);
+    $ch = net_curl_init($url);
     $opts = array(
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_CUSTOMREQUEST  => strtoupper($method),
@@ -340,7 +340,7 @@ function or_chat_stream(array $messages, string $model, callable $onDelta): stri
     $payload['stream'] = true;
     $payload['stream_options'] = array('include_usage' => true);
 
-    $ch = curl_init(or_base() . '/chat/completions');
+    $ch = net_curl_init(or_base() . '/chat/completions');
     $usage = array(); $full = ''; $buffer = '';
     curl_setopt_array($ch, array(
         CURLOPT_POST           => true,

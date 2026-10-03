@@ -38,7 +38,7 @@ function kimi_call(string $path, array $payload, string $token): array
 {
     $url = kimi_base() . '/apiv2/' . $path;
     $body = json_encode($payload, JSON_UNESCAPED_UNICODE);
-    $ch = curl_init($url);
+    $ch = net_curl_init($url);
     curl_setopt_array($ch, array(
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => $body,
@@ -212,7 +212,7 @@ function kimi_normalize_item(array $item): array
 function fetch_work_html(string $url): string
 {
     if ($url === '' || !preg_match('#^https?://#i', $url)) { return ''; }
-    $ch = curl_init($url);
+    $ch = net_curl_init($url);
     curl_setopt_array($ch, array(
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 6,

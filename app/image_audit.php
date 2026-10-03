@@ -27,10 +27,14 @@ function image_audit_enabled(): bool
     return (int)cfg('image_audit.enabled', 1) === 1;
 }
 
-/** 统一的 curl POST JSON */
-function image_audit_post(string $url, array $payload, int $timeout = 45): string
+/**
+ * 统一的 curl POST JSON。返回 array(code, body) ——
+ * 必须拿到状态码才能区分「被限流」与「服务故障」，前者应立即冷却、
+ * 后面几次请求直接跳过，而不是每次都白等一遍超时。
+ */
+function image_audit_post(string $url, array $payload, int $timeout = 45): array
 {
-    $ch = curl_init($url);
+    $ch = net_curl_init($url);
     curl_setopt_array($ch, array(
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),
@@ -42,8 +46,9 @@ function image_audit_post(string $url, array $payload, int $timeout = 45): strin
     ));
     $resp = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = (int)curl_errno($ch);
     curl_close($ch);
-    return (is_string($resp) && $code >= 200 && $code < 300) ? $resp : '';
+    return array('code' => $code, 'body' => is_string($resp) ? $resp : '', 'err' => $err);
 }
 
 /** 从模型回复里抠出 JSON（模型有时会包一层说明文字） */
@@ -83,8 +88,20 @@ function image_audit_vision_ovh(string $path): array
             array('type' => 'image_url', 'image_url' => array('url' => 'data:' . $mime . ';base64,' . base64_encode($raw))),
         ))),
     );
-    $resp = image_audit_post((string)cfg('image_audit.ovh_url', IMG_AUDIT_OVH_URL), $body, 45);
-    if ($resp === '') { return array('ok' => false, 'reason' => 'ovh_unavailable'); }
+    if (net_channel_cooling('ovh')) { return array('ok' => false, 'reason' => 'ovh_cooling'); }
+
+    $r = image_audit_post((string)cfg('image_audit.ovh_url', IMG_AUDIT_OVH_URL), $body, 45);
+    if ($r['code'] === 429) {
+        /* 匿名层按 IP 计额，共享主机上常被同主机的其他站点连坐。
+           冷却期内不再重试，直接降级到备选通道。 */
+        net_channel_cool('ovh', 120);
+        return array('ok' => false, 'reason' => 'ovh_rate_limited');
+    }
+    if ($r['code'] < 200 || $r['code'] >= 300 || $r['body'] === '') {
+        if ($r['err'] !== 0 || $r['code'] === 0) { net_channel_cool('ovh', 60); }
+        return array('ok' => false, 'reason' => 'ovh_unavailable:' . $r['code']);
+    }
+    $resp = $r['body'];
 
     $j = json_decode($resp, true);
     $content = (is_array($j) && isset($j['choices'][0]['message']['content'])) ? (string)$j['choices'][0]['message']['content'] : '';
@@ -144,9 +161,12 @@ function image_audit_vision_glm(string $path): array
 
     $prompt = '你是社区内容审核员。判断这张图片是否包含色情、暴力、违禁品、'
             . '垃圾广告或政治敏感内容。' . "\n"
-            . '正常的内容一律放行，包括：表情包、聊天截图、游戏画面、动漫插画、'
-            . '生活照片、作品截图、含少量文字或水印的图片。' . "\n"
-            . '只回答一个词：需要拦截回「拦截」，放行回「放行」。不要解释。';
+            . '以下都是正常内容，遇到一律放行：表情包、聊天截图、游戏画面、动漫插画、'
+            . '二次元人物、生活照片、作品截图、带文字的图片、加水印或 logo 的图片、'
+            . '含英文数字的图片、模糊或低清图片、纯色或纯文字图片、真人自拍。' . "\n"
+            . '**拿不准就放行**——宁可漏过一张可疑图片，也不要误伤正常用户。' . "\n"
+            . '只有内容明确属于上述违规类别时才回「拦截」。' . "\n"
+            . '只回答一个词：拦截 或 放行。不要解释、不要复述图片内容。';
     $msgs = array(array('role' => 'user', 'content' => array(
         array('type' => 'text', 'text' => $prompt),
         array('type' => 'image_url', 'image_url' => array(
