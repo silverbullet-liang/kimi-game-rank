@@ -135,7 +135,7 @@ function jev_classify(string $text): array
 
     if (net_channel_cooling('jev')) { return array('ok' => null, 'reason' => 'jev_cooling'); }
 
-    $ch = net_curl_init(jev_endpoint());
+    $ch = curl_init(jev_endpoint());
     curl_setopt_array($ch, array(
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => $payload,

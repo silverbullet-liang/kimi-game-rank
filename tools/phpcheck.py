@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""PHP 语法粗检（沙箱无 PHP 运行时）：剥离字符串/注释后做括号平衡 + 高版本特性扫描。
+"""PHP 语法粗检（沙箱无 PHP 运行时）：剥离字符串/注释后做括号平衡 + 兼容性与禁用调用扫描。
 仅扫描 <?php ... ?> 段，避免被 HTML 内联 CSS/JS 误报。"""
 import os, re, shutil, subprocess, sys
 
@@ -28,6 +28,8 @@ BAD = [
     (r'\bmatch\s*\(', 'match 表达式（PHP 8.0）'),
     (r'\bstr_contains\s*\(', 'str_contains()（PHP 8.0）'),
     (r'\bstr_starts_with\s*\(', 'str_starts_with()（PHP 8.0）'),
+    (r'\bnet_curl_init\s*\(', '调用了已移除的 net_curl_init()（v3.11.0 起出站代理模块已删除）'),
+    (r'\bnet_outbound_proxy\s*\(', '调用了已移除的 net_outbound_proxy()（同上）'),
     (r'\bstr_ends_with\s*\(', 'str_ends_with()（PHP 8.0）'),
     (r'#\[\w', '属性 #[Attr]（PHP 8.0）'),
     (r'\benum\s+\w+\s*\{', 'enum（PHP 8.1）'),
@@ -133,7 +135,7 @@ def check(path: str):
     for pat, msg in BAD:
         m = re.search(pat, code)
         if m:
-            errs.append(f'高版本特性：{msg} @ 偏移 {m.start()}')
+            errs.append(f'{msg} @ 偏移 {m.start()}')
     return errs
 
 
@@ -158,6 +160,8 @@ def main():
     for t in targets:
         if os.path.isdir(t):
             for root, _, fs in os.walk(t):
+                if os.path.basename(root) == 'adblock':
+                    continue          # 规则分片是数据文件（十几万条域名），不是源码
                 files += [os.path.join(root, f) for f in fs if f.endswith('.php')]
         elif t.endswith('.php'):
             files.append(t)

@@ -34,7 +34,7 @@ function image_audit_enabled(): bool
  */
 function image_audit_post(string $url, array $payload, int $timeout = 45): array
 {
-    $ch = net_curl_init($url);
+    $ch = curl_init($url);
     curl_setopt_array($ch, array(
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),
