@@ -4272,16 +4272,17 @@ function addWorkBlock() {
 }
 
 /* 评分方式：收录与「全部更新」是否重算评分。
-   管理员常按实际情况手动调分，自动重算会把这些改动抹掉，所以给一个统一开关（可随时切回）。 */
+   默认「只更新信息」——站长常按实际情况手动调分，自动重算会把这些改动抹掉，
+   所以默认不覆盖评分；且只有总管理员能切换。 */
 function scoreBlock() {
   return `
     <div class="panel-plain">
       <h3>评分方式</h3>
       <p class="tiny muted">
-        默认自动评分。<b>如果你会按实际情况手动调分</b>，可以把自动评分关掉——
-        此后<b>已收录作品</b>在更新时只改信息（标题、简介、图片、互动数等），
-        <b>不再覆盖评分</b>；<b>新收录的作品一律照常评分</b>，不受影响。
-        需要把老作品的分数按算法重算时，切回「自动评分」再点一次「全部更新」。
+        默认「只更新信息」：<b>已收录作品</b>在更新时只改信息（标题、简介、图片、互动数等），
+        <b>不覆盖评分</b>，方便按实际情况调分；<b>新收录的作品一律照常评分</b>，不受影响。
+        需要把老作品的分数按算法重算时，由总管理员切到「自动评分」再点一次「全部更新」。
+        （<b>副管理员只能查看，不能切换</b>。）
       </p>
       <div class="seg" id="scoreSeg" style="margin:10px 0 8px">
         <button data-a="1">自动评分</button>
@@ -4295,16 +4296,20 @@ function bindScore(container) {
   const seg = container.querySelector('#scoreSeg');
   const note = container.querySelector('#scoreNote');
   if (!seg) { return; }
+  const readonly = (state.role === 'subadmin');   // 副管理员只能看，不能切
 
   const paint = (auto) => {
     seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.a === (auto ? '1' : '0')));
-    note.innerHTML = auto
+    note.innerHTML = (auto
       ? '<span style="color:var(--ok,#0a0)">当前：自动评分</span> · 收录与更新都会按算法重算'
-      : '<span style="color:var(--accent)">当前：只更新信息</span> · 已收录作品<b>不重算评分</b>（新收录的仍会自动评分）';
+      : '<span style="color:var(--accent)">当前：只更新信息</span> · 已收录作品<b>不重算评分</b>（新收录的仍会自动评分）')
+      + (readonly ? ' · <b>仅总管理员可切换</b>' : '');
   };
   const lock = (on) => seg.querySelectorAll('button').forEach(b => { b.disabled = on; });
+  if (readonly) { lock(true); }
 
   seg.addEventListener('click', async (e) => {
+    if (readonly) { return; }
     const b = e.target.closest('[data-a]');
     if (!b || b.classList.contains('on') || b.disabled) { return; }
     const auto = b.dataset.a === '1';

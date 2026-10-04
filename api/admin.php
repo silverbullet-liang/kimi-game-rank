@@ -47,7 +47,7 @@ if (in_array($action, $WRITE_ACTIONS, true)) { register_shutdown_function('cache
 /* 副管理员可用操作白名单：作品搜索 / 上传 / 同步 + 只读数据（访问排行、用户列表）
    + 自备社区凭证（token_set / userscript —— 副管理员抓取依赖自己的 Token，各存各的） */
 $SUB_ALLOWED = array('works', 'search_works', 'add_work', 'sync', 'visits_top', 'users', 'token_set', 'userscript',
-                     'score_mode', 'score_mode_set', 'link_mode', 'link_mode_set');
+                     'score_mode', 'link_mode', 'link_mode_set');
 if ($IS_SUB && !in_array($action, $SUB_ALLOWED, true)) {
     fail(403, '副管理员无权执行该操作');
 }
@@ -463,7 +463,8 @@ switch ($action) {
     }
 
     case 'score_mode_set': {
-        require_panel();       // 副管理员同样可切换：他们也要收录与更新作品
+        require_admin();       // 仅总管理员：评分口径是站长的，副管理员只能看
+        require_panel();       // 且需已过控制面板密钥验证
         csrf_verify();
         $auto = param_int('auto', 1) === 1;
         setting_set('score_auto', $auto ? '1' : '0');
