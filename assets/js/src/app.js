@@ -537,7 +537,10 @@ function bindToTop() {
  * ============================================================ */
 /** 按当前封禁状态显示 / 收起全屏封禁说明（登录页除外，便于换账号登录）。 */
 function syncBanLock() {
-  if (state.ban && currentPage !== 'login') { showBanLock(state.ban); }
+  /* 登录页只在「尚未登录」时豁免 —— 被封的来源地址要能进登录页换账号；
+     一旦以被封账号登录成功，就该盖上全屏说明（说明里自带「切换账号登录」）。 */
+  const exempt = (currentPage === 'login' && state.role === 'guest');
+  if (state.ban && !exempt) { showBanLock(state.ban); }
   else { hideBanLock(); }
 }
 

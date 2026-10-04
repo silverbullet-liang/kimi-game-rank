@@ -174,5 +174,13 @@ ck('未超上限 → 一条不删', discipline_prune(10), 0);
 $GLOBALS['COUNT'] = 0;
 ck('空表 → 安全返回 0',   discipline_prune(10), 0);
 
+/* ---------- 7. 源码闸门：封禁机制不得再打架 ----------
+   「可登录 + 全屏说明 + 后端统一拒绝」是封禁的唯一口径。
+   若登录处再出现直接拒绝、或身份解析再把封停当「查无此人」，v3.16.4 修过的问题就会复发。 */
+$authSrc = (string)@file_get_contents(dirname(__DIR__) . '/app/auth.php');
+ck('登录处不再直接拒绝封停账号', strpos($authSrc, "fail(403, '账号已被封禁')") === false, true);
+ck('身份解析不再把封停当不存在', strpos($authSrc, 'is_banned = 0') === false, true);
+ck('登录处仍做到期自动解封',     strpos($authSrc, 'discipline_auto_unban') !== false, true);
+
 printf("\n通过 %d，失败 %d\n", $GLOBALS['pass_n'], $GLOBALS['fail_n']);
 exit($GLOBALS['fail_n'] === 0 ? 0 : 1);

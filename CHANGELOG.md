@@ -6,6 +6,7 @@
 
 | 版本 | 日期 | 要点 |
 |---|---|---|
+| v3.16.4 | 2026-10-04 | 修复「被封账号登录只报错、进不了全屏封禁界面」：①app/auth.php 登录不再因 users.is_banned=1 直接 fail(403)（改为允许登录 + 到期顺带自动解封）；②current_user_row() 去掉 `AND is_banned = 0`（否则身份载荷 401「账号不可用」，封禁信息取不到）；③app.js syncBanLock() 的登录页豁免改为仅在 role==='guest' 时生效。封禁拦截仍由 bootstrap.php 的 discipline_visitor_blocked() 统一负责。APP_VERSION 3.16.4 |
 | v3.16.3 | 2026-10-04 | ①「关于」页 renderAbout 新增「鸣谢」卡片（反馈贡献者名单）；②官方 AI 去客服腔：lobby_ai.php 重写 lobby_ai_system()（老玩家性格 + 防复读铁律 + 禁用语 + 不硬编），lobby_ai_messages() 由「历史压成一段文本」改为真·多轮（system 最前 + AI 回复当 assistant + 本次提问去重）。APP_VERSION 3.16.3 |
 | v3.16.2 | 2026-10-04 | ①纠正审核误判：jev.php 的 intent 维度改 3 选项（攻击 / 正常 / 纯技术讨论）+ jev_inject_flag()（技术讨论概率达标即不判），提示词注入由「抬档 7.0 拦截」改为「只标注不拦截」（jev_lift_inject / jev_inject_level 移除），讽刺标注阈值 0.85→0.95（修复 @官方AI 2333 被误标）；②chat_media.php 新增 CHAT_MEDIA_GRACE=1800s，刚上传未发送的图不再被 chat_media_gc 当孤儿删除（修复发送后显示「图片已清理」）。APP_VERSION 3.16.2 |
 | v3.16.1 | 2026-10-04 | 修复 lobby.js atRange() 取错捕获组（正则只有 1 个捕获组却读 m[2]）导致世界对话输入 @ 时抛 TypeError、@ 提及面板无法弹出（v3.14.0 引入）。APP_VERSION 3.16.1 |

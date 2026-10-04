@@ -225,7 +225,10 @@ function current_user_row()
         return null;
     }
     if ($uid <= 0) { return null; }
-    $u = db_one('SELECT * FROM users WHERE id = ? AND is_banned = 0', array($uid));
+    /* 不再把被封停的账号当作「查无此人」：一旦返回 null，身份载荷会以 401 结束，
+       用户既登不进来也拿不到封禁信息（连全屏说明都显示不出）。能做什么由 bootstrap
+       的封禁守卫统一决定，不在这里拦。 */
+    $u = db_one('SELECT * FROM users WHERE id = ? LIMIT 1', array($uid));
     return $u === null ? null : $u;
 }
 
@@ -330,11 +333,11 @@ function user_login(string $username, string $password): array
     $ok = password_verify_chain($password, (string)$u['registered_at'], (string)$u['salt'], (string)$u['password_hash']);
     login_mark($ip, $ok, $norm);
     if (!$ok) { timing_delay(); fail(401, '用户名或密码错误'); }
-    if ((int)$u['is_banned'] === 1) {
-        /* 到期就先解除，不必等人工处理 */
-        if (function_exists('discipline_auto_unban')) { discipline_auto_unban((int)$u['id']); }
-        $u2 = db_one('SELECT is_banned FROM users WHERE id = ? LIMIT 1', array((int)$u['id']));
-        if ($u2 !== null && (int)$u2['is_banned'] === 1) { fail(403, '账号已被封禁'); }
+    /* 被封停的账号**允许登录**：登进来才看得到「全屏封禁说明」（处理原因、封禁天数、
+       解封时间，以及「切换账号登录」），其余功能由 bootstrap 的封禁守卫统一拒绝。
+       此前这里直接 fail(403)，人会卡在登录页，只弹一句报错 —— 与全屏说明的设计冲突。 */
+    if ((int)$u['is_banned'] === 1 && function_exists('discipline_auto_unban')) {
+        discipline_auto_unban((int)$u['id']);     // 已到期就顺手解除，不必等人工
     }
 
     db_exec('UPDATE users SET last_login_at = UTC_TIMESTAMP() WHERE id = ?', array((int)$u['id']));
