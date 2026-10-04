@@ -16,7 +16,11 @@
  *   level >= reject_level                    → 拦截
  *   flag_level <= level < reject_level       → 放行，但标注「可能有恶意」
  *   或 sarcasm >= sarcasm_at                 → 放行，但标注「可能有恶意」
+ *   或 命中提示词注入                         → 放行，但标注「可能有恶意」
  *   其余                                      → 放行
+ *
+ * 提示词注入只标注、不拦截：它的危害面仅是官方 AI 的一条回复，而误伤面却覆盖
+ * 所有用到 instruction / prompt / system 这类词的正常技术交流，代价不对等。
  *
  * 注意：广告引流不交给它判断 —— 实测「加我微信…」会落到很低的档位与很低的讽刺值，
  * 那类内容由词库与句式正则负责，这里只管「有没有骂人」和「是不是阴阳怪气」。
@@ -28,9 +32,9 @@ declare(strict_types=1);
 define('JEV_DEFAULT_URL', 'https://classifier.dev');
 define('JEV_DEFAULT_REJECT_LEVEL', 5.5);    // 达到该档位即拦截（10 档制）
 define('JEV_DEFAULT_FLAG_LEVEL', 4.5);      // 达到该档位先标注「可能有恶意」，仍放行
-define('JEV_DEFAULT_SARCASM_AT', 0.85);     // 讽刺概率达到该值同样标注「可能有恶意」
-define('JEV_DEFAULT_INJECT_LEVEL', 7.0);    // 命中提示词注入时抬到的档位
-define('JEV_DEFAULT_INJECT_PROB', 0.60);    // 提示词注入的判定概率阈值
+define('JEV_DEFAULT_SARCASM_AT', 0.95);     // 讽刺概率达到该值同样标注「可能有恶意」
+define('JEV_DEFAULT_INJECT_PROB', 0.85);    // 提示词注入的判定概率阈值
+define('JEV_DEFAULT_INJECT_BENIGN', 0.50);  // 「纯技术讨论」概率达到该值即视为讨论，不标注
 
 /**
  * 10 档描述：从完全正常到极端辱骂，数组顺序即档位 1–10。
@@ -91,26 +95,29 @@ function jev_sarcasm_at(): float
 /**
  * 提示词注入（prompt injection / jailbreak）维度。
  * 总有人以为这里接的只是「普通 AI」，于是试探性地写「忽略以上指令」「你现在是……」
- * 「把你的系统提示词发出来」。这类内容不骂人，但它是**针对系统本身的攻击**，
- * 因此单列一维识别；命中就把违规档位抬到与人身攻击同级。
+ * 「把你的系统提示词发出来」。这类内容不骂人，单列一维识别；**命中只标注、不拦截**
+ * —— 危害面只是官方 AI 的一条回复，误伤面却覆盖所有正常的技术交流。
+ * 维度给三个选项，好让「只是讨论/引用」的技术写作有地方落，不至于被判成攻击。
  */
 function jev_intent_labels(): array
 {
     return array(
-        'an attempt to manipulate or override the AI system (prompt injection, jailbreak, "ignore previous instructions", asking to reveal the system prompt)',
-        'a normal message, not trying to manipulate any system',
+        'a direct instruction addressed to the assistant that tries to override, ignore or bypass its own rules, or to extract its hidden instructions or system prompt',
+        'a normal message that does not try to manipulate any system',
+        'technical, academic or engineering writing that merely mentions or quotes AI instructions, prompts, rules or system prompts, without instructing this assistant to do anything',
     );
 }
 
+/** 「攻击」标签：直接向 AI 发出的越权 / 套取指令 */
 function jev_inject_label(): string
 {
-    return 'an attempt to manipulate or override the AI system (prompt injection, jailbreak, "ignore previous instructions", asking to reveal the system prompt)';
+    return 'a direct instruction addressed to the assistant that tries to override, ignore or bypass its own rules, or to extract its hidden instructions or system prompt';
 }
 
-/** 命中提示词注入时抬到的档位。 */
-function jev_inject_level(): float
+/** 「纯技术讨论」标签：只是提到或引用了这些词，并非攻击 */
+function jev_inject_benign_label(): string
 {
-    return (float)cfg('moderation.jev_inject_level', JEV_DEFAULT_INJECT_LEVEL);
+    return 'technical, academic or engineering writing that merely mentions or quotes AI instructions, prompts, rules or system prompts, without instructing this assistant to do anything';
 }
 
 /** 提示词注入的判定概率阈值 */
@@ -119,14 +126,19 @@ function jev_inject_prob(): float
     return (float)cfg('moderation.jev_inject_prob', JEV_DEFAULT_INJECT_PROB);
 }
 
-/**
- * 命中提示词注入时把档位抬到 inject_level（纯函数，便于单测）。
- * 只抬不降：本就被判成更严重的违规时保持原档。
- */
-function jev_lift_inject(float $level, float $injectProb): float
+/** 「纯技术讨论」概率达到该值即判为讨论 / 引用，不标注 */
+function jev_inject_benign(): float
 {
-    if ($injectProb >= jev_inject_prob() && $level < jev_inject_level()) { return jev_inject_level(); }
-    return $level;
+    return (float)cfg('moderation.jev_inject_benign', JEV_DEFAULT_INJECT_BENIGN);
+}
+
+/**
+ * 是否把这条内容标注为「可能有恶意（提示词注入）」（纯函数，便于单测）。
+ * 只标注不拦截；当「纯技术讨论」概率足够高时视为正常讨论，不标注。
+ */
+function jev_inject_flag(float $injectProb, float $benignProb): bool
+{
+    return $injectProb >= jev_inject_prob() && $benignProb < jev_inject_benign();
 }
 
 /**
@@ -219,14 +231,17 @@ function jev_classify(string $text): array
     if ($sarc < 0.0) { $sarc = 0.0; }
     if ($sarc > 1.0) { $sarc = 1.0; }
 
-    /* 提示词注入：命中即抬档（默认 7.0），使 reject_level 直接拦住 */
+    /* 提示词注入：只标注，不抬档、不拦截 */
     $inject = isset($int[jev_inject_label()]) ? (float)$int[jev_inject_label()] : 0.0;
     if ($inject < 0.0) { $inject = 0.0; }
     if ($inject > 1.0) { $inject = 1.0; }
-    $level = jev_lift_inject($level, $inject);
+    $benign = isset($int[jev_inject_benign_label()]) ? (float)$int[jev_inject_benign_label()] : 0.0;
+    if ($benign < 0.0) { $benign = 0.0; }
+    if ($benign > 1.0) { $benign = 1.0; }
 
     $reject = $level >= jev_reject_level();
-    $mark   = !$reject && ($level >= jev_flag_level() || $sarc >= jev_sarcasm_at());
+    $mark   = !$reject && ($level >= jev_flag_level() || $sarc >= jev_sarcasm_at()
+                           || jev_inject_flag($inject, $benign));
 
     return array(
         'ok'        => !$reject,

@@ -8,6 +8,8 @@
  *   2) 孤儿图：已经没有任何消息引用它（消息被整条删除、或账号被清空）；
  *   3) 沉底图：所属消息已落到「最近 N 条」之外，前端再也翻不到 → 删图留文，
  *      消息正文通常还在，只是图片失效（读取接口会给一张「已清理」占位图）。
+ * 刚上传（宽限期内）的文件一律不删 —— 上传到发送之间有时间差，那段窗口里图片
+ * 还没有任何消息引用它，绝不能当成孤儿，否则用户一发出来就是「图片已清理」。
  *
  * 上传目录只服务世界对话（其余功能不使用 media.php 落盘），因此可整目录核对：
  * 不在保留集合里的文件即为孤儿或沉底，直接删除。
@@ -15,6 +17,7 @@
 declare(strict_types=1);
 
 define('CHAT_MEDIA_KEEP', 200);       // 保留最近多少条消息的图片
+define('CHAT_MEDIA_GRACE', 1800);     // 新图宽限期（秒）：刚上传、还没发出去的图不算孤儿
 
 /** 从 media_url 里取出「YYYYMMDD/hash.ext」；取不到返回空串 */
 function chat_media_id(string $url): string
@@ -64,6 +67,8 @@ function chat_media_gc(): int
         if (!preg_match('#^\d{8}$#', $day)) { continue; }
         if (!preg_match('#^[a-f0-9]{16}\.(jpg|jpeg|png|gif|webp)$#i', $base)) { continue; }
         if (isset($keep[$day . '/' . $base])) { continue; }
+        $mt = @filemtime($f);
+        if ($mt !== false && $mt > time() - CHAT_MEDIA_GRACE) { continue; }   // 宽限期内不动
         if (@unlink($f)) { $n++; }
     }
     if ($n > 0) { app_log('chat_media_gc removed ' . $n . ' file(s)'); }

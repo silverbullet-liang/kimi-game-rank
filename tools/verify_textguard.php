@@ -31,13 +31,14 @@ function ck(string $name, $got, $want)
     if (!$ok) { printf("       期望 %s，实际 %s\n", var_export($want, true), var_export($got, true)); }
 }
 
-/* ---------- 1. 提示词注入抬档 ---------- */
-ck('注入概率 0.9 → 抬到 7.0',   jev_lift_inject(2.0, 0.9), 7.0);
-ck('注入概率 0.6 → 抬到 7.0',   jev_lift_inject(2.0, 0.6), 7.0);
-ck('注入概率 0.5 → 不抬',       jev_lift_inject(2.0, 0.5), 2.0);
-ck('本就更严重（8.5）→ 保持',   jev_lift_inject(8.5, 0.9), 8.5);
-ck('注入档位默认 7.0',          jev_inject_level(), 7.0);
-ck('注入概率阈值默认 0.6',      jev_inject_prob(), 0.6);
+/* ---------- 1. 提示词注入：命中只标注，不拦截 ---------- */
+ck('注入 0.9 + 非技术 → 标注',            jev_inject_flag(0.9, 0.0), true);
+ck('注入 0.9 + 纯技术讨论 0.9 → 不标注',  jev_inject_flag(0.9, 0.9), false);
+ck('注入 0.5（低于阈值）→ 不标注',        jev_inject_flag(0.5, 0.0), false);
+ck('注入概率阈值默认 0.85',               jev_inject_prob(), 0.85);
+ck('技术讨论豁免阈值默认 0.5',            jev_inject_benign(), 0.5);
+ck('讽刺标注阈值默认 0.95',               jev_sarcasm_at(), 0.95);
+ck('intent 维度 3 项',                    count(jev_intent_labels()), 3);
 
 /* ---------- 2. 拆字：上下文拼接不加分隔符 ---------- */
 $GLOBALS['ROWS'] = array(

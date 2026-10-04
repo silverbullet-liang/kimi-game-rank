@@ -8,6 +8,11 @@
  */
 declare(strict_types=1);
 if (!defined('APP_ROOT')) { define('APP_ROOT', dirname(__DIR__)); }
+
+/* 桩件：把在线规则源置空，让本测试完全离线。
+   否则在装了 curl 的执行环境里，link_guard_ruleset() 会真的联网去拉规则。 */
+function cfg(string $p, $d = null) { return ($p === 'adblock.sources') ? array() : $d; }
+
 require __DIR__ . '/../app/link_guard.php';
 
 $GLOBALS['fail_n'] = 0;
