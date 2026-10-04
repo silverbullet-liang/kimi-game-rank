@@ -250,19 +250,9 @@ switch ($action) {
                      . ' ORDER BY total_score DESC, updated_at DESC LIMIT '
                      . max(1, (int)cfg('search_ai.max_items', 20)), $like);
         if (!$rows) { ok(array('answer' => '', 'reason' => 'empty')); }
-        $total = (int)db_val('SELECT COUNT(*) FROM works WHERE is_hidden = 0 AND (title LIKE ? OR author_name LIKE ?)', $like);
-
         $model = search_ai_model();
-        /* 缓存键 = 关键词 + 命中总数 + 实际喂入条数：三者都一致才算同一份摘要 */
-        $key   = 'search-ai::' . mb_strtolower($q, 'UTF-8') . '::n' . $total . '::m' . count($rows);
 
-        /* 2) 缓存优先：命中即返回，不调用模型，不占任何额度 */
-        $hit = ai_cache_get($key, max(60, (int)cfg('search_ai.cache_ttl', 604800)), $model);
-        if ($hit['hit']) {
-            ok(array('answer' => $hit['answer'], 'cached' => true, 'model' => $hit['model']));
-        }
-
-        /* 3) 独立日上限：与聊天额度毫无关系，到顶就缺席而不是报错 */
+        /* 1) 独立日上限：与聊天额度毫无关系，到顶就缺席而不是报错 */
         $day  = gmdate('Y-m-d');
         $cap  = max(1, (int)cfg('search_ai.daily_cap', 200));
         $used = ((string)setting_get('search_ai_day', '') === $day) ? (int)setting_get('search_ai_used', '0') : 0;
@@ -283,7 +273,6 @@ switch ($action) {
 
         setting_set('search_ai_day', $day);
         setting_set('search_ai_used', (string)($used + 1));
-        ai_cache_put($key, $answer, $model);
         /* 用量记在 uid=0（站点承担），因此不进任何人的个人用量 */
         if (!empty($r['usage'])) { ai_usage_record(0, $r['usage'], 'glm'); }
         app_log('search_ai q=' . mb_substr($q, 0, 24, 'UTF-8') . ' items=' . count($rows)
@@ -303,19 +292,6 @@ switch ($action) {
         if (mb_strlen($text, 'UTF-8') < 1) { fail(400, '内容不能为空'); }
         if (mb_strlen($text, 'UTF-8') > 2000) { fail(400, '内容过长'); }
         $isReplay = param_int('fallback', 0) === 1;
-        $ctxEmpty = ai_ctx_empty($uid);
-
-        /* 无上下文：命中缓存则直接沿用，不再调用模型、不消耗额度 */
-        if ($ctxEmpty) {
-            $cached = ai_cache_only($text);
-            if ($cached !== '') {
-                if (!$isAdmin && !rate_limit('ai_' . $uid, (int)cfg('ai_limits.per_minute', 6), 60)) { fail(429, 'AI 调用过于频繁，请稍后再试'); }
-                ai_save_user_msg($uid, $text, $isReplay);
-                db_insert('INSERT INTO ai_messages (user_id, role, content, created_at) VALUES (?, "assistant", ?, UTC_TIMESTAMP())', array($uid, $cached));
-                ai_trim_history($uid);
-                ok(array('text' => $cached, 'cached' => true, 'usage' => array(), 'tools' => array()));
-            }
-        }
 
         $model = ai_pick_model(param_str('model'));
         ai_gate($isAdmin, $uid, $model !== '', $text, $isReplay);
@@ -353,8 +329,6 @@ switch ($action) {
         }
 
         if (trim($visible) === '') { $visible = '（无内容返回，请稍后重试）'; }
-        /* 无上下文且未用工具（纯知识型回答）→ 写入缓存，供同问直接沿用 */
-        if ($ctxEmpty && empty($cards) && trim($visible) !== '') { ai_cache_put($text, $visible, $model); }
         db_insert('INSERT INTO ai_messages (user_id, role, content, created_at) VALUES (?, "assistant", ?, UTC_TIMESTAMP())', array($uid, $visible));
         ai_trim_history($uid);
         ai_usage_record($uid, $usage, $aiProvider);
@@ -382,28 +356,6 @@ $isAdmin = $ident['role'] === 'admin';
 $text = trim(nfc_normalize(param_str('content')));
 if (mb_strlen($text, 'UTF-8') < 1) { fail(400, '内容不能为空'); }
 if (mb_strlen($text, 'UTF-8') > 2000) { fail(400, '内容过长'); }
-
-/* 无上下文：命中缓存则直接沿用（以 SSE 输出一次结果），不调用模型、不消耗额度 */
-$ctxEmpty = ai_ctx_empty($uid);
-if ($ctxEmpty) {
-    $cached = ai_cache_only($text);
-    if ($cached !== '') {
-        if (!$isAdmin && !rate_limit('ai_' . $uid, (int)cfg('ai_limits.per_minute', 6), 60)) { fail(429, 'AI 调用过于频繁，请稍后再试'); }
-        ai_save_user_msg($uid, $text, false);
-        db_insert('INSERT INTO ai_messages (user_id, role, content, created_at) VALUES (?, "assistant", ?, UTC_TIMESTAMP())', array($uid, $cached));
-        ai_trim_history($uid);
-        @ini_set('zlib.output_compression', '0');
-        header('Content-Type: text/event-stream; charset=utf-8');
-        header('Cache-Control: no-cache');
-        header('X-Accel-Buffering: no');
-        while (ob_get_level() > 0) { ob_end_flush(); }
-        echo 'data: ' . json_encode(array('start' => true), JSON_UNESCAPED_UNICODE) . "\n\n";
-        echo 'data: ' . json_encode(array('delta' => $cached), JSON_UNESCAPED_UNICODE) . "\n\n";
-        echo 'data: ' . json_encode(array('done' => true, 'cached' => true), JSON_UNESCAPED_UNICODE) . "\n\n";
-        flush();
-        exit;
-    }
-}
 
 /* 配额闸门：免费模型按次数，自有模型按 token（管理员放行） */
 $model = ai_pick_model(param_str('model'));
@@ -507,7 +459,6 @@ $runRound = function (array $msgs, $sniff) use ($emit, $MAX_TOOLS, &$finalUsage,
 $finalUsage = array();
 $aiProvider = '';        // 本轮的账记在哪条通道（每轮覆盖，以最后一轮为准）
 $visible = '';
-$usedTools = false;       // 是否用过工具（用过的回答含实时数据，不写入缓存）
 try {
     $msgs = $messages;
     $modelCalls = $MAX_ROUNDS + 1;          // 最多 2 轮工具 → 最多 3 次模型请求
@@ -520,7 +471,6 @@ try {
 
         // 执行工具 → 回传结果
         $results = array();
-        $usedTools = true;
         foreach ($r['calls'] as $call) {
             $res = works_tool_execute($call);
             if (empty($res['action']) && isset($call['action'])) { $res['action'] = $call['action']; }
@@ -542,8 +492,6 @@ try {
 
     $hasContent = (trim($visible) !== '');
     if (!$hasContent) { $visible = '（无内容返回，请稍后重试）'; }
-    /* 无上下文且未用工具（纯知识型回答）→ 写入缓存，供同问直接沿用 */
-    elseif ($ctxEmpty && !$usedTools) { ai_cache_put($text, $visible, $model); }
     db_insert('INSERT INTO ai_messages (user_id, role, content, created_at) VALUES (?, "assistant", ?, UTC_TIMESTAMP())', array($uid, $visible));
     ai_trim_history($uid);
     ai_usage_record($uid, $finalUsage, $aiProvider);

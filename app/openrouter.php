@@ -437,62 +437,10 @@ function ai_respond_stream(array $messages, string $model, callable $onDelta, st
 }
 
 /* ============================================================
- * 问答缓存：只有当次会话「无上下文」时才会命中
+ * 问答缓存已移除（v3.16.5）
  * ------------------------------------------------------------
- * 命中即直接沿用历史答案，不再调用模型；由此省下一次额度。
- * 只缓存「未使用工具」的纯知识型回答，避免把实时数据（天气/时间/榜单）缓存成过期内容。
+ * 早先的规则是「会话无上下文 + 同一个提问 → 直接沿用存过的答案」。
+ * 这会在用户清空对话后重问时把旧答案一字不差地回放出来，看起来就是 AI 复读，
+ * 与「像真人一样聊天」的目标冲突。现在一律真实调用模型，不再回放缓存。
+ * 表 ai_answer_cache 保留在库里，但已不再读写。
  * ============================================================ */
-function ai_ctx_empty(int $uid): bool
-{
-    try { return (int)db_val('SELECT COUNT(*) FROM ai_messages WHERE user_id = ?', array($uid)) === 0; }
-    catch (Throwable $e) { return false; }
-}
-
-/**
- * 查缓存：返回 array(hit, answer, model)；未命中返回 hit=false。
- * $maxAgeSec > 0 时只认更新于该时限内的条目（搜索总结会随站内数据变化而过期）；
- * $needModel 非空时只认由该模型生成的条目（模型换代后自动重新生成）。
- * 两个参数默认关闭，问答缓存的行为保持不变。
- */
-function ai_cache_get(string $q, int $maxAgeSec = 0, string $needModel = ''): array
-{
-    $miss = array('hit' => false, 'answer' => '', 'model' => '');
-    try {
-        if ($q === '' || !table_exists('ai_answer_cache')) { return $miss; }
-        $norm = dup_content_norm($q);
-        $sql  = 'SELECT answer, model FROM ai_answer_cache WHERE q_norm = ?';
-        $args = array($norm);
-        if ($maxAgeSec > 0) {
-            $sql .= ' AND updated_at >= ?';
-            $args[] = gmdate('Y-m-d H:i:s', time() - $maxAgeSec);
-        }
-        $row = db_one($sql . ' LIMIT 1', $args);
-        if ($row === null || trim((string)$row['answer']) === '') { return $miss; }
-        if ($needModel !== '' && (string)$row['model'] !== $needModel) { return $miss; }
-        db_exec('UPDATE ai_answer_cache SET hits = hits + 1, updated_at = UTC_TIMESTAMP() WHERE q_norm = ?', array($norm));
-        return array('hit' => true, 'answer' => (string)$row['answer'], 'model' => (string)$row['model']);
-    } catch (Throwable $e) { return $miss; }
-}
-
-/** 写缓存（同一提问覆盖为新答案） */
-function ai_cache_put(string $q, string $answer, string $model)
-{
-    $answer = trim($answer);
-    if ($q === '' || $answer === '') { return; }
-    try {
-        db_exec('INSERT INTO ai_answer_cache (q_norm, question, answer, model, hits, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, 0, UTC_TIMESTAMP(), UTC_TIMESTAMP())
-                 ON DUPLICATE KEY UPDATE answer = VALUES(answer), model = VALUES(model), updated_at = UTC_TIMESTAMP()',
-            array(dup_content_norm($q), mb_substr($q, 0, 500, 'UTF-8'), $answer, $model));
-    } catch (Throwable $e) { /* 静默 */ }
-}
-
-/**
- * 无上下文且命中 → 返回答案字符串；否则返回空串（避免可空返回类型，兼容 PHP 7.0）。
- * 命中不消耗模型额度（未真正调用模型）。
- */
-function ai_cache_only(string $q): string
-{
-    $hit = ai_cache_get($q);
-    return $hit['hit'] ? (string)$hit['answer'] : '';
-}
