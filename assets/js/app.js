@@ -6631,6 +6631,13 @@ function renderAbout(container) {
     </div>
 
     <div class="card">
+      <div class="card-title">${icon(I.users)}鸣谢</div>
+      <p class="muted">谢谢经常给本站反馈问题、提建议的伙伴 —— 你们的每一条反馈，都让这个榜单变好一点点。</p>
+      <div class="credit-row"><span class="credit-k">反馈贡献</span><span class="credit-v">小李v</span></div>
+      <div class="credit-row"><span class="credit-k">反馈贡献</span><span class="credit-v">starclimber</span></div>
+    </div>
+
+    <div class="card">
       <div class="card-title">${icon(I.heart)}支持一下</div>
       <p class="muted">这个榜单是我利用业余时间、靠 AI 一点点写出来的：作品抓取、六维评分、AI 对话与工具调用，烧的都是我自己的额度。它现在完全免费、也不打算收费。</p>
       <p class="muted">如果它帮到了你，欢迎赞助一点，让服务器和 API 能继续跑下去。</p>

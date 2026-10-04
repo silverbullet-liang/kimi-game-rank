@@ -6,6 +6,7 @@
 
 | 版本 | 日期 | 要点 |
 |---|---|---|
+| v3.16.3 | 2026-10-04 | ①「关于」页 renderAbout 新增「鸣谢」卡片（反馈贡献者名单）；②官方 AI 去客服腔：lobby_ai.php 重写 lobby_ai_system()（老玩家性格 + 防复读铁律 + 禁用语 + 不硬编），lobby_ai_messages() 由「历史压成一段文本」改为真·多轮（system 最前 + AI 回复当 assistant + 本次提问去重）。APP_VERSION 3.16.3 |
 | v3.16.2 | 2026-10-04 | ①纠正审核误判：jev.php 的 intent 维度改 3 选项（攻击 / 正常 / 纯技术讨论）+ jev_inject_flag()（技术讨论概率达标即不判），提示词注入由「抬档 7.0 拦截」改为「只标注不拦截」（jev_lift_inject / jev_inject_level 移除），讽刺标注阈值 0.85→0.95（修复 @官方AI 2333 被误标）；②chat_media.php 新增 CHAT_MEDIA_GRACE=1800s，刚上传未发送的图不再被 chat_media_gc 当孤儿删除（修复发送后显示「图片已清理」）。APP_VERSION 3.16.2 |
 | v3.16.1 | 2026-10-04 | 修复 lobby.js atRange() 取错捕获组（正则只有 1 个捕获组却读 m[2]）导致世界对话输入 @ 时抛 TypeError、@ 提及面板无法弹出（v3.14.0 引入）。APP_VERSION 3.16.1 |
 | v3.16.0 | 2026-10-04 | 审核与封禁增强：①jev.php 新增 intent 维度判提示词注入（jev_lift_inject，命中抬到 7.0 档，阈值 moderation.jev_inject_level / jev_inject_prob）；②moderation.php 二次判断 moderation_context_rows / moderation_context_text（拼接最近短消息）+ moderation_recall_context（拆字骂人连坐撤回，verdict.via=context）+ 刷屏检测 moderation_flood（api/lobby.php 接入）；③封禁反篡改：前端 core.js armBanDefense() 三层（MutationObserver + 1.5s 心跳 + 4s 互校验）+ banWarn 提醒 + 同会话只报一次，后端迁移 v22（discipline_reports.tamper_count / tamper_at）+ discipline_tamper()（前三次放过、其后 +0.05 天）+ api/discipline.php beat 动作（上报字段改为平常名字以避针对性屏蔽）；④api/lobby.php 新增 del（单条消息删除：本人或管理员，官方 AI 消息仅管理员）+ lobby.js 消息旁「删除」按钮；⑤图片外链经 link_guard_check，命中 fail(422) 走审核通知条（lobby.js rejectNote 支持图片）。APP_VERSION 3.16.0 |

@@ -32,17 +32,30 @@ function lobby_ai_clean(string $s): string
     return $s;
 }
 
-/** 官方 AI 的系统提示：纯聊天，不给工具协议 */
+/**
+ * 官方 AI 的系统提示：纯聊天，不给工具协议。
+ * 刻意往「社区里的真人玩家」上调 —— 早先写成「简洁友好 / 礼貌拒绝」，
+ * 结果它回什么都像客服，还爱复读，故补上性格与防复读、禁用语两条硬约束。
+ */
 function lobby_ai_system(): string
 {
     $site = (string)cfg('site.name', 'Kimi游戏榜');
     return '你是「' . $site . '」世界对话里的官方 AI（显示名：' . LOBBY_AI_NAME . '）。'
-        . '有人在消息里 @ 你时，用简体中文、纯文本、简洁友好地回应当前话题，通常不超过 150 字。'
-        . '不要使用 Markdown 标记，不要输出任何工具调用标签或 JSON。'
-        . '遇到辱骂、攻击或违规请求，礼貌拒绝即可。';
+        . '你是这个社区的老玩家，说话像真人：直白、带点幽默，可以吐槽、可以有情绪，就是别像客服。'
+        . '用简体中文、纯文本，一般不超过 150 字；不要 Markdown，不要输出任何工具调用标签或 JSON。'
+        . '【防复读】回之前先看上面的对话：如果你的意思跟已经说过的重复，就换个说法，'
+        . '或者直接吐槽一句（例如「这题刚说过啊，换个话题呗」），绝不照抄自己。'
+        . '【禁用语】不要出现「如有疑问请咨询客服」「请关注公告」「感谢您的反馈」这类机械结尾，'
+        . '也别写成公告或通报的格式。'
+        . '不知道就说不知道（可以说「这题超纲了，我去问问站长」），别硬编。'
+        . '遇到辱骂、攻击或违规要求，简短怼回去或拒绝即可，不用长篇说教。';
 }
 
-/** 组装带最近对话上下文的消息数组 */
+/**
+ * 组装消息数组：system 放最前（权重最高），其后是最近 8 条历史（AI 的当 assistant、
+ * 其他人的当 user），最后才是这次的提问 —— 真·多轮，比把历史压成一段文本更容易
+ * 让模型「看到自己说过什么」，从而不重复。
+ */
 function lobby_ai_messages(string $ask, string $asker): array
 {
     $rows = array();
@@ -56,21 +69,31 @@ function lobby_ai_messages(string $ask, string $asker): array
         );
     } catch (Throwable $e) { $rows = array(); }
 
-    $ctx = array();
+    $hist = array();
     foreach (array_reverse((array)$rows) as $r) {
         if ((int)$r['is_recalled'] === 1 || (string)$r['msg_type'] === 'image') { continue; }
         $t = trim((string)$r['content']);
         if ($t === '') { continue; }
         if (mb_strlen($t, 'UTF-8') > 120) { $t = mb_substr($t, 0, 120, 'UTF-8') . '…'; }
-        $ctx[] = (string)$r['username'] . '：' . $t;
+        $hist[] = array('ai' => ((string)$r['msg_type'] === 'ai'), 'name' => (string)$r['username'], 'text' => $t);
     }
 
-    $body = $ask;
-    if ($ctx) { $body = "【最近的世界对话】\n" . implode("\n", $ctx) . "\n\n【{$asker} 对你说】\n" . $ask; }
-    return array(
-        array('role' => 'system', 'content' => lobby_ai_system()),
-        array('role' => 'user',   'content' => $body),
-    );
+    /* 当前这条提问此刻已经落库，别把它当成历史再喂一遍 */
+    $askT = trim($ask);
+    if ($hist) {
+        $last = $hist[count($hist) - 1];
+        $askCut = mb_strlen($askT, 'UTF-8') > 120 ? mb_substr($askT, 0, 120, 'UTF-8') . '…' : $askT;
+        if (!$last['ai'] && ($last['text'] === $askT || $last['text'] === $askCut)) { array_pop($hist); }
+    }
+
+    $msgs = array(array('role' => 'system', 'content' => lobby_ai_system()));
+    foreach ($hist as $h) {
+        $msgs[] = $h['ai']
+            ? array('role' => 'assistant', 'content' => $h['text'])
+            : array('role' => 'user',      'content' => $h['name'] . '：' . $h['text']);
+    }
+    $msgs[] = array('role' => 'user', 'content' => $asker . '：' . $askT);
+    return $msgs;
 }
 
 /**
