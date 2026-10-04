@@ -22,7 +22,10 @@ $action = param_str('action', '');
 
 switch ($action) {
     case 'run': {
-        $uid = (int)require_member();
+        $id  = require_member();
+        /* 必须换算成落库 uid：发送接口按 actor_uid 绑定凭证，
+           直接 (int) 强转身份数组会得到 1，凭证与用户对不上 → 重审通过也发不出去。 */
+        $uid = (int)actor_uid($id);
         csrf_verify();
         cooldown_guard('recheck');      // 人工触发的 AI 调用，冷却防连点
 

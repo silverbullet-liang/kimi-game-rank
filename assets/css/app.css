@@ -1317,3 +1317,21 @@ html[data-skin="sketch"]::view-transition-group(hero) { animation-duration: .4s;
 .qr-hint.ok { color: #0a8a3c; }
 .qr-hint.bad { color: var(--danger); }
 .qr-hint.wait { color: var(--accent); }
+
+/* ---------- 榜单：手动加载 + 返回定位高亮 ---------- */
+.rank-more { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 0 6px; }
+.rank-more .btn { min-width: 148px; }
+.rank-more .tiny { text-align: center; }
+.rank-item.rank-flash {
+  border-color: color-mix(in srgb, var(--accent) 58%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent), var(--shadow-sm);
+  animation: rankFlash 1.6s ease-out 1;
+}
+@keyframes rankFlash {
+  0%   { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+  60%  { background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
+  100% { background: var(--surface); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rank-item.rank-flash { animation: none; }
+}

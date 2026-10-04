@@ -17,6 +17,12 @@ function app_log(string $m) { }
 function db_all(string $sql, array $a = array()) { return $GLOBALS['ROWS']; }
 function db_exec(string $sql, array $a = array()) { $GLOBALS['SQL'][] = $sql; return 1; }
 function col_ok(string $t, string $c): bool { return true; }
+/* 指纹桩件：真实实现为 sha256(去空白→小写)，此处只保留「同文同指纹、异文异指纹」这一契约 */
+function dup_content_norm(string $c): string { return hash('sha256', strtolower(preg_replace('/\s+/u', '', $c))); }
+function now_utc(): int { return time(); }
+$GLOBALS['CACHE'] = array();
+function cache_get(string $key, int $ttl) { return isset($GLOBALS['CACHE'][$key]) ? $GLOBALS['CACHE'][$key] : null; }
+function cache_set(string $key, array $val, int $ttl) { $GLOBALS['CACHE'][$key] = $val; return true; }
 
 require APP_ROOT . '/app/jev.php';
 require APP_ROOT . '/app/moderation.php';
@@ -69,6 +75,24 @@ ck('全新用户 → 不刷屏',    moderation_flood(7, '你好'), false);
 
 /* ---------- 5. 空内容不产生误判 ---------- */
 ck('空串不刷屏', moderation_flood(7, '   '), false);
+
+/* ---------- 6. 重审凭证：必须按「落库 uid」绑定 ----------
+   历史事故：api/recheck.php 写 (int)require_member()，把身份数组强转成 1，
+   凭证签发给 uid=1，而发送接口按 actor_uid 查键 → 永远取不到 →
+   「AI 复核通过了，消息还是发不出去」。下面两头都钉住。 */
+$ident = array('uid' => 42, 'role' => 'user');
+ck('(int)身份数组 == 1（故不可直接强转）', (int)$ident, 1);
+
+$GLOBALS['CACHE'] = array();
+moderation_pass_issue(42, '你好呀', 'middle');
+$p = moderation_pass_take(42, '你好呀');
+ck('凭证按 uid 绑定：本人可取到且带标注', is_array($p) && $p['flag'] === 'middle', true);
+ck('凭证不跨用户：换个 uid 取不到',       moderation_pass_take(43, '你好呀'), null);
+ck('凭证绑定内容：换一段文字取不到',     moderation_pass_take(42, '你好'), null);
+
+$rc = (string)file_get_contents(APP_ROOT . '/api/recheck.php');
+ck('recheck.php 走 actor_uid 取 uid',        strpos($rc, 'actor_uid(') !== false, true);
+ck('recheck.php 不再直接强转身份数组',        strpos($rc, '(int)require_member') === false, true);
 
 printf("\n通过 %d，失败 %d\n", $GLOBALS['pass_n'], $GLOBALS['fail_n']);
 exit($GLOBALS['fail_n'] === 0 ? 0 : 1);

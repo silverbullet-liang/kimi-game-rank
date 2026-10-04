@@ -21,6 +21,11 @@ const BOARDS = [
 const AI_SUM_FOLD = 240;      // AI 总结折叠阈值（纯文本字数）
 export const PAGE_SIZE = 12;  // 小分页：首屏更快，一次别拉太多（服务端按此值返回）
 
+/* 刚在榜单里点开的作品：从详情返回时用它自动定位（见 locateFocus）。
+   带时间戳，避免很久之后的一次返回把页面跳走。 */
+let pendingFocus = 0;
+let pendingFocusAt = 0;
+
 export async function renderRank(container, ctx) {
   const params = (ctx && ctx.params) || {};
   let cat = params.category || 'all';
@@ -57,7 +62,8 @@ export async function renderRank(container, ctx) {
       ${CATS.map(c => `<button class="cat-tab ${cat === c.k ? 'on' : ''}" data-c="${c.k}"><span class="n" data-cnt="${c.k}">·</span><span>${c.name}</span></button>`).join('')}
     </div>
     <div class="rank-list" id="rankList"></div>
-    <div class="rank-more">
+    <div class="rank-more" id="rankMoreBox">
+      <button class="btn btn-sm" id="rankMore" hidden>加载更多</button>
       <div class="tiny" id="rankFoot"></div>
     </div>
   `;
@@ -66,12 +72,21 @@ export async function renderRank(container, ctx) {
 
   const list = container.querySelector('#rankList');
   const foot = container.querySelector('#rankFoot');
+  const moreBox = container.querySelector('#rankMoreBox');
+  const moreBtn = container.querySelector('#rankMore');
+
   function paintFoot() {
+    /* 手动加载按钮：还有下一页时出现，加载中置灰，到底后收起 */
+    if (moreBtn) {
+      moreBtn.hidden = done || totalCount <= 0;
+      moreBtn.disabled = loading;
+      moreBtn.textContent = loading ? '加载中…' : '加载更多';
+    }
     if (totalCount <= 0) { foot.textContent = ''; return; }
     if (loading) { foot.textContent = '加载中…'; return; }
     foot.textContent = done
       ? ('已显示全部 ' + shownCount + ' 件')
-      : ('已显示 ' + shownCount + ' / 共 ' + totalCount + ' 件 · 继续下滑自动加载');
+      : ('已显示 ' + shownCount + ' / 共 ' + totalCount + ' 件 · 下滑自动加载，也可点上方按钮');
   }
 
   async function load(reset) {
@@ -143,14 +158,52 @@ export async function renderRank(container, ctx) {
     load(true);
   });
 
-  // 滚动接近底部时自动加载（唯一入口，无需手动按钮）
+  /* 手动加载：点按钮取下一页 */
+  if (moreBtn) { moreBtn.addEventListener('click', () => load(false)); }
+
+  /* 自动加载：用观察器盯着列表末尾，提前 700px 触发 —— 比「滚动事件 + 高度比对」
+     灵敏得多，首屏不满一屏时也能立刻续拉；不支持观察器的环境退回滚动兜底。 */
   const scroller = document.getElementById('view');
   function onScroll() {
     if (!list.isConnected) { scroller.removeEventListener('scroll', onScroll); return; }
     if (done || loading) { return; }
-    if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 360) { load(false); }
+    if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 800) { load(false); }
   }
-  scroller.addEventListener('scroll', onScroll, { passive: true });
+  let io = null;
+  if (typeof IntersectionObserver === 'function' && moreBox) {
+    io = new IntersectionObserver(() => {
+      if (!list.isConnected) { io.disconnect(); return; }
+      if (done || loading) { return; }
+      load(false);
+    }, { rootMargin: '700px 0px' });          // 默认以视口为根：无论哪个祖先在滚动，进入提前量都能命中
+    io.observe(moreBox);
+  } else {
+    scroller.addEventListener('scroll', onScroll, { passive: true });
+  }
+
+  /* 从作品详情返回时自动定位：滚到那件作品并短暂高亮；若它还没被加载出来，
+     按需继续取下一页直到找到（最多 12 页），省掉手动翻找。 */
+  let focusTries = 0;
+  container.__onResume = function () { locateFocus(); };
+
+  function locateFocus() {
+    if (!pendingFocus) { return; }
+    if (Date.now() - pendingFocusAt > 600000) { pendingFocus = 0; return; }
+    const row = list.querySelector('.rank-item[data-cid="' + pendingFocus + '"]');
+    if (row) { focusRow(row); return; }
+    if (done || loading || focusTries > 12) { pendingFocus = 0; return; }
+    focusTries++;
+    load(false).then(function () { if (list.isConnected) { locateFocus(); } });
+  }
+  function focusRow(row) {
+    pendingFocus = 0; focusTries = 0;
+    try { row.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    catch (e) { row.scrollIntoView(); }
+    row.classList.remove('rank-flash');
+    void row.offsetWidth;                        // 重置动画：连点多次也能再次高亮
+    row.classList.add('rank-flash');
+    setTimeout(function () { row.classList.remove('rank-flash'); }, 1800);
+  }
 
   await load(true);
 }
@@ -159,6 +212,7 @@ function rankRow(w, rank) {
   const el = document.createElement('button');
   el.className = 'rank-item';
   el.type = 'button';
+  el.dataset.cid = w.id;                           // 返回定位靠它反查
   const medal = rank <= 3 ? `m${rank}` : '';
   el.innerHTML = `
     <span class="medal ${medal}">${rank}</span>
@@ -178,6 +232,8 @@ function rankRow(w, rank) {
       <span class="total">${w.total}</span>
     </span>`;
   el.addEventListener('click', () => {
+    pendingFocus = w.id;                           // 返回榜单时自动定位到这一条
+    pendingFocusAt = Date.now();
     setHeroSrc(el.querySelector('.thumb'));        // 共享元素：卡片封面
     navigate('#/detail/' + w.id);
   });
