@@ -48,8 +48,9 @@ try {
         $rows = isset($data['rows']) && is_array($data['rows']) ? $data['rows'] : array();
         if (count($rows) > 500) { $rows = array_slice($rows, 0, 500); }
         $r = sync_apply($t, $rows);
-        $reply['applied'] = $r['applied'];
-        $reply['skipped'] = $r['skipped'];
+        $reply['applied'] = (int)$r['applied'];
+        $reply['skipped'] = (int)$r['skipped'];
+        $reply['failed']  = isset($r['failed']) ? (int)$r['failed'] : 0;
     } else {
         throw new RuntimeException('未知动作');
     }

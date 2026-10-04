@@ -5577,7 +5577,8 @@ async function loadPeer(container) {
     try {
       const r = await api('admin.php', 'peer_sync', {}, { timeout: 300000 });
       const list = (r.results || []).map(x => x.ok
-        ? x.name + '：拉取 ' + x.pulled + ' / 推送 ' + x.pushed + '（' + x.tables + ' 张表）'
+        ? x.name + '：拉取 ' + x.pulled + ' / 推送 ' + x.pushed + '（' + x.tables + ' 张表'
+          + (Number(x.failed || 0) > 0 ? '，跳过 ' + x.failed + ' 行' : '') + '）'
         : x.name + '：失败' + (x.msg ? '（' + x.msg + '）' : ''));
       toast(list.length ? list.join('；') : '没有启用中的站点');
       await refresh();

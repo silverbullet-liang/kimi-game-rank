@@ -115,6 +115,24 @@ function sync_table_ok(string $table): bool
     return (bool)preg_match('/^[a-z_]+$/', $table) && table_exists($table);
 }
 
+/**
+ * 外键在导出侧只有两种形态：
+ *   · 32 位十六进制 gid 字符串 —— 该引用指向别的行，导入侧要换成本地 id；
+ *   · 数字 0（或字符串 '0'、空串）—— 该引用本来就是 0（可选引用，如 parent_id=0）。
+ * 返回 null = 「本来就是 0」；返回非空字符串 = 待解析的 gid；返回 '' = 形态不合法。
+ *
+ * 为什么不能写成 (int)$v === 0 来判「是不是 0」：gid 是十六进制，
+ * 以 0 开头时 (int) 会得到 0 —— 于是这类 gid 被当成「本来就是 0」直接落库，
+ * 把两条真实外键都写成 0，撞上 (work_id,user_id) 的唯一键（uk_work_user）。
+ */
+function sync_ref_gid($v)
+{
+    if ($v === 0 || $v === '0' || $v === null) { return null; }
+    $s = is_string($v) ? trim($v) : '';
+    if ($s === '') { return null; }
+    return preg_match('/^[0-9a-f]{32}$/', $s) ? $s : '';
+}
+
 /** 导出：把行转成「跨站文档」（本地外键 → gid） */
 function sync_export(string $table, int $offset, int $limit): array
 {
@@ -144,7 +162,7 @@ function sync_apply(string $table, array $docs): array
     if (!sync_table_ok($table)) { return array('applied' => 0, 'skipped' => count($docs)); }
     $p = sync_plan()[$table];
     $refs = isset($p['refs']) ? $p['refs'] : array();
-    $applied = 0; $skipped = 0;
+    $applied = 0; $skipped = 0; $failed = 0;
 
     foreach ($docs as $doc) {
         if (!is_array($doc)) { continue; }
@@ -154,40 +172,56 @@ function sync_apply(string $table, array $docs): array
             if (!array_key_exists($c, $doc)) { continue; }
             $v = $doc[$c];
             if (isset($refs[$c])) {
-                $gid = is_string($v) ? trim($v) : '';
-                if ($gid === '' || (int)$v === 0) { $v = 0; }
-                else { $v = sync_local_of($refs[$c], $gid); if ($v === 0) { $missing = true; } }
+                $g = sync_ref_gid($v);
+                if ($g === null)      { $v = 0; }                  // 原值本来就是 0
+                elseif ($g === '')    { $missing = true; }         // 形态不合法，拒收
+                else {
+                    $v = sync_local_of($refs[$c], $g);
+                    if ($v === 0) { $missing = true; }             // 引用还没同步过来
+                }
             }
             $data[$c] = $v;
         }
-        if ($missing) { $skipped++; continue; }   // 引用尚未同步过来，留待下一轮
+        if ($missing) { $skipped++; continue; }   // 留待下一轮
 
-        /* 找目标行 */
-        $targetId = 0;
-        if ($p['key'] === 'gid') {
-            $targetId = sync_local_of($table, isset($doc['_gid']) ? (string)$doc['_gid'] : '');
-        } else {
-            $where = array(); $args = array();
-            foreach ($p['natural'] as $c) { $where[] = '`' . $c . '` = ?'; $args[] = isset($data[$c]) ? $data[$c] : ''; }
-            $row = db_one('SELECT id FROM `' . $table . '` WHERE ' . implode(' AND ', $where) . ' LIMIT 1', $args);
-            if ($row !== null) { $targetId = (int)$row['id']; }
-        }
+        /* gid 身份表：没有 _gid 就无从落位，同样留待下一轮 */
+        $myGid = ($p['key'] === 'gid' && isset($doc['_gid'])) ? trim((string)$doc['_gid']) : '';
+        if ($p['key'] === 'gid' && $myGid === '') { $skipped++; continue; }
 
-        $cols = array_keys($data);
-        if ($targetId > 0) {
-            $set = array(); $args = array();
-            foreach ($cols as $c) { $set[] = '`' . $c . '` = ?'; $args[] = $data[$c]; }
-            $args[] = $targetId;
-            db_exec('UPDATE `' . $table . '` SET ' . implode(', ', $set) . ' WHERE id = ?', $args);
-        } else {
-            $ph = implode(', ', array_fill(0, count($cols), '?'));
-            $targetId = (int)db_insert('INSERT INTO `' . $table . '` (`' . implode('`,`', $cols) . '`) VALUES (' . $ph . ')',
-                array_values($data));
-            if ($p['key'] === 'gid' && isset($doc['_gid'])) { sync_bind($table, (string)$targetId, (string)$doc['_gid']); }
+        try {
+            /* 找目标行 */
+            $targetId = 0;
+            if ($p['key'] === 'gid') {
+                $targetId = sync_local_of($table, $myGid);
+            } else {
+                $where = array(); $args = array();
+                foreach ($p['natural'] as $c) { $where[] = '`' . $c . '` = ?'; $args[] = isset($data[$c]) ? $data[$c] : ''; }
+                $row = db_one('SELECT id FROM `' . $table . '` WHERE ' . implode(' AND ', $where) . ' LIMIT 1', $args);
+                if ($row !== null) { $targetId = (int)$row['id']; }
+            }
+
+            $cols = array_keys($data);
+            if ($targetId > 0) {
+                $set = array(); $args = array();
+                foreach ($cols as $c) { $set[] = '`' . $c . '` = ?'; $args[] = $data[$c]; }
+                $args[] = $targetId;
+                db_exec('UPDATE `' . $table . '` SET ' . implode(', ', $set) . ' WHERE id = ?', $args);
+            } else {
+                $ph = implode(', ', array_fill(0, count($cols), '?'));
+                $targetId = (int)db_insert('INSERT INTO `' . $table . '` (`' . implode('`,`', $cols) . '`) VALUES (' . $ph . ')',
+                    array_values($data));
+                if ($myGid !== '') { sync_bind($table, (string)$targetId, $myGid); }
+            }
+        } catch (Throwable $e) {
+            /* 单行写不进去（唯一键冲突、超长等）不能让整轮互通失败：
+               记账跳过并留日志，其余表照常往下走。 */
+            $failed++;
+            app_log('peer_sync row skipped on ' . $table . ': ' . $e->getMessage());
+            continue;
         }
         $applied++;
     }
-    return array('applied' => $applied, 'skipped' => $skipped);
+    return array('applied' => $applied, 'skipped' => $skipped, 'failed' => $failed);
 }
 
 /** 清单：逐表的行数 + 时间戳，用于「谁更新」的快速比对 */
@@ -266,7 +300,7 @@ function peer_sync_one(array $peer): array
     $remote = isset($hello['manifest']) && is_array($hello['manifest']) ? $hello['manifest'] : array();
     $local  = sync_manifest();
 
-    $pulled = 0; $pushed = 0; $tables = 0;
+    $pulled = 0; $pushed = 0; $tables = 0; $bad = 0;
     foreach (sync_plan() as $t => $p) {
         $rn = isset($remote[$t]['n']) ? (int)$remote[$t]['n'] : 0;
         $rs = isset($remote[$t]['stamp']) ? (int)$remote[$t]['stamp'] : 0;
@@ -282,6 +316,7 @@ function peer_sync_one(array $peer): array
             if (!$docs) { break; }
             $r = sync_apply($t, $docs);
             $pulled += (int)$r['applied'];
+            $bad    += (int)$r['failed'];
             if (count($docs) < $limit) { break; }
         }
         /* 推：把本端较新的送过去 */
@@ -290,13 +325,14 @@ function peer_sync_one(array $peer): array
             if (!$docs) { break; }
             $res = peer_call($peer, 'apply', array('table' => $t, 'rows' => $docs));
             $pushed += (int)(isset($res['applied']) ? $res['applied'] : 0);
+            $bad    += (int)(isset($res['failed']) ? $res['failed'] : 0);
             if (count($docs) < $limit) { break; }
         }
     }
 
     db_exec('UPDATE peers SET last_sync_at = ?, last_status = ? WHERE id = ?',
-        array(now_utc(), 'ok', (int)$peer['id']));
-    return array('pulled' => $pulled, 'pushed' => $pushed, 'tables' => $tables);
+        array(now_utc(), $bad > 0 ? ('ok（跳过 ' . $bad . ' 行）') : 'ok', (int)$peer['id']));
+    return array('pulled' => $pulled, 'pushed' => $pushed, 'tables' => $tables, 'failed' => $bad);
 }
 
 /** 一键互通：遍历启用中的站点列表 */
@@ -307,7 +343,8 @@ function peer_sync_all(): array
         try {
             $r = peer_sync_one($peer);
             $out[] = array('name' => (string)$peer['name'], 'ok' => true,
-                           'pulled' => $r['pulled'], 'pushed' => $r['pushed'], 'tables' => $r['tables']);
+                           'pulled' => $r['pulled'], 'pushed' => $r['pushed'], 'tables' => $r['tables'],
+                           'failed' => $r['failed']);
         } catch (Throwable $e) {
             db_exec('UPDATE peers SET last_status = ? WHERE id = ?', array('fail: ' . $e->getMessage(), (int)$peer['id']));
             $out[] = array('name' => (string)$peer['name'], 'ok' => false, 'msg' => $e->getMessage());
