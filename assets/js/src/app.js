@@ -1,7 +1,7 @@
 /**
  * 应用入口：启动引导、路由、底栏、抽屉、搜索、通知轮询
  */
-import { boot, state, api, toast, dialog, setToken, setUnauthorizedHandler, notify, getPrefs, setPrefs, $, on, askNotifyPermission, esc } from './core.js';
+import { boot, state, api, toast, dialog, setToken, setUnauthorizedHandler, notify, getPrefs, setPrefs, $, on, askNotifyPermission, esc, showBanLock, hideBanLock, maybeDiscPopup } from './core.js';
 import { applyTheme, saveTheme, initSystemWatcher, ACCENTS } from './theme.js';
 import { setNavigate } from './router.js';
 import { cacheGet, cacheSet, cacheTouch, cachePrev, runTransition, enablePredictiveBack, setNavAnim } from './transitions.js';
@@ -139,16 +139,15 @@ function routeKeyOf(name, sub, params) {
 async function route(navType) {
   clearPageTimers();                            // 离开上一页时清理其轮询定时器
   let { name, sub, params } = parseHash();
-  /* 被通报封禁：不论地址栏写什么，一律渲染封禁通知界面（后端同样拒绝所有 API，
-     所以改地址、换设备都绕不过去）。管理员不会命中，服务端已排除。 */
-  const bannedId = Number(window.__BANNED || 0);
-  if (bannedId > 0) { name = 'violation'; sub = String(bannedId); params = {}; }
+  /* 被通报封禁不再改地址，改由「全屏封禁说明」盖住整站（见 syncBanLock）；
+     后端同样拒绝所有 API，所以改地址、换设备都绕不过去。管理员不会命中，服务端已排除。 */
   const fn = routes[name] || routes.rank;
   const key = routeKeyOf(name, sub, params);
   currentPage = name;
   setActiveTab(name);
   updateBackBtn(name);
   closeDrawer();
+  syncBanLock();          // 封禁状态随时刷新：任何时候都盖住整站（登录页除外）
 
   // 聊天页需要内部独立滚动：锁定外层滚动
   view.classList.toggle('view-locked', name === 'chat');
@@ -527,6 +526,34 @@ function bindToTop() {
 }
 
 /* ============================================================
+ * 违纪通报：全屏封禁说明 + 最新通报弹窗
+ * ============================================================ */
+/** 按当前封禁状态显示 / 收起全屏封禁说明（登录页除外，便于换账号登录）。 */
+function syncBanLock() {
+  if (state.ban && currentPage !== 'login') { showBanLock(state.ban); }
+  else { hideBanLock(); }
+}
+
+/** 后端判定封停时由 core.api 触发：补一次最新状态并立刻上锁 */
+window.__forceBan = function () { refreshDiscState(true); };
+
+/** 拉最新封禁与通报状态（start.php 在封禁白名单内，被封时也能取到）。
+ *  防抖：封禁后页面上会有多个 403，不能让它们各拉一次（共享主机尤其敏感）。 */
+let __discLast = 0;
+async function refreshDiscState(force) {
+  const now = Date.now();
+  if (now - __discLast < (force ? 4000 : 8000)) { return; }
+  __discLast = now;
+  try {
+    const d = await api('start.php', 'app', null, { silent: true, tries: 1 });
+    state.ban  = (d && d.ban)  ? d.ban  : null;
+    state.disc = (d && d.disc) ? d.disc : null;
+    if (force || state.ban) { syncBanLock(); }
+    maybeDiscPopup(state.disc);
+  } catch (e) {}
+}
+
+/* ============================================================
  * 启动
  * ============================================================ */
 async function main() {
@@ -584,6 +611,12 @@ async function main() {
   bindEvents();
   renderDrawer();
   applyAnnounce();
+  syncBanLock();
+  maybeDiscPopup(state.disc);
+  /* 回到前台时刷新一次封禁状态与最新通报 —— 不做常驻轮询，省主机请求 */
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) { refreshDiscState(); }
+  });
   /* 首屏地址规范化：hash / 裸参数统一改为 ?p= 形式；无参数默认「我的」。
      敏感界面不接受通过地址直达（站内入口仍可正常进入）。 */
   const initial = readRoute();

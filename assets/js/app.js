@@ -247,6 +247,11 @@ async function apiOnce(file, action, data = null, opts = {}) {
       '服务响应格式异常（HTTP ' + resp.status + '），请刷新后重试');
   }
   if (Number(json.code) !== 0) {
+    /* 账号被封停：后端已拒绝本次操作，前台立刻拉起全屏封禁说明 */
+    const __bm = String(json.msg || json.error || '');
+    if (Number(json.code) === 403 && __bm.indexOf('封停') >= 0 && typeof window.__forceBan === 'function') {
+      try { window.__forceBan(); } catch (e) {}
+    }
     throw new ApiError(Number(json.code) || resp.status,
       json.msg || json.error || ('请求失败（HTTP ' + resp.status + '）'));
   }
@@ -297,6 +302,7 @@ function isAdminish(role) {
 
 /** 身份徽章（内联 SVG，无表情字符）；普通用户/游客返回空串 */
 function badge(role) {
+  if (role === 'ai') { return '<span class="badge bd-ai" title="官方 AI">AI</span>'; }
   const r = ROLES[role];
   if (!r) { return ''; }
   const shield = '<path d="M8 1.35 13.7 3.3v4.45c0 3.1-2.35 5.6-5.7 7-3.35-1.4-5.7-3.9-5.7-7V3.3z" '
@@ -408,6 +414,8 @@ async function boot() {
     state.announce = (d && d.announce !== undefined) ? String(d.announce || '') : '';
     state.categories = (d && d.categories) ? d.categories : {};
     state.firstPage = (d && d.first) ? d.first : null;
+    state.ban  = (d && d.ban)  ? d.ban  : null;
+    state.disc = (d && d.disc) ? d.disc : null;
     state.booted = true;
     return state;
   } catch (e) {
@@ -538,6 +546,233 @@ function bindImageViewer(container) {
     const img = e.target && e.target.closest ? e.target.closest('img.msg-img') : null;
     if (img && img.src) { imageViewer(img.src); }
   });
+}
+
+/* ============================================================
+ * 违纪通报：全屏封禁说明 + 最新通报弹窗
+ * ------------------------------------------------------------
+ * 都用「动态创建 + 固定定位」实现，不改 index.php 骨架。
+ * 封禁说明不可关闭（强制全屏），但保留「切换账号登录」入口。
+ * ============================================================ */
+const I_SHIELD = '<svg viewBox="0 0 24 24" class="ic"><path d="M12 2 4 5.2v5.9c0 4.7 3.3 8.8 8 10.9 4.7-2.1 8-6.2 8-10.9V5.2L12 2z"/></svg>';
+const I_CROSS  = '<svg viewBox="0 0 24 24" class="ic"><path d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6z"/></svg>';
+
+/** 封禁状态文案：未封停 / 封停中（至某时或永久）/ 已解封 */
+function discStatusText(it) {
+  const o = it || {};
+  if (!o.banned) { return '未封停账号'; }
+  const until = String(o.ban_until || '');
+  if (o.alive) { return until ? ('封停中 · 至 ' + until) : '封停中 · 永久'; }
+  return until ? ('已解封（原定 ' + until + '）') : '已解封';
+}
+
+/** 封禁天数文案 */
+function discDaysText(it) {
+  const o = it || {};
+  if (!o.banned) { return '—'; }
+  const d = Number(o.ban_days || 0);
+  return d > 0 ? (d + ' 天') : '永久';
+}
+
+let __banEl = null;
+
+/** 全屏封禁说明（不可关闭）。$info 为 start.php 下发的 ban 对象。 */
+function showBanLock(info) {
+  if (__banEl) { return __banEl; }
+  const b = info || {};
+  const reasons = (b.reasons && b.reasons.length) ? b.reasons : [];
+  const el = document.createElement('div');
+  el.className = 'banlock';
+  el.innerHTML = `
+    <div class="banlock-inner dialog">
+      <div class="banlock-ic">${I_SHIELD}</div>
+      <h2>访问已被限制</h2>
+      <p class="banlock-sub">本站已对相关账号与来源地址作出处理。如有异议，请通过站内反馈或联系管理员。</p>
+      <dl class="kv">
+        <dt>处理对象</dt><dd>${esc(b.username || '（未知）')}</dd>
+        <dt>封禁状态</dt><dd>${esc(discStatusText(b))}</dd>
+        <dt>封禁天数</dt><dd>${esc(discDaysText(b))}</dd>
+        <dt>解封时间</dt><dd>${b.alive ? (b.ban_until ? esc(b.ban_until) : '不会自动解封（永久）') : '已结束'}</dd>
+        ${b.ip_banned ? '<dt>来源地址</dt><dd>已一并封禁</dd>' : ''}
+      </dl>
+      ${reasons.length ? '<div class="banlock-reasons">' + reasons.map(r => '<span class="disc-chip">' + esc(r) + '</span>').join('') + '</div>' : ''}
+      ${b.note ? '<div class="disc-note"><span class="disc-note-k">补充说明</span>' + esc(b.note) + '</div>' : ''}
+      <div class="banlock-actions"><button class="btn-ghost" id="banSwitch">切换账号登录</button></div>
+      <p class="tiny muted">解除限制前，本站功能不可用。</p>
+    </div>`;
+  document.body.appendChild(el);
+  __banEl = el;
+  const sw = el.querySelector('#banSwitch');
+  if (sw) {
+    sw.addEventListener('click', function () {
+      try { setToken(''); } catch (e) {}
+      location.href = location.pathname + '?p=login';
+    });
+  }
+  armBanDefense();          // 挂上反篡改三道防线
+  return el;
+}
+
+function hideBanLock() {
+  if (__banEl) { try { __banEl.remove(); } catch (e) {} __banEl = null; }
+}
+
+const DISC_SEEN_KEY = 'kimgr_disc_seen';
+
+/** 最新通报弹窗（可关闭）。$item 来自 start.php 的 disc。 */
+function showDiscPopup(item) {
+  const it = item || {};
+  const el = document.createElement('div');
+  el.className = 'discpop-scrim';
+  el.innerHTML = `
+    <div class="discpop dialog">
+      <div class="discpop-head">
+        <span class="discpop-ic">${I_SHIELD}</span>
+        <h3>最新违纪通报</h3>
+        <button class="discpop-x" id="discX" aria-label="关闭">${I_CROSS}</button>
+      </div>
+      <div class="discpop-body">
+        <div class="discpop-who">${esc(it.username || '（未知用户）')} <span class="tiny muted">· ${esc(it.created || '')}</span></div>
+        <div class="discpop-status"><span class="disc-chip ${it.alive ? 'on' : (it.banned ? 'off' : '')}">${esc(discStatusText(it))}</span> <span class="tiny muted">封禁 ${esc(discDaysText(it))}</span></div>
+        ${it.note ? '<div class="disc-note"><span class="disc-note-k">补充说明</span>' + esc(it.note) + '</div>' : ''}
+        ${(it.reasons && it.reasons.length) ? '<ol class="disc-reasons">' + it.reasons.map(r => '<li>' + esc(r) + '</li>').join('') + '</ol>' : ''}
+      </div>
+      <div class="discpop-actions">
+        <button class="btn-ghost" id="discMore">查看全部</button>
+        <button class="btn" id="discOk">我知道了</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+
+  const close = function (go) {
+    try { localStorage.setItem(DISC_SEEN_KEY, String(it.id)); } catch (e) {}
+    try { el.remove(); } catch (e) {}
+    if (go && typeof window.__navigate === 'function') { window.__navigate('#/discipline/' + it.id); }
+  };
+  const x = el.querySelector('#discX'); if (x) { x.addEventListener('click', () => close(false)); }
+  const ok = el.querySelector('#discOk'); if (ok) { ok.addEventListener('click', () => close(false)); }
+  const more = el.querySelector('#discMore'); if (more) { more.addEventListener('click', () => close(true)); }
+  el.addEventListener('click', e => { if (e.target === el) { close(false); } });
+}
+
+/** 有新通报才弹（按 id 缓存「已看过」，同一条件不再重复弹） */
+function maybeDiscPopup(item) {
+  const it = item || {};
+  if (!it.id) { return false; }
+  let seen = 0;
+  try { seen = Number(localStorage.getItem(DISC_SEEN_KEY) || 0); } catch (e) {}
+  if (Number(it.id) <= seen) { return false; }
+  if (__banEl) { return false; }        // 已被全屏说明盖住，不叠加弹窗
+  showDiscPopup(it);
+  return true;
+}
+
+/* ============================================================
+ * 反篡改（三层）
+ * ------------------------------------------------------------
+ * 有人用油猴脚本把封禁说明删掉、隐藏、或改样式来绕过限制。三道防线：
+ *   ① 监听 DOM：节点被移除、class/style/hidden 被改 → 立刻重挂并记账；
+ *   ② 心跳自校验：每 1.5s 检查说明书仍在、可见，且带着本次会话的随机指纹；
+ *   ③ 互校验：第二个定时器盯着第一个的「心跳计数」，停表（被 clearInterval）
+ *      即视为篡改；同时把被 disconnect 的观察者重新装上。
+ * 必须说清：前端只能抬高门槛，真正拦人的是后端 —— 被封时所有 API 一律 403。
+ * ============================================================ */
+let __defArmed = false;
+const __def = { strikes: 0, beat: 0, seen: -1, nonce: '', mo: null };
+
+function armBanDefense() {
+  if (__defArmed) { return; }
+  __defArmed = true;
+  if (!__def.nonce) { __def.nonce = Math.random().toString(36).slice(2, 10); }
+  stampLock();
+  attachObserver();
+  setInterval(heartbeat, 1500);
+  setInterval(watchdog, 4000);
+}
+
+function stampLock() {
+  const el = document.querySelector('.banlock');
+  if (el) { el.setAttribute('data-kimgr', __def.nonce); }
+}
+
+function lockOk() {
+  const el = document.querySelector('.banlock');
+  if (!el) { return false; }
+  if (el.getAttribute('data-kimgr') !== __def.nonce) { return false; }
+  if (el.hasAttribute('hidden')) { return false; }
+  const cs = window.getComputedStyle(el);
+  if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity || 1) < 0.5) { return false; }
+  const r = el.getBoundingClientRect();
+  return r.width > 40 && r.height > 40;
+}
+
+function reassertLock() {
+  if (!state.ban) { return; }
+  hideBanLock();
+  showBanLock(state.ban);
+  stampLock();
+}
+
+function banTampered() {
+  __def.strikes++;
+  reassertLock();
+  banWarn(__def.strikes);
+  reportTamperOnce();
+}
+
+function attachObserver() {
+  try { if (__def.mo) { __def.mo.disconnect(); } } catch (e) {}
+  try {
+    __def.mo = new MutationObserver(function () {
+      if (state.ban && !lockOk()) { banTampered(); }
+    });
+    __def.mo.observe(document.documentElement, {
+      childList: true, subtree: true, attributes: true,
+      attributeFilter: ['style', 'class', 'hidden', 'data-kimgr'],
+    });
+  } catch (e) { __def.mo = null; }
+}
+
+function heartbeat() {
+  __def.beat++;
+  if (!state.ban) { return; }
+  if (!lockOk()) { banTampered(); }
+  stampLock();
+  if (!__def.mo) { attachObserver(); }          // 观察者被摘掉 → 重装
+}
+
+function watchdog() {
+  if (__def.seen === __def.beat) {              // 心跳没推进：被停表了
+    if (state.ban) { banTampered(); }
+    attachObserver();
+  }
+  __def.seen = __def.beat;
+}
+
+/** 篡改提醒（自绘弹窗，几秒后自动消失；说明不可关闭） */
+function banWarn(n) {
+  try {
+    const el = document.createElement('div');
+    el.className = 'banwarn dialog glass';
+    el.innerHTML = '<b>检测到试图绕过封禁说明的修改</b>'
+      + '<p class="tiny" style="margin:6px 0 0">这是第 ' + n + ' 次。前三次仅提醒；'
+      + '之后每次会自动把封禁时间延长 0.05 天。</p>';
+    document.body.appendChild(el);
+    setTimeout(function () { try { el.remove(); } catch (e) {} }, 4500);
+  } catch (e) {}
+}
+
+/** 上报一次：同一会话只报一次，避免自己把自己刷成重罚 */
+function reportTamperOnce() {
+  const id = (state.ban && state.ban.id) ? state.ban.id : 0;
+  if (!id) { return; }
+  const k = 'kimgr_tamper_' + id;
+  try { if (sessionStorage.getItem(k)) { return; } sessionStorage.setItem(k, '1'); } catch (e) { return; }
+  try {
+    api('discipline.php', 'tamper', { id: id }, { silent: true, tries: 1 }).then(function (r) {
+      if (r && r.added) { toast('封禁时间已延长 0.05 天'); }
+    }).catch(function () {});
+  } catch (e) {}
 }
 
 /* ========== md.js ========== */
@@ -1934,7 +2169,12 @@ function richInline(html) {
 }
 
 /** 世界对话消息：纯文本 + 表情 + 图片（刻意不渲染 Markdown，避免消息被格式刷屏） */
-function renderRich(text) { return richInline(esc(text)); }
+function renderRich(text) {
+  /* @ 提及：与评论回复同款灰字（.reply-to） */
+  const h = esc(text).replace(/(^|[\s（(【[>])@([\u4e00-\u9fa5A-Za-z0-9_\-]{1,16})/g,
+    (m, p, nm) => p + '<span class="reply-to">@' + nm + '</span>');
+  return richInline(h);
+}
 
 /** 清洗历史里可能残留的工具标签（旧版本数据），避免裸标签展示 */
 /** AI 回复最终渲染：剥离工具标签 → Markdown → 表情 / 图片 */
@@ -2040,6 +2280,7 @@ async function mountWorld(body) {
       <div class="chat-input">
         <button class="icon-btn pk-btn" id="wEmoji" aria-label="表情" ${canSend ? '' : 'disabled'}>${W_ICON_SMILE}</button>
         <button class="icon-btn pk-btn" id="wImage" aria-label="图片" ${canSend ? '' : 'disabled'}>${W_ICON_IMAGE}</button>
+        <button class="icon-btn pk-btn at-txt" id="wAt" aria-label="@ 官方AI" ${canSend ? '' : 'disabled'}>@</button>
         <div class="cnt" id="wCount">0/500</div>
         <textarea class="input" id="wInput" rows="1" maxlength="500"
           placeholder="${canSend ? '输入消息…' : '游客仅可查看，登录后可发言'}" ${canSend ? '' : 'disabled'}></textarea>
@@ -2065,7 +2306,7 @@ async function mountWorld(body) {
 
   function render(m) {
     const el = document.createElement('div');
-    el.className = 'msg' + (m.mine ? ' mine' : '');
+    el.className = 'msg' + (m.mine ? ' mine' : '') + (m.msg_type === 'ai' ? ' ai' : '');
     let inner;
     if (m.recalled) {
       inner = '<span class="recall">该消息已撤回</span>';
@@ -2172,12 +2413,13 @@ async function mountWorld(body) {
     if (old) { old.remove(); }
     const bar = document.createElement('div');
     bar.className = 'reject-note';
+    const canReview = !(payload && payload.type === 'image');   // 图片外链没有「重审」可言
     bar.innerHTML = '<span class="rn-text">' + esc(text) + '</span>'
-      + '<button class="btn btn-sm" data-review="1">AI 重审</button>';
+      + (canReview ? '<button class="btn btn-sm" data-review="1">AI 重审</button>' : '');
     stream.after(bar);
 
     const btn = bar.querySelector('[data-review]');
-    btn.addEventListener('click', async () => {
+    if (btn) btn.addEventListener('click', async () => {
       btn.disabled = true;
       btn.textContent = '重审中…';
       try {
@@ -2207,12 +2449,15 @@ async function mountWorld(body) {
       const m = await api('lobby.php', 'send', Object.assign({ type: type }, payload), { timeout: 30000 });
       if (stream.querySelector('.empty')) { stream.innerHTML = ''; seen.clear(); }
       put(m, true);
+      if (m && m.ai) { put(m.ai, true); }
+      if (m && m.ai_note) { toast(m.ai_note, 'err'); }
       picker.hidden = true;
       const bar = stream.parentNode.querySelector('.reject-note');
       if (bar) { bar.remove(); }
     } catch (e) {
-      if (e && e.code === 422 && type !== 'image') {
-        rejectNote(e.message || '内容未通过审核', { type: type, content: payload.content });
+      if (e && e.code === 422) {
+        /* 图片同样给一条明确的通知条，而不是静默失败（用户以为发出去了） */
+        rejectNote(e.message || '内容未通过审核', { type: type, content: payload.content, media: payload.media });
       } else {
         toast(e.message, 'err');
       }
@@ -2285,6 +2530,50 @@ async function mountWorld(body) {
     if (count) { count.textContent = input.value.length + '/500'; }
   });
   input.addEventListener('focus', () => requestAnimationFrame(stick));
+
+  /* ---------- @ 提及（仅世界对话）：输入 @ 弹面板；@ 按钮一键插入 ---------- */
+  const AI_MENTION = '@官方AI ';
+  function atInsert() {
+    const st = input.selectionStart, en = input.selectionEnd, v = input.value;
+    input.value = v.slice(0, st) + AI_MENTION + v.slice(en);
+    const p = st + AI_MENTION.length;
+    input.setSelectionRange(p, p);
+    input.focus();
+    input.dispatchEvent(new Event('input'));
+  }
+  function atRange() {
+    const pos = input.selectionStart;
+    const m = input.value.slice(0, pos).match(/(?:^|[\s（(【[>])@([\u4e00-\u9fa5A-Za-z0-9]{0,7})$/);
+    return m ? { start: pos - m[2].length - 1 } : null;
+  }
+  function atSync() {
+    if (!canSend) { return; }
+    const r = atRange();
+    const q = r ? input.value.slice(r.start + 1, input.selectionStart) : '';
+    if (!r || '官方AI'.indexOf(q) !== 0) {
+      if (picker.dataset.kind === 'mention') { picker.hidden = true; picker.dataset.kind = ''; }
+      return;
+    }
+    picker.dataset.kind = 'mention';
+    picker.innerHTML = '<div class="picker-head">@ 提及（点击插入）</div>'
+      + '<div class="picker-body"><button class="btn btn-sm" id="wAtPick">' + esc(AI_MENTION.trim()) + '</button>'
+      + '<div class="tiny" style="margin-top:6px">@ 官方 AI，它会回应这条消息</div></div>';
+    picker.hidden = false;
+    picker.querySelector('#wAtPick').addEventListener('click', () => {
+      const st = atRange();
+      const pos = input.selectionStart, v = input.value;
+      const from = st ? st.start : pos;
+      input.value = v.slice(0, from) + AI_MENTION + v.slice(pos);
+      const p = from + AI_MENTION.length;
+      input.setSelectionRange(p, p);
+      picker.hidden = true; picker.dataset.kind = '';
+      input.focus();
+      input.dispatchEvent(new Event('input'));
+    });
+  }
+  const atBtn = body.querySelector('#wAt');
+  if (atBtn) { atBtn.addEventListener('click', atInsert); }
+  input.addEventListener('input', atSync);
 
   const loginBtn = body.querySelector('#wLogin');
   if (loginBtn) { loginBtn.addEventListener('click', () => navigate('#/login')); }
@@ -3477,7 +3766,6 @@ async function renderPanel(container) {
     bindDb(container);
     bindBackup(container);
     loadDisc(container);
-    loadAdBlock(container);
     loadPeer(container);
     bindAiRank(container);
     startPanelPolling(container);
@@ -3570,8 +3858,6 @@ function adminLayout() {
     </div>
 
     ${discBlock()}
-
-    ${adBlock()}
 
     ${peerBlock()}
 
@@ -4866,52 +5152,6 @@ async function loadVisitsTop(container) {
  * 列出全部通报，可「设置」二次调整：理由、说明、封禁天数（重算解封时间）、
  * 立即解封、IP 封禁开关。累计被通报（单次封禁 ≥7 天）达 10 次的账号会被永久删除。
  */
-/* 广告域名规则集：显示条数与更新时间，一键拉取更新。
-   规则来自 AdGuard 公开发布的过滤列表（约 17 万条），只存域名，
-   用于在发送前拦下导流链接 —— 拉取、解析、落盘全部在站点本地完成。 */
-function adBlock() {
-  return `
-    <div class="panel-plain">
-      <h3>广告域名规则</h3>
-      <p class="tiny muted">
-        导入公开的广告 / 恶意域名过滤列表，用于在发送前拦下导流链接。
-        本地判断，不把用户内容发给任何第三方。
-      </p>
-      <div class="prow">
-        <span class="tiny" id="adStat">读取中…</span>
-        <button class="btn btn-sm" id="adUpdate">拉取更新</button>
-      </div>
-    </div>`;
-}
-
-async function loadAdBlock(container) {
-  const el = container.querySelector('#adStat');
-  if (!el) { return; }
-  const btn = container.querySelector('#adUpdate');
-  const paint = d => {
-    const n = Number(d.count || 0);
-    el.textContent = n > 0
-      ? '已导入 ' + n.toLocaleString() + ' 条' + (d.updated ? ' · ' + d.updated + ' UTC' : '')
-      : '尚未导入（此时只用内置的规律域名判据）';
-  };
-  try { paint(await api('admin.php', 'adblock_stats', {}, { silent: true })); }
-  catch (e) { el.textContent = '读取失败'; }
-
-  if (!btn) { return; }
-  btn.addEventListener('click', async () => {
-    if (!(await dialog('拉取规则', '将联网下载规则列表并重建本地索引，期间不要关闭页面。确定继续？', '开始'))) { return; }
-    btn.disabled = true;
-    el.textContent = '正在下载并解析…';
-    try {
-      const r = await api('admin.php', 'adblock_update', {}, { timeout: 300000 });
-      paint({ count: r.count, updated: '刚刚' });
-      toast('已导入 ' + Number(r.count || 0).toLocaleString() + ' 条域名');
-    } catch (e) {
-      toast(e.message || '更新失败', 'err');
-      el.textContent = '更新失败，可稍后重试';
-    } finally { btn.disabled = false; }
-  });
-}
 
 /* ============================================================
  * 站点互通（多站互为镜像）
@@ -5166,6 +5406,7 @@ async function loadDisc(container) {
         <td class="tiny">${Number(it.user_count || 0)} 次</td>
         <td class="tiny">${esc(it.created)}</td>
         <td><button class="btn-ghost btn-sm" data-act="edit">设置</button>
+            <button class="btn-ghost btn-sm" data-act="purge">清对话</button>
             <button class="btn-ghost btn-sm" data-act="revoke">撤销</button></td></tr>`).join('')
       + '</tbody></table>';
 
@@ -5183,6 +5424,16 @@ async function loadDisc(container) {
         try { await api('admin.php', 'disc_delete', { id: row.id }); toast('已撤销'); loadDisc(container); }
         catch (e) { toast(e.message, 'err'); }
       });
+      const pb = tr.querySelector('[data-act="purge"]');
+      if (pb) {
+        pb.addEventListener('click', async () => {
+          if (!(await dialog('清理该用户的消息', '将删除该用户的世界对话（含图片）与全部 AI 对话消息，账号不受影响。确认？', '清理', { danger: true }))) { return; }
+          try {
+            const r = await api('admin.php', 'user_purge_msgs', { uid: row.user_id, scope: 'both' });
+            toast('已清理：世界对话 ' + Number(r.chat || 0) + ' 条 / AI 对话 ' + Number(r.ai || 0) + ' 条');
+          } catch (e) { toast(e.message, 'err'); }
+        });
+      }
     });
   } catch (e) {
     box.innerHTML = '<div class="tiny">加载失败：' + esc(e.message) + '</div>';
@@ -5766,6 +6017,12 @@ function reasonList(reasons) {
   return '<ol class="disc-reasons">' + reasons.map(r => '<li>' + esc(r) + '</li>').join('') + '</ol>';
 }
 
+/** 一句话封禁状态胶囊 */
+function discChip(it) {
+  const cls = it.alive ? 'on' : (it.banned ? 'off' : '');
+  return '<span class="disc-chip ' + cls + '">' + esc(discStatusText(it)) + '</span>';
+}
+
 function banText(row) {
   if (!row.banned) { return '未封停账号'; }
   if (!row.ban_until) { return '账号已封停 · 永久'; }
@@ -5821,8 +6078,8 @@ async function paintDetail(container, id, mine) {
     <div class="card" style="margin-top:12px">
       <h3 style="margin-top:0">通报理由</h3>
       ${reasonList(d.reasons)}
-      ${d.note ? '<p class="tiny" style="margin-top:10px">补充说明：' + esc(d.note) + '</p>' : ''}
-      ${mine ? '' : '<p class="tiny muted" style="margin-top:10px">' + esc(banText(d)) + (d.ip_banned ? ' · 来源地址已封禁' : '') + '</p>'}
+      ${d.note ? '<div class="disc-note"><span class="disc-note-k">补充说明</span>' + esc(d.note) + '</div>' : ''}
+      <div class="disc-status">${discChip(d)}<span class="tiny muted">封禁 ${esc(discDaysText(d))}${d.ip_banned ? ' · 来源地址已封禁' : ''}</span></div>
     </div>
 
     ${mine ? '' : '<p class="tiny muted" style="margin-top:12px">相关讨论在「违纪通报」列表页下方。</p>'}
@@ -5863,7 +6120,7 @@ async function renderDiscipline(container, ctx) {
 
   const box = document.createElement('div');
   box.innerHTML = '<h2 style="margin:0 0 4px">违纪通报</h2>'
-    + '<p class="tiny muted" style="margin:0 0 14px">这里记录本站对违规账号的处理，每一条都可以评论。</p>'
+    + '<p class="tiny muted" style="margin:0 0 14px">这里记录本站对违规账号的处理，点开可查看详情与讨论。</p>'
     + '<div id="discList"><div class="skeleton" style="height:64px"></div><div class="skeleton"></div></div>';
   container.appendChild(box);
 
@@ -5880,8 +6137,8 @@ async function renderDiscipline(container, ctx) {
         <div class="row" style="align-items:center;gap:10px">
           <img class="avatar" src="${esc(it.avatar)}" width="36" height="36" draggable="false" alt="">
           <div style="flex:1;min-width:0">
-            <div><b>${esc(it.username || '（未知用户）')}</b>${it.banned ? ' <span class="tiny muted">· 已封停</span>' : ''}</div>
-            <div class="tiny muted">${esc(it.created)} · 评论 ${Number(it.comments || 0)}</div>
+            <div><b>${esc(it.username || '（未知用户）')}</b> ${discChip(it)}</div>
+            <div class="tiny muted">${esc(it.created)} · 封禁 ${esc(discDaysText(it))} · 评论 ${Number(it.comments || 0)}</div>
           </div>
         </div>
         ${reasonList(it.reasons.slice(0, 3))}`;
@@ -5889,19 +6146,6 @@ async function renderDiscipline(container, ctx) {
       list.appendChild(el);
     });
 
-    /* 目录级评论区：挂在「违纪通报」列表上，全站一处 */
-    const cmt = document.createElement('div');
-    cmt.className = 'card';
-    cmt.style.marginTop = '16px';
-    cmt.innerHTML = '<h3 style="margin-top:0">讨论 <span class="tiny muted" id="cmtTotal">0</span></h3>'
-      + '<div id="cmtForm"></div><div id="cmtList" style="margin-top:12px"></div>';
-    box.appendChild(cmt);
-    try {
-      await renderComments(cmt, 0, 'discipline_list');
-    } catch (e) {
-      const c = cmt.querySelector('#cmtList');
-      if (c) { c.innerHTML = '<div class="empty tiny">评论加载失败</div>'; }
-    }
   } catch (e) {
     list.innerHTML = '<div class="empty"><p>' + esc(e.message) + '</p></div>';
   }
@@ -6049,16 +6293,15 @@ function routeKeyOf(name, sub, params) {
 async function route(navType) {
   clearPageTimers();                            // 离开上一页时清理其轮询定时器
   let { name, sub, params } = parseHash();
-  /* 被通报封禁：不论地址栏写什么，一律渲染封禁通知界面（后端同样拒绝所有 API，
-     所以改地址、换设备都绕不过去）。管理员不会命中，服务端已排除。 */
-  const bannedId = Number(window.__BANNED || 0);
-  if (bannedId > 0) { name = 'violation'; sub = String(bannedId); params = {}; }
+  /* 被通报封禁不再改地址，改由「全屏封禁说明」盖住整站（见 syncBanLock）；
+     后端同样拒绝所有 API，所以改地址、换设备都绕不过去。管理员不会命中，服务端已排除。 */
   const fn = routes[name] || routes.rank;
   const key = routeKeyOf(name, sub, params);
   currentPage = name;
   setActiveTab(name);
   updateBackBtn(name);
   closeDrawer();
+  syncBanLock();          // 封禁状态随时刷新：任何时候都盖住整站（登录页除外）
 
   // 聊天页需要内部独立滚动：锁定外层滚动
   view.classList.toggle('view-locked', name === 'chat');
@@ -6437,6 +6680,34 @@ function bindToTop() {
 }
 
 /* ============================================================
+ * 违纪通报：全屏封禁说明 + 最新通报弹窗
+ * ============================================================ */
+/** 按当前封禁状态显示 / 收起全屏封禁说明（登录页除外，便于换账号登录）。 */
+function syncBanLock() {
+  if (state.ban && currentPage !== 'login') { showBanLock(state.ban); }
+  else { hideBanLock(); }
+}
+
+/** 后端判定封停时由 core.api 触发：补一次最新状态并立刻上锁 */
+window.__forceBan = function () { refreshDiscState(true); };
+
+/** 拉最新封禁与通报状态（start.php 在封禁白名单内，被封时也能取到）。
+ *  防抖：封禁后页面上会有多个 403，不能让它们各拉一次（共享主机尤其敏感）。 */
+let __discLast = 0;
+async function refreshDiscState(force) {
+  const now = Date.now();
+  if (now - __discLast < (force ? 4000 : 8000)) { return; }
+  __discLast = now;
+  try {
+    const d = await api('start.php', 'app', null, { silent: true, tries: 1 });
+    state.ban  = (d && d.ban)  ? d.ban  : null;
+    state.disc = (d && d.disc) ? d.disc : null;
+    if (force || state.ban) { syncBanLock(); }
+    maybeDiscPopup(state.disc);
+  } catch (e) {}
+}
+
+/* ============================================================
  * 启动
  * ============================================================ */
 async function main() {
@@ -6492,6 +6763,12 @@ async function main() {
   bindEvents();
   renderDrawer();
   applyAnnounce();
+  syncBanLock();
+  maybeDiscPopup(state.disc);
+  /* 回到前台时刷新一次封禁状态与最新通报 —— 不做常驻轮询，省主机请求 */
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) { refreshDiscState(); }
+  });
   /* 首屏地址规范化：hash / 裸参数统一改为 ?p= 形式；无参数默认「我的」。
      敏感界面不接受通过地址直达（站内入口仍可正常进入）。 */
   const initial = readRoute();

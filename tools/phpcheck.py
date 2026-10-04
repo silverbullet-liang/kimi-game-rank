@@ -160,8 +160,6 @@ def main():
     for t in targets:
         if os.path.isdir(t):
             for root, _, fs in os.walk(t):
-                if os.path.basename(root) == 'adblock':
-                    continue          # 规则分片是数据文件（十几万条域名），不是源码
                 files += [os.path.join(root, f) for f in fs if f.endswith('.php')]
         elif t.endswith('.php'):
             files.append(t)

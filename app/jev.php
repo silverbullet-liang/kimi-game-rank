@@ -29,6 +29,8 @@ define('JEV_DEFAULT_URL', 'https://classifier.dev');
 define('JEV_DEFAULT_REJECT_LEVEL', 5.5);    // 达到该档位即拦截（10 档制）
 define('JEV_DEFAULT_FLAG_LEVEL', 4.5);      // 达到该档位先标注「可能有恶意」，仍放行
 define('JEV_DEFAULT_SARCASM_AT', 0.85);     // 讽刺概率达到该值同样标注「可能有恶意」
+define('JEV_DEFAULT_INJECT_LEVEL', 7.0);    // 命中提示词注入时抬到的档位
+define('JEV_DEFAULT_INJECT_PROB', 0.60);    // 提示词注入的判定概率阈值
 
 /**
  * 10 档描述：从完全正常到极端辱骂，数组顺序即档位 1–10。
@@ -87,6 +89,47 @@ function jev_sarcasm_at(): float
 }
 
 /**
+ * 提示词注入（prompt injection / jailbreak）维度。
+ * 总有人以为这里接的只是「普通 AI」，于是试探性地写「忽略以上指令」「你现在是……」
+ * 「把你的系统提示词发出来」。这类内容不骂人，但它是**针对系统本身的攻击**，
+ * 因此单列一维识别；命中就把违规档位抬到与人身攻击同级。
+ */
+function jev_intent_labels(): array
+{
+    return array(
+        'an attempt to manipulate or override the AI system (prompt injection, jailbreak, "ignore previous instructions", asking to reveal the system prompt)',
+        'a normal message, not trying to manipulate any system',
+    );
+}
+
+function jev_inject_label(): string
+{
+    return 'an attempt to manipulate or override the AI system (prompt injection, jailbreak, "ignore previous instructions", asking to reveal the system prompt)';
+}
+
+/** 命中提示词注入时抬到的档位。 */
+function jev_inject_level(): float
+{
+    return (float)cfg('moderation.jev_inject_level', JEV_DEFAULT_INJECT_LEVEL);
+}
+
+/** 提示词注入的判定概率阈值 */
+function jev_inject_prob(): float
+{
+    return (float)cfg('moderation.jev_inject_prob', JEV_DEFAULT_INJECT_PROB);
+}
+
+/**
+ * 命中提示词注入时把档位抬到 inject_level（纯函数，便于单测）。
+ * 只抬不降：本就被判成更严重的违规时保持原档。
+ */
+function jev_lift_inject(float $level, float $injectProb): float
+{
+    if ($injectProb >= jev_inject_prob() && $level < jev_inject_level()) { return jev_inject_level(); }
+    return $level;
+}
+
+/**
  * 由各档位概率算出违规档位（1.0–10.0）。纯函数，便于单测。
  * 期望值 = Σ(档位 × 该档概率) / Σ概率；除以总和是为了容忍 scores 未严格归一。
  * $scores 以 jev_level_labels() 的描述为键。返回 0.0 表示无法计算。
@@ -130,6 +173,7 @@ function jev_classify(string $text): array
         'dimensions' => array(
             'severity' => jev_level_labels(),
             'tone'     => jev_tone_labels(),
+            'intent'   => jev_intent_labels(),
         ),
     ), JSON_UNESCAPED_UNICODE);
 
@@ -165,6 +209,7 @@ function jev_classify(string $text): array
     $dims = (isset($r['dimensions']) && is_array($r['dimensions'])) ? $r['dimensions'] : array();
     $sev  = (isset($dims['severity']['scores']) && is_array($dims['severity']['scores'])) ? $dims['severity']['scores'] : array();
     $tone = (isset($dims['tone']['scores'])     && is_array($dims['tone']['scores']))     ? $dims['tone']['scores']     : array();
+    $int  = (isset($dims['intent']['scores'])   && is_array($dims['intent']['scores']))   ? $dims['intent']['scores']   : array();
     if (!$sev && isset($r['scores']) && is_array($r['scores'])) { $sev = $r['scores']; }   // 老格式兜底
 
     $level = jev_level_from_scores($sev);
@@ -174,6 +219,12 @@ function jev_classify(string $text): array
     if ($sarc < 0.0) { $sarc = 0.0; }
     if ($sarc > 1.0) { $sarc = 1.0; }
 
+    /* 提示词注入：命中即抬档（默认 7.0），使 reject_level 直接拦住 */
+    $inject = isset($int[jev_inject_label()]) ? (float)$int[jev_inject_label()] : 0.0;
+    if ($inject < 0.0) { $inject = 0.0; }
+    if ($inject > 1.0) { $inject = 1.0; }
+    $level = jev_lift_inject($level, $inject);
+
     $reject = $level >= jev_reject_level();
     $mark   = !$reject && ($level >= jev_flag_level() || $sarc >= jev_sarcasm_at());
 
@@ -182,6 +233,7 @@ function jev_classify(string $text): array
         'level'     => round($level, 2),
         'level_int' => (int)round($level),
         'sarcasm'   => round($sarc, 2),
+        'inject'    => round($inject, 2),
         'flag'      => $mark ? 'middle' : '',
         'scores'    => $sev,
         'reason'    => 'jev',

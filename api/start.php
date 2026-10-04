@@ -38,6 +38,18 @@ $data['announce']   = site_announce();
 $data['categories'] = site_category_counts();
 $data['version']    = APP_VERSION;
 
+/* 违纪通报：本人是否被封停（带详情，供全屏封禁说明）+ 最新一条（供全站弹窗）。
+   管理员与副管理员不受封禁限制，一律给 null。 */
+$data['ban']  = null;
+$data['disc'] = discipline_latest();
+try {
+    $__role = (string)($data['role'] ?? '');
+    if ($__role !== 'admin' && $__role !== 'subadmin') {
+        $__hit = discipline_hit((int)($data['uid'] ?? 0), discipline_ip_hash(discipline_client_ip()));
+        if (is_array($__hit)) { $data['ban'] = discipline_item($__hit); }
+    }
+} catch (Throwable $e) { app_log('start ban check failed: ' . $e->getMessage()); }
+
 /* 首屏内容：带上榜别与分类就直接返回第一页，省掉一次往返。
    不传 first=1 就是纯启动载荷（站内跳转、回访都不需要重复取）。 */
 if (param_int('first', 0) === 1) {

@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 21);
+define('SCHEMA_VERSION', 22);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -859,6 +859,29 @@ function run_migrations(bool $force = false)
         }
     }
 
+    /* ---------- v22：违纪通报的「反篡改」计数 ----------
+       有人用油猴脚本把全屏封禁说明删掉来绕过限制。前端检测到之后会把「第几次」上报给后端：
+       前三次只提醒，第四次起每次把封禁时间延长 0.05 天。 */
+    if ($cur < 22) {
+        try {
+            if (table_exists('discipline_reports')) {
+                if (!column_exists('discipline_reports', 'tamper_count')) {
+                    db_exec("ALTER TABLE `discipline_reports` ADD COLUMN `tamper_count` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '检测到试图绕过封禁说明的次数'");
+                    app_log('v22 added discipline_reports.tamper_count');
+                }
+                if (!column_exists('discipline_reports', 'tamper_at')) {
+                    db_exec("ALTER TABLE `discipline_reports` ADD COLUMN `tamper_at` DATETIME NULL COMMENT '最近一次反篡改上报时间'");
+                    app_log('v22 added discipline_reports.tamper_at');
+                }
+                table_columns('discipline_reports', true);
+            }
+            app_log('schema migrated to v22（违纪通报反篡改计数）');
+            setting_set('schema_version', '22');
+        } catch (Throwable $e) {
+            app_log('migrate v22 failed: ' . $e->getMessage());
+        }
+    }
+
     /* 只有结构确认完整才写版本号、落锁：
        否则锁会把「半成品」永久固定下来，此后所有请求都被短路，再也修不回来。 */
     $ok = true;
@@ -878,6 +901,7 @@ function run_migrations(bool $force = false)
     if (table_exists('login_attempts') && !column_exists('login_attempts', 'user_norm')) { $ok = false; }
     if (table_exists('users') && !column_exists('users', 'ban_until')) { $ok = false; }
     if (table_exists('discipline_reports') && !column_exists('discipline_reports', 'ban_until')) { $ok = false; }
+    if (table_exists('discipline_reports') && !column_exists('discipline_reports', 'tamper_count')) { $ok = false; }
     if (table_exists('comments') && !column_exists('comments', 'target_type')) { $ok = false; }
     if (table_exists('ai_usage') && !column_exists('ai_usage', 'provider')) { $ok = false; }
     if ($ok) {

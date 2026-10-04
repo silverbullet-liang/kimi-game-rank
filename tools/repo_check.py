@@ -21,7 +21,6 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FORBIDDEN = [
     'config/config.php',           # 数据库连接与口令
     'config/api_keys.php',         # 密钥池
-    'app/data/adblock/',                  # 公开规则集，随交付包分发
     'app/data/moderation_words.txt',
     'app/data/moderation_allow.txt',
     'storage/backups/*', 'storage/logs/*', 'storage/cache/*', 'storage/uploads/*',

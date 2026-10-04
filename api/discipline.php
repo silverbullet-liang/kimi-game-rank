@@ -37,6 +37,7 @@ switch ($action) {
             'reasons'   => discipline_reasons_of($row),
             'note'      => (string)($row['note'] ?? ''),
             'banned'    => (int)$row['banned'] === 1,
+            'alive'     => (int)$row['banned'] === 1 && discipline_ban_alive($row),
             'ip_banned' => (int)$row['ip_banned'] === 1,
             'ban_days'  => (float)$row['ban_days'],
             'ban_until' => $row['ban_until'] === null ? '' : to_local((string)$row['ban_until']),
@@ -44,6 +45,23 @@ switch ($action) {
             'views'     => (int)$row['views'],
             'created'   => to_local((string)$row['created_at']),
         ));
+        break;
+    }
+
+    /* 最新一条通报（公开）：供全站弹窗使用 */
+    case 'latest': {
+        ok(array('item' => discipline_latest()));
+        break;
+    }
+
+    /* 反篡改上报：前端发现有人试图绕过全屏封禁说明时调用。
+       本接口在封禁白名单内，被封停时也能调用。 */
+    case 'tamper': {
+        $tid = param_int('id', 0);
+        if ($tid <= 0) { fail(400, '参数错误'); }
+        /* 同一通报 10 分钟内最多计 4 次，避免被刷 */
+        if (!rate_limit('tamper_' . $tid, 4, 600)) { ok(array('count' => 0, 'added' => false, 'throttled' => true)); break; }
+        ok(discipline_tamper($tid));
         break;
     }
 

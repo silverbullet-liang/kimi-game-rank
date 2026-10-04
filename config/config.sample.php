@@ -44,6 +44,14 @@ return array(
         'private_key'   => '',
         // 需要一并互通的 settings 键（默认不同步任何设置；密钥类键永不互通）
         'sync_settings' => array(),
+
+        // 对端站点：几个站点就列几条。已知的那条填上，其余留空即可（留空的不生效）。
+        // 全部留空也行，改在控制面板「站点互通」里增删。每个对端只要：地址 + 公钥。
+        'sites' => array(
+            array('name' => '', 'base_url' => '', 'pubkey' => ''),   // 站点一（已知的填这里）
+            array('name' => '', 'base_url' => '', 'pubkey' => ''),   // 站点二（留空）
+            array('name' => '', 'base_url' => '', 'pubkey' => ''),   // 站点三（留空）
+        ),
     ),
 
     /* ---------- 密钥（install.php 生成后自动回填，请勿手改） ---------- */

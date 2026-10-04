@@ -241,6 +241,11 @@ async function apiOnce(file, action, data = null, opts = {}) {
       '服务响应格式异常（HTTP ' + resp.status + '），请刷新后重试');
   }
   if (Number(json.code) !== 0) {
+    /* 账号被封停：后端已拒绝本次操作，前台立刻拉起全屏封禁说明 */
+    const __bm = String(json.msg || json.error || '');
+    if (Number(json.code) === 403 && __bm.indexOf('封停') >= 0 && typeof window.__forceBan === 'function') {
+      try { window.__forceBan(); } catch (e) {}
+    }
     throw new ApiError(Number(json.code) || resp.status,
       json.msg || json.error || ('请求失败（HTTP ' + resp.status + '）'));
   }
@@ -291,6 +296,7 @@ export function isAdminish(role) {
 
 /** 身份徽章（内联 SVG，无表情字符）；普通用户/游客返回空串 */
 export function badge(role) {
+  if (role === 'ai') { return '<span class="badge bd-ai" title="官方 AI">AI</span>'; }
   const r = ROLES[role];
   if (!r) { return ''; }
   const shield = '<path d="M8 1.35 13.7 3.3v4.45c0 3.1-2.35 5.6-5.7 7-3.35-1.4-5.7-3.9-5.7-7V3.3z" '
@@ -402,6 +408,8 @@ export async function boot() {
     state.announce = (d && d.announce !== undefined) ? String(d.announce || '') : '';
     state.categories = (d && d.categories) ? d.categories : {};
     state.firstPage = (d && d.first) ? d.first : null;
+    state.ban  = (d && d.ban)  ? d.ban  : null;
+    state.disc = (d && d.disc) ? d.disc : null;
     state.booted = true;
     return state;
   } catch (e) {
@@ -533,3 +541,231 @@ export function bindImageViewer(container) {
     if (img && img.src) { imageViewer(img.src); }
   });
 }
+
+/* ============================================================
+ * 违纪通报：全屏封禁说明 + 最新通报弹窗
+ * ------------------------------------------------------------
+ * 都用「动态创建 + 固定定位」实现，不改 index.php 骨架。
+ * 封禁说明不可关闭（强制全屏），但保留「切换账号登录」入口。
+ * ============================================================ */
+const I_SHIELD = '<svg viewBox="0 0 24 24" class="ic"><path d="M12 2 4 5.2v5.9c0 4.7 3.3 8.8 8 10.9 4.7-2.1 8-6.2 8-10.9V5.2L12 2z"/></svg>';
+const I_CROSS  = '<svg viewBox="0 0 24 24" class="ic"><path d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6z"/></svg>';
+
+/** 封禁状态文案：未封停 / 封停中（至某时或永久）/ 已解封 */
+export function discStatusText(it) {
+  const o = it || {};
+  if (!o.banned) { return '未封停账号'; }
+  const until = String(o.ban_until || '');
+  if (o.alive) { return until ? ('封停中 · 至 ' + until) : '封停中 · 永久'; }
+  return until ? ('已解封（原定 ' + until + '）') : '已解封';
+}
+
+/** 封禁天数文案 */
+export function discDaysText(it) {
+  const o = it || {};
+  if (!o.banned) { return '—'; }
+  const d = Number(o.ban_days || 0);
+  return d > 0 ? (d + ' 天') : '永久';
+}
+
+let __banEl = null;
+
+/** 全屏封禁说明（不可关闭）。$info 为 start.php 下发的 ban 对象。 */
+export function showBanLock(info) {
+  if (__banEl) { return __banEl; }
+  const b = info || {};
+  const reasons = (b.reasons && b.reasons.length) ? b.reasons : [];
+  const el = document.createElement('div');
+  el.className = 'banlock';
+  el.innerHTML = `
+    <div class="banlock-inner dialog">
+      <div class="banlock-ic">${I_SHIELD}</div>
+      <h2>访问已被限制</h2>
+      <p class="banlock-sub">本站已对相关账号与来源地址作出处理。如有异议，请通过站内反馈或联系管理员。</p>
+      <dl class="kv">
+        <dt>处理对象</dt><dd>${esc(b.username || '（未知）')}</dd>
+        <dt>封禁状态</dt><dd>${esc(discStatusText(b))}</dd>
+        <dt>封禁天数</dt><dd>${esc(discDaysText(b))}</dd>
+        <dt>解封时间</dt><dd>${b.alive ? (b.ban_until ? esc(b.ban_until) : '不会自动解封（永久）') : '已结束'}</dd>
+        ${b.ip_banned ? '<dt>来源地址</dt><dd>已一并封禁</dd>' : ''}
+      </dl>
+      ${reasons.length ? '<div class="banlock-reasons">' + reasons.map(r => '<span class="disc-chip">' + esc(r) + '</span>').join('') + '</div>' : ''}
+      ${b.note ? '<div class="disc-note"><span class="disc-note-k">补充说明</span>' + esc(b.note) + '</div>' : ''}
+      <div class="banlock-actions"><button class="btn-ghost" id="banSwitch">切换账号登录</button></div>
+      <p class="tiny muted">解除限制前，本站功能不可用。</p>
+    </div>`;
+  document.body.appendChild(el);
+  __banEl = el;
+  const sw = el.querySelector('#banSwitch');
+  if (sw) {
+    sw.addEventListener('click', function () {
+      try { setToken(''); } catch (e) {}
+      location.href = location.pathname + '?p=login';
+    });
+  }
+  armBanDefense();          // 挂上反篡改三道防线
+  return el;
+}
+
+export function hideBanLock() {
+  if (__banEl) { try { __banEl.remove(); } catch (e) {} __banEl = null; }
+}
+
+const DISC_SEEN_KEY = 'kimgr_disc_seen';
+
+/** 最新通报弹窗（可关闭）。$item 来自 start.php 的 disc。 */
+export function showDiscPopup(item) {
+  const it = item || {};
+  const el = document.createElement('div');
+  el.className = 'discpop-scrim';
+  el.innerHTML = `
+    <div class="discpop dialog">
+      <div class="discpop-head">
+        <span class="discpop-ic">${I_SHIELD}</span>
+        <h3>最新违纪通报</h3>
+        <button class="discpop-x" id="discX" aria-label="关闭">${I_CROSS}</button>
+      </div>
+      <div class="discpop-body">
+        <div class="discpop-who">${esc(it.username || '（未知用户）')} <span class="tiny muted">· ${esc(it.created || '')}</span></div>
+        <div class="discpop-status"><span class="disc-chip ${it.alive ? 'on' : (it.banned ? 'off' : '')}">${esc(discStatusText(it))}</span> <span class="tiny muted">封禁 ${esc(discDaysText(it))}</span></div>
+        ${it.note ? '<div class="disc-note"><span class="disc-note-k">补充说明</span>' + esc(it.note) + '</div>' : ''}
+        ${(it.reasons && it.reasons.length) ? '<ol class="disc-reasons">' + it.reasons.map(r => '<li>' + esc(r) + '</li>').join('') + '</ol>' : ''}
+      </div>
+      <div class="discpop-actions">
+        <button class="btn-ghost" id="discMore">查看全部</button>
+        <button class="btn" id="discOk">我知道了</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+
+  const close = function (go) {
+    try { localStorage.setItem(DISC_SEEN_KEY, String(it.id)); } catch (e) {}
+    try { el.remove(); } catch (e) {}
+    if (go && typeof window.__navigate === 'function') { window.__navigate('#/discipline/' + it.id); }
+  };
+  const x = el.querySelector('#discX'); if (x) { x.addEventListener('click', () => close(false)); }
+  const ok = el.querySelector('#discOk'); if (ok) { ok.addEventListener('click', () => close(false)); }
+  const more = el.querySelector('#discMore'); if (more) { more.addEventListener('click', () => close(true)); }
+  el.addEventListener('click', e => { if (e.target === el) { close(false); } });
+}
+
+/** 有新通报才弹（按 id 缓存「已看过」，同一条件不再重复弹） */
+export function maybeDiscPopup(item) {
+  const it = item || {};
+  if (!it.id) { return false; }
+  let seen = 0;
+  try { seen = Number(localStorage.getItem(DISC_SEEN_KEY) || 0); } catch (e) {}
+  if (Number(it.id) <= seen) { return false; }
+  if (__banEl) { return false; }        // 已被全屏说明盖住，不叠加弹窗
+  showDiscPopup(it);
+  return true;
+}
+
+/* ============================================================
+ * 反篡改（三层）
+ * ------------------------------------------------------------
+ * 有人用油猴脚本把封禁说明删掉、隐藏、或改样式来绕过限制。三道防线：
+ *   ① 监听 DOM：节点被移除、class/style/hidden 被改 → 立刻重挂并记账；
+ *   ② 心跳自校验：每 1.5s 检查说明书仍在、可见，且带着本次会话的随机指纹；
+ *   ③ 互校验：第二个定时器盯着第一个的「心跳计数」，停表（被 clearInterval）
+ *      即视为篡改；同时把被 disconnect 的观察者重新装上。
+ * 必须说清：前端只能抬高门槛，真正拦人的是后端 —— 被封时所有 API 一律 403。
+ * ============================================================ */
+let __defArmed = false;
+const __def = { strikes: 0, beat: 0, seen: -1, nonce: '', mo: null };
+
+export function armBanDefense() {
+  if (__defArmed) { return; }
+  __defArmed = true;
+  if (!__def.nonce) { __def.nonce = Math.random().toString(36).slice(2, 10); }
+  stampLock();
+  attachObserver();
+  setInterval(heartbeat, 1500);
+  setInterval(watchdog, 4000);
+}
+
+function stampLock() {
+  const el = document.querySelector('.banlock');
+  if (el) { el.setAttribute('data-kimgr', __def.nonce); }
+}
+
+function lockOk() {
+  const el = document.querySelector('.banlock');
+  if (!el) { return false; }
+  if (el.getAttribute('data-kimgr') !== __def.nonce) { return false; }
+  if (el.hasAttribute('hidden')) { return false; }
+  const cs = window.getComputedStyle(el);
+  if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity || 1) < 0.5) { return false; }
+  const r = el.getBoundingClientRect();
+  return r.width > 40 && r.height > 40;
+}
+
+function reassertLock() {
+  if (!state.ban) { return; }
+  hideBanLock();
+  showBanLock(state.ban);
+  stampLock();
+}
+
+function banTampered() {
+  __def.strikes++;
+  reassertLock();
+  banWarn(__def.strikes);
+  reportTamperOnce();
+}
+
+function attachObserver() {
+  try { if (__def.mo) { __def.mo.disconnect(); } } catch (e) {}
+  try {
+    __def.mo = new MutationObserver(function () {
+      if (state.ban && !lockOk()) { banTampered(); }
+    });
+    __def.mo.observe(document.documentElement, {
+      childList: true, subtree: true, attributes: true,
+      attributeFilter: ['style', 'class', 'hidden', 'data-kimgr'],
+    });
+  } catch (e) { __def.mo = null; }
+}
+
+function heartbeat() {
+  __def.beat++;
+  if (!state.ban) { return; }
+  if (!lockOk()) { banTampered(); }
+  stampLock();
+  if (!__def.mo) { attachObserver(); }          // 观察者被摘掉 → 重装
+}
+
+function watchdog() {
+  if (__def.seen === __def.beat) {              // 心跳没推进：被停表了
+    if (state.ban) { banTampered(); }
+    attachObserver();
+  }
+  __def.seen = __def.beat;
+}
+
+/** 篡改提醒（自绘弹窗，几秒后自动消失；说明不可关闭） */
+function banWarn(n) {
+  try {
+    const el = document.createElement('div');
+    el.className = 'banwarn dialog glass';
+    el.innerHTML = '<b>检测到试图绕过封禁说明的修改</b>'
+      + '<p class="tiny" style="margin:6px 0 0">这是第 ' + n + ' 次。前三次仅提醒；'
+      + '之后每次会自动把封禁时间延长 0.05 天。</p>';
+    document.body.appendChild(el);
+    setTimeout(function () { try { el.remove(); } catch (e) {} }, 4500);
+  } catch (e) {}
+}
+
+/** 上报一次：同一会话只报一次，避免自己把自己刷成重罚 */
+function reportTamperOnce() {
+  const id = (state.ban && state.ban.id) ? state.ban.id : 0;
+  if (!id) { return; }
+  const k = 'kimgr_tamper_' + id;
+  try { if (sessionStorage.getItem(k)) { return; } sessionStorage.setItem(k, '1'); } catch (e) { return; }
+  try {
+    api('discipline.php', 'tamper', { id: id }, { silent: true, tries: 1 }).then(function (r) {
+      if (r && r.added) { toast('封禁时间已延长 0.05 天'); }
+    }).catch(function () {});
+  } catch (e) {}
+}
+

@@ -926,42 +926,43 @@ switch ($action) {
         break;
     }
 
+    /* 一键删除某用户的对话消息：世界对话（含图片）与全部 AI 对话消息。
+       只清内容，不动账号 —— 与「通报删号」是两回事。 */
+    case 'user_purge_msgs': {
+        require_admin();
+        require_panel();
+        csrf_verify();
+        $pu = param_int('uid', 0);
+        if ($pu <= 0) { fail(400, '参数错误'); }
+        $scope = param_str('scope', 'both');
+        if (!in_array($scope, array('chat', 'ai', 'both'), true)) { $scope = 'both'; }
+        $out = array('chat' => 0, 'ai' => 0);
+        try {
+            if ($scope !== 'ai') {
+                if (col_ok('messages', 'media_url') && function_exists('chat_media_drop')) {
+                    foreach (db_all('SELECT media_url FROM messages WHERE user_id = ? AND media_url <> ?', array($pu, '')) as $r) {
+                        chat_media_drop((string)$r['media_url']);
+                    }
+                }
+                $sets = array("`is_recalled` = 1");
+                if (col_ok('messages', 'media_url')) { $sets[] = "`media_url` = ''"; }
+                $out['chat'] = (int)db_exec('UPDATE `messages` SET ' . implode(', ', $sets) . ' WHERE user_id = ?', array($pu));
+            }
+            if ($scope !== 'chat') {
+                $out['ai'] = (int)db_exec('DELETE FROM ai_messages WHERE user_id = ?', array($pu));
+            }
+        } catch (Throwable $e) { fail(500, '清理失败：' . $e->getMessage()); }
+        app_log('admin: purge messages uid=' . $pu . ' scope=' . $scope . ' chat=' . $out['chat'] . ' ai=' . $out['ai']);
+        ok($out, '已清理：世界对话 ' . $out['chat'] . ' 条 / AI 对话 ' . $out['ai'] . ' 条');
+        break;
+    }
+
     case 'disc_delete': {
         require_admin();
         require_panel();
         csrf_verify();
         if (!discipline_delete(param_int('id', 0))) { fail(404, '通报不存在'); }
         ok(null, '已撤销该通报，账号与 IP 一并解封');
-        break;
-    }
-
-    /* 广告/恶意域名规则集：查状态 / 一键更新。
-       规则来自 AdGuard 公开发布的过滤列表，约 17 万条；解析与落盘全在本地，
-       更新时依次尝试多个镜像源（部分源在国内不一定可达）。 */
-    case 'adblock_stats': {
-        require_admin();
-        require_panel();
-        $st = link_guard_stats();
-        ok(array(
-            'count'   => (int)$st['count'],
-            'updated' => (string)$st['updated'],
-            'sources' => count((array)cfg('adblock.sources', array())),
-        ));
-        break;
-    }
-
-    case 'adblock_update': {
-        require_admin();
-        require_panel();
-        csrf_verify();
-        $f = link_guard_fetch();
-        if (empty($f['ok'])) { fail(502, '规则源均不可达，请稍后重试'); }
-        $rules = link_guard_parse_rules((string)$f['text']);
-        if (count($rules) < 1000) { fail(502, '规则解析结果异常（仅 ' . count($rules) . ' 条），已中止'); }
-        $n = link_guard_write_shards($rules);
-        if ($n <= 0) { fail(500, '规则写入失败，请检查 app/data/adblock 目录是否可写'); }
-        app_log('adblock updated: ' . $n . ' hosts from ' . $f['url']);
-        ok(array('count' => $n, 'source' => (string)$f['url']), '规则已更新');
         break;
     }
 

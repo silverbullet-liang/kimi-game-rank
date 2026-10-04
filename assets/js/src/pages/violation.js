@@ -6,13 +6,19 @@
  *     顶部给出说明，下方逐条列出理由，再往下是评论区；
  *   · renderDiscipline —— 公开的通报列表与单条详情（#/discipline[/id]）。
  */
-import { api, esc, toast, $, on, btnLoading, userName, badge, state } from '../core.js';
+import { api, esc, toast, $, on, btnLoading, userName, badge, state, discStatusText, discDaysText } from '../core.js';
 import { navigate } from '../router.js';
 import { renderComments } from './detail.js';
 
 function reasonList(reasons) {
   if (!reasons || !reasons.length) { return '<p class="tiny muted">（未填写理由）</p>'; }
   return '<ol class="disc-reasons">' + reasons.map(r => '<li>' + esc(r) + '</li>').join('') + '</ol>';
+}
+
+/** 一句话封禁状态胶囊 */
+function discChip(it) {
+  const cls = it.alive ? 'on' : (it.banned ? 'off' : '');
+  return '<span class="disc-chip ' + cls + '">' + esc(discStatusText(it)) + '</span>';
 }
 
 function banText(row) {
@@ -70,8 +76,8 @@ async function paintDetail(container, id, mine) {
     <div class="card" style="margin-top:12px">
       <h3 style="margin-top:0">通报理由</h3>
       ${reasonList(d.reasons)}
-      ${d.note ? '<p class="tiny" style="margin-top:10px">补充说明：' + esc(d.note) + '</p>' : ''}
-      ${mine ? '' : '<p class="tiny muted" style="margin-top:10px">' + esc(banText(d)) + (d.ip_banned ? ' · 来源地址已封禁' : '') + '</p>'}
+      ${d.note ? '<div class="disc-note"><span class="disc-note-k">补充说明</span>' + esc(d.note) + '</div>' : ''}
+      <div class="disc-status">${discChip(d)}<span class="tiny muted">封禁 ${esc(discDaysText(d))}${d.ip_banned ? ' · 来源地址已封禁' : ''}</span></div>
     </div>
 
     ${mine ? '' : '<p class="tiny muted" style="margin-top:12px">相关讨论在「违纪通报」列表页下方。</p>'}
@@ -112,7 +118,7 @@ export async function renderDiscipline(container, ctx) {
 
   const box = document.createElement('div');
   box.innerHTML = '<h2 style="margin:0 0 4px">违纪通报</h2>'
-    + '<p class="tiny muted" style="margin:0 0 14px">这里记录本站对违规账号的处理，每一条都可以评论。</p>'
+    + '<p class="tiny muted" style="margin:0 0 14px">这里记录本站对违规账号的处理，点开可查看详情与讨论。</p>'
     + '<div id="discList"><div class="skeleton" style="height:64px"></div><div class="skeleton"></div></div>';
   container.appendChild(box);
 
@@ -129,8 +135,8 @@ export async function renderDiscipline(container, ctx) {
         <div class="row" style="align-items:center;gap:10px">
           <img class="avatar" src="${esc(it.avatar)}" width="36" height="36" draggable="false" alt="">
           <div style="flex:1;min-width:0">
-            <div><b>${esc(it.username || '（未知用户）')}</b>${it.banned ? ' <span class="tiny muted">· 已封停</span>' : ''}</div>
-            <div class="tiny muted">${esc(it.created)} · 评论 ${Number(it.comments || 0)}</div>
+            <div><b>${esc(it.username || '（未知用户）')}</b> ${discChip(it)}</div>
+            <div class="tiny muted">${esc(it.created)} · 封禁 ${esc(discDaysText(it))} · 评论 ${Number(it.comments || 0)}</div>
           </div>
         </div>
         ${reasonList(it.reasons.slice(0, 3))}`;
@@ -138,19 +144,6 @@ export async function renderDiscipline(container, ctx) {
       list.appendChild(el);
     });
 
-    /* 目录级评论区：挂在「违纪通报」列表上，全站一处 */
-    const cmt = document.createElement('div');
-    cmt.className = 'card';
-    cmt.style.marginTop = '16px';
-    cmt.innerHTML = '<h3 style="margin-top:0">讨论 <span class="tiny muted" id="cmtTotal">0</span></h3>'
-      + '<div id="cmtForm"></div><div id="cmtList" style="margin-top:12px"></div>';
-    box.appendChild(cmt);
-    try {
-      await renderComments(cmt, 0, 'discipline_list');
-    } catch (e) {
-      const c = cmt.querySelector('#cmtList');
-      if (c) { c.innerHTML = '<div class="empty tiny">评论加载失败</div>'; }
-    }
   } catch (e) {
     list.innerHTML = '<div class="empty"><p>' + esc(e.message) + '</p></div>';
   }

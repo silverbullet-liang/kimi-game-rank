@@ -260,12 +260,85 @@ function discipline_create(array $userIds, array $reasons, string $note, bool $b
         if (discipline_maybe_purge_account($uid2)) { $deleted[] = $uid2; }
     }
 
+    /* 通报数量超上限时，顺手清掉最旧的已解封通报 */
+    discipline_prune();
+
     return array('created' => $created, 'accounts_banned' => $accBanned,
                  'ips_banned' => $ipBanned, 'no_ip' => $noIp,
                  'purged_comments' => $purged['comments'],
                  'purged_messages' => $purged['messages'],
                  'purged_images'   => $purged['images'],
                  'accounts_deleted' => count($deleted));
+}
+
+/**
+ * 通报行的对外结构（列表、最新一条、被封者本人共用）。
+ * alive 表示「账号封停是否仍在有效期内」——已过期即视为已解封，与读取时顺手解封的口径一致。
+ */
+function discipline_item(array $r): array
+{
+    $uid    = (int)($r['user_id'] ?? 0);
+    $banned = ((int)($r['banned'] ?? 0) === 1);
+    $rid    = (int)($r['id'] ?? 0);
+    return array(
+        'id'         => $rid,
+        'user_id'    => $uid,
+        'username'   => (string)($r['username'] ?? ''),
+        'avatar'     => identicon_data_uri((string)($r['username'] ?? '用户'), 40),
+        'reasons'    => discipline_reasons_of($r),
+        'note'       => (string)($r['note'] ?? ''),
+        'banned'     => $banned,
+        'alive'      => $banned && discipline_ban_alive($r),
+        'ban_days'   => (float)($r['ban_days'] ?? 0),
+        'ban_until'  => empty($r['ban_until']) ? '' : to_local((string)$r['ban_until']),
+        'ip_banned'  => ((int)($r['ip_banned'] ?? 0) === 1),
+        'views'      => (int)($r['views'] ?? 0),
+        'comments'   => (table_exists('comments') && $rid > 0)
+            ? (int)db_val('SELECT COUNT(*) FROM comments WHERE target_type = ? AND work_id = ? AND is_deleted = 0',
+                          array('discipline', $rid))
+            : 0,
+        'user_count' => $uid > 0 ? discipline_user_count($uid) : 0,
+        'user_alive' => $uid > 0 && db_val('SELECT 1 FROM users WHERE id = ? LIMIT 1', array($uid)) !== null,
+        'created'    => to_local((string)($r['created_at'] ?? now_utc())),
+    );
+}
+
+/** 最新一条通报（供全站弹窗）；无记录返回 null */
+function discipline_latest()
+{
+    if (!table_exists('discipline_reports')) { return null; }
+    $r = db_one('SELECT * FROM discipline_reports ORDER BY id DESC LIMIT 1');
+    return $r === null ? null : discipline_item($r);
+}
+
+/**
+ * 通报保留上限：超过 $keep 条时，自动删除已解封的通报 —— 越旧越先删。
+ * 仍在封停中的通报（含永久封停）永不自动删除；删记录时一并清除它名下的 IP 黑名单。
+ */
+function discipline_prune(int $keep = 10): int
+{
+    if ($keep < 1 || !table_exists('discipline_reports')) { return 0; }
+    $total = (int)db_val('SELECT COUNT(*) FROM discipline_reports');
+    if ($total <= $keep) { return 0; }
+
+    $rows = db_all('SELECT id, user_id FROM discipline_reports
+                    WHERE banned = 0 OR (ban_until IS NOT NULL AND ban_until <= UTC_TIMESTAMP())
+                    ORDER BY id ASC LIMIT ' . (int)($total - $keep));
+    $n = 0;
+    foreach ($rows as $r) {
+        $id = (int)$r['id']; $uid = (int)$r['user_id'];
+        try {
+            db_exec('DELETE FROM banned_ips WHERE report_id = ?', array($id));
+            db_exec('DELETE FROM discipline_reports WHERE id = ?', array($id));
+            if ($uid > 0) {
+                $still = db_one('SELECT id FROM discipline_reports WHERE user_id = ? AND banned = 1 LIMIT 1', array($uid));
+                if ($still === null) { db_exec('UPDATE users SET is_banned = 0, ban_until = NULL WHERE id = ?', array($uid)); }
+            }
+            $n++;
+        } catch (Throwable $e) { app_log('discipline prune failed #' . $id . ': ' . $e->getMessage()); }
+    }
+    if ($n > 0) { app_log('discipline prune: 删除 ' . $n . ' 条已解封通报（上限 ' . $keep . '）'); }
+    return $n;
 }
 
 /** 通报列表（含被通报者当前状态与命中数） */
@@ -279,26 +352,7 @@ function discipline_list(int $page, int $size = 20): array
     $total = (int)db_val('SELECT COUNT(*) FROM discipline_reports');
     $rows  = db_all("SELECT * FROM discipline_reports ORDER BY id DESC LIMIT $size OFFSET $off");
     $items = array();
-    foreach ($rows as $r) {
-        $items[] = array(
-            'id'         => (int)$r['id'],
-            'user_id'    => (int)$r['user_id'],
-            'username'   => (string)$r['username'],
-            'avatar'     => identicon_data_uri((string)$r['username'], 40),
-            'reasons'    => discipline_reasons_of($r),
-            'note'       => (string)($r['note'] ?? ''),
-            'banned'     => (int)$r['banned'] === 1,
-            'ban_days'   => (float)$r['ban_days'],
-            'ban_until'  => $r['ban_until'] === null ? '' : to_local((string)$r['ban_until']),
-            'ip_banned'  => (int)$r['ip_banned'] === 1,
-            'views'      => (int)$r['views'],
-            'comments'   => (int)db_val('SELECT COUNT(*) FROM comments WHERE target_type = ? AND work_id = ? AND is_deleted = 0',
-                                        array('discipline', (int)$r['id'])),
-            'user_count' => discipline_user_count((int)$r['user_id']),
-            'user_alive' => db_val('SELECT 1 FROM users WHERE id = ? LIMIT 1', array((int)$r['user_id'])) !== null,
-            'created'    => to_local((string)$r['created_at']),
-        );
-    }
+    foreach ($rows as $r) { $items[] = discipline_item($r); }
     return array('items' => $items, 'total' => $total, 'page' => $page, 'size' => $size,
                  'total_pages' => $size > 0 ? (int)ceil($total / $size) : 0,
                  'has_more' => ($off + count($rows)) < $total);
@@ -448,6 +502,46 @@ function discipline_update(int $id, array $patch)
         app_log('discipline: report #' . $id . ' updated');
     }
     return discipline_get($id);
+}
+
+/**
+ * 反篡改上报：前端发现有人试图绕过全屏封禁说明（例如用脚本删掉它）时调用。
+ * 前三次只提醒，第四次起每次把封禁时间延长 0.05 天（72 分钟）。
+ * 「同一会话不重复增加」由前端按会话去重，这里再做一层按通报的频率限制。
+ */
+function discipline_tamper(int $id): array
+{
+    $row = discipline_get($id);
+    if ($row === null) { return array('count' => 0, 'added' => false, 'reason' => 'not_found'); }
+
+    $cnt = (int)($row['tamper_count'] ?? 0) + 1;
+    try {
+        db_exec('UPDATE discipline_reports SET tamper_count = ?, tamper_at = UTC_TIMESTAMP() WHERE id = ?', array($cnt, $id));
+    } catch (Throwable $e) { app_log('discipline tamper write failed: ' . $e->getMessage()); }
+
+    $base = array('count' => $cnt, 'added' => false,
+                  'left' => max(0, 3 - $cnt),
+                  'until' => isset($row['ban_until']) && $row['ban_until'] !== null ? to_local((string)$row['ban_until']) : '');
+
+    /* 前三次放过 */
+    if ($cnt <= 3) { return $base; }
+    /* 未封停 / 永久封停：没有可延长的期限，只计数 */
+    if ((int)$row['banned'] !== 1 || $row['ban_until'] === null) { return $base; }
+
+    $ts = strtotime((string)$row['ban_until'] . ' UTC');
+    if ($ts === false) { return $base; }
+    $newUntil = gmdate('Y-m-d H:i:s', $ts + (int)round(0.05 * 86400));
+    $newDays  = (float)$row['ban_days'] + 0.05;
+    try {
+        db_exec('UPDATE discipline_reports SET ban_until = ?, ban_days = ? WHERE id = ?', array($newUntil, $newDays, $id));
+        if ((int)$row['user_id'] > 0) {
+            db_exec('UPDATE users SET ban_until = ? WHERE id = ?', array($newUntil, (int)$row['user_id']));
+        }
+        app_log('discipline: report #' . $id . ' tamper #' . $cnt . ' → 封禁延长 0.05 天');
+        $base['added'] = true;
+        $base['until'] = to_local($newUntil);
+    } catch (Throwable $e) { app_log('discipline tamper extend failed: ' . $e->getMessage()); }
+    return $base;
 }
 
 /** 撤销：删记录并解除账号封停与 IP 黑名单 */

@@ -102,7 +102,12 @@ function richInline(html) {
 }
 
 /** 世界对话消息：纯文本 + 表情 + 图片（刻意不渲染 Markdown，避免消息被格式刷屏） */
-function renderRich(text) { return richInline(esc(text)); }
+function renderRich(text) {
+  /* @ 提及：与评论回复同款灰字（.reply-to） */
+  const h = esc(text).replace(/(^|[\s（(【[>])@([\u4e00-\u9fa5A-Za-z0-9_\-]{1,16})/g,
+    (m, p, nm) => p + '<span class="reply-to">@' + nm + '</span>');
+  return richInline(h);
+}
 
 /** 清洗历史里可能残留的工具标签（旧版本数据），避免裸标签展示 */
 /** AI 回复最终渲染：剥离工具标签 → Markdown → 表情 / 图片 */
@@ -208,6 +213,7 @@ async function mountWorld(body) {
       <div class="chat-input">
         <button class="icon-btn pk-btn" id="wEmoji" aria-label="表情" ${canSend ? '' : 'disabled'}>${W_ICON_SMILE}</button>
         <button class="icon-btn pk-btn" id="wImage" aria-label="图片" ${canSend ? '' : 'disabled'}>${W_ICON_IMAGE}</button>
+        <button class="icon-btn pk-btn at-txt" id="wAt" aria-label="@ 官方AI" ${canSend ? '' : 'disabled'}>@</button>
         <div class="cnt" id="wCount">0/500</div>
         <textarea class="input" id="wInput" rows="1" maxlength="500"
           placeholder="${canSend ? '输入消息…' : '游客仅可查看，登录后可发言'}" ${canSend ? '' : 'disabled'}></textarea>
@@ -233,7 +239,7 @@ async function mountWorld(body) {
 
   function render(m) {
     const el = document.createElement('div');
-    el.className = 'msg' + (m.mine ? ' mine' : '');
+    el.className = 'msg' + (m.mine ? ' mine' : '') + (m.msg_type === 'ai' ? ' ai' : '');
     let inner;
     if (m.recalled) {
       inner = '<span class="recall">该消息已撤回</span>';
@@ -340,12 +346,13 @@ async function mountWorld(body) {
     if (old) { old.remove(); }
     const bar = document.createElement('div');
     bar.className = 'reject-note';
+    const canReview = !(payload && payload.type === 'image');   // 图片外链没有「重审」可言
     bar.innerHTML = '<span class="rn-text">' + esc(text) + '</span>'
-      + '<button class="btn btn-sm" data-review="1">AI 重审</button>';
+      + (canReview ? '<button class="btn btn-sm" data-review="1">AI 重审</button>' : '');
     stream.after(bar);
 
     const btn = bar.querySelector('[data-review]');
-    btn.addEventListener('click', async () => {
+    if (btn) btn.addEventListener('click', async () => {
       btn.disabled = true;
       btn.textContent = '重审中…';
       try {
@@ -375,12 +382,15 @@ async function mountWorld(body) {
       const m = await api('lobby.php', 'send', Object.assign({ type: type }, payload), { timeout: 30000 });
       if (stream.querySelector('.empty')) { stream.innerHTML = ''; seen.clear(); }
       put(m, true);
+      if (m && m.ai) { put(m.ai, true); }
+      if (m && m.ai_note) { toast(m.ai_note, 'err'); }
       picker.hidden = true;
       const bar = stream.parentNode.querySelector('.reject-note');
       if (bar) { bar.remove(); }
     } catch (e) {
-      if (e && e.code === 422 && type !== 'image') {
-        rejectNote(e.message || '内容未通过审核', { type: type, content: payload.content });
+      if (e && e.code === 422) {
+        /* 图片同样给一条明确的通知条，而不是静默失败（用户以为发出去了） */
+        rejectNote(e.message || '内容未通过审核', { type: type, content: payload.content, media: payload.media });
       } else {
         toast(e.message, 'err');
       }
@@ -453,6 +463,50 @@ async function mountWorld(body) {
     if (count) { count.textContent = input.value.length + '/500'; }
   });
   input.addEventListener('focus', () => requestAnimationFrame(stick));
+
+  /* ---------- @ 提及（仅世界对话）：输入 @ 弹面板；@ 按钮一键插入 ---------- */
+  const AI_MENTION = '@官方AI ';
+  function atInsert() {
+    const st = input.selectionStart, en = input.selectionEnd, v = input.value;
+    input.value = v.slice(0, st) + AI_MENTION + v.slice(en);
+    const p = st + AI_MENTION.length;
+    input.setSelectionRange(p, p);
+    input.focus();
+    input.dispatchEvent(new Event('input'));
+  }
+  function atRange() {
+    const pos = input.selectionStart;
+    const m = input.value.slice(0, pos).match(/(?:^|[\s（(【[>])@([\u4e00-\u9fa5A-Za-z0-9]{0,7})$/);
+    return m ? { start: pos - m[2].length - 1 } : null;
+  }
+  function atSync() {
+    if (!canSend) { return; }
+    const r = atRange();
+    const q = r ? input.value.slice(r.start + 1, input.selectionStart) : '';
+    if (!r || '官方AI'.indexOf(q) !== 0) {
+      if (picker.dataset.kind === 'mention') { picker.hidden = true; picker.dataset.kind = ''; }
+      return;
+    }
+    picker.dataset.kind = 'mention';
+    picker.innerHTML = '<div class="picker-head">@ 提及（点击插入）</div>'
+      + '<div class="picker-body"><button class="btn btn-sm" id="wAtPick">' + esc(AI_MENTION.trim()) + '</button>'
+      + '<div class="tiny" style="margin-top:6px">@ 官方 AI，它会回应这条消息</div></div>';
+    picker.hidden = false;
+    picker.querySelector('#wAtPick').addEventListener('click', () => {
+      const st = atRange();
+      const pos = input.selectionStart, v = input.value;
+      const from = st ? st.start : pos;
+      input.value = v.slice(0, from) + AI_MENTION + v.slice(pos);
+      const p = from + AI_MENTION.length;
+      input.setSelectionRange(p, p);
+      picker.hidden = true; picker.dataset.kind = '';
+      input.focus();
+      input.dispatchEvent(new Event('input'));
+    });
+  }
+  const atBtn = body.querySelector('#wAt');
+  if (atBtn) { atBtn.addEventListener('click', atInsert); }
+  input.addEventListener('input', atSync);
 
   const loginBtn = body.querySelector('#wLogin');
   if (loginBtn) { loginBtn.addEventListener('click', () => navigate('#/login')); }

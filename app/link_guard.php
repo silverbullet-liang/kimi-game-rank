@@ -2,17 +2,19 @@
 /**
  * 链接守卫：从内容里找出域名，判断该不该拦。
  * ------------------------------------------------------------
- * 两道本地判据，都不外发任何内容：
+ * 两道判据，都不把用户内容发给任何第三方：
  *
- *   1) 规律域名（固定判据）—— 主体是纯数字，且满足「短串重复 / 回文 / 连续序列」
- *      的 .com / .cc 域名。这类域名没什么正经用途：
+ *   1) 规律域名（纯代码判据，无数据文件）—— 主体是纯数字，且满足「短串重复 / 回文 /
+ *      连续序列」的 .com / .cc 域名。这类域名没什么正经用途：
  *      111111.com、121212.com、125125.com、125521.cc 都是同一批人在批量注册。
  *      长度门槛设在 5 位，是为了不误伤 163.com / 360.com / 51.com 这类真实老站。
  *
- *   2) 公开规则集 —— AdGuard 等发布并允许使用的广告/恶意域名表（约 17 万条），
- *      由管理面板一键导入到 ad_hosts 表，命中即拦。查询走主键索引。
+ *   2) 公开规则集（在线拉取，**本地不保存**）—— AdGuard 公开发布的广告/恶意域名
+ *      过滤列表。只在真正需要判定的那一次请求里联网拉取、解析进内存，用完即弃：
+ *      不写盘、不留缓存、不在本地保存任何副本。拉取失败或超时一律「放行」，
+ *      绝不牵连正常流程。
  *
- * 图片里出现这类域名基本只有一种用途（导流），所以图片侧命中即拒；
+ * 图片里出现这类域名基本只有导流一种用途，所以图片侧命中即拒；
  * 文本侧默认同样拦截，可用 link_guard.block_text 关掉。
  */
 declare(strict_types=1);
@@ -65,94 +67,50 @@ function link_guard_is_pattern_host(string $host): bool
 }
 
 /**
+ * 在线规则集：本次请求内只拉取一次，解析进内存后即用即弃。
+ * 拉取失败返回空集（此后不再重试），因此最坏也只是少一道判据，不会拖慢或报错。
+ */
+function link_guard_ruleset(): array
+{
+    static $set = null;
+    if ($set !== null) { return $set; }
+    $set = array();
+    if (!function_exists('curl_init')) { return $set; }
+
+    $f = link_guard_fetch();
+    if (empty($f['ok'])) { return $set; }
+
+    foreach (link_guard_parse_rules((string)$f['text']) as $h) { $set[$h] = 1; }
+    if ($set) { app_log('link_guard 在线规则集：' . count($set) . ' 条（不落盘）'); }
+    return $set;
+}
+
+/** 在规则集里查域名与其各级父域，返回命中项；未命中返回空串。 */
+function link_guard_host_in_set(string $host, array $set): string
+{
+    $host = strtolower(trim($host));
+    if ($host === '' || !$set) { return ''; }
+    $parts = explode('.', $host);
+    for ($i = 0; $i < count($parts) - 1; $i++) {
+        $cand = implode('.', array_slice($parts, $i));
+        if (isset($set[$cand])) { return $cand; }
+    }
+    return '';
+}
+
+/**
  * 查规则：先查域名本身，再逐级查父域（子域常被单独列出）。
  * 返回命中的那条规则域名；未命中返回空串。同请求内结果缓存。
- *
- * 规则按 crc32 取模 128 分片存放，每片约 1400 条，只载入需要的那一两片。
- * 不用首字符分片，是因为域名首字符分布极不均 —— 's' 一片独占两成
- * （跟踪类域名大量以 s 开头），而 crc32 取模的最大/中位比只有 1.07。
  */
 function link_guard_rule_hit(string $host): string
 {
     static $memo = array();
-    static $shards = array();
 
     $host = strtolower(trim($host));
     if ($host === '') { return ''; }
     if (array_key_exists($host, $memo)) { return $memo[$host]; }
 
-    $parts = explode('.', $host);
-    for ($i = 0; $i < count($parts) - 1; $i++) {
-        $cand = implode('.', array_slice($parts, $i));
-        $f = link_guard_shard_path($cand);
-        if (!array_key_exists($f, $shards)) {
-            $shards[$f] = is_file($f) ? (array)require $f : array();
-        }
-        if (isset($shards[$f][$cand])) { return $memo[$host] = $cand; }
-    }
-    return $memo[$host] = '';
-}
-
-/** 分片路径。桶号算法必须与 tools/build_adblock.py 一致（标准 CRC-32 取模 128）。 */
-function link_guard_shard_path(string $host): string
-{
-    static $dir = '';
-    if ($dir === '') { $dir = APP_ROOT . '/app/data/adblock'; }
-    $n = (int)sprintf('%u', crc32($host)) % 128;
-    return $dir . '/b' . str_pad((string)$n, 3, '0', STR_PAD_LEFT) . '.php';
-}
-
-/**
- * 把规则写入分片文件（全量替换）。返回写入条数。
- * 分片写法与 build_adblock.py 完全同构，因此面板一键更新与本地构建产物格式一致。
- */
-function link_guard_write_shards(array $hosts): int
-{
-    if (!$hosts) { return 0; }
-    @set_time_limit(600);
-
-    $dir = APP_ROOT . '/app/data/adblock';
-    if (!is_dir($dir) && !@mkdir($dir, 0775, true)) { return 0; }
-
-    $buckets = array_fill(0, 128, array());
-    foreach ($hosts as $h) {
-        $buckets[(int)sprintf('%u', crc32($h)) % 128][] = (string)$h;
-    }
-
-    $n = 0;
-    foreach ($buckets as $i => $b) {
-        sort($b);
-        $body = array();
-        foreach ($b as $h) { $body[] = "'" . str_replace("'", '', $h) . "'=>1"; }
-        $path = $dir . '/b' . str_pad((string)$i, 3, '0', STR_PAD_LEFT) . '.php';
-        if (@file_put_contents($path, '<?php return array(' . implode(',', $body) . ');', LOCK_EX) === false) {
-            app_log('link_guard: 写入分片失败 ' . $path);
-            continue;
-        }
-        $n += count($b);
-    }
-
-    @file_put_contents($dir . '/meta.json', json_encode(array(
-        'count'    => $n,
-        'shards'   => 128,
-        'built_at' => now_utc(),
-        'source'   => 'panel',
-    ), JSON_UNESCAPED_UNICODE), LOCK_EX);
-    setting_set('ad_hosts_updated', now_utc());
-    return $n;
-}
-
-/** 规则出现状，供面板展示 */
-function link_guard_stats(): array
-{
-    $f = APP_ROOT . '/app/data/adblock/meta.json';
-    if (!is_file($f)) { return array('count' => 0, 'updated' => ''); }
-    $j = json_decode((string)@file_get_contents($f), true);
-    if (!is_array($j)) { return array('count' => 0, 'updated' => ''); }
-    return array(
-        'count'   => (int)(isset($j['count']) ? $j['count'] : 0),
-        'updated' => (string)(isset($j['built_at']) ? $j['built_at'] : ''),
-    );
+    return $memo[$host] = link_guard_host_in_set($host, link_guard_ruleset());
 }
 
 /**
@@ -199,7 +157,7 @@ function link_guard_parse_rules(string $text): array
     return array_keys($out);
 }
 
-/** 依次尝试各镜像源拉取规则文本；返回 array(ok, text, url) */
+/** 依次尝试各镜像源拉取规则文本；返回 array(ok, text, url)。超时偏短，避免拖住发言。 */
 function link_guard_fetch(): array
 {
     $urls = (array)cfg('adblock.sources', array(
@@ -214,8 +172,8 @@ function link_guard_fetch(): array
         curl_setopt_array($ch, array(
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_TIMEOUT        => 60,
-            CURLOPT_CONNECTTIMEOUT => 8,
+            CURLOPT_TIMEOUT        => 15,
+            CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_SSL_VERIFYPEER => true,
         ));
         $body = curl_exec($ch);

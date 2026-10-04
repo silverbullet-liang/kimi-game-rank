@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '3.13.0');
+define('APP_VERSION', '3.16.0');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);
@@ -67,6 +67,7 @@ require_once APP_ROOT . '/app/moderation.php';
 require_once APP_ROOT . '/app/lunar.php';
 require_once APP_ROOT . '/app/festival.php';
 require_once APP_ROOT . '/app/chat_media.php';
+require_once APP_ROOT . '/app/lobby_ai.php';
 require_once APP_ROOT . '/app/backup.php';
 require_once APP_ROOT . '/app/link_smart.php';
 require_once APP_ROOT . '/app/link_guard.php';
@@ -104,6 +105,9 @@ try {
 } catch (Throwable $e) {
     app_log('migration error: ' . $e->getMessage());
 }
+
+/* ---------- 互通站点：把 config 里已填好的对端登记进列表（留空的跳过） ---------- */
+try { peer_seed_from_config(); } catch (Throwable $e) { app_log('peer seed: ' . $e->getMessage()); }
 
 /* ---------- 违纪封禁：API 一律拒绝 ----------
  * 被通报封停的账号或来源，前端会整体锁在封禁通知界面；这里做后端兜底：

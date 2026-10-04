@@ -48,7 +48,6 @@ export async function renderPanel(container) {
     bindDb(container);
     bindBackup(container);
     loadDisc(container);
-    loadAdBlock(container);
     loadPeer(container);
     bindAiRank(container);
     startPanelPolling(container);
@@ -141,8 +140,6 @@ function adminLayout() {
     </div>
 
     ${discBlock()}
-
-    ${adBlock()}
 
     ${peerBlock()}
 
@@ -1437,52 +1434,6 @@ async function loadVisitsTop(container) {
  * 列出全部通报，可「设置」二次调整：理由、说明、封禁天数（重算解封时间）、
  * 立即解封、IP 封禁开关。累计被通报（单次封禁 ≥7 天）达 10 次的账号会被永久删除。
  */
-/* 广告域名规则集：显示条数与更新时间，一键拉取更新。
-   规则来自 AdGuard 公开发布的过滤列表（约 17 万条），只存域名，
-   用于在发送前拦下导流链接 —— 拉取、解析、落盘全部在站点本地完成。 */
-function adBlock() {
-  return `
-    <div class="panel-plain">
-      <h3>广告域名规则</h3>
-      <p class="tiny muted">
-        导入公开的广告 / 恶意域名过滤列表，用于在发送前拦下导流链接。
-        本地判断，不把用户内容发给任何第三方。
-      </p>
-      <div class="prow">
-        <span class="tiny" id="adStat">读取中…</span>
-        <button class="btn btn-sm" id="adUpdate">拉取更新</button>
-      </div>
-    </div>`;
-}
-
-async function loadAdBlock(container) {
-  const el = container.querySelector('#adStat');
-  if (!el) { return; }
-  const btn = container.querySelector('#adUpdate');
-  const paint = d => {
-    const n = Number(d.count || 0);
-    el.textContent = n > 0
-      ? '已导入 ' + n.toLocaleString() + ' 条' + (d.updated ? ' · ' + d.updated + ' UTC' : '')
-      : '尚未导入（此时只用内置的规律域名判据）';
-  };
-  try { paint(await api('admin.php', 'adblock_stats', {}, { silent: true })); }
-  catch (e) { el.textContent = '读取失败'; }
-
-  if (!btn) { return; }
-  btn.addEventListener('click', async () => {
-    if (!(await dialog('拉取规则', '将联网下载规则列表并重建本地索引，期间不要关闭页面。确定继续？', '开始'))) { return; }
-    btn.disabled = true;
-    el.textContent = '正在下载并解析…';
-    try {
-      const r = await api('admin.php', 'adblock_update', {}, { timeout: 300000 });
-      paint({ count: r.count, updated: '刚刚' });
-      toast('已导入 ' + Number(r.count || 0).toLocaleString() + ' 条域名');
-    } catch (e) {
-      toast(e.message || '更新失败', 'err');
-      el.textContent = '更新失败，可稍后重试';
-    } finally { btn.disabled = false; }
-  });
-}
 
 /* ============================================================
  * 站点互通（多站互为镜像）
@@ -1737,6 +1688,7 @@ async function loadDisc(container) {
         <td class="tiny">${Number(it.user_count || 0)} 次</td>
         <td class="tiny">${esc(it.created)}</td>
         <td><button class="btn-ghost btn-sm" data-act="edit">设置</button>
+            <button class="btn-ghost btn-sm" data-act="purge">清对话</button>
             <button class="btn-ghost btn-sm" data-act="revoke">撤销</button></td></tr>`).join('')
       + '</tbody></table>';
 
@@ -1754,6 +1706,16 @@ async function loadDisc(container) {
         try { await api('admin.php', 'disc_delete', { id: row.id }); toast('已撤销'); loadDisc(container); }
         catch (e) { toast(e.message, 'err'); }
       });
+      const pb = tr.querySelector('[data-act="purge"]');
+      if (pb) {
+        pb.addEventListener('click', async () => {
+          if (!(await dialog('清理该用户的消息', '将删除该用户的世界对话（含图片）与全部 AI 对话消息，账号不受影响。确认？', '清理', { danger: true }))) { return; }
+          try {
+            const r = await api('admin.php', 'user_purge_msgs', { uid: row.user_id, scope: 'both' });
+            toast('已清理：世界对话 ' + Number(r.chat || 0) + ' 条 / AI 对话 ' + Number(r.ai || 0) + ' 条');
+          } catch (e) { toast(e.message, 'err'); }
+        });
+      }
     });
   } catch (e) {
     box.innerHTML = '<div class="tiny">加载失败：' + esc(e.message) + '</div>';

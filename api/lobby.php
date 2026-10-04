@@ -21,12 +21,15 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 function chat_out(array $r, int $myUid): array
 {
     $recalled = isset($r['is_recalled']) ? ((int)$r['is_recalled'] === 1) : false;
+    /* 官方 AI 消息：user_id=0、msg_type='ai'，身份不再来自 users 表 */
+    $isAi = ((string)($r['msg_type'] ?? '') === 'ai');
+    $name = $isAi ? LOBBY_AI_NAME : (string)($r['username'] ?? '已注销用户');
     return array(
         'id'       => (int)$r['id'],
         'uid'      => (int)$r['user_id'],
-        'username' => (string)($r['username'] ?? '已注销用户'),
-        'role'     => (string)($r['role'] ?? 'user'),
-        'avatar'   => identicon_data_uri((string)($r['username'] ?? '用户'), 40),
+        'username' => $name,
+        'role'     => $isAi ? 'ai' : (string)($r['role'] ?? 'user'),
+        'avatar'   => identicon_data_uri($isAi ? LOBBY_AI_NAME : (string)($r['username'] ?? '用户'), 40),
         'content'  => $recalled ? '' : (string)($r['content'] ?? ''),
         'msg_type' => (string)($r['msg_type'] ?? 'text'),
         'media'    => (string)($r['media_url'] ?? ''),
@@ -102,6 +105,15 @@ switch ($action) {
             $media = trim(nfc_normalize(param_str('media')));
             if ($media === '' || mb_strlen($media, 'UTF-8') > 255) { fail(400, '图片地址无效'); }
             if (!preg_match('#^(https?://|api/media\.php\?id=)#i', $media)) { fail(400, '不支持的图片地址'); }
+            /* 外链图片先过链接初筛（与文本同一套判据）。命中按「审核未通过」回报，
+               前端会给出一条明确提示，而不是发出一条打不开的空消息。 */
+            if (preg_match('#^https?://#i', $media) && function_exists('link_guard_check')) {
+                $lh = link_guard_check($media);
+                if ($lh) {
+                    app_log('lobby image link blocked: ' . $lh[0]['host'] . ' via ' . $lh[0]['why']);
+                    fail(422, '图片链接含可疑网址，已拦截');
+                }
+            }
         } else {
             $content = trim(strip_invisible(nfc_normalize(param_str('content'))));
             $len = mb_strlen($content, 'UTF-8');
@@ -111,12 +123,24 @@ switch ($action) {
 
         cooldown_guard('chat');   // 非管理员：发言冷却
 
+        /* 刷屏检测：短时间连发、或同一句话重复刷屏 */
+        if ($type !== 'image' && function_exists('moderation_flood') && moderation_flood((int)$uid, $content)) {
+            fail(429, '发送过于频繁或内容重复，请勿刷屏');
+        }
+
         /* 内容过三关：只针对文本消息（图片消息没有文本可审）。
            传入 uid：AI 重审通过的凭证与用户绑定，凭它放行「重审说可以、发送又被拦」的那条。 */
         $flag = '';
         if ($type !== 'image' && $content !== '') {
             $verdict = moderate_text($content, 'message', (int)$uid);
-            if (empty($verdict['ok'])) { moderate_reject($verdict); }
+            if (empty($verdict['ok'])) {
+                /* 拆字骂人：把参与拼接的那几条消息一并撤回（进「回收站」） */
+                if (isset($verdict['via']) && $verdict['via'] === 'context'
+                    && function_exists('moderation_recall_context')) {
+                    moderation_recall_context((int)$uid);
+                }
+                moderate_reject($verdict);
+            }
             $flag = (string)(isset($verdict['flag']) ? $verdict['flag'] : '');
         }
 
@@ -135,7 +159,7 @@ switch ($action) {
 
         $u = current_user_row();
         $name = $u !== null ? (string)$u['username'] : '用户';
-        ok(array(
+        $out = array(
             'id'       => $mid,
             'uid'      => $uid,
             'username' => $name,
@@ -148,7 +172,17 @@ switch ($action) {
             'flag'     => $flag,
             'mine'     => true,
             'time'     => to_local(now_utc(), 'm-d H:i'),
-        ));
+        );
+
+        /* 消息里 @ 了官方 AI：以「发送人」身份生成一条 AI 回复（非流式）。
+           失败只回注 ai_note，不影响这条消息本身是否成功发出。 */
+        if ($type !== 'image' && $content !== '' && lobby_ai_mentioned($content)) {
+            $ai = lobby_ai_reply((int)$uid, $content, $name);
+            if (!empty($ai['ok'])) { $out['ai'] = $ai['item']; }
+            else { $out['ai_note'] = (string)($ai['note'] ?? 'AI 暂时不可用'); }
+        }
+
+        ok($out);
         break;
     }
 

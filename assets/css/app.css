@@ -865,6 +865,85 @@ html[data-theme="dark"] .table th, html[data-theme="dark"] .table td { border-co
   background: color-mix(in srgb, #2fb6a8 20%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, #2fb6a8 40%, transparent);
 }
+.bd-ai {
+  color: color-mix(in srgb, #6d28d9 78%, var(--text));
+  background: color-mix(in srgb, #7C3AED 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #7C3AED 38%, transparent);
+}
+
+/* ---------- 世界对话：官方 AI 消息 ---------- */
+.msg.ai .who { color: var(--accent); }
+.msg.ai .bubble { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.chat-input .at-txt { font-size: 16px; font-weight: 700; line-height: 1; }
+
+/* ---------- 违纪通报：状态胶囊 / 醒目的补充说明 ---------- */
+.disc-chip {
+  display: inline-block; padding: 1px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; line-height: 1.7; vertical-align: middle;
+  color: var(--text-2); background: color-mix(in srgb, var(--text-3) 16%, transparent);
+}
+.disc-chip.on { color: #b3261e; background: color-mix(in srgb, #e5484d 15%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, #e5484d 32%, transparent); }
+.disc-chip.off { color: #157a71; background: color-mix(in srgb, #2fb6a8 15%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, #2fb6a8 32%, transparent); }
+
+.disc-note {
+  margin-top: 12px; padding: 10px 12px; border-radius: 12px; font-size: 14px; line-height: 1.7;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.disc-note-k { display: inline-block; margin-right: 8px; font-size: 12px; font-weight: 700; color: var(--accent); }
+.disc-status { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+/* ---------- 全屏封禁说明（不可关闭） ---------- */
+.banlock {
+  position: fixed; inset: 0; z-index: 100000;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  background: rgba(8, 8, 14, .55);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.banlock-inner {
+  width: 100%; max-width: 460px; max-height: 88vh; overflow-y: auto;
+  padding: 26px 22px; border-radius: 20px;
+  background: var(--surface-solid); border: 1px solid var(--border-soft);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .4);
+}
+.banlock-ic { color: #e5484d; }
+.banlock-ic .ic { width: 34px; height: 34px; fill: currentColor; }
+.banlock-inner h2 { margin: 10px 0 6px; font-size: 20px; }
+.banlock-sub { margin: 0 0 14px; color: var(--text-2); font-size: 13px; line-height: 1.7; }
+.banlock-reasons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.banlock-actions { display: flex; gap: 10px; margin-top: 16px; }
+.banlock-actions .btn-ghost { flex: 1; }
+
+/* ---------- 最新通报弹窗 ---------- */
+.discpop-scrim {
+  position: fixed; inset: 0; z-index: 99990;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  background: rgba(8, 8, 14, .45);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.discpop {
+  width: 100%; max-width: 440px; max-height: 86vh; overflow-y: auto; padding: 0;
+  border-radius: 20px; background: var(--surface-solid); border: 1px solid var(--border-soft);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .4);
+}
+.discpop-head { display: flex; align-items: center; gap: 8px; padding: 16px 18px 0; }
+.discpop-head h3 { margin: 0; flex: 1; font-size: 16px; }
+.discpop-ic { color: #e5484d; }
+.discpop-ic .ic { width: 20px; height: 20px; fill: currentColor; }
+.discpop-x { border: 0; background: 0; padding: 4px; color: var(--text-3); }
+.discpop-x .ic { width: 18px; height: 18px; fill: currentColor; }
+.discpop-body { padding: 12px 18px 4px; }
+.discpop-who { margin-bottom: 8px; font-weight: 600; }
+.discpop-status { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.discpop-actions { display: flex; gap: 10px; padding: 14px 18px 18px; }
+.discpop-actions .btn, .discpop-actions .btn-ghost { flex: 1; }
+
+/* 反篡改提醒（浮动，几秒后自动消失） */
+.banwarn {
+  position: fixed; left: 50%; top: 12%; transform: translateX(-50%); z-index: 100001;
+  width: max-content; max-width: 88vw; padding: 13px 16px; border-radius: 14px;
+  font-size: 14px; line-height: 1.6; box-shadow: 0 14px 40px rgba(0, 0, 0, .35);
+}
 .badge svg { flex: 0 0 auto; }
 .uname { font-weight: 600; }
 

@@ -380,6 +380,79 @@ function moderation_check3(string $text): array
 }
 
 /**
+ * 二次判断的上下文：把该用户最近几条短消息与新内容**直接拼接**（不加分隔符）再看一次。
+ * 单条「傻」、单条「逼」都无害，拼起来才现形 —— 拆字规避只能靠这一步兜住。
+ */
+function moderation_context_rows(int $uid, int $windowSec = 300, int $maxItems = 6): array
+{
+    if ($uid <= 0 || !table_exists('messages')) { return array(); }
+    try {
+        $rows = db_all('SELECT id, content FROM messages WHERE user_id = ? AND created_at >= ? ORDER BY id DESC LIMIT ' . (int)$maxItems,
+                       array($uid, gmdate('Y-m-d H:i:s', time() - $windowSec)));
+    } catch (Throwable $e) { return array(); }
+    $out = array();
+    foreach (array_reverse((array)$rows) as $r) {
+        $t = trim((string)$r['content']);
+        if ($t !== '' && mb_strlen($t, 'UTF-8') <= 60) { $out[] = array('id' => (int)$r['id'], 'content' => $t); }
+    }
+    return $out;
+}
+
+/** 上下文拼接（不加分隔符）—— 拆字骂人只有拼起来才现形 */
+function moderation_context_text(int $uid, string $new, int $windowSec = 300, int $maxLen = 160): string
+{
+    $parts = array();
+    foreach (moderation_context_rows($uid, $windowSec) as $r) { $parts[] = $r['content']; }
+    if (!$parts) { return ''; }
+    $joined = implode('', $parts) . $new;
+    if (mb_strlen($joined, 'UTF-8') > $maxLen) { $joined = mb_substr($joined, -$maxLen, null, 'UTF-8'); }
+    return $joined;
+}
+
+/**
+ * 判定为拆字骂人后，把参与拼接的那几条消息一并撤回（内容留档，正常消息流里只显示「已撤回」）。
+ * 这些消息单独看都无害，但它们是这次攻击的一部分 —— 留着等于把骂人的话留在公屏上。
+ */
+function moderation_recall_context(int $uid, int $windowSec = 300): int
+{
+    if ($uid <= 0) { return 0; }
+    $ids = array();
+    foreach (moderation_context_rows($uid, $windowSec) as $r) { $ids[] = $r['id']; }
+    if (!$ids) { return 0; }
+    $n = 0;
+    foreach ($ids as $id) {
+        try {
+            $sets = array("`is_recalled` = 1");
+            if (col_ok('messages', 'media_url')) { $sets[] = "`media_url` = ''"; }
+            db_exec('UPDATE `messages` SET ' . implode(', ', $sets) . ' WHERE `id` = ?', array($id));
+            $n++;
+        } catch (Throwable $e) { }
+    }
+    app_log('moderation: 拆字骂人，撤回 ' . $n . ' 条上下文消息（uid=' . $uid . '）');
+    return $n;
+}
+
+/** 刷屏检测：短时间内的雷同消息 / 高频连发 */
+function moderation_flood(int $uid, string $text, int $windowSec = 60): bool
+{
+    if ($uid <= 0 || !table_exists('messages')) { return false; }
+    try {
+        $rows = db_all('SELECT content FROM messages WHERE user_id = ? AND created_at >= ? ORDER BY id DESC LIMIT 8',
+                       array($uid, gmdate('Y-m-d H:i:s', time() - $windowSec)));
+    } catch (Throwable $e) { return false; }
+    $rows = (array)$rows;
+    if (count($rows) >= 8) { return true; }                 // 窗口内已连发 8 条
+    $norm = strtolower((string)preg_replace('/\s+/u', '', $text));
+    if ($norm === '') { return false; }
+    $same = 0;
+    foreach ($rows as $r) {
+        $c = strtolower((string)preg_replace('/\s+/u', '', (string)$r['content']));
+        if ($c !== '' && $c === $norm) { $same++; }
+    }
+    return $same >= 2;                                      // 连上新的这条，已有 3 条一模一样
+}
+
+/**
  * 主入口：过三关 + 缓存。
  * $scope：'comment' | 'message'，仅用于日志与后续分域调参。
  * 返回 array(ok, stage, reason, cached)。ok=false 时调用方应拒绝写入并给出统一话术。
@@ -419,6 +492,20 @@ function moderate_text(string $text, string $scope = 'comment', int $uid = 0): a
         if ($lh) {
             app_log('moderate_text: blocked host ' . $lh[0]['host'] . ' via ' . $lh[0]['why']);
             return array('ok' => false, 'stage' => 0, 'reason' => '内容含可疑网址', 'cached' => false, 'flag' => '');
+        }
+    }
+
+    /* 二次判断（仅消息域）：把最近几条短消息与新内容拼起来再看一次。
+       拆字骂人（「傻」+「逼」两条单字）单条都无害，拼起来才现形。 */
+    if ($scope === 'message' && $uid > 0 && (int)cfg('moderation.jev', 1) === 1 && function_exists('jev_classify')) {
+        $ctx = moderation_context_text($uid, $text);
+        if ($ctx !== '' && $ctx !== $text) {
+            $jc = jev_classify($ctx);
+            if (isset($jc['ok']) && $jc['ok'] === false) {
+                app_log('moderation: context jev level=' . (isset($jc['level']) ? $jc['level'] : '?') . ' blocked');
+                return array('ok' => false, 'stage' => 1, 'reason' => '内容含人身攻击',
+                             'cached' => false, 'flag' => '', 'via' => 'context');
+            }
         }
     }
 

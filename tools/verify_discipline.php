@@ -24,9 +24,19 @@ function cfg(string $p, $d = null) { return $d; }
 function identicon_data_uri(string $s, int $n = 40): string { return 'data:,'; }
 function current_identity() { return null; }
 
-function db_one(string $sql, array $a = array()) { return $GLOBALS['LIST_ROWS'] ? $GLOBALS['LIST_ROWS'][0] : null; }
-function db_all(string $sql, array $a = array()) { return $GLOBALS['LIST_ROWS']; }
-function db_val(string $sql, array $a = array()) { return 0; }
+function db_one(string $sql, array $a = array()) {
+    if (array_key_exists('ONE', $GLOBALS)) { return $GLOBALS['ONE']; }
+    return $GLOBALS['LIST_ROWS'] ? $GLOBALS['LIST_ROWS'][0] : null;
+}
+function db_all(string $sql, array $a = array()) {
+    $GLOBALS['SQL'][] = array('all', $sql, $a);
+    if (array_key_exists('ROWS', $GLOBALS) && $GLOBALS['ROWS'] !== null) { return $GLOBALS['ROWS']; }
+    return $GLOBALS['LIST_ROWS'];
+}
+function db_val(string $sql, array $a = array()) {
+    if (strpos($sql, 'COUNT(*)') !== false && isset($GLOBALS['COUNT'])) { return $GLOBALS['COUNT']; }
+    return isset($GLOBALS['DBVAL']) ? $GLOBALS['DBVAL'] : 0;
+}
 function db_exec(string $sql, array $a = array()) { $GLOBALS['SQL'][] = array('exec', $sql, $a); return 1; }
 function db_insert(string $sql, array $a = array()) { $GLOBALS['SQL'][] = array('insert', $sql, $a); return 1; }
 
@@ -129,6 +139,40 @@ $ins2 = null;
 foreach ($GLOBALS['SQL'] as $s) { if ($s[0] === 'insert' && strpos($s[1], 'discipline_reports') !== false) { $ins2 = $s; } }
 ck('填 0 → 落库天数 0',                $ins2[2][5], 0.0);
 ck('填 0 → 解封时间为 null（永久）',   $ins2[2][6], null);
+
+
+/* ---------- 5. 封禁状态：是否已解封（discipline_item 的 alive） ---------- */
+function item_row($banned, $until)
+{
+    return array('id' => 9, 'user_id' => 3, 'username' => 'x', 'reasons' => '["a"]', 'note' => 'n',
+                 'banned' => $banned, 'ban_days' => 7, 'ban_until' => $until, 'ip_banned' => 0,
+                 'views' => 0, 'created_at' => '2026-10-04 00:00:00');
+}
+$nowT = time();
+ck('封停中 → alive = true',   discipline_item(item_row(1, gmdate('Y-m-d H:i:s', $nowT + 86400)))['alive'], true);
+ck('已过期 → alive = false',  discipline_item(item_row(1, gmdate('Y-m-d H:i:s', $nowT - 86400)))['alive'], false);
+ck('永久封停 → alive = true', discipline_item(item_row(1, null))['alive'], true);
+ck('未封停 → alive = false',  discipline_item(item_row(0, null))['alive'], false);
+ck('天数原样透传（7.0）',     discipline_item(item_row(1, null))['ban_days'], 7.0);
+ck('列表同样带 alive',        array_key_exists('alive', $items[0]), true);
+
+/* ---------- 6. 超限清理：只删已解封的，越旧越先 ---------- */
+$GLOBALS['SQL'] = array();
+$GLOBALS['COUNT'] = 13;
+$GLOBALS['ROWS'] = array(array('id' => 1, 'user_id' => 101), array('id' => 2, 'user_id' => 102), array('id' => 3, 'user_id' => 103));
+$GLOBALS['ONE'] = null;
+$n = discipline_prune(10);
+ck('13 条上限 10 → 删 3 条', $n, 3);
+$sqlAll = implode("\n", array_map(function ($x) { return $x[1]; }, $GLOBALS['SQL']));
+ck('只挑「已解封」的（banned=0 或已过期）', strpos($sqlAll, 'ban_until <= UTC_TIMESTAMP()') !== false, true);
+ck('越旧越先删（ORDER BY id ASC）',        strpos($sqlAll, 'ORDER BY id ASC') !== false, true);
+ck('按差额 LIMIT 3',                        strpos($sqlAll, 'LIMIT 3') !== false, true);
+ck('删记录时同步清 IP 黑名单',              strpos($sqlAll, 'DELETE FROM banned_ips') !== false, true);
+
+$GLOBALS['COUNT'] = 10;
+ck('未超上限 → 一条不删', discipline_prune(10), 0);
+$GLOBALS['COUNT'] = 0;
+ck('空表 → 安全返回 0',   discipline_prune(10), 0);
 
 printf("\n通过 %d，失败 %d\n", $GLOBALS['pass_n'], $GLOBALS['fail_n']);
 exit($GLOBALS['fail_n'] === 0 ? 0 : 1);

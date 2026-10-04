@@ -315,3 +315,25 @@ function peer_sync_all(): array
     }
     return $out;
 }
+
+/**
+ * 把 config 的 peers.sites 里「已填好」的对端登记进站点列表（幂等，只补不删）。
+ * 允许「一条填好、其余留空」——空条目或格式不符的直接跳过，不报错。
+ */
+function peer_seed_from_config()
+{
+    if (!table_exists('peers')) { return; }
+    $sites = cfg('peers.sites', array());
+    if (!is_array($sites)) { return; }
+    foreach ($sites as $s) {
+        if (!is_array($s)) { continue; }
+        $url = isset($s['base_url']) ? rtrim(trim((string)$s['base_url']), '/') : '';
+        $pk  = isset($s['pubkey']) ? strtolower(trim((string)$s['pubkey'])) : '';
+        if ($url === '' || !preg_match('#^https?://#i', $url)) { continue; }   // 留空 → 跳过
+        if (!peer_key_valid($pk)) { continue; }                              // 公钥缺失 → 跳过
+        if (db_one('SELECT id FROM peers WHERE base_url = ? LIMIT 1', array($url)) !== null) { continue; }
+        $name = isset($s['name']) ? trim((string)$s['name']) : '';
+        db_exec('INSERT INTO peers (name, base_url, pubkey, enabled, created_at) VALUES (?, ?, ?, 1, ?)',
+            array($name, $url, $pk, now_utc()));
+    }
+}
