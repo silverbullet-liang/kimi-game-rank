@@ -4242,7 +4242,19 @@ function credentialBlock() {
     <div class="panel-plain">
       <h3>社区凭证</h3>
       <div class="field"><label>Kimi 社区 cookie / token（加密存储，独立不共用）</label>
-        <input class="input" id="tokInput" placeholder="粘贴社区登录态 token">
+        <div class="tok-row">
+          <input class="input" id="tokInput" placeholder="粘贴社区登录态 token">
+          <button class="btn-ghost btn-sm" id="tokScanBtn" type="button">扫码填写</button>
+        </div>
+      </div>
+      <div id="tokQR" hidden>
+        <div class="qr-wrap">
+          <div class="qr-box" id="tokQRBox"><span class="muted tiny">正在获取二维码…</span></div>
+          <div class="qr-hint" id="tokQRHint"></div>
+          <button class="btn-ghost btn-sm" id="tokQRRefresh" type="button">刷新二维码</button>
+        </div>
+        <p class="tiny muted">用 <b>微信</b> 或 <b>Kimi App</b> 扫码并在手机上确认，登录态会自动填入上方输入框，
+        再点「仅保存凭证」完成。二维码有效期较短，过期后点「刷新二维码」。</p>
       </div>
       <button class="btn-ghost btn-sm" id="saveTokBtn">仅保存凭证</button>
       <button class="btn-ghost btn-sm" id="tokenScriptBtn">下载 Token 脚本</button>
@@ -4658,9 +4670,223 @@ function lineChart(labels, series, metrics) {
 }
 
 /* ============================================================
+ * 社区凭证 · 扫码填写
+ * 仿 Kimi 官方 web 端登录：向 auth.kimi.com 申请登录码 → 渲染官网同款二维码
+ *   https://www.kimi.com/wechat/mp/auth?id=<code>&device_id=<webId>
+ * 微信与 Kimi App 扫的都是这一张 → 轮询 GetLoginQRCodeStatus，SUCCESS 时取回登录态。
+ * 轮询由 Web Worker 心跳驱动：手机确认往往发生在管理员切走标签页之后，而后台标签页
+ * 会节流甚至冻结主线程定时器，用 Worker 才不会漏掉那次「已确认」。
+ * ============================================================ */
+const TOKQR_AUTH = 'https://auth.kimi.com/api/account.gateway.v1.AuthService/';
+const TOKQR_LIBS = [
+  'https://gcore.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js',
+  'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js',
+];
+let tokqrLibP = null;
+let tokqrBeat = null, tokqrBeatUrl = '', tokqrTimer = 0, tokqrActive = false;
+let tokqrBusy = false, tokqrLast = 0, tokqrCode = '', tokqrUntil = 0;
+let tokqrTick = null;   /* 单独声明：构建闸门只认「let 后第一个标识符」 */
+let tokqrOnVis = null;
+
+function tokqrRpc(method, payload) {
+  return fetch(TOKQR_AUTH + method, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload || {}),
+    credentials: 'omit',
+    cache: 'no-store',
+  }).then(r => {
+    if (!r.ok) { throw new Error('HTTP ' + r.status); }
+    return r.json();
+  });
+}
+
+function tokqrLib() {
+  if (typeof window.qrcode === 'function') { return Promise.resolve(true); }
+  if (tokqrLibP) { return tokqrLibP; }
+  tokqrLibP = new Promise(resolve => {
+    let i = 0;
+    const next = () => {
+      if (i >= TOKQR_LIBS.length) { resolve(false); return; }
+      const s = document.createElement('script');
+      s.src = TOKQR_LIBS[i++];
+      s.onload = () => resolve(typeof window.qrcode === 'function');
+      s.onerror = next;
+      document.head.appendChild(s);
+    };
+    next();
+  });
+  return tokqrLibP;
+}
+
+function tokqrPaint(box, text) {
+  box.innerHTML = '';
+  if (typeof window.qrcode !== 'function') { box.textContent = text; return false; }
+  try {
+    const qr = window.qrcode(0, 'M');
+    qr.addData(text); qr.make();
+    box.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+    const svg = box.querySelector('svg');
+    if (svg) { svg.setAttribute('width', '100%'); svg.setAttribute('height', '100%'); }
+    return true;
+  } catch (e) { box.textContent = text; return false; }
+}
+
+/* 设备标识：官网取火山引擎的 webId；本站拿不到，用一个持久化的等价标识 */
+function tokqrWid() {
+  let id = '';
+  try { id = localStorage.getItem('kimi_qr_wid') || ''; } catch (e) {}
+  if (id) { return id; }
+  const a = new Uint8Array(8);
+  try { crypto.getRandomValues(a); } catch (e) { for (let i = 0; i < 8; i++) { a[i] = Math.floor(Math.random() * 256); } }
+  id = 'w' + Date.now().toString(36) + Array.from(a).map(x => x.toString(16).padStart(2, '0')).join('');
+  try { localStorage.setItem('kimi_qr_wid', id); } catch (e) {}
+  return id;
+}
+
+function tokqrHint(kind, text) {
+  const el = document.getElementById('tokQRHint');
+  if (!el) { return; }
+  el.className = 'qr-hint' + (kind ? ' ' + kind : '');
+  el.textContent = text;
+}
+
+function tokqrStop() {
+  tokqrActive = false;
+  if (tokqrTimer) { clearTimeout(tokqrTimer); tokqrTimer = 0; }
+  if (tokqrBeat) { try { tokqrBeat.terminate(); } catch (e) {} tokqrBeat = null; }
+  if (tokqrBeatUrl) { try { URL.revokeObjectURL(tokqrBeatUrl); } catch (e) {} tokqrBeatUrl = ''; }
+  if (tokqrOnVis) { try { document.removeEventListener('visibilitychange', tokqrOnVis); } catch (e) {} tokqrOnVis = null; }
+  tokqrBusy = false;
+}
+
+/* Web Worker 心跳；环境禁用 Blob Worker（如严格 CSP）时返回 false，调用方回退主线程 setTimeout */
+function tokqrHeartbeat(ms, fn) {
+  try {
+    const src = 'var t=null;self.onmessage=function(e){if(e.data==="start"){if(t)clearInterval(t);t=setInterval(function(){self.postMessage(1)},' + ms + ');}else if(e.data==="stop"){if(t)clearInterval(t);t=null;}};';
+    tokqrBeatUrl = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+    tokqrBeat = new Worker(tokqrBeatUrl);
+    tokqrBeat.onmessage = () => { try { fn(); } catch (e) {} };
+    tokqrBeat.postMessage('start');
+    return true;
+  } catch (e) {
+    if (tokqrBeat) { try { tokqrBeat.terminate(); } catch (e2) {} tokqrBeat = null; }
+    if (tokqrBeatUrl) { try { URL.revokeObjectURL(tokqrBeatUrl); } catch (e2) {} tokqrBeatUrl = ''; }
+    return false;
+  }
+}
+
+/* 登录响应里挑 accessToken（字段名不确定，逐层兜底） */
+function tokqrToken(d) {
+  if (!d || typeof d !== 'object') { return ''; }
+  for (const k of Object.keys(d)) {
+    const v = d[k];
+    if (v && typeof v === 'object') {
+      for (const kk of ['accessToken', 'access_token', 'token']) {
+        if (typeof v[kk] === 'string' && v[kk]) { return v[kk]; }
+      }
+    }
+  }
+  return '';
+}
+
+async function tokqrStart() {
+  tokqrStop();
+  if (!document.getElementById('tokQRBox')) { return; }
+  document.getElementById('tokQRBox').innerHTML = '<span class="muted tiny">正在获取二维码…</span>';
+  tokqrHint('', '正在获取二维码…');
+  if (!(await tokqrLib()) || !document.getElementById('tokQRBox')) {
+    tokqrHint('bad', '二维码组件加载失败，可改用「下载 Token 脚本」');
+    return;
+  }
+  let code = '';
+  try {
+    const d = await tokqrRpc('CreateLoginQRCode', {});
+    code = (d && d.code) ? String(d.code) : '';
+  } catch (e) {
+    tokqrHint('bad', '获取二维码失败：' + (e.message || '网络错误'));
+    return;
+  }
+  if (!code || !document.getElementById('tokQRBox')) {
+    tokqrHint('bad', '服务端未返回登录码，可改用「下载 Token 脚本」');
+    return;
+  }
+  tokqrCode = code;
+  const url = 'https://www.kimi.com/wechat/mp/auth?id=' + encodeURIComponent(code)
+            + '&device_id=' + encodeURIComponent(tokqrWid());
+  if (!tokqrPaint(document.getElementById('tokQRBox'), url)) {
+    tokqrHint('bad', '二维码渲染失败，可改用「下载 Token 脚本」');
+    return;
+  }
+  tokqrHint('', '请用 微信 或 Kimi App 扫码');
+
+  tokqrActive = true;
+  tokqrUntil = Date.now() + 5 * 60 * 1000;
+  tokqrLast = 0; tokqrBusy = false;
+  tokqrTick = async () => {
+    if (!tokqrActive) { return; }
+    const now = Date.now();
+    if (tokqrBusy || now - tokqrLast < 900) { return; }        // 防重入 + 去抖
+    if (!document.getElementById('tokQRBox') || !tokqrCode) { tokqrStop(); return; }
+    if (now > tokqrUntil) { tokqrHint('bad', '二维码已过期，点「刷新二维码」重试'); tokqrStop(); return; }
+    tokqrLast = now; tokqrBusy = true;
+    try {
+      const d = await tokqrRpc('GetLoginQRCodeStatus', { code: tokqrCode });
+      const st = String((d && d.status) || '');
+      if (st.indexOf('SUCCESS') > -1) {
+        const tok = (d && (d.accessToken || d.access_token || d.token)) || tokqrToken(d);
+        if (tok) {
+          const inp = document.getElementById('tokInput');
+          if (inp) { inp.value = tok; }
+          tokqrHint('ok', '已填入输入框，点「仅保存凭证」完成');
+          tokqrStop();
+          toast('已获取登录态，点「仅保存凭证」保存');
+        } else {
+          tokqrHint('bad', '登录成功但未取到令牌，可改用「下载 Token 脚本」');
+          tokqrStop();
+        }
+        return;
+      }
+      if (st.indexOf('EXPIRED') > -1) {
+        tokqrHint('bad', '二维码已过期，点「刷新二维码」重试'); tokqrStop(); return;
+      }
+      const scanned = st.indexOf('SCANNED') > -1;
+      tokqrHint(scanned ? 'wait' : '', scanned ? '已扫码，请在手机上确认' : '请用 微信 或 Kimi App 扫码');
+    } catch (e) {
+      tokqrLast = 0;                                           // 网络抖动：保留轮询，下一拍重试
+    } finally { tokqrBusy = false; }
+  };
+  if (!tokqrHeartbeat(1200, tokqrTick)) {                       // 主线程定时器兜底
+    const loop = () => {
+      if (!tokqrActive) { return; }
+      Promise.resolve(tokqrTick()).finally(() => { if (tokqrActive) { tokqrTimer = setTimeout(loop, 1200); } });
+    };
+    tokqrTimer = setTimeout(loop, 1200);
+  }
+  tokqrOnVis = () => { if (!document.hidden) { tokqrTick(); } };   // 回到前台立即补一次
+  document.addEventListener('visibilitychange', tokqrOnVis);
+}
+
+function bindTokenScan(container) {
+  const scanBtn = container.querySelector('#tokScanBtn');
+  const wrap = container.querySelector('#tokQR');
+  if (!scanBtn || !wrap) { return; }
+  tokqrStop();                                                 // 重新渲染时先收掉上一次的等待
+  scanBtn.addEventListener('click', () => {
+    const open = wrap.hidden;
+    wrap.hidden = !open;
+    scanBtn.classList.toggle('is-open', open);
+    if (open) { tokqrStart(); } else { tokqrStop(); }
+  });
+  const rf = container.querySelector('#tokQRRefresh');
+  if (rf) { rf.addEventListener('click', tokqrStart); }
+}
+
+/* ============================================================
  * 凭证 / 添加作品（含快捷搜索）
  * ============================================================ */
 function bindCredential(container) {
+  bindTokenScan(container);
   const btn = container.querySelector('#saveTokBtn');
   if (btn) {
     btn.addEventListener('click', async () => {

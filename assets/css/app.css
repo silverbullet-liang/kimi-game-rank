@@ -1302,3 +1302,18 @@ html[data-skin="sketch"]::view-transition-group(hero) { animation-duration: .4s;
 .badge-violation { color: var(--danger); font-weight: 600;
   border: 1px solid color-mix(in srgb, var(--danger) 42%, transparent);
   background: color-mix(in srgb, var(--danger) 10%, transparent); }
+
+/* ---------- 控制面板 · 社区凭证「扫码填写」 ---------- */
+.tok-row { display: flex; gap: 8px; align-items: center; }
+.tok-row .input { flex: 1; min-width: 0; }
+.tok-row .btn-ghost { flex: 0 0 auto; white-space: nowrap; }
+.btn-ghost.is-open { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+#tokQR[hidden] { display: none; }
+.qr-wrap { text-align: center; margin: 12px 0 6px; }
+.qr-box { width: 188px; height: 188px; margin: 0 auto 10px; background: #fff; border: 1px solid var(--border-soft);
+  border-radius: 12px; padding: 8px; display: grid; place-items: center; overflow: hidden; }
+.qr-box svg { width: 100%; height: 100%; display: block; }
+.qr-hint { font-size: 13px; color: var(--text-2); min-height: 18px; margin-bottom: 10px; }
+.qr-hint.ok { color: #0a8a3c; }
+.qr-hint.bad { color: var(--danger); }
+.qr-hint.wait { color: var(--accent); }
