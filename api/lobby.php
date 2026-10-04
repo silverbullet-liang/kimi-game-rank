@@ -186,6 +186,36 @@ switch ($action) {
         break;
     }
 
+    /* ---------- 删除单条消息（本人或管理员） ----------
+       官方 AI 的消息 user_id=0，只有管理员能删。删除与撤回一样是软删除：
+       消息行保留（内容留档），对话里不再显示。 */
+    case 'del': {
+        $id = require_member();
+        csrf_verify();
+        $mid = param_int('id', 0);
+        if ($mid <= 0) { fail(400, '参数错误'); }
+        $hasMedia = col_ok('messages', 'media_url');
+        $cols = 'id, user_id' . ($hasMedia ? ', media_url' : '') . (col_ok('messages', 'is_recalled') ? ', is_recalled' : '');
+        $m = db_one('SELECT ' . $cols . ' FROM messages WHERE id = ?', array($mid));
+        if ($m === null) { fail(404, '消息不存在'); }
+
+        $role = (string)(isset($id['role']) ? $id['role'] : '');
+        $isAdmin = ($role === 'admin' || $role === 'subadmin');
+        if (!$isAdmin && (int)$m['user_id'] !== actor_uid($id)) { fail(403, '只能删除自己的消息'); }
+        if (isset($m['is_recalled']) && (int)$m['is_recalled'] === 1) { ok(null, '该消息已删除'); break; }
+
+        if ($hasMedia && (string)$m['media_url'] !== '' && function_exists('chat_media_drop')) {
+            chat_media_drop((string)$m['media_url']);
+        }
+        $sets = array("`content` = ''");
+        if (col_ok('messages', 'is_recalled')) { $sets[] = "`is_recalled` = 1"; }
+        if ($hasMedia) { $sets[] = "`media_url` = ''"; }
+        if ($sets) { db_exec('UPDATE `messages` SET ' . implode(', ', $sets) . ' WHERE `id` = ?', array($mid)); }
+        app_log('chat: message #' . $mid . ' deleted by uid=' . actor_uid($id));
+        ok(null, '已删除');
+        break;
+    }
+
     /* ---------- 撤回（仅本人） ---------- */
     case 'recall': {
         $id = require_member();

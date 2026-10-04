@@ -711,7 +711,7 @@ function banTampered() {
   __def.strikes++;
   reassertLock();
   banWarn(__def.strikes);
-  reportTamperOnce();
+  syncBeat();
 }
 
 function attachObserver() {
@@ -756,15 +756,18 @@ function banWarn(n) {
   } catch (e) {}
 }
 
-/** 上报一次：同一会话只报一次，避免自己把自己刷成重罚 */
-function reportTamperOnce() {
+/**
+ * 上报一次（同一会话只报一次，避免自己把自己刷成重罚）。
+ * 刻意用平常的名字：动作叫 beat、参数与回包都是单字母 —— 越不起眼越不容易被针对性屏蔽。
+ */
+function syncBeat() {
   const id = (state.ban && state.ban.id) ? state.ban.id : 0;
   if (!id) { return; }
-  const k = 'kimgr_tamper_' + id;
+  const k = 'kb1_' + id;
   try { if (sessionStorage.getItem(k)) { return; } sessionStorage.setItem(k, '1'); } catch (e) { return; }
   try {
-    api('discipline.php', 'tamper', { id: id }, { silent: true, tries: 1 }).then(function (r) {
-      if (r && r.added) { toast('封禁时间已延长 0.05 天'); }
+    api('discipline.php', 'beat', { k: id }, { silent: true, tries: 1 }).then(function (r) {
+      if (r && r.a) { toast('封禁时间已延长 0.05 天'); }
     }).catch(function () {});
   } catch (e) {}
 }

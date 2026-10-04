@@ -926,37 +926,6 @@ switch ($action) {
         break;
     }
 
-    /* 一键删除某用户的对话消息：世界对话（含图片）与全部 AI 对话消息。
-       只清内容，不动账号 —— 与「通报删号」是两回事。 */
-    case 'user_purge_msgs': {
-        require_admin();
-        require_panel();
-        csrf_verify();
-        $pu = param_int('uid', 0);
-        if ($pu <= 0) { fail(400, '参数错误'); }
-        $scope = param_str('scope', 'both');
-        if (!in_array($scope, array('chat', 'ai', 'both'), true)) { $scope = 'both'; }
-        $out = array('chat' => 0, 'ai' => 0);
-        try {
-            if ($scope !== 'ai') {
-                if (col_ok('messages', 'media_url') && function_exists('chat_media_drop')) {
-                    foreach (db_all('SELECT media_url FROM messages WHERE user_id = ? AND media_url <> ?', array($pu, '')) as $r) {
-                        chat_media_drop((string)$r['media_url']);
-                    }
-                }
-                $sets = array("`is_recalled` = 1");
-                if (col_ok('messages', 'media_url')) { $sets[] = "`media_url` = ''"; }
-                $out['chat'] = (int)db_exec('UPDATE `messages` SET ' . implode(', ', $sets) . ' WHERE user_id = ?', array($pu));
-            }
-            if ($scope !== 'chat') {
-                $out['ai'] = (int)db_exec('DELETE FROM ai_messages WHERE user_id = ?', array($pu));
-            }
-        } catch (Throwable $e) { fail(500, '清理失败：' . $e->getMessage()); }
-        app_log('admin: purge messages uid=' . $pu . ' scope=' . $scope . ' chat=' . $out['chat'] . ' ai=' . $out['ai']);
-        ok($out, '已清理：世界对话 ' . $out['chat'] . ' 条 / AI 对话 ' . $out['ai'] . ' 条');
-        break;
-    }
-
     case 'disc_delete': {
         require_admin();
         require_panel();

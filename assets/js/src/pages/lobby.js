@@ -250,9 +250,12 @@ async function mountWorld(body) {
     }
     const recallBtn = (m.mine && !m.recalled)
       ? ' · <button class="link" data-recall="1" style="border:0;background:0;font-size:12px">撤回</button>' : '';
+    /* 单条删除：本人或管理员都能删；官方 AI 的消息只有管理员看得到这个按钮 */
+    const delBtn = (!m.recalled && (m.mine || isAdminish()))
+      ? ' · <button class="link" data-del="1" style="border:0;background:0;font-size:12px">删除</button>' : '';
     el.innerHTML = '<span class="av"><img src="' + esc(m.avatar) + '" alt="" draggable="false" style="user-select:none"></span>'
       + '<span class="bubble-wrap">'
-      +   '<span class="who">' + userName(m.username, m.role) + ' · ' + esc(m.time) + recallBtn + '</span>'
+      +   '<span class="who">' + userName(m.username, m.role) + ' · ' + esc(m.time) + recallBtn + delBtn + '</span>'
       +   '<div class="bubble">' + inner + '</div>'
       +   (!m.recalled && m.flag === 'middle'
             ? '<span class="msg-flag" title="系统认为这条内容可能有恶意，但仍予放行">可能有恶意'
@@ -271,6 +274,22 @@ async function mountWorld(body) {
           if (b) { b.innerHTML = '<span class="recall">该消息已撤回</span>'; }
           rb.remove();
         } catch (e) { rb.disabled = false; toast(e.message, 'err'); }
+      });
+    }
+
+    const db2 = el.querySelector('[data-del]');
+    if (db2) {
+      db2.addEventListener('click', async () => {
+        if (!(await dialog('删除这条消息', '删除后这条消息在对话里不再显示（对所有人）。确认？', '删除', { danger: true }))) { return; }
+        db2.disabled = true;
+        try {
+          await api('lobby.php', 'del', { id: m.id });
+          m.recalled = true;
+          const b = el.querySelector('.bubble');
+          if (b) { b.innerHTML = '<span class="recall">该消息已删除</span>'; }
+          const rb2 = el.querySelector('[data-recall]'); if (rb2) { rb2.remove(); }
+          db2.remove();
+        } catch (e) { db2.disabled = false; toast(e.message, 'err'); }
       });
     }
 

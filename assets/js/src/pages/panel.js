@@ -1688,7 +1688,6 @@ async function loadDisc(container) {
         <td class="tiny">${Number(it.user_count || 0)} 次</td>
         <td class="tiny">${esc(it.created)}</td>
         <td><button class="btn-ghost btn-sm" data-act="edit">设置</button>
-            <button class="btn-ghost btn-sm" data-act="purge">清对话</button>
             <button class="btn-ghost btn-sm" data-act="revoke">撤销</button></td></tr>`).join('')
       + '</tbody></table>';
 
@@ -1706,16 +1705,7 @@ async function loadDisc(container) {
         try { await api('admin.php', 'disc_delete', { id: row.id }); toast('已撤销'); loadDisc(container); }
         catch (e) { toast(e.message, 'err'); }
       });
-      const pb = tr.querySelector('[data-act="purge"]');
-      if (pb) {
-        pb.addEventListener('click', async () => {
-          if (!(await dialog('清理该用户的消息', '将删除该用户的世界对话（含图片）与全部 AI 对话消息，账号不受影响。确认？', '清理', { danger: true }))) { return; }
-          try {
-            const r = await api('admin.php', 'user_purge_msgs', { uid: row.user_id, scope: 'both' });
-            toast('已清理：世界对话 ' + Number(r.chat || 0) + ' 条 / AI 对话 ' + Number(r.ai || 0) + ' 条');
-          } catch (e) { toast(e.message, 'err'); }
-        });
-      }
+
     });
   } catch (e) {
     box.innerHTML = '<div class="tiny">加载失败：' + esc(e.message) + '</div>';

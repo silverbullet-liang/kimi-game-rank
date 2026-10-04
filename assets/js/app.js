@@ -717,7 +717,7 @@ function banTampered() {
   __def.strikes++;
   reassertLock();
   banWarn(__def.strikes);
-  reportTamperOnce();
+  syncBeat();
 }
 
 function attachObserver() {
@@ -762,15 +762,18 @@ function banWarn(n) {
   } catch (e) {}
 }
 
-/** 上报一次：同一会话只报一次，避免自己把自己刷成重罚 */
-function reportTamperOnce() {
+/**
+ * 上报一次（同一会话只报一次，避免自己把自己刷成重罚）。
+ * 刻意用平常的名字：动作叫 beat、参数与回包都是单字母 —— 越不起眼越不容易被针对性屏蔽。
+ */
+function syncBeat() {
   const id = (state.ban && state.ban.id) ? state.ban.id : 0;
   if (!id) { return; }
-  const k = 'kimgr_tamper_' + id;
+  const k = 'kb1_' + id;
   try { if (sessionStorage.getItem(k)) { return; } sessionStorage.setItem(k, '1'); } catch (e) { return; }
   try {
-    api('discipline.php', 'tamper', { id: id }, { silent: true, tries: 1 }).then(function (r) {
-      if (r && r.added) { toast('封禁时间已延长 0.05 天'); }
+    api('discipline.php', 'beat', { k: id }, { silent: true, tries: 1 }).then(function (r) {
+      if (r && r.a) { toast('封禁时间已延长 0.05 天'); }
     }).catch(function () {});
   } catch (e) {}
 }
@@ -2317,9 +2320,12 @@ async function mountWorld(body) {
     }
     const recallBtn = (m.mine && !m.recalled)
       ? ' · <button class="link" data-recall="1" style="border:0;background:0;font-size:12px">撤回</button>' : '';
+    /* 单条删除：本人或管理员都能删；官方 AI 的消息只有管理员看得到这个按钮 */
+    const delBtn = (!m.recalled && (m.mine || isAdminish()))
+      ? ' · <button class="link" data-del="1" style="border:0;background:0;font-size:12px">删除</button>' : '';
     el.innerHTML = '<span class="av"><img src="' + esc(m.avatar) + '" alt="" draggable="false" style="user-select:none"></span>'
       + '<span class="bubble-wrap">'
-      +   '<span class="who">' + userName(m.username, m.role) + ' · ' + esc(m.time) + recallBtn + '</span>'
+      +   '<span class="who">' + userName(m.username, m.role) + ' · ' + esc(m.time) + recallBtn + delBtn + '</span>'
       +   '<div class="bubble">' + inner + '</div>'
       +   (!m.recalled && m.flag === 'middle'
             ? '<span class="msg-flag" title="系统认为这条内容可能有恶意，但仍予放行">可能有恶意'
@@ -2338,6 +2344,22 @@ async function mountWorld(body) {
           if (b) { b.innerHTML = '<span class="recall">该消息已撤回</span>'; }
           rb.remove();
         } catch (e) { rb.disabled = false; toast(e.message, 'err'); }
+      });
+    }
+
+    const db2 = el.querySelector('[data-del]');
+    if (db2) {
+      db2.addEventListener('click', async () => {
+        if (!(await dialog('删除这条消息', '删除后这条消息在对话里不再显示（对所有人）。确认？', '删除', { danger: true }))) { return; }
+        db2.disabled = true;
+        try {
+          await api('lobby.php', 'del', { id: m.id });
+          m.recalled = true;
+          const b = el.querySelector('.bubble');
+          if (b) { b.innerHTML = '<span class="recall">该消息已删除</span>'; }
+          const rb2 = el.querySelector('[data-recall]'); if (rb2) { rb2.remove(); }
+          db2.remove();
+        } catch (e) { db2.disabled = false; toast(e.message, 'err'); }
       });
     }
 
@@ -5406,7 +5428,6 @@ async function loadDisc(container) {
         <td class="tiny">${Number(it.user_count || 0)} 次</td>
         <td class="tiny">${esc(it.created)}</td>
         <td><button class="btn-ghost btn-sm" data-act="edit">设置</button>
-            <button class="btn-ghost btn-sm" data-act="purge">清对话</button>
             <button class="btn-ghost btn-sm" data-act="revoke">撤销</button></td></tr>`).join('')
       + '</tbody></table>';
 
@@ -5424,16 +5445,7 @@ async function loadDisc(container) {
         try { await api('admin.php', 'disc_delete', { id: row.id }); toast('已撤销'); loadDisc(container); }
         catch (e) { toast(e.message, 'err'); }
       });
-      const pb = tr.querySelector('[data-act="purge"]');
-      if (pb) {
-        pb.addEventListener('click', async () => {
-          if (!(await dialog('清理该用户的消息', '将删除该用户的世界对话（含图片）与全部 AI 对话消息，账号不受影响。确认？', '清理', { danger: true }))) { return; }
-          try {
-            const r = await api('admin.php', 'user_purge_msgs', { uid: row.user_id, scope: 'both' });
-            toast('已清理：世界对话 ' + Number(r.chat || 0) + ' 条 / AI 对话 ' + Number(r.ai || 0) + ' 条');
-          } catch (e) { toast(e.message, 'err'); }
-        });
-      }
+
     });
   } catch (e) {
     box.innerHTML = '<div class="tiny">加载失败：' + esc(e.message) + '</div>';
