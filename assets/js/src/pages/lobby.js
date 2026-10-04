@@ -496,7 +496,7 @@ async function mountWorld(body) {
   function atRange() {
     const pos = input.selectionStart;
     const m = input.value.slice(0, pos).match(/(?:^|[\s（(【[>])@([\u4e00-\u9fa5A-Za-z0-9]{0,7})$/);
-    return m ? { start: pos - m[2].length - 1 } : null;
+    return (m && m[1] !== undefined) ? { start: pos - m[1].length - 1 } : null;
   }
   function atSync() {
     if (!canSend) { return; }
