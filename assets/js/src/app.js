@@ -465,6 +465,12 @@ function renderAbout(container) {
     </div>
 
     <div class="card">
+      <div class="card-title">${icon(I.rule)}规划和制作</div>
+      <div class="credit-row"><span class="credit-k">规划</span><span class="credit-v">银色子弹-silver、glm-5.3-flash</span></div>
+      <div class="credit-row"><span class="credit-k">制作</span><span class="credit-v">deepseek-v4.1-flash、glm-5.3-flash</span></div>
+    </div>
+
+    <div class="card">
       <div class="card-title">${icon(I.users)}鸣谢</div>
       <p class="muted">谢谢经常给本站反馈问题、提建议的伙伴 —— 你们的每一条反馈，都让这个榜单变好一点点。</p>
       <div class="credit-row"><span class="credit-k">反馈贡献</span><span class="credit-v">小李v</span></div>
