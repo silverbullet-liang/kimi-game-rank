@@ -15,6 +15,13 @@ docs/Kimi API详解与研究指南.md
 # ---------- 构建与交付产物 ----------
 *.zip
 
+# ---------- 安卓部署工具（apk/）：只提交源码与资源，不提交工具链与签名件 ----------
+apk/out/
+apk/.toolchain/
+apk/libs/*.jar
+*.keystore
+*.jks
+
 # ---------- 存储与日志 ----------
 storage/cache/*
 storage/logs/*

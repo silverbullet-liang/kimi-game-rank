@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MD3 基调色板（浅色）：主色 / 表面 / 容器 / 描边 / 语义色 -->
+<resources>
+    <color name="md_primary">#0B57D0</color>
+    <color name="md_on_primary">#FFFFFF</color>
+    <color name="md_primary_container">#D8E2FF</color>
+    <color name="md_on_primary_container">#001A41</color>
+
+    <color name="md_secondary_container">#E1E2EC</color>
+    <color name="md_on_secondary_container">#191B23</color>
+
+    <color name="md_background">#FBF8FD</color>
+    <color name="md_on_background">#1B1B1F</color>
+    <color name="md_surface">#FBF8FD</color>
+    <color name="md_surface_container_low">#F5F2FA</color>
+    <color name="md_surface_container">#EFEDF4</color>
+    <color name="md_surface_container_high">#E9E7EF</color>
+    <color name="md_on_surface">#1B1B1F</color>
+    <color name="md_on_surface_variant">#45464F</color>
+
+    <color name="md_outline">#757680</color>
+    <color name="md_outline_variant">#C5C6D0</color>
+
+    <color name="md_error">#BA1A1A</color>
+    <color name="md_error_container">#FFDAD6</color>
+    <color name="md_on_error_container">#410002</color>
+    <color name="md_ok">#1B6B3A</color>
+    <color name="md_warn">#8A5300</color>
+
+    <color name="md_scrim">#66000000</color>
+    <color name="ic_launcher_background">#0B57D0</color>
+</resources>

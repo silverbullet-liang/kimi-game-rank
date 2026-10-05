@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 前景：向上的部署箭头 + 承载底座（矢量绘制，108 视口内留足安全区） -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 箭头 -->
+    <path
+        android:pathData="M54,66 L54,34"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="7"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M40,48 L54,33 L68,48"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- 底座 -->
+    <path
+        android:pathData="M36,72 L72,72 A4,4 0 0 1 76,76 A4,4 0 0 1 72,80 L36,80 A4,4 0 0 1 32,76 A4,4 0 0 1 36,72 Z"
+        android:fillColor="#FFFFFF" />
+</vector>

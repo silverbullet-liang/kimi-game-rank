@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">部署工具</string>
+    <string name="app_name_full">Kimi游戏榜 · 部署工具</string>
+    <string name="ic_launcher_background_name">部署工具图标底色</string>
+</resources>
