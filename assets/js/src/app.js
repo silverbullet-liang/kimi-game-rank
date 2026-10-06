@@ -12,6 +12,7 @@ import { renderLobby } from './pages/lobby.js';
 import { renderMine } from './pages/mine.js';
 import { renderLogin } from './pages/login.js';
 import { renderPanel } from './pages/panel.js';
+import { renderMonitor } from './pages/monitor.js';
 import { renderDoc } from './pages/doc.js';
 import { renderFeedback } from './pages/feedback.js';
 import { renderViolation, renderDiscipline } from './pages/violation.js';
@@ -42,6 +43,7 @@ const routes = {
   mine: renderMine,
   login: renderLogin,
   panel: renderPanel,
+  monitor: renderMonitor,
   doc: renderDoc,
   feedback: renderFeedback,
   about: renderAbout,
@@ -220,12 +222,12 @@ function updateBackBtn(name) {
   btn.hidden = !show;
   btn.onclick = function () {
     if (history.length > 1) { history.back(); }
-    else { navigate('#/' + (name === 'panel' || name === 'feedback' || name === 'login' ? 'mine' : 'rank')); }
+    else { navigate('#/' + (name === 'panel' || name === 'monitor' || name === 'feedback' || name === 'login' ? 'mine' : 'rank')); }
   };
 }
 
 function setActiveTab(name) {
-  const map = { rank: 'rank', detail: 'rank', chat: 'chat', mine: 'mine', panel: 'mine', login: 'mine', feedback: 'mine', doc: 'mine' };
+  const map = { rank: 'rank', detail: 'rank', chat: 'chat', mine: 'mine', panel: 'mine', monitor: 'mine', login: 'mine', feedback: 'mine', doc: 'mine' };
   const tab = map[name] || 'rank';
   document.querySelectorAll('.tabbar .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
 }
@@ -284,6 +286,7 @@ function drawerItems() {
     items.push({ k: 'auth', label: '用户登录 / 注册', ic: I.login, go: '#/login' });
   } else {
     items.push({ k: 'panel', label: '控制面板', ic: I.gear, go: '#/panel' });
+    items.push({ k: 'monitor', label: '异常监测', ic: I.shield, go: '#/monitor' });
     items.push({ k: 'logout', label: '退出登录', ic: I.logout, act: 'logout' });
   }
   return items;

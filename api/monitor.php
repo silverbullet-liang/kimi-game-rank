@@ -9,15 +9,6 @@
 declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 
-/** 面板二次验证（与 admin.php 同口径；副管理员豁免） */
-function mon_panel()
-{
-    $ident = current_identity();
-    if ($ident && $ident['role'] === 'subadmin') { return; }
-    $t = isset($_SESSION['panel_ok']) ? (int)$_SESSION['panel_ok'] : 0;
-    if ($t <= 0 || time() - $t > 3600) { fail(403, '请先在控制面板完成密钥验证'); }
-}
-
 $action = param_str('action', 'collect');
 
 /* ==================== 上报（免登录，静默） ==================== */
@@ -77,9 +68,8 @@ if ($action === 'collect') {
     }
 }
 
-/* ==================== 以下仅总管理员 ==================== */
+/* ==================== 以下仅总管理员（独立页面，无需面板二次验证） ==================== */
 require_admin();
-mon_panel();
 
 /* ---------- 总览统计 ---------- */
 if ($action === 'stats') {

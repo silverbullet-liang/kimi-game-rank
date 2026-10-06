@@ -3813,95 +3813,114 @@ async function renderLogin(container) {
   paint();
 }
 
-/* ========== pages/monitor-ui.js ========== */
+/* ========== pages/monitor.js ========== */
 /**
- * 控制面板「网页异常监测」区块（仅主管理员）
- * 数据来自 api/monitor.php：stats / events / settings / purge
- * 视觉：普通后台风格（与 panel.js 其它区块一致，非液态玻璃）
+ * 网页异常监测 · 独立页面（仅管理员）
+ * ------------------------------------------------------------
+ * 与站点主题/皮肤完全隔离：固定「蓝白 / 蓝黑」两套配色，可切换，互不影响。
+ * 数据来自 api/monitor.php（stats / events / settings / purge）。
  */
 
 
+const MT_KEY = 'kimgr_mon_theme';
 const MON_TABS = [
   ['overview', '总览'], ['js', 'JS 错误'], ['api', '接口'],
   ['perf', '加载性能'], ['resource', '资源'], ['settings', '设置'],
 ];
-const monState = { range: '7d', tab: 'overview' };
+const st = { range: '7d', tab: 'overview', theme: 'light' };
 
-function monitorBlock() {
-  return `
-    <div class="panel-plain">
-      <h3>网页异常监测
-        <span class="seg" style="float:right;max-width:300px" id="monRange">
-          <button data-r="1h">1 时</button>
-          <button data-r="24h">24 时</button>
-          <button data-r="7d" class="on">7 天</button>
-          <button data-r="30d">30 天</button>
-        </span>
-      </h3>
-      <p class="tiny muted" style="margin:0 0 10px">前端 SDK 采集的真实用户错误、接口与加载性能；数据已脱敏，含阈值告警。</p>
-      <div class="seg mon-tabs" id="monTabs">
-        ${MON_TABS.map(([k, n]) => `<button data-t="${k}"${k === 'overview' ? ' class="on"' : ''}>${n}</button>`).join('')}
+async function renderMonitor(container) {
+  if (!isAdminish()) {
+    container.innerHTML = '<div class="empty"><p>无权限访问</p></div>';
+    return;
+  }
+  try { st.theme = localStorage.getItem(MT_KEY) === 'dark' ? 'dark' : 'light'; } catch (e) {}
+
+  container.innerHTML = `
+    <div class="mon-app" data-mon="${st.theme}">
+      <div class="mon-top">
+        <div class="mon-title">网页异常监测</div>
+        <div class="mon-top-r">
+          <div class="mon-seg" id="monRange">
+            <button data-r="1h">1 时</button>
+            <button data-r="24h">24 时</button>
+            <button data-r="7d" class="on">7 天</button>
+            <button data-r="30d">30 天</button>
+          </div>
+          <button class="mon-theme" id="monTheme" type="button">${st.theme === 'dark' ? '蓝白' : '蓝黑'}</button>
+        </div>
       </div>
-      <div id="monBody"><div class="skeleton" style="height:120px"></div></div>
+      <div class="mon-seg mon-tabs" id="monTabs">
+        ${MON_TABS.map(([k, n]) => `<button type="button" data-t="${k}"${k === 'overview' ? ' class="on"' : ''}>${n}</button>`).join('')}
+      </div>
+      <div id="monBody"><div class="mon-sk"></div></div>
     </div>`;
-}
 
-function mountMonitor(container) {
+  const app = container.querySelector('.mon-app');
+  const themeBtn = container.querySelector('#monTheme');
+  themeBtn.addEventListener('click', () => {
+    st.theme = st.theme === 'dark' ? 'light' : 'dark';
+    app.dataset.mon = st.theme;
+    themeBtn.textContent = st.theme === 'dark' ? '蓝白' : '蓝黑';
+    try { localStorage.setItem(MT_KEY, st.theme); } catch (e) {}
+  });
+
   const tabs = container.querySelector('#monTabs');
-  const rng = container.querySelector('#monRange');
-  if (!tabs) { return; }
   tabs.addEventListener('click', e => {
     const b = e.target.closest('[data-t]'); if (!b) { return; }
-    monState.tab = b.dataset.t;
+    st.tab = b.dataset.t;
     tabs.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
-    monRender(container);
+    monRenderBody(container);
   });
-  if (rng) {
-    rng.addEventListener('click', e => {
-      const b = e.target.closest('[data-r]'); if (!b) { return; }
-      monState.range = b.dataset.r;
-      rng.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
-      monRender(container);
-    });
-  }
-  monRender(container);
+  const rng = container.querySelector('#monRange');
+  rng.addEventListener('click', e => {
+    const b = e.target.closest('[data-r]'); if (!b) { return; }
+    st.range = b.dataset.r;
+    rng.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    monRenderBody(container);
+  });
+
+  monRenderBody(container);
 }
 
-async function monRender(container) {
+async function monRenderBody(container) {
   const box = container.querySelector('#monBody');
   if (!box) { return; }
-  box.innerHTML = '<div class="skeleton" style="height:120px"></div>';
+  box.innerHTML = '<div class="mon-sk"></div>';
   try {
-    if (monState.tab === 'overview') { return await monOverview(box); }
-    if (monState.tab === 'settings') { return await monSettings(box); }
-    await monEvents(box, monState.tab);
+    if (st.tab === 'overview') { return await monOverview(box); }
+    if (st.tab === 'settings') { return await monSettings(box); }
+    await monEvents(box, st.tab);
   } catch (e) {
-    box.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`;
+    box.innerHTML = `<div class="mon-empty">${esc(e.message)}</div>`;
   }
 }
 
 function monKpi(label, value) {
   return `<div class="mon-kpi"><div class="mk-v">${esc(String(value))}</div><div class="mk-l">${esc(label)}</div></div>`;
 }
+function monCard(title, inner) {
+  return `<div class="mon-card"><div class="mon-card-t">${esc(title)}</div>${inner}</div>`;
+}
 function monListCard(title, rows) {
   const items = (rows && rows.length)
     ? rows.map(r => `<li><span class="mon-li-n" title="${esc(String(r[0]))}">${esc(String(r[0] || '—'))}</span><b>${esc(String(r[1]))}</b></li>`).join('')
-    : '<li class="tiny muted">暂无数据</li>';
-  return `<div class="mon-card"><div class="mon-card-t">${esc(title)}</div><ul class="mon-ul">${items}</ul></div>`;
+    : '<li class="mon-li-n">暂无数据</li>';
+  return monCard(title, `<ul class="mon-ul">${items}</ul>`);
 }
 function monTrend(trend) {
-  if (!trend || !trend.length) { return '<div class="mon-card"><div class="mon-card-t">访问趋势（PV）</div><div class="tiny muted" style="padding:10px 0">暂无数据</div></div>'; }
+  if (!trend || !trend.length) { return monCard('访问趋势（PV）', '<div class="mon-empty">暂无数据</div>'); }
   const w = 640, h = 120, pad = 8;
   const maxV = Math.max(1, ...trend.map(t => Number(t.pv) || 0));
   const step = trend.length > 1 ? (w - pad * 2) / (trend.length - 1) : 0;
   const pts = trend.map((t, i) => (pad + i * step).toFixed(1) + ',' + (h - pad - ((Number(t.pv) || 0) / maxV) * (h - pad * 2)).toFixed(1)).join(' ');
-  return `<div class="mon-card"><div class="mon-card-t">访问趋势（PV）</div>
-    <svg viewBox="0 0 ${w} ${h}" class="mon-trend" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2"/></svg>
-    <div class="tiny muted">${esc(String(trend[0].d))} → ${esc(String(trend[trend.length - 1].d))} · 峰值 ${maxV}</div></div>`;
+  return monCard('访问趋势（PV）',
+    `<svg viewBox="0 0 ${w} ${h}" class="mon-trend" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="var(--macc)" stroke-width="2"/></svg>
+     <div class="mon-sub">${esc(String(trend[0].d))} → ${esc(String(trend[trend.length - 1].d))} · 峰值 ${maxV}</div>`);
 }
 
 async function monOverview(box) {
-  const d = await api('monitor.php', 'stats', { range: monState.range });
+  const d = await api('monitor.php', 'stats', { range: st.range });
   const k = d.kpi || {};
   box.innerHTML = `
     <div class="mon-kpis">
@@ -3928,7 +3947,7 @@ async function monOverview(box) {
 }
 
 async function monEvents(box, kind) {
-  const d = await api('monitor.php', 'events', { kind: kind, range: monState.range, page: 1 });
+  const d = await api('monitor.php', 'events', { kind: kind, range: st.range, page: 1 });
   const groups = d.groups || [];
   const items = d.items || [];
   const HEADS = {
@@ -3943,42 +3962,41 @@ async function monEvents(box, kind) {
     if (kind === 'api') { return `<tr><td class="mon-ell" title="${esc(x.name)}">${esc(x.name)}</td><td>${x.n}</td><td>${x.avg_ms} ms</td><td>${x.slow}</td><td>${x.fails}</td></tr>`; }
     if (kind === 'perf') { return `<tr><td>${esc(x.name)}</td><td>${x.n}</td><td>${x.avg_ms} ms</td><td>${x.max_ms} ms</td></tr>`; }
     if (kind === 'custom') { return `<tr><td>${esc(x.name)}</td><td>${x.n}</td><td>${x.avg_v}</td><td>${x.max_v}</td></tr>`; }
-    return `<tr><td class="mon-ell" title="${esc(x.name)}">${esc(x.name)}</td><td class="mon-ell" title="${esc(x.msg || '')}">${esc(x.msg || '')}</td><td>${x.n}</td><td>${x.uv || 0}</td><td class="tiny">${esc(String(x.last || ''))}</td></tr>`;
-  }).join('') : `<tr><td class="tiny muted" colspan="${head.length}">暂无数据</td></tr>`;
+    return `<tr><td class="mon-ell" title="${esc(x.name)}">${esc(x.name)}</td><td class="mon-ell" title="${esc(x.msg || '')}">${esc(x.msg || '')}</td><td>${x.n}</td><td>${x.uv || 0}</td><td>${esc(String(x.last || ''))}</td></tr>`;
+  }).join('') : `<tr><td class="mon-empty" colspan="${head.length}">暂无数据</td></tr>`;
 
   let detail = '';
   if (kind !== 'api' && kind !== 'perf' && kind !== 'custom') {
-    detail = `<div class="mon-card"><div class="mon-card-t">明细</div>
-      <table class="table"><thead><tr><th>时间</th><th>位置</th><th>信息</th><th>浏览器</th></tr></thead><tbody>` +
-      (items.length ? items.map(it => `<tr><td class="tiny">${esc(it.time)}</td><td class="mon-ell" title="${esc(it.name)}">${esc(it.name)}</td><td class="mon-ell" title="${esc(it.msg)}">${esc(it.msg)}</td><td class="tiny">${esc(it.browser)}</td></tr>`).join('')
-        : '<tr><td class="tiny muted" colspan="4">暂无数据</td></tr>') +
-      '</tbody></table></div>';
+    detail = monCard('明细',
+      `<table class="table"><thead><tr><th>时间</th><th>位置</th><th>信息</th><th>浏览器</th></tr></thead><tbody>` +
+      (items.length ? items.map(it => `<tr><td>${esc(it.time)}</td><td class="mon-ell" title="${esc(it.name)}">${esc(it.name)}</td><td class="mon-ell" title="${esc(it.msg)}">${esc(it.msg)}</td><td>${esc(it.browser)}</td></tr>`).join('')
+        : '<tr><td class="mon-empty" colspan="4">暂无数据</td></tr>') +
+      '</tbody></table>');
   }
 
-  box.innerHTML = `<div class="mon-card"><div class="mon-card-t">聚合（TOP ${groups.length}）</div>
-      <table class="table"><thead><tr>${head.map(t => '<th>' + t + '</th>').join('')}</tr></thead><tbody>${rows}</tbody></table></div>
-    ${detail}`;
+  box.innerHTML =
+    monCard('聚合（TOP ' + groups.length + '）',
+      `<table class="table"><thead><tr>${head.map(t => '<th>' + t + '</th>').join('')}</tr></thead><tbody>${rows}</tbody></table>`) +
+    detail;
 }
 
 async function monSettings(box) {
   const d = await api('monitor.php', 'settings');
-  box.innerHTML = `
-    <div class="mon-card">
-      <div class="mon-card-t">采集设置</div>
-      <div class="setting-row"><span>启用采集</span>
-        <div class="seg" id="monEnabled" style="max-width:160px">
-          <button data-v="1"${d.enabled === '1' ? ' class="on"' : ''}>开</button>
-          <button data-v="0"${d.enabled !== '1' ? ' class="on"' : ''}>关</button>
+  box.innerHTML = monCard('采集设置', `
+      <div class="mon-row"><span>启用采集</span>
+        <div class="mon-seg" id="monEnabled">
+          <button type="button" data-v="1"${d.enabled === '1' ? ' class="on"' : ''}>开</button>
+          <button type="button" data-v="0"${d.enabled !== '1' ? ' class="on"' : ''}>关</button>
         </div></div>
-      <div class="setting-row"><span>采样率（%）</span><input class="input" id="monSample" type="number" min="1" max="100" value="${Number(d.sample || 100)}" style="max-width:130px"></div>
-      <div class="setting-row"><span>数据保留（天）</span><input class="input" id="monKeep" type="number" min="1" max="90" value="${Number(d.keep_days || 7)}" style="max-width:130px"></div>
-      <div class="setting-row"><span>JS 错误率告警阈值（%）</span><input class="input" id="monThErr" type="number" min="0" max="100" value="${Number(d.alert_error_rate || 5)}" style="max-width:130px"></div>
-      <div class="setting-row"><span>慢接口占比告警阈值（%）</span><input class="input" id="monThSlow" type="number" min="0" max="100" value="${Number(d.alert_slow_ratio || 20)}" style="max-width:130px"></div>
-      <div style="display:flex;gap:10px;margin-top:12px">
-        <button class="btn btn-sm" id="monSave">保存</button>
-        <button class="btn-ghost btn-sm" id="monPurge">清理过期明细</button>
-      </div>
-    </div>`;
+      <div class="mon-row"><span>采样率（%）</span><input class="mon-input" id="monSample" type="number" min="1" max="100" value="${Number(d.sample || 100)}"></div>
+      <div class="mon-row"><span>数据保留（天）</span><input class="mon-input" id="monKeep" type="number" min="1" max="90" value="${Number(d.keep_days || 7)}"></div>
+      <div class="mon-row"><span>JS 错误率告警阈值（%）</span><input class="mon-input" id="monThErr" type="number" min="0" max="100" value="${Number(d.alert_error_rate || 5)}"></div>
+      <div class="mon-row"><span>慢接口占比告警阈值（%）</span><input class="mon-input" id="monThSlow" type="number" min="0" max="100" value="${Number(d.alert_slow_ratio || 20)}"></div>
+      <div class="mon-actions">
+        <button class="mon-btn" id="monSave" type="button">保存</button>
+        <button class="mon-btn ghost" id="monPurge" type="button">清理过期明细</button>
+      </div>`);
+
   const enSeg = box.querySelector('#monEnabled');
   let enabled = d.enabled === '1' ? '1' : '0';
   enSeg.addEventListener('click', e => {
@@ -4015,7 +4033,6 @@ async function monSettings(box) {
  * 权限：主管理员=全部；副管理员=作品搜索/上传/同步 + 只读数据（登录即入场，无需二次密钥），
  *       社区凭证自备（含 Token 获取脚本下载），各存各的
  */
-
 
 
 
@@ -4062,7 +4079,6 @@ async function renderPanel(container) {
     loadDisc(container);
     loadPeer(container);
     bindAiRank(container);
-    mountMonitor(container);
     startPanelPolling(container);
   } else {
     container.innerHTML = subLayout();
@@ -4131,8 +4147,6 @@ function adminLayout() {
     </div>
 
     ${aiRankBlock()}
-
-    ${monitorBlock()}
 
     ${credentialBlock()}
     ${addWorkBlock()}
@@ -6701,6 +6715,7 @@ async function renderDiscipline(container, ctx) {
 
 
 
+
 const view = document.getElementById('view');
 
 /* 开源仓库：目录里的「渗透测试」直接跳这里 */
@@ -6727,6 +6742,7 @@ const routes = {
   mine: renderMine,
   login: renderLogin,
   panel: renderPanel,
+  monitor: renderMonitor,
   doc: renderDoc,
   feedback: renderFeedback,
   about: renderAbout,
@@ -6905,12 +6921,12 @@ function updateBackBtn(name) {
   btn.hidden = !show;
   btn.onclick = function () {
     if (history.length > 1) { history.back(); }
-    else { navigate('#/' + (name === 'panel' || name === 'feedback' || name === 'login' ? 'mine' : 'rank')); }
+    else { navigate('#/' + (name === 'panel' || name === 'monitor' || name === 'feedback' || name === 'login' ? 'mine' : 'rank')); }
   };
 }
 
 function setActiveTab(name) {
-  const map = { rank: 'rank', detail: 'rank', chat: 'chat', mine: 'mine', panel: 'mine', login: 'mine', feedback: 'mine', doc: 'mine' };
+  const map = { rank: 'rank', detail: 'rank', chat: 'chat', mine: 'mine', panel: 'mine', monitor: 'mine', login: 'mine', feedback: 'mine', doc: 'mine' };
   const tab = map[name] || 'rank';
   document.querySelectorAll('.tabbar .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
 }
@@ -6969,6 +6985,7 @@ function drawerItems() {
     items.push({ k: 'auth', label: '用户登录 / 注册', ic: I.login, go: '#/login' });
   } else {
     items.push({ k: 'panel', label: '控制面板', ic: I.gear, go: '#/panel' });
+    items.push({ k: 'monitor', label: '异常监测', ic: I.shield, go: '#/monitor' });
     items.push({ k: 'logout', label: '退出登录', ic: I.logout, act: 'logout' });
   }
   return items;

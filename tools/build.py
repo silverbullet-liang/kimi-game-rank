@@ -22,7 +22,7 @@ ORDER = [
     # md.js：Markdown 渲染，文档页与 AI 回复共用
     'core.js', 'md.js', 'theme.js', 'transitions.js', 'captcha.js',
     'pages/rank.js', 'pages/detail.js', 'pages/lobby.js', 'pages/mine.js',
-    'pages/login.js', 'pages/monitor-ui.js', 'pages/panel.js', 'pages/doc.js', 'pages/feedback.js',
+    'pages/login.js', 'pages/monitor.js', 'pages/panel.js', 'pages/doc.js', 'pages/feedback.js',
     'pages/violation.js',
     'app.js',
 ]

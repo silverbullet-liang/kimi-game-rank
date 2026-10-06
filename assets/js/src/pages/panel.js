@@ -5,7 +5,6 @@
  *       社区凭证自备（含 Token 获取脚本下载），各存各的
  */
 import { api, state, esc, toast, dialog, prompt_, btnLoading, isAdminish, userName, oidTag } from '../core.js';
-import { monitorBlock, mountMonitor } from './monitor-ui.js';
 import { navigate } from '../router.js';
 
 const PCATS = [['game', '游戏'], ['tool', '工具'], ['literature', '文学'], ['fanart', '二创']];
@@ -51,7 +50,6 @@ export async function renderPanel(container) {
     loadDisc(container);
     loadPeer(container);
     bindAiRank(container);
-    mountMonitor(container);
     startPanelPolling(container);
   } else {
     container.innerHTML = subLayout();
@@ -120,8 +118,6 @@ function adminLayout() {
     </div>
 
     ${aiRankBlock()}
-
-    ${monitorBlock()}
 
     ${credentialBlock()}
     ${addWorkBlock()}

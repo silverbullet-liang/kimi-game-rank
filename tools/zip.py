@@ -32,6 +32,7 @@ SKIP = (
     os.path.join(PROJ, '.github') + os.sep,        # 仓库配置：只属于 GitHub，不进站点
     os.path.join(PROJ, '.git') + os.sep,
     os.path.join(PROJ, 'assets', 'js', 'src') + os.sep,   # 前端源码：线上只用合并后的 app.js
+    os.path.join(PROJ, 'apk') + os.sep,                   # APK 部署工具工程（含构建产物）：不进交付包
 )
 
 # 单独文件级的排除
