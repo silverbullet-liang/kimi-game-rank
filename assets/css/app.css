@@ -1395,6 +1395,7 @@ html[data-skin="sketch"]::view-transition-group(hero) { animation-duration: .4s;
 .mon-click { cursor:pointer; }
 .mon-click:hover td { background:var(--msoft); }
 .mon-bad { color:#dc2626; }
+.mon-track { color:var(--macc); }
 .mon-unacked td { background:var(--msoft); }
 .mon-tl { list-style:none; margin:0; padding:0; }
 .mon-tl li { display:flex; gap:10px; align-items:baseline; padding:6px 0; font-size:13px; border-bottom:1px dashed var(--mline); }

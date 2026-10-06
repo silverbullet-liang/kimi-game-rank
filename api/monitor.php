@@ -251,6 +251,118 @@ if ($action === 'session') {
     ok(array('sid' => $sid, 'items' => $items));
 }
 
+/* ---------- 服务端请求指标（P2） ---------- */
+if ($action === 'srv') {
+    list($from, ) = mon_window(param_str('range', '7d'));
+    $t  = max(100, (int)setting_get('monitor.apdex_t', '1200'));      // Apdex 基线（ms）
+    $th = max(1, (int)setting_get('monitor.srv_slow_ms', '200'));     // 慢查询阈值（ms）
+
+    $n     = (int)db_val('SELECT COUNT(*) FROM web_srv WHERE created_at >= ?', array($from));
+    $avg   = (int)round((float)db_val('SELECT AVG(dur_ms) FROM web_srv WHERE created_at >= ?', array($from)));
+    $mx    = (int)db_val('SELECT MAX(dur_ms) FROM web_srv WHERE created_at >= ?', array($from));
+    $slow  = (int)db_val('SELECT COUNT(*) FROM web_srv WHERE dur_ms > ? AND created_at >= ?', array($t, $from));
+    $code5 = (int)db_val('SELECT COUNT(*) FROM web_srv WHERE code >= 500 AND created_at >= ?', array($from));
+    $errN  = (int)db_val('SELECT COUNT(*) FROM web_srv WHERE err <> \'\' AND created_at >= ?', array($from));
+    $dbAvg = (int)round((float)db_val('SELECT AVG(db_ms) FROM web_srv WHERE created_at >= ?', array($from)));
+    $dbN   = (int)round((float)db_val('SELECT AVG(db_n) FROM web_srv WHERE created_at >= ?', array($from)));
+    $slowQ = (int)db_val('SELECT COALESCE(SUM(slow_n),0) FROM web_srv WHERE created_at >= ?', array($from));
+
+    /* P95（按耗时升序取第 95 百分位） */
+    $p95 = 0;
+    if ($n > 0) {
+        $off = (int)floor($n * 0.95);
+        if ($off >= $n) { $off = $n - 1; }
+        $p95 = (int)db_val('SELECT dur_ms FROM web_srv WHERE created_at >= ? ORDER BY dur_ms ASC LIMIT 1 OFFSET ' . $off, array($from));
+    }
+
+    /* Apdex：满意(≤T) 与 容忍(≤4T) 各占权重 */
+    $sat = (int)db_val('SELECT COUNT(*) FROM web_srv WHERE dur_ms <= ? AND created_at >= ?', array($t, $from));
+    $tol = (int)db_val('SELECT COUNT(*) FROM web_srv WHERE dur_ms > ? AND dur_ms <= ? AND created_at >= ?', array($t, $t * 4, $from));
+    $apdex = $n > 0 ? round(($sat + $tol / 2) / $n, 3) : 1.0;
+
+    /* 按路由聚合（URL 跟踪） */
+    $routes = db_all('SELECT route, COUNT(*) n, ROUND(AVG(dur_ms)) avg_ms, MAX(dur_ms) max_ms,
+        SUM(dur_ms > ?) slow, SUM(code >= 500) code5, COALESCE(SUM(slow_n),0) slow_q,
+        COALESCE(SUM(err <> \'\'),0) errs
+        FROM web_srv WHERE created_at >= ? GROUP BY route ORDER BY n DESC LIMIT 30', array($t, $from));
+
+    /* 慢查询 TOP（按语句指纹聚合） */
+    $slowTop = db_all('SELECT slow_sql, SUM(slow_n) n, COUNT(*) reqs, MAX(dur_ms) max_ms
+        FROM web_srv WHERE slow_n > 0 AND slow_sql <> \'\' AND created_at >= ?
+        GROUP BY slow_sql ORDER BY n DESC LIMIT 10', array($from));
+
+    /* 异常 TOP */
+    $errs = db_all('SELECT route, err, COUNT(*) n, MAX(created_at) last
+        FROM web_srv WHERE err <> \'\' AND created_at >= ?
+        GROUP BY route, err ORDER BY n DESC LIMIT 10', array($from));
+
+    /* 趋势：按天 */
+    $trend = db_all('SELECT DATE(created_at) d, COUNT(*) n, ROUND(AVG(dur_ms)) avg_ms,
+        SUM(dur_ms > ?) slow, SUM(code >= 500) code5
+        FROM web_srv WHERE created_at >= ? GROUP BY DATE(created_at) ORDER BY d ASC', array($t, $from));
+
+    /* 告警：单请求过慢 / 5xx 由采集端记录；这里补「重点接口成功率」与「慢请求占比」 */
+    $track = mon_srv_track_urls();
+    if ($track) {
+        $in = implode(',', array_fill(0, count($track), '?'));
+        $tw = db_all('SELECT route, COUNT(*) n, SUM(code >= 400) bad
+            FROM web_srv WHERE created_at >= ? AND route IN (' . $in . ') GROUP BY route',
+            array_merge(array($from), $track));
+        foreach ($tw as $r) {
+            $tn = (int)$r['n'];
+            if ($tn < 10) { continue; }
+            $sr = round(($tn - (int)$r['bad']) / $tn * 100, 1);
+            if ($sr < 95) {
+                mon_alert('track_succ_' . substr(md5((string)$r['route']), 0, 6), 'warn',
+                    $r['route'] . ' 成功率 ' . $sr . '%（低于 95%）', (int)$sr, 95);
+            }
+        }
+    }
+    $slowRatio = $n > 0 ? round($slow / $n * 100, 1) : 0.0;
+    $thSlow = (int)setting_get('monitor.alert_slow_ratio', '20');
+    if ($n >= 20 && $slowRatio > $thSlow) {
+        mon_alert('srv_slow_ratio', 'warn', '服务端慢请求占比 ' . $slowRatio . '% 超过阈值 ' . $thSlow . '%', (int)$slowRatio, $thSlow);
+    }
+
+    ok(array(
+        'range' => param_str('range', '7d'), 'apdex_t' => $t, 'slow_ms' => $th, 'track_urls' => $track,
+        'kpi' => array(
+            'n' => $n, 'avg' => $avg, 'p95' => $p95, 'max' => $mx,
+            'slow' => $slow, 'slow_ratio' => $slowRatio,
+            'code5' => $code5, 'errs' => $errN, 'db_avg' => $dbAvg, 'db_n' => $dbN,
+            'slow_q' => $slowQ, 'apdex' => $apdex,
+        ),
+        'trend' => $trend, 'routes' => $routes, 'slow_top' => $slowTop, 'errors' => $errs,
+    ));
+}
+
+/* ---------- 服务端请求明细 ---------- */
+if ($action === 'srvlist') {
+    list($from, ) = mon_window(param_str('range', '7d'));
+    $route = mb_substr(mon_clean(param_str('route', '')), 0, 191, 'UTF-8');
+    $size = 30;
+    $page = max(1, param_int('page', 1));
+    $off  = ($page - 1) * $size;
+    $w = ''; $args = array($from);
+    if ($route !== '') { $w = ' AND route = ?'; $args[] = $route; }
+
+    $rows = db_all('SELECT id, route, method, code, dur_ms, db_ms, db_n, slow_n, slow_sql, mem_kb, err, created_at
+        FROM web_srv WHERE created_at >= ?' . $w . ' ORDER BY id DESC LIMIT ' . $size . ' OFFSET ' . $off, $args);
+    $total = (int)db_val('SELECT COUNT(*) FROM web_srv WHERE created_at >= ?' . $w, $args);
+    $items = array();
+    foreach ($rows as $r) {
+        $items[] = array(
+            'id' => (int)$r['id'], 'route' => (string)$r['route'], 'method' => (string)$r['method'],
+            'code' => (int)$r['code'], 'dur' => (int)$r['dur_ms'], 'db' => (int)$r['db_ms'],
+            'db_n' => (int)$r['db_n'], 'slow_n' => (int)$r['slow_n'], 'slow_sql' => (string)$r['slow_sql'],
+            'mem' => (int)$r['mem_kb'], 'err' => (string)$r['err'],
+            'time' => to_local((string)$r['created_at']),
+        );
+    }
+    ok(array('route' => $route, 'items' => $items, 'total' => $total, 'page' => $page,
+             'has_more' => ($off + count($rows)) < $total));
+}
+
 /* ---------- 告警列表 ---------- */
 if ($action === 'alerts') {
     $rows = db_all("SELECT id, rule, level, message, value, threshold, acked, created_at FROM web_alerts ORDER BY id DESC LIMIT 50");
@@ -271,6 +383,11 @@ if ($action === 'settings') {
         setting_set('monitor.keep_days', (string)max(1, min(90, param_int('keep_days', 7))));
         setting_set('monitor.alert_error_rate', (string)max(0, min(100, param_int('alert_error_rate', 5))));
         setting_set('monitor.alert_slow_ratio', (string)max(0, min(100, param_int('alert_slow_ratio', 20))));
+        setting_set('monitor.srv_sample', (string)max(1, min(100, param_int('srv_sample', 30))));
+        setting_set('monitor.srv_slow_ms', (string)max(1, min(60000, param_int('srv_slow_ms', 200))));
+        setting_set('monitor.srv_slow_alert_ms', (string)max(100, min(60000, param_int('srv_slow_alert_ms', 3000))));
+        setting_set('monitor.apdex_t', (string)max(100, min(10000, param_int('apdex_t', 1200))));
+        setting_set('monitor.track_urls', mb_substr((string)preg_replace('/[^A-Za-z0-9_,.\/\-]/', '', (string)param('track_urls', '')), 0, 500, 'UTF-8'));
         ok(null, '已保存');
     }
     ok(array(
@@ -279,6 +396,11 @@ if ($action === 'settings') {
         'keep_days' => (int)setting_get('monitor.keep_days', '7'),
         'alert_error_rate' => (int)setting_get('monitor.alert_error_rate', '5'),
         'alert_slow_ratio' => (int)setting_get('monitor.alert_slow_ratio', '20'),
+        'srv_sample' => (int)setting_get('monitor.srv_sample', '30'),
+        'srv_slow_ms' => (int)setting_get('monitor.srv_slow_ms', '200'),
+        'srv_slow_alert_ms' => (int)setting_get('monitor.srv_slow_alert_ms', '3000'),
+        'apdex_t' => (int)setting_get('monitor.apdex_t', '1200'),
+        'track_urls' => (string)setting_get('monitor.track_urls', ''),
     ));
 }
 

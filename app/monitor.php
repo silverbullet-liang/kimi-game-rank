@@ -67,10 +67,12 @@ function mon_apdex(array $msList, int $t = 1200): float
 function mon_cleanup(): int
 {
     try {
-        if (!table_exists('web_events')) { return 0; }
         $days = max(1, min(90, (int)setting_get('monitor.keep_days', '7')));
-        return (int)db_exec('DELETE FROM web_events WHERE created_at < ?',
-            array(gmdate('Y-m-d H:i:s', time() - $days * 86400)));
+        $cut  = gmdate('Y-m-d H:i:s', time() - $days * 86400);
+        $n = 0;
+        if (table_exists('web_events')) { $n += (int)db_exec('DELETE FROM web_events WHERE created_at < ?', array($cut)); }
+        if (table_exists('web_srv'))    { $n += (int)db_exec('DELETE FROM web_srv WHERE created_at < ?', array($cut)); }
+        return $n;
     } catch (Throwable $e) {
         app_log('mon_cleanup failed: ' . $e->getMessage());
         return 0;

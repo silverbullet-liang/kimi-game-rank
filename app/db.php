@@ -39,42 +39,55 @@ function db_admin(): PDO
 /** 取一行 */
 function db_one(string $sql, array $args = array())
 {
+    $mt = function_exists('mon_srv_db'); $t0 = $mt ? microtime(true) : 0.0;
     $st = db()->prepare($sql);
     $st->execute($args);
     $row = $st->fetch();
+    if ($mt) { mon_srv_db($sql, (microtime(true) - $t0) * 1000); }
     return $row === false ? null : $row;
 }
 
 /** 取多行 */
 function db_all(string $sql, array $args = array()): array
 {
+    $mt = function_exists('mon_srv_db'); $t0 = $mt ? microtime(true) : 0.0;
     $st = db()->prepare($sql);
     $st->execute($args);
-    return $st->fetchAll();
+    $rows = $st->fetchAll();
+    if ($mt) { mon_srv_db($sql, (microtime(true) - $t0) * 1000); }
+    return $rows;
 }
 
 /** 执行写操作，返回影响行数 */
 function db_exec(string $sql, array $args = array()): int
 {
+    $mt = function_exists('mon_srv_db'); $t0 = $mt ? microtime(true) : 0.0;
     $st = db()->prepare($sql);
     $st->execute($args);
-    return $st->rowCount();
+    $n = $st->rowCount();
+    if ($mt) { mon_srv_db($sql, (microtime(true) - $t0) * 1000); }
+    return $n;
 }
 
 /** 插入并返回自增 ID */
 function db_insert(string $sql, array $args = array()): int
 {
+    $mt = function_exists('mon_srv_db'); $t0 = $mt ? microtime(true) : 0.0;
     $st = db()->prepare($sql);
     $st->execute($args);
-    return (int)db()->lastInsertId();
+    $id = (int)db()->lastInsertId();
+    if ($mt) { mon_srv_db($sql, (microtime(true) - $t0) * 1000); }
+    return $id;
 }
 
 /** 单值查询 */
 function db_val(string $sql, array $args = array())
 {
+    $mt = function_exists('mon_srv_db'); $t0 = $mt ? microtime(true) : 0.0;
     $st = db()->prepare($sql);
     $st->execute($args);
     $v = $st->fetchColumn();
+    if ($mt) { mon_srv_db($sql, (microtime(true) - $t0) * 1000); }
     return $v === false ? null : $v;
 }
 

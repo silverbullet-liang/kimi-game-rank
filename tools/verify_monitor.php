@@ -7,7 +7,7 @@
 declare(strict_types=1);
 
 /* ---------------- 桩件 ---------------- */
-$GLOBALS['TBL']  = array('web_events' => true, 'web_alerts' => true);
+$GLOBALS['TBL']  = array('web_events' => true, 'web_alerts' => true, 'web_srv' => true);
 $GLOBALS['SET']  = array('monitor.keep_days' => '7');
 $GLOBALS['AROW'] = null;          // db_val 返回值（模拟「近期已有告警」）
 $GLOBALS['INS']  = array();        // 收集 db_insert
@@ -72,8 +72,8 @@ $GLOBALS['TBL']['web_alerts'] = true;
 
 echo "== 5) 明细清理 mon_cleanup ==\n";
 $GLOBALS['SET']['monitor.keep_days'] = '7'; $GLOBALS['EXEC'] = array();
-check('返回删除行数', mon_cleanup() === 3);
-check('执行 1 条 DELETE', count($GLOBALS['EXEC']) === 1);
+check('返回删除行数（两张表各 3）', mon_cleanup() === 6);
+check('执行 2 条 DELETE（事件明细 + 服务端指标）', count($GLOBALS['EXEC']) === 2);
 $arg = $GLOBALS['EXEC'][0][1][0];
 check('删除阈值≈7 天前', abs(strtotime($arg . ' UTC') - ago(7 * 86400)) <= 5);
 $GLOBALS['SET']['monitor.keep_days'] = '200'; $GLOBALS['EXEC'] = array();
@@ -82,7 +82,7 @@ check('保留天数上钳到 90', abs(strtotime($GLOBALS['EXEC'][0][1][0] . ' UT
 $GLOBALS['SET']['monitor.keep_days'] = '0'; $GLOBALS['EXEC'] = array();
 mon_cleanup();
 check('保留天数下钳到 1', abs(strtotime($GLOBALS['EXEC'][0][1][0] . ' UTC') - ago(86400)) <= 5);
-$GLOBALS['TBL']['web_events'] = false; $GLOBALS['EXEC'] = array();
+$GLOBALS['TBL']['web_events'] = false; $GLOBALS['TBL']['web_srv'] = false; $GLOBALS['EXEC'] = array();
 check('明细表缺失 → 0 且不执行', mon_cleanup() === 0 && count($GLOBALS['EXEC']) === 0);
 
 echo "\n监测自检：通过 " . $pass . "，失败 " . $fail . "\n";

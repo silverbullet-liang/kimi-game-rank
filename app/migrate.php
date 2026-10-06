@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 24);
+define('SCHEMA_VERSION', 25);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -962,6 +962,41 @@ function run_migrations(bool $force = false)
         }
     }
 
+    /* ---------- v25：服务端请求指标（P2） ----------
+       每个被抽样的 PHP 请求落一行：路由、总耗时、DB 累计耗时与次数、
+       慢查询条数与最慢语句指纹、峰值内存、首个错误。
+       属高频临时数据，不纳入全站编号体系。 */
+    if ($cur < 25) {
+        try {
+            db_exec("CREATE TABLE IF NOT EXISTS `web_srv` (
+                `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `route` VARCHAR(191) NOT NULL DEFAULT '' COMMENT '脚本路由，如 api/works.php',
+                `method` VARCHAR(8) NOT NULL DEFAULT '' COMMENT 'GET|POST',
+                `code` SMALLINT UNSIGNED NOT NULL DEFAULT 200 COMMENT 'HTTP 状态码',
+                `dur_ms` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '请求总耗时 ms',
+                `db_ms` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'DB 累计耗时 ms',
+                `db_n` SMALLINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'DB 查询次数',
+                `slow_n` SMALLINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '慢查询条数',
+                `slow_sql` VARCHAR(191) NOT NULL DEFAULT '' COMMENT '最慢语句指纹',
+                `mem_kb` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '峰值内存 KB',
+                `err` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '首个 PHP 错误/异常',
+                `uid` INT UNSIGNED NOT NULL DEFAULT 0,
+                `sid` VARCHAR(40) NOT NULL DEFAULT '',
+                `ip_hash` CHAR(64) NOT NULL DEFAULT '',
+                `created_at` DATETIME NOT NULL,
+                PRIMARY KEY (`id`),
+                KEY `idx_created` (`created_at`),
+                KEY `idx_route_time` (`route`, `created_at`),
+                KEY `idx_dur` (`dur_ms`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='服务端请求指标'");
+
+            app_log('schema migrated to v25（服务端请求指标）');
+            setting_set('schema_version', '25');
+        } catch (Throwable $e) {
+            app_log('migrate v25 failed: ' . $e->getMessage());
+        }
+    }
+
     /* 只有结构确认完整才写版本号、落锁：
        否则锁会把「半成品」永久固定下来，此后所有请求都被短路，再也修不回来。 */
     $ok = true;
@@ -985,7 +1020,7 @@ function run_migrations(bool $force = false)
     foreach (array('works', 'comments', 'messages', 'ai_messages', 'discipline_reports', 'feedback', 'announcements') as $t) {
         if (table_exists($t) && !column_exists($t, 'oid')) { $ok = false; }
     }
-    foreach (array('web_events', 'web_alerts') as $t) {
+    foreach (array('web_events', 'web_alerts', 'web_srv') as $t) {
         if (!table_exists($t)) { $ok = false; }
     }
     if (table_exists('comments') && !column_exists('comments', 'target_type')) { $ok = false; }

@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '3.19.0');
+define('APP_VERSION', '3.20.0');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);
@@ -56,6 +56,7 @@ require_once APP_ROOT . '/app/db.php';
 require_once APP_ROOT . '/app/helpers.php';
 require_once APP_ROOT . '/app/oid.php';
 require_once APP_ROOT . '/app/monitor.php';
+require_once APP_ROOT . '/app/mon_srv.php';
 require_once APP_ROOT . '/app/crypto.php';
 require_once APP_ROOT . '/app/scoring.php';
 require_once APP_ROOT . '/app/auth.php';
@@ -107,6 +108,9 @@ try {
 } catch (Throwable $e) {
     app_log('migration error: ' . $e->getMessage());
 }
+
+/* ---------- 服务端请求指标采集（P2）：迁移完成后启动 ---------- */
+try { mon_srv_init(); } catch (Throwable $e) { /* 静默，绝不影响主流程 */ }
 
 /* ---------- 互通站点：把 config 里已填好的对端登记进列表（留空的跳过） ---------- */
 try { peer_seed_from_config(); } catch (Throwable $e) { app_log('peer seed: ' . $e->getMessage()); }

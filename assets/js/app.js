@@ -3824,9 +3824,9 @@ async function renderLogin(container) {
 
 const MT_KEY = 'kimgr_mon_theme';
 const MON_TABS = [
-  ['overview', '总览'], ['js', 'JS 错误'], ['api', '接口'], ['perf', '加载性能'],
-  ['resource', '资源'], ['session', '会话追踪'], ['custom', '自定义上报'],
-  ['alerts', '告警'], ['settings', '设置'],
+  ['overview', '总览'], ['js', 'JS 错误'], ['api', '接口'], ['srv', '服务端'],
+  ['perf', '加载性能'], ['resource', '资源'], ['session', '会话追踪'],
+  ['custom', '自定义上报'], ['alerts', '告警'], ['settings', '设置'],
 ];
 const st = { range: '7d', tab: 'overview', theme: 'light', sessOnly: 'all' };
 
@@ -3891,6 +3891,7 @@ async function monRenderBody(container) {
   try {
     if (st.tab === 'overview') { return await monOverview(box); }
     if (st.tab === 'settings') { return await monSettings(box); }
+    if (st.tab === 'srv') { return await monSrv(box); }
     if (st.tab === 'session') { return await monSessions(box); }
     if (st.tab === 'alerts') { return await monAlerts(box); }
     await monEvents(box, st.tab);
@@ -3948,6 +3949,72 @@ async function monOverview(box) {
       ${monListCard('屏幕分辨率', (d.screens || []).map(x => [x.name, x.n]))}
       ${monListCard('资源加载失败', (d.res_fail || []).map(x => [x.name, x.n + ' 次']))}
     </div>`;
+}
+
+function monSrvTrend(trend, slowMs) {
+  if (!trend || !trend.length) { return monCard('平均耗时趋势', '<div class="mon-empty">暂无数据</div>'); }
+  const w = 640, h = 120, pad = 8;
+  const maxV = Math.max(1, ...trend.map(t => Number(t.avg_ms) || 0));
+  const step = trend.length > 1 ? (w - pad * 2) / (trend.length - 1) : 0;
+  const pts = trend.map((t, i) => (pad + i * step).toFixed(1) + ',' + (h - pad - ((Number(t.avg_ms) || 0) / maxV) * (h - pad * 2)).toFixed(1)).join(' ');
+  return monCard('平均耗时趋势（慢查询阈值 ' + Number(slowMs || 200) + ' ms）',
+    `<svg viewBox="0 0 ${w} ${h}" class="mon-trend" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="var(--macc)" stroke-width="2"/></svg>
+     <div class="mon-sub">${esc(String(trend[0].d))} → ${esc(String(trend[trend.length - 1].d))} · 峰值 ${maxV} ms</div>`);
+}
+
+async function monSrv(box) {
+  const d = await api('monitor.php', 'srv', { range: st.range });
+  const k = d.kpi || {};
+  const track = d.track_urls || [];
+  const routes = d.routes || [];
+  box.innerHTML = `
+    <div class="mon-kpis">
+      ${monKpi('请求数', Number(k.n || 0))}
+      ${monKpi('平均耗时', Number(k.avg || 0) + ' ms')}
+      ${monKpi('P95 耗时', Number(k.p95 || 0) + ' ms')}
+      ${monKpi('最慢', Number(k.max || 0) + ' ms')}
+      ${monKpi('慢请求占比', Number(k.slow_ratio || 0) + '%')}
+      ${monKpi('5xx', Number(k.code5 || 0))}
+      ${monKpi('异常', Number(k.errs || 0))}
+      ${monKpi('Apdex T=' + Number(d.apdex_t || 1200) + 'ms', Number(k.apdex || 0))}
+      ${monKpi('平均 DB 耗时', Number(k.db_avg || 0) + ' ms')}
+      ${monKpi('平均查询数', Number(k.db_n || 0))}
+      ${monKpi('慢查询数', Number(k.slow_q || 0))}
+    </div>
+    ${monSrvTrend(d.trend, d.slow_ms)}
+    ${monCard('按路由（' + routes.length + '）', `<table class="table"><thead><tr>
+        <th>路由</th><th>请求</th><th>平均</th><th>最大</th><th>慢</th><th>5xx</th><th>慢查询</th><th>异常</th></tr></thead>
+        <tbody>${routes.length ? routes.map(r => `<tr data-route="${esc(r.route)}" class="mon-click">
+          <td class="mon-ell" title="${esc(r.route)}">${track.indexOf(r.route) >= 0 ? '<b class="mon-track">' + esc(r.route) + '</b>' : esc(r.route)}</td>
+          <td>${r.n}</td><td>${r.avg_ms} ms</td><td>${r.max_ms} ms</td><td>${r.slow}</td><td>${r.code5}</td>
+          <td>${r.slow_q}</td><td>${r.errs}</td></tr>`).join('')
+        : '<tr><td class="mon-empty" colspan="8">暂无数据</td></tr>'}</tbody></table>`)}
+    <div class="mon-cards">
+      ${monListCard('慢查询 TOP', (d.slow_top || []).map(x => [(x.slow_sql || '').slice(0, 56), x.n + ' 次']))}
+      ${monListCard('异常 TOP', (d.errors || []).map(x => [String(x.route || '') + ' · ' + String(x.err || '').slice(0, 36), x.n + ' 次']))}
+    </div>
+    <div id="monSrvDetail"></div>`;
+
+  box.querySelectorAll('tr[data-route]').forEach(tr =>
+    tr.addEventListener('click', () => monSrvList(box, tr.dataset.route)));
+}
+
+async function monSrvList(box, route) {
+  const el = box.querySelector('#monSrvDetail'); if (!el) { return; }
+  el.innerHTML = '<div class="mon-sk"></div>';
+  try {
+    const d = await api('monitor.php', 'srvlist', { route: route, range: st.range, page: 1 });
+    const items = d.items || [];
+    el.innerHTML = monCard('请求明细 · ' + route + '（共 ' + Number(d.total || 0) + '）',
+      '<table class="table"><thead><tr><th>时间</th><th>方法</th><th>状态</th><th>耗时</th><th>DB</th><th>查询</th><th>慢</th><th>内存</th><th>信息</th></tr></thead><tbody>' +
+      (items.length ? items.map(it => `<tr class="${(it.err || it.code >= 500) ? 'mon-unacked' : ''}">
+        <td>${esc(it.time)}</td><td>${esc(it.method)}</td><td>${it.code}</td><td>${it.dur} ms</td>
+        <td>${it.db} ms</td><td>${it.db_n}</td><td>${it.slow_n}</td><td>${Math.round(Number(it.mem || 0) / 1024)} MB</td>
+        <td class="mon-ell" title="${esc(it.err || it.slow_sql || '')}">${esc(it.err || it.slow_sql || '')}</td></tr>`).join('')
+      : '<tr><td class="mon-empty" colspan="9">暂无数据</td></tr>') + '</tbody></table>');
+  } catch (e) {
+    el.innerHTML = '<div class="mon-empty">' + esc(e.message) + '</div>';
+  }
 }
 
 async function monSessions(box) {
@@ -4063,6 +4130,11 @@ async function monSettings(box) {
         </div></div>
       <div class="mon-row"><span>采样率（%）</span><input class="mon-input" id="monSample" type="number" min="1" max="100" value="${Number(d.sample || 100)}"></div>
       <div class="mon-row"><span>数据保留（天）</span><input class="mon-input" id="monKeep" type="number" min="1" max="90" value="${Number(d.keep_days || 7)}"></div>
+      <div class="mon-row"><span>服务端采样率（%）</span><input class="mon-input" id="monSrvSample" type="number" min="1" max="100" value="${Number(d.srv_sample || 30)}"></div>
+      <div class="mon-row"><span>慢查询阈值（ms）</span><input class="mon-input" id="monSrvSlow" type="number" min="1" max="60000" value="${Number(d.srv_slow_ms || 200)}"></div>
+      <div class="mon-row"><span>单请求耗时告警（ms）</span><input class="mon-input" id="monSrvAlert" type="number" min="100" max="60000" value="${Number(d.srv_slow_alert_ms || 3000)}"></div>
+      <div class="mon-row"><span>Apdex 基线（ms）</span><input class="mon-input" id="monApdexT" type="number" min="100" max="10000" value="${Number(d.apdex_t || 1200)}"></div>
+      <div class="mon-row"><span>重点接口白名单</span><input class="mon-input" id="monTrack" type="text" placeholder="逗号分隔，如 api/works.php" value="${esc(d.track_urls || '')}"></div>
       <div class="mon-row"><span>JS 错误率告警阈值（%）</span><input class="mon-input" id="monThErr" type="number" min="0" max="100" value="${Number(d.alert_error_rate || 5)}"></div>
       <div class="mon-row"><span>慢接口占比告警阈值（%）</span><input class="mon-input" id="monThSlow" type="number" min="0" max="100" value="${Number(d.alert_slow_ratio || 20)}"></div>
       <div class="mon-actions">
@@ -4086,6 +4158,11 @@ async function monSettings(box) {
         keep_days: Number(box.querySelector('#monKeep').value || 7),
         alert_error_rate: Number(box.querySelector('#monThErr').value || 5),
         alert_slow_ratio: Number(box.querySelector('#monThSlow').value || 20),
+        srv_sample: Number(box.querySelector('#monSrvSample').value || 30),
+        srv_slow_ms: Number(box.querySelector('#monSrvSlow').value || 200),
+        srv_slow_alert_ms: Number(box.querySelector('#monSrvAlert').value || 3000),
+        apdex_t: Number(box.querySelector('#monApdexT').value || 1200),
+        track_urls: String(box.querySelector('#monTrack').value || '').trim(),
       });
       toast('已保存');
     } catch (e) { toast(e.message, 'err'); }
