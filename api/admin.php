@@ -639,6 +639,37 @@ switch ($action) {
         break;
     }
 
+    /* 给用户改名（仅主管理员）。users 改掉即可；违纪通报里保留的是改名前的快照名，
+       前端会把「原名 + 现名」一并显示，方便与通报对上人。（副管理员身份时同步 sub_admins） */
+    case 'user_rename': {
+        require_panel();
+        csrf_verify();
+        $uid = param_int('id', 0);
+        if ($uid <= 0) { fail(400, '参数错误'); }
+        $u = db_one('SELECT id, username, role FROM users WHERE id = ?', array($uid));
+        if ($u === null) { fail(404, '用户不存在'); }
+        $clean = strip_invisible(nfc_normalize(param_str('username', '')));
+        $norm  = norm_username($clean);
+        $len = mb_strlen($clean, 'UTF-8');
+        if ($len < 2 || $len > 64) { fail(400, '用户名长度需为 2-64 个字符'); }
+        if ($norm === '') { fail(400, '用户名不能为空白'); }
+        if (is_reserved_name($norm)) { fail(400, '该用户名为系统保留名'); }
+        $dup = db_val('SELECT id FROM users WHERE username_norm = ? AND id <> ? LIMIT 1', array($norm, $uid));
+        if ($dup) { fail(409, '该用户名已被使用'); }
+        if ($clean === (string)$u['username']) {
+            ok(array('id' => $uid, 'username' => $clean, 'old' => (string)$u['username']), '名字没有变化');
+        }
+        db_exec('UPDATE users SET username = ?, username_norm = ? WHERE id = ?', array($clean, $norm, $uid));
+        if ((string)$u['role'] === 'subadmin') {
+            try { db_admin_exec('UPDATE sub_admins SET username = ?, username_norm = ? WHERE user_id = ?',
+                                array($clean, $norm, $uid)); } catch (Throwable $e) { }
+        }
+        app_log('user renamed: #' . $uid . ' ' . $u['username'] . ' -> ' . $clean);
+        ok(array('id' => $uid, 'username' => $clean, 'old' => (string)$u['username']),
+           '已改名为「' . $clean . '」');
+        break;
+    }
+
     /* 公告读取 */
     /* ---------- 评论回收站（仅主管理员） ----------
        删除 = 软删除入回收站：前端不再展示，但内容仍在库里，

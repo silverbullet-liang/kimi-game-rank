@@ -1914,7 +1914,7 @@ async function loadDisc(container) {
 
     box.innerHTML = '<table class="table"><thead><tr><th>用户</th><th>理由</th><th>处理</th><th>累计</th><th>时间</th><th>操作</th></tr></thead><tbody>'
       + items.map(it => `<tr data-rid="${it.id}">
-        <td>${userName(it.username, 'user', it.user_count)}${it.user_alive ? '' : ' <span class="tiny muted">（账号已删）</span>'}</td>
+        <td>${userName(it.username, 'user', it.user_count, it.username_now)}${it.user_alive ? '' : ' <span class="tiny muted">（账号已删）</span>'}</td>
         <td class="tiny">${esc((it.reasons || []).join('；'))}</td>
         <td class="tiny">${it.banned ? (it.ban_until ? '至 ' + esc(it.ban_until) : '永久') : '未封停'}${it.ip_banned ? ' · IP' : ''}</td>
         <td class="tiny">${Number(it.user_count || 0)} 次</td>
@@ -2103,6 +2103,8 @@ async function loadUsers(container, q, readOnly, page) {
         ${readOnly ? '' : `<td>${u.role === 'user'
               ? '<button class="btn-ghost btn-sm" data-act="disc">通报</button>' : ''}
           ${u.role === 'user'
+              ? '<button class="btn-ghost btn-sm" data-act="rename">改名</button>' : ''}
+          ${u.role === 'user'
               ? '<button class="btn-ghost btn-sm" data-act="promote">设为副管理员</button>' : ''}
           ${u.role === 'user' ? '<button class="btn-ghost btn-sm" data-act="del">删除</button>' : ''}</td>`}</tr>`).join('') + '</tbody></table>';
 
@@ -2114,6 +2116,16 @@ async function loadUsers(container, q, readOnly, page) {
           try { await api('admin.php', 'user_delete', { id: tr.dataset.id }); toast('已删除'); loadUsers(container, q, readOnly, pg); }
           catch (e) { toast(e.message, 'err'); }
         }
+      });
+      const rnBtn = tr.querySelector('[data-act="rename"]');
+      if (rnBtn) rnBtn.addEventListener('click', async () => {
+        const nn = await prompt_('给用户改名', '新用户名（2–64 个字符）。改后，该用户的违纪通报会同时显示原名与新名。', '保存', uname);
+        if (nn == null) { return; }
+        const v = String(nn).trim();
+        if (v.length < 2) { toast('用户名至少 2 个字符', 'err'); return; }
+        if (v === uname) { return; }
+        try { await api('admin.php', 'user_rename', { id: tr.dataset.id, username: v }); toast('已改名为「' + v + '」'); loadUsers(container, q, readOnly, pg); }
+        catch (e) { toast(e.message, 'err'); }
       });
       const discBtn = tr.querySelector('[data-act="disc"]');
       if (discBtn) discBtn.addEventListener('click', () => {

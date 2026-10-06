@@ -312,12 +312,24 @@ export function badge(role) {
 }
 
 /** 用户名 + 徽章（统一入口，role 与通报次数由后端下发） */
-export function userName(name, role, reports) {
+export function userName(name, role, reports, nowName) {
   const n = Number(reports || 0);
   const tag = n > 0
     ? '<span class="badge badge-violation" title="累计被通报 ' + n + ' 次">被通报 ' + n + ' 次</span>'
     : '';
-  return '<span class="uname">' + esc(name) + '</span>' + badge(role) + tag;
+  const alt = (nowName && String(nowName) !== String(name))
+    ? '<span class="tiny muted">（现名：' + esc(nowName) + '）</span>' : '';
+  return '<span class="uname">' + esc(name) + '</span>' + alt + badge(role) + tag;
+}
+
+/** 通报里的用户名：改过名就同时给出「原名」与「现名」 */
+export function namePair(snap, now) {
+  const a = String(snap == null ? '' : snap);
+  const b = String(now == null ? '' : now);
+  if (b && b !== a) {
+    return '<b>' + esc(a) + '</b> <span class="tiny muted">现名</span> <b>' + esc(b) + '</b>';
+  }
+  return '<b>' + esc(a || '（未知用户）') + '</b>';
 }
 
 /* ============================================================
@@ -366,13 +378,13 @@ export function dialog(title, text, confirmLabel = '确定', opts = {}) {
 }
 
 /** 输入型对话框（用于管理员密钥等），返回 Promise<string|null> */
-export function prompt_(title, text, confirmLabel = '确定') {
+export function prompt_(title, text, confirmLabel = '确定', defaultValue = '') {
   return new Promise(resolve => {
     const scrim = document.getElementById('dialogScrim');
     const box = document.getElementById('dialog');
     box.className = 'dialog glass';   // 保留初始的玻璃质感（此前被抹掉）
     box.innerHTML = `<h3>${esc(title)}</h3><p>${text}</p>
-      <div class="field"><input class="input" id="dlgInput" type="text" autocomplete="off"></div>
+      <div class="field"><input class="input" id="dlgInput" type="text" autocomplete="off" value="${esc(defaultValue)}"></div>
       <div class="dialog-actions">
         <button class="btn-ghost" data-r="0">取消</button>
         <button class="btn" data-r="1">${esc(confirmLabel)}</button>

@@ -318,12 +318,24 @@ function badge(role) {
 }
 
 /** 用户名 + 徽章（统一入口，role 与通报次数由后端下发） */
-function userName(name, role, reports) {
+function userName(name, role, reports, nowName) {
   const n = Number(reports || 0);
   const tag = n > 0
     ? '<span class="badge badge-violation" title="累计被通报 ' + n + ' 次">被通报 ' + n + ' 次</span>'
     : '';
-  return '<span class="uname">' + esc(name) + '</span>' + badge(role) + tag;
+  const alt = (nowName && String(nowName) !== String(name))
+    ? '<span class="tiny muted">（现名：' + esc(nowName) + '）</span>' : '';
+  return '<span class="uname">' + esc(name) + '</span>' + alt + badge(role) + tag;
+}
+
+/** 通报里的用户名：改过名就同时给出「原名」与「现名」 */
+function namePair(snap, now) {
+  const a = String(snap == null ? '' : snap);
+  const b = String(now == null ? '' : now);
+  if (b && b !== a) {
+    return '<b>' + esc(a) + '</b> <span class="tiny muted">现名</span> <b>' + esc(b) + '</b>';
+  }
+  return '<b>' + esc(a || '（未知用户）') + '</b>';
 }
 
 /* ============================================================
@@ -372,13 +384,13 @@ function dialog(title, text, confirmLabel = '确定', opts = {}) {
 }
 
 /** 输入型对话框（用于管理员密钥等），返回 Promise<string|null> */
-function prompt_(title, text, confirmLabel = '确定') {
+function prompt_(title, text, confirmLabel = '确定', defaultValue = '') {
   return new Promise(resolve => {
     const scrim = document.getElementById('dialogScrim');
     const box = document.getElementById('dialog');
     box.className = 'dialog glass';   // 保留初始的玻璃质感（此前被抹掉）
     box.innerHTML = `<h3>${esc(title)}</h3><p>${text}</p>
-      <div class="field"><input class="input" id="dlgInput" type="text" autocomplete="off"></div>
+      <div class="field"><input class="input" id="dlgInput" type="text" autocomplete="off" value="${esc(defaultValue)}"></div>
       <div class="dialog-actions">
         <button class="btn-ghost" data-r="0">取消</button>
         <button class="btn" data-r="1">${esc(confirmLabel)}</button>
@@ -5710,7 +5722,7 @@ async function loadDisc(container) {
 
     box.innerHTML = '<table class="table"><thead><tr><th>用户</th><th>理由</th><th>处理</th><th>累计</th><th>时间</th><th>操作</th></tr></thead><tbody>'
       + items.map(it => `<tr data-rid="${it.id}">
-        <td>${userName(it.username, 'user', it.user_count)}${it.user_alive ? '' : ' <span class="tiny muted">（账号已删）</span>'}</td>
+        <td>${userName(it.username, 'user', it.user_count, it.username_now)}${it.user_alive ? '' : ' <span class="tiny muted">（账号已删）</span>'}</td>
         <td class="tiny">${esc((it.reasons || []).join('；'))}</td>
         <td class="tiny">${it.banned ? (it.ban_until ? '至 ' + esc(it.ban_until) : '永久') : '未封停'}${it.ip_banned ? ' · IP' : ''}</td>
         <td class="tiny">${Number(it.user_count || 0)} 次</td>
@@ -5899,6 +5911,8 @@ async function loadUsers(container, q, readOnly, page) {
         ${readOnly ? '' : `<td>${u.role === 'user'
               ? '<button class="btn-ghost btn-sm" data-act="disc">通报</button>' : ''}
           ${u.role === 'user'
+              ? '<button class="btn-ghost btn-sm" data-act="rename">改名</button>' : ''}
+          ${u.role === 'user'
               ? '<button class="btn-ghost btn-sm" data-act="promote">设为副管理员</button>' : ''}
           ${u.role === 'user' ? '<button class="btn-ghost btn-sm" data-act="del">删除</button>' : ''}</td>`}</tr>`).join('') + '</tbody></table>';
 
@@ -5910,6 +5924,16 @@ async function loadUsers(container, q, readOnly, page) {
           try { await api('admin.php', 'user_delete', { id: tr.dataset.id }); toast('已删除'); loadUsers(container, q, readOnly, pg); }
           catch (e) { toast(e.message, 'err'); }
         }
+      });
+      const rnBtn = tr.querySelector('[data-act="rename"]');
+      if (rnBtn) rnBtn.addEventListener('click', async () => {
+        const nn = await prompt_('给用户改名', '新用户名（2–64 个字符）。改后，该用户的违纪通报会同时显示原名与新名。', '保存', uname);
+        if (nn == null) { return; }
+        const v = String(nn).trim();
+        if (v.length < 2) { toast('用户名至少 2 个字符', 'err'); return; }
+        if (v === uname) { return; }
+        try { await api('admin.php', 'user_rename', { id: tr.dataset.id, username: v }); toast('已改名为「' + v + '」'); loadUsers(container, q, readOnly, pg); }
+        catch (e) { toast(e.message, 'err'); }
       });
       const discBtn = tr.querySelector('[data-act="disc"]');
       if (discBtn) discBtn.addEventListener('click', () => {
@@ -6367,7 +6391,7 @@ async function paintDetail(container, id, mine) {
       <div class="row" style="align-items:center;gap:10px">
         <img class="avatar" src="${esc(d.avatar)}" width="40" height="40" draggable="false" alt="">
         <div style="flex:1">
-          <div><b>${esc(d.username || '（未知用户）')}</b></div>
+          <div>${namePair(d.username, d.username_now)}</div>
           <div class="tiny muted">通报于 ${esc(d.created)} · 浏览 ${Number(d.views || 0)}</div>
         </div>
       </div>
@@ -6437,7 +6461,7 @@ async function renderDiscipline(container, ctx) {
         <div class="row" style="align-items:center;gap:10px">
           <img class="avatar" src="${esc(it.avatar)}" width="36" height="36" draggable="false" alt="">
           <div style="flex:1;min-width:0">
-            <div><b>${esc(it.username || '（未知用户）')}</b> ${discChip(it)}</div>
+            <div>${namePair(it.username, it.username_now)} ${discChip(it)}</div>
             <div class="tiny muted">${esc(it.created)} · 封禁 ${esc(discDaysText(it))} · 评论 ${Number(it.comments || 0)}</div>
           </div>
         </div>
