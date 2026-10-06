@@ -4,7 +4,8 @@
  * 权限：主管理员=全部；副管理员=作品搜索/上传/同步 + 只读数据（登录即入场，无需二次密钥），
  *       社区凭证自备（含 Token 获取脚本下载），各存各的
  */
-import { api, state, esc, toast, dialog, prompt_, btnLoading, isAdminish, userName } from '../core.js';
+import { api, state, esc, toast, dialog, prompt_, btnLoading, isAdminish, userName, oidTag } from '../core.js';
+import { monitorBlock, mountMonitor } from './monitor-ui.js';
 import { navigate } from '../router.js';
 
 const PCATS = [['game', '游戏'], ['tool', '工具'], ['literature', '文学'], ['fanart', '二创']];
@@ -50,6 +51,7 @@ export async function renderPanel(container) {
     loadDisc(container);
     loadPeer(container);
     bindAiRank(container);
+    mountMonitor(container);
     startPanelPolling(container);
   } else {
     container.innerHTML = subLayout();
@@ -118,6 +120,8 @@ function adminLayout() {
     </div>
 
     ${aiRankBlock()}
+
+    ${monitorBlock()}
 
     ${credentialBlock()}
     ${addWorkBlock()}
@@ -203,7 +207,7 @@ async function loadCommentBin(container) {
     if (!d.items.length) { box.innerHTML = '<div class="tiny muted">回收站是空的。</div>'; return; }
     box.innerHTML = '<table class="table"><thead><tr><th>作者</th><th>内容</th><th>所属作品</th><th>删除时间</th><th>操作</th></tr></thead><tbody>'
       + d.items.map(c => `<tr data-cid="${Number(c.id)}">
-        <td>${esc(c.username)}<br><span class="tiny muted">${c.by_admin ? '管理员删除' : '本人删除'}</span></td>
+        <td>${esc(c.username)} ${oidTag(c.oid)}<br><span class="tiny muted">${c.by_admin ? '管理员删除' : '本人删除'}</span></td>
         <td style="max-width:340px;word-break:break-word">${esc(c.content).slice(0, 160)}</td>
         <td class="tiny">${esc(c.title)}</td>
         <td class="tiny">${esc(c.time)}</td>
@@ -1571,7 +1575,7 @@ async function loadWorks(container, q, readOnly, page) {
     } else {
       box.innerHTML = `<table class="table"><thead><tr><th>标题</th><th>分类</th><th>总分</th><th>状态</th><th>操作</th></tr></thead><tbody>` +
         d.items.map(w => `<tr data-id="${w.id}">
-          <td>${esc(w.title)}<div class="tiny">${esc(w.community_id)}</div></td>
+          <td>${esc(w.title)}<div class="tiny">${esc(w.community_id)} ${oidTag(w.oid)}</div></td>
           <td>${esc(catName(w.category))}</td>
           <td>${Number(w.total_score)}</td>
           <td>${Number(w.is_hidden) === 1 ? '已下架' : '在榜'}</td>
@@ -1914,7 +1918,7 @@ async function loadDisc(container) {
 
     box.innerHTML = '<table class="table"><thead><tr><th>用户</th><th>理由</th><th>处理</th><th>累计</th><th>时间</th><th>操作</th></tr></thead><tbody>'
       + items.map(it => `<tr data-rid="${it.id}">
-        <td>${userName(it.username, 'user', it.user_count, it.username_now)}${it.user_alive ? '' : ' <span class="tiny muted">（账号已删）</span>'}</td>
+        <td>${userName(it.username, 'user', it.user_count, it.username_now)}${it.user_alive ? '' : ' <span class="tiny muted">（账号已删）</span>'} ${oidTag(it.oid)}</td>
         <td class="tiny">${esc((it.reasons || []).join('；'))}</td>
         <td class="tiny">${it.banned ? (it.ban_until ? '至 ' + esc(it.ban_until) : '永久') : '未封停'}${it.ip_banned ? ' · IP' : ''}</td>
         <td class="tiny">${Number(it.user_count || 0)} 次</td>

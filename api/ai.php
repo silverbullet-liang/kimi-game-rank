@@ -45,13 +45,24 @@ function ai_gate(bool $isAdmin, int $uid, bool $online, string $text = '', bool 
     }
 }
 
+/** 落一条 AI 对话消息（自动分配全站对象编号） */
+function ai_store_row(int $uid, string $role, string $text) {
+    if (oid_ready('ai_messages')) {
+        db_insert('INSERT INTO ai_messages (user_id, role, content, oid, created_at) VALUES (?, ?, ?, ?, UTC_TIMESTAMP())',
+            array($uid, $role, $text, oid_new('ai_messages')));
+        return;
+    }
+    db_insert('INSERT INTO ai_messages (user_id, role, content, created_at) VALUES (?, ?, ?, UTC_TIMESTAMP())',
+        array($uid, $role, $text));
+}
+
 /** 保存本条用户消息（降级重放时不重复写入同一条） */
 function ai_save_user_msg(int $uid, string $text, bool $isReplay) {
     if ($isReplay) {
         $last = db_one('SELECT role, content FROM ai_messages WHERE user_id = ? ORDER BY id DESC LIMIT 1', array($uid));
         if ($last !== null && (string)$last['role'] === 'user' && (string)$last['content'] === $text) { return; }
     }
-    db_insert('INSERT INTO ai_messages (user_id, role, content, created_at) VALUES (?, "user", ?, UTC_TIMESTAMP())', array($uid, $text));
+    ai_store_row($uid, 'user', $text);
 }
 
 /* ============================================================
@@ -161,11 +172,13 @@ switch ($action) {
 
     case 'history': {
         $id = require_member();
-        $rows = db_all('SELECT role, content, created_at FROM ai_messages WHERE user_id = ? ORDER BY id DESC LIMIT 40',
+        $oidSel = oid_ready('ai_messages') ? ', oid' : '';
+        $rows = db_all('SELECT role, content, created_at' . $oidSel . ' FROM ai_messages WHERE user_id = ? ORDER BY id DESC LIMIT 40',
             array(actor_uid($id)));
         $rows = array_reverse($rows);
         $items = array_map(function ($r) {
-            return array('role' => (string)$r['role'], 'content' => (string)$r['content'], 'time' => to_local((string)$r['created_at'], 'm-d H:i'));
+            return array('role' => (string)$r['role'], 'content' => (string)$r['content'], 'time' => to_local((string)$r['created_at'], 'm-d H:i'),
+                'oid' => (string)(isset($r['oid']) ? $r['oid'] : ''));
         }, $rows);
         ok(array('items' => $items));
         break;
@@ -329,7 +342,7 @@ switch ($action) {
         }
 
         if (trim($visible) === '') { $visible = '（无内容返回，请稍后重试）'; }
-        db_insert('INSERT INTO ai_messages (user_id, role, content, created_at) VALUES (?, "assistant", ?, UTC_TIMESTAMP())', array($uid, $visible));
+        ai_store_row($uid, 'assistant', $visible);
         ai_trim_history($uid);
         ai_usage_record($uid, $usage, $aiProvider);
         ok(array('text' => $visible, 'usage' => $usage, 'tools' => $cards));
@@ -492,7 +505,7 @@ try {
 
     $hasContent = (trim($visible) !== '');
     if (!$hasContent) { $visible = '（无内容返回，请稍后重试）'; }
-    db_insert('INSERT INTO ai_messages (user_id, role, content, created_at) VALUES (?, "assistant", ?, UTC_TIMESTAMP())', array($uid, $visible));
+    ai_store_row($uid, 'assistant', $visible);
     ai_trim_history($uid);
     ai_usage_record($uid, $finalUsage, $aiProvider);
     $emit(array('done' => true, 'usage' => $finalUsage));

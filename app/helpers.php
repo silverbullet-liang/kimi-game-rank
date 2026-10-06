@@ -551,6 +551,10 @@ function db_insert_norm(string $table, array $cols, array $vals, string $content
         $cols[] = 'content_norm';
         $vals[] = dup_content_norm($content);
     }
+    if (oid_ready($t)) {          // 评论 / 反馈等统一分配全站编号
+        $cols[] = 'oid';
+        $vals[] = oid_new($t);
+    }
     $ph = array_fill(0, count($cols), '?');
     return db_insert(
         'INSERT INTO `' . $t . '` (`' . implode('`, `', $cols) . '`, created_at) VALUES ('

@@ -331,6 +331,7 @@ function work_upsert(array $item, string $html = '', $autoScore = null): array
         array_push($vals, $scores['heat'], $scores['rating'],
             $item['html_url'] !== '' ? 1 : 0, 1, $now, $now);
 
+        if (oid_ready('works')) { $cols .= ', oid'; $vals[] = oid_new('works'); }
         $wid = db_insert(
             'INSERT INTO works (' . $cols . ') VALUES ('
             . implode(',', array_fill(0, count($vals), '?')) . ')',

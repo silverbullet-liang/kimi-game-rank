@@ -76,6 +76,9 @@ try { $__festival = festival_client(); } catch (Throwable $e) { }
 <script>window.__CAPTCHA = <?= json_encode($__captcha, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
 <script>window.__FESTIVAL = <?= json_encode($__festival, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
 <script>window.__BANNED = <?= (int)$__bannedId ?>;</script>
+<?php $__monUid = (isset($__ident) && is_array($__ident)) ? (int)($__ident['uid'] ?? 0) : 0; ?>
+<script>window.__MON_CFG__ = { endpoint: 'api/monitor.php', uid: <?= $__monUid ?> };</script>
+<script src="assets/js/monitor.js?v=<?= APP_VERSION ?>"></script>
 <script>
 /* 首屏前应用本机偏好（深浅色 / 设计风格 / 主题色），避免样式闪烁 */
 (function () {

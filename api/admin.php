@@ -681,7 +681,8 @@ switch ($action) {
         $page = max(1, param_int('page', 1));
         $size = 30;
         $off  = ($page - 1) * $size;
-        $rows = db_all("SELECT c.id, c.work_id, c.content, c.deleted_by, c.created_at,
+        $oidCol = col_ok('comments', 'oid') ? 'c.oid' : "'' AS oid";
+        $rows = db_all("SELECT c.id, " . $oidCol . ", c.work_id, c.content, c.deleted_by, c.created_at,
                                u.username, w.title
                         FROM comments c
                         LEFT JOIN users u ON u.id = c.user_id
@@ -691,6 +692,7 @@ switch ($action) {
         $items = array_map(function ($r) {
             return array(
                 'id'       => (int)$r['id'],
+                'oid'      => (string)($r['oid'] ?? ''),
                 'work_id'  => (int)$r['work_id'],
                 'title'    => $r['title'] === null ? '（作品已移除）' : (string)$r['title'],
                 'username' => $r['username'] === null ? '（已注销）' : (string)$r['username'],
@@ -812,7 +814,11 @@ switch ($action) {
         $c = mb_substr($c, 0, 512, 'UTF-8');
         $id = db_val('SELECT id FROM announcements ORDER BY id ASC LIMIT 1');
         if ($id === null) {
-            db_insert('INSERT INTO announcements (content, updated_at) VALUES (?, UTC_TIMESTAMP())', array($c));
+            if (oid_ready('announcements')) {
+                db_insert('INSERT INTO announcements (content, oid, updated_at) VALUES (?, ?, UTC_TIMESTAMP())', array($c, oid_new('announcements')));
+            } else {
+                db_insert('INSERT INTO announcements (content, updated_at) VALUES (?, UTC_TIMESTAMP())', array($c));
+            }
         } else {
             db_exec('UPDATE announcements SET content = ?, updated_at = UTC_TIMESTAMP() WHERE id = ?', array($c, (int)$id));
             db_exec('DELETE FROM announcements WHERE id <> ?', array((int)$id));   // 只保留一条，避免读取歧义

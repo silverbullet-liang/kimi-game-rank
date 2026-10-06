@@ -1335,3 +1335,38 @@ html[data-skin="sketch"]::view-transition-group(hero) { animation-duration: .4s;
 @media (prefers-reduced-motion: reduce) {
   .rank-item.rank-flash { animation: none; }
 }
+
+
+/* ---------- 全站对象编号（oid） ---------- */
+.oid {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: .3px;
+  color: inherit;
+  opacity: .55;
+  background: rgba(128, 128, 128, .14);
+  border-radius: 5px;
+  padding: 1px 5px;
+  white-space: nowrap;
+  vertical-align: middle;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+
+/* ---------- 网页异常监测面板 ---------- */
+.mon-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.mon-tabs button { white-space: nowrap; }
+.mon-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.mon-kpi { border: 1px solid var(--line, rgba(128,128,128,.22)); border-radius: 10px; padding: 10px 12px; }
+.mon-kpi .mk-v { font-size: 20px; font-weight: 800; letter-spacing: .3px; }
+.mon-kpi .mk-l { font-size: 12px; opacity: .6; margin-top: 2px; }
+.mon-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.mon-card { border: 1px solid var(--line, rgba(128,128,128,.22)); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+.mon-card-t { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+.mon-ul { list-style: none; margin: 0; padding: 0; }
+.mon-ul li { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; font-size: 13px; border-bottom: 1px dashed var(--line, rgba(128,128,128,.16)); }
+.mon-ul li:last-child { border-bottom: 0; }
+.mon-ul .mon-li-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .85; }
+.mon-trend { width: 100%; height: 90px; display: block; margin: 4px 0; }
+.mon-ell { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

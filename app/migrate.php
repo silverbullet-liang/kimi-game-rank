@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 22);
+define('SCHEMA_VERSION', 24);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -882,6 +882,86 @@ function run_migrations(bool $force = false)
         }
     }
 
+    /* ---------- v23：全站对象编号 ----------
+       评论 / 违纪通报 / 世界对话 / AI 对话 / 作品 / 反馈 / 公告 各分配两位类型码；
+       编号 = 4 位年 + 2 位月 + 2 位日 + 2 位类型码 + 4 位随机数（共 14 位）。
+       历史数据按其创建日期回填，回填完成后落唯一索引。 */
+    if ($cur < 23) {
+        try {
+            $oidTables = oid_target_tables();
+            foreach ($oidTables as $t) {
+                if (table_exists($t) && !column_exists($t, 'oid')) {
+                    db_exec("ALTER TABLE `" . $t . "` ADD COLUMN `oid` VARCHAR(20) NULL COMMENT '全站对象编号（14 位）' AFTER `id`");
+                    table_columns($t, true);
+                }
+            }
+
+            $filled = oid_backfill($oidTables);
+
+            foreach ($oidTables as $t) {
+                if (table_exists($t) && column_exists($t, 'oid') && !db_index_exists($t, 'uk_oid')) {
+                    db_exec("ALTER TABLE `" . $t . "` ADD UNIQUE KEY `uk_oid` (`oid`)");
+                }
+            }
+
+            app_log('schema migrated to v23（全站对象编号，回填 ' . $filled . ' 条）');
+            setting_set('schema_version', '23');
+        } catch (Throwable $e) {
+            app_log('migrate v23 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v24：网页异常监测 ----------
+       前端 SDK 上报的异常/性能/接口事件明细，以及聚合出的告警记录。
+       明细属高频临时数据，不纳入全站编号体系。 */
+    if ($cur < 24) {
+        try {
+            db_exec("CREATE TABLE IF NOT EXISTS `web_events` (
+                `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `kind` VARCHAR(16) NOT NULL DEFAULT 'js' COMMENT 'js|api|resource|perf|pv|custom',
+                `level` VARCHAR(8) NOT NULL DEFAULT 'error' COMMENT 'info|warn|error',
+                `name` VARCHAR(191) NOT NULL DEFAULT '' COMMENT '事件名（页面/接口/自定义）',
+                `page` VARCHAR(191) NOT NULL DEFAULT '',
+                `msg` VARCHAR(255) NOT NULL DEFAULT '',
+                `stack` TEXT NULL,
+                `v1` INT NOT NULL DEFAULT 0 COMMENT '耗时 ms / 数值',
+                `v2` INT NOT NULL DEFAULT 0 COMMENT '状态码 / 辅助值',
+                `status` VARCHAR(16) NOT NULL DEFAULT '' COMMENT 'ok|fail|timeout',
+                `browser` VARCHAR(32) NOT NULL DEFAULT '',
+                `os` VARCHAR(32) NOT NULL DEFAULT '',
+                `screen` VARCHAR(16) NOT NULL DEFAULT '',
+                `net` VARCHAR(16) NOT NULL DEFAULT '',
+                `sid` VARCHAR(40) NOT NULL DEFAULT '' COMMENT '匿名会话 id',
+                `uid` INT UNSIGNED NOT NULL DEFAULT 0,
+                `ip_hash` CHAR(64) NOT NULL DEFAULT '',
+                `created_at` DATETIME NOT NULL,
+                PRIMARY KEY (`id`),
+                KEY `idx_kind_time` (`kind`, `created_at`),
+                KEY `idx_name_time` (`name`, `created_at`),
+                KEY `idx_sid` (`sid`),
+                KEY `idx_created` (`created_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='前端监测事件'");
+
+            db_exec("CREATE TABLE IF NOT EXISTS `web_alerts` (
+                `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `rule` VARCHAR(32) NOT NULL DEFAULT '',
+                `level` VARCHAR(8) NOT NULL DEFAULT 'warn',
+                `message` VARCHAR(255) NOT NULL DEFAULT '',
+                `value` INT NOT NULL DEFAULT 0,
+                `threshold` INT NOT NULL DEFAULT 0,
+                `acked` TINYINT(1) NOT NULL DEFAULT 0,
+                `created_at` DATETIME NOT NULL,
+                PRIMARY KEY (`id`),
+                KEY `idx_created` (`created_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='监测告警记录'");
+
+            app_log('schema migrated to v24（网页异常监测）');
+            setting_set('schema_version', '24');
+        } catch (Throwable $e) {
+            app_log('migrate v24 failed: ' . $e->getMessage());
+        }
+    }
+
     /* 只有结构确认完整才写版本号、落锁：
        否则锁会把「半成品」永久固定下来，此后所有请求都被短路，再也修不回来。 */
     $ok = true;
@@ -902,6 +982,12 @@ function run_migrations(bool $force = false)
     if (table_exists('users') && !column_exists('users', 'ban_until')) { $ok = false; }
     if (table_exists('discipline_reports') && !column_exists('discipline_reports', 'ban_until')) { $ok = false; }
     if (table_exists('discipline_reports') && !column_exists('discipline_reports', 'tamper_count')) { $ok = false; }
+    foreach (array('works', 'comments', 'messages', 'ai_messages', 'discipline_reports', 'feedback', 'announcements') as $t) {
+        if (table_exists($t) && !column_exists($t, 'oid')) { $ok = false; }
+    }
+    foreach (array('web_events', 'web_alerts') as $t) {
+        if (!table_exists($t)) { $ok = false; }
+    }
     if (table_exists('comments') && !column_exists('comments', 'target_type')) { $ok = false; }
     if (table_exists('ai_usage') && !column_exists('ai_usage', 'provider')) { $ok = false; }
     if ($ok) {
@@ -964,4 +1050,36 @@ function db_report(): array
         'last_run'  => is_file($stampFile)
             ? date('Y-m-d H:i:s', (int)@file_get_contents($stampFile)) : '',
     );
+}
+
+
+/** 拥有全站统一编号的表 */
+function oid_target_tables(): array
+{
+    return array('works', 'comments', 'messages', 'ai_messages', 'discipline_reports', 'feedback', 'announcements');
+}
+
+/**
+ * 为历史行回填对象编号：按其创建日期（UTC）生成，逐条避免表内重复。
+ * 幂等——只处理 oid 为空的行，重复调用安全。
+ */
+function oid_backfill(array $tables): int
+{
+    $filled = 0;
+    foreach ($tables as $t) {
+        if (!table_exists($t) || !column_exists($t, 'oid')) { continue; }
+        $timeCol = column_exists($t, 'created_at') ? 'created_at'
+                 : (column_exists($t, 'updated_at') ? 'updated_at' : '');
+        $sel = $timeCol !== '' ? '`id`, `' . $timeCol . '` AS ts' : '`id`';
+        try {
+            foreach (db_all('SELECT ' . $sel . ' FROM `' . $t . "` WHERE `oid` IS NULL OR `oid` = ''") as $r) {
+                $ts  = (string)(isset($r['ts']) ? $r['ts'] : '');
+                $ymd = preg_match('/^(\d{4})-?(\d{2})-?(\d{2})/', $ts, $m) ? ($m[1] . $m[2] . $m[3]) : gmdate('Ymd');
+                $oid = oid_generate($t, $ymd);
+                db_exec('UPDATE `' . $t . '` SET `oid` = ? WHERE `id` = ?', array($oid, (int)$r['id']));
+                $filled++;
+            }
+        } catch (Throwable $e) { /* 单表异常不影响其余表 */ }
+    }
+    return $filled;
 }

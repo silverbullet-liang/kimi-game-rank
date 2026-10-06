@@ -200,6 +200,7 @@ function sync_apply(string $table, array $docs): array
                 if ($row !== null) { $targetId = (int)$row['id']; }
             }
 
+            if (col_ok($table, 'oid')) { unset($data['oid']); }   // 编号本站自铸，不沿用对端
             $cols = array_keys($data);
             if ($targetId > 0) {
                 $set = array(); $args = array();
@@ -207,6 +208,7 @@ function sync_apply(string $table, array $docs): array
                 $args[] = $targetId;
                 db_exec('UPDATE `' . $table . '` SET ' . implode(', ', $set) . ' WHERE id = ?', $args);
             } else {
+                if (oid_ready($table)) { $cols[] = 'oid'; $data['oid'] = oid_new($table); }
                 $ph = implode(', ', array_fill(0, count($cols), '?'));
                 $targetId = (int)db_insert('INSERT INTO `' . $table . '` (`' . implode('`,`', $cols) . '`) VALUES (' . $ph . ')',
                     array_values($data));

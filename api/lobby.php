@@ -26,6 +26,7 @@ function chat_out(array $r, int $myUid): array
     $name = $isAi ? LOBBY_AI_NAME : (string)($r['username'] ?? '已注销用户');
     return array(
         'id'       => (int)$r['id'],
+        'oid'      => (string)($r['oid'] ?? ''),
         'uid'      => (int)$r['user_id'],
         'username' => $name,
         'role'     => $isAi ? 'ai' : (string)($r['role'] ?? 'user'),
@@ -48,7 +49,8 @@ function chat_msg_cols(): string
     $media = col_ok('messages', 'media_url')   ? 'm.media_url'    : "'' AS media_url";
     $rec   = col_ok('messages', 'is_recalled') ? 'm.is_recalled'  : '0 AS is_recalled';
     $flag  = col_ok('messages', 'review_flag') ? 'm.review_flag'  : "'' AS review_flag";
-    return 'm.id, m.user_id, m.content, ' . $type . ', ' . $media . ', ' . $rec . ', ' . $flag . ', m.created_at, '
+    $oid   = col_ok('messages', 'oid')         ? 'm.oid'          : "'' AS oid";
+    return 'm.id, ' . $oid . ', m.user_id, m.content, ' . $type . ', ' . $media . ', ' . $rec . ', ' . $flag . ', m.created_at, '
          . "COALESCE(u.username, '已注销用户') AS username, COALESCE(u.role, 'user') AS role";
 }
 
@@ -150,6 +152,8 @@ switch ($action) {
         if (col_ok('messages', 'msg_type'))  { $cols[] = 'msg_type';  $vals[] = $type; }
         if (col_ok('messages', 'media_url')) { $cols[] = 'media_url'; $vals[] = $media; }
         if (col_ok('messages', 'review_flag')) { $cols[] = 'review_flag'; $vals[] = $flag; }
+        $mOid = '';
+        if (col_ok('messages', 'oid')) { $cols[] = 'oid'; $mOid = oid_new('messages'); $vals[] = $mOid; }
         $ph = array_fill(0, count($cols), '?');
         $mid = db_insert(
             'INSERT INTO messages (`' . implode('`, `', $cols) . '`, created_at) VALUES (' . implode(', ', $ph) . ', UTC_TIMESTAMP())',
@@ -161,6 +165,7 @@ switch ($action) {
         $name = $u !== null ? (string)$u['username'] : '用户';
         $out = array(
             'id'       => $mid,
+            'oid'      => $mOid,
             'uid'      => $uid,
             'username' => $name,
             'role'     => $u !== null ? (string)$u['role'] : 'user',

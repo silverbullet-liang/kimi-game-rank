@@ -218,13 +218,23 @@ function discipline_create(array $userIds, array $reasons, string $note, bool $b
                           array($uid));
         }
 
-        $rid = db_insert(
-            'INSERT INTO discipline_reports (user_id, username, reasons, note, banned, ban_days, ban_until, purged, ip_banned, by_uid, views, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)',
-            array($uid, (string)$u['username'], json_encode($reasons, JSON_UNESCAPED_UNICODE),
-                  $note, $banAccount ? 1 : 0, $banDays, $banUntil, $purge ? 1 : 0,
-                  $banIp ? 1 : 0, $byUid, $now)
-        );
+        if (col_ok('discipline_reports', 'oid')) {
+            $rid = db_insert(
+                'INSERT INTO discipline_reports (user_id, username, reasons, note, banned, ban_days, ban_until, purged, ip_banned, by_uid, views, oid, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)',
+                array($uid, (string)$u['username'], json_encode($reasons, JSON_UNESCAPED_UNICODE),
+                      $note, $banAccount ? 1 : 0, $banDays, $banUntil, $purge ? 1 : 0,
+                      $banIp ? 1 : 0, $byUid, oid_new('discipline_reports'), $now)
+            );
+        } else {
+            $rid = db_insert(
+                'INSERT INTO discipline_reports (user_id, username, reasons, note, banned, ban_days, ban_until, purged, ip_banned, by_uid, views, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)',
+                array($uid, (string)$u['username'], json_encode($reasons, JSON_UNESCAPED_UNICODE),
+                      $note, $banAccount ? 1 : 0, $banDays, $banUntil, $purge ? 1 : 0,
+                      $banIp ? 1 : 0, $byUid, $now)
+            );
+        }
         $created++;
 
         if ($banAccount) {
@@ -282,6 +292,7 @@ function discipline_item(array $r): array
     $rid    = (int)($r['id'] ?? 0);
     return array(
         'id'         => $rid,
+        'oid'        => (string)($r['oid'] ?? ''),
         'user_id'    => $uid,
         'username'   => (string)($r['username'] ?? ''),
         'username_now' => $uid > 0

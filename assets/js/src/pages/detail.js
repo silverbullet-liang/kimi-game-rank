@@ -1,7 +1,7 @@
 /**
  * 作品详情页：雷达图 + 六维明细 + 介绍 + 评论区
  */
-import { api, state, esc, toast, dialog, btnLoading, userName, isAdminish, isBlocked } from '../core.js';
+import { api, state, esc, toast, dialog, btnLoading, userName, isAdminish, isBlocked, oidTag } from '../core.js';
 import { setHeroDst } from '../transitions.js';
 import { navigate } from '../router.js';
 
@@ -75,7 +75,7 @@ export async function renderDetail(container, ctx) {
         ${d.html_url ? '打开作品（CDN 直链）' : '查看作品分享链接'}
       </button>
       <div class="tiny" style="margin-top:6px;word-break:break-all">${esc(d.link)}</div>` : ''}
-      <div class="tiny" style="margin-top:8px">作品 ID：${esc(d.source_id || '')} · 收录于 ${esc(d.added_at || '')}</div>
+      <div class="tiny" style="margin-top:8px">编号 ${oidTag(d.oid)} · 作品 ID：${esc(d.source_id || '')} · 收录于 ${esc(d.added_at || '')}</div>
     </div>
 
     <div class="card">
@@ -407,6 +407,7 @@ function commentNode(c, workId, reload, ttype) {
       <span class="head">
         ${userName(c.username, c.role, c.reports)}
         <span class="tiny">${esc(c.time)}</span>
+        ${oidTag(c.oid)}
       </span>
       <span class="text">${c.reply_to ? `<span class="reply-to">@${esc(c.reply_to)}</span> ` : ''}${folded
         ? `<span class="blocked-note" data-reveal>${noteText}</span><span class="blocked-body" hidden>${esc(c.content)}</span>`

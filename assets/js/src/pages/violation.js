@@ -6,7 +6,7 @@
  *     顶部给出说明，下方逐条列出理由，再往下是评论区；
  *   · renderDiscipline —— 公开的通报列表与单条详情（#/discipline[/id]）。
  */
-import { api, esc, toast, $, on, btnLoading, userName, namePair, badge, state, discStatusText, discDaysText } from '../core.js';
+import { api, esc, toast, $, on, btnLoading, userName, namePair, badge, state, discStatusText, discDaysText, oidTag } from '../core.js';
 import { navigate } from '../router.js';
 import { renderComments } from './detail.js';
 
@@ -65,7 +65,7 @@ async function paintDetail(container, id, mine) {
       <div class="row" style="align-items:center;gap:10px">
         <img class="avatar" src="${esc(d.avatar)}" width="40" height="40" draggable="false" alt="">
         <div style="flex:1">
-          <div>${namePair(d.username, d.username_now)}</div>
+          <div>${namePair(d.username, d.username_now)} ${oidTag(d.oid)}</div>
           <div class="tiny muted">通报于 ${esc(d.created)} · 浏览 ${Number(d.views || 0)}</div>
         </div>
       </div>
@@ -135,7 +135,7 @@ export async function renderDiscipline(container, ctx) {
         <div class="row" style="align-items:center;gap:10px">
           <img class="avatar" src="${esc(it.avatar)}" width="36" height="36" draggable="false" alt="">
           <div style="flex:1;min-width:0">
-            <div>${namePair(it.username, it.username_now)} ${discChip(it)}</div>
+            <div>${namePair(it.username, it.username_now)} ${discChip(it)} ${oidTag(it.oid)}</div>
             <div class="tiny muted">${esc(it.created)} · 封禁 ${esc(discDaysText(it))} · 评论 ${Number(it.comments || 0)}</div>
           </div>
         </div>

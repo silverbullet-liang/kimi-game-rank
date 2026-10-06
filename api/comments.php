@@ -40,8 +40,9 @@ switch ($action) {
         $uid = $ident['role'] === 'admin' ? admin_uid() : (int)(isset($ident['uid']) ? $ident['uid'] : 0);
 
         $rflag = col_ok('comments', 'review_flag') ? 'c.review_flag' : "'' AS review_flag";
+        $oidSel = col_ok('comments', 'oid') ? 'c.oid' : "'' AS oid";
         $rows = db_all(
-            'SELECT c.id, c.user_id, c.parent_id, c.content, c.is_deleted, c.is_blocked, c.created_at, '
+            'SELECT c.id, ' . $oidSel . ', c.user_id, c.parent_id, c.content, c.is_deleted, c.is_blocked, c.created_at, '
             . $rflag . ', u.username, u.role
              FROM comments c JOIN users u ON u.id = c.user_id
              WHERE c.work_id = ? AND c.target_type = ? ORDER BY c.id ASC LIMIT 800',
@@ -102,6 +103,7 @@ switch ($action) {
         $make = function ($r, $replyTo) use ($votes, $counts, $uid, $reports) {
             return array(
                 'id'       => (int)$r['id'],
+                'oid'      => (string)($r['oid'] ?? ''),
                 'uid'      => (int)$r['user_id'],
                 'username' => (string)$r['username'],
                 'role'     => (string)$r['role'],

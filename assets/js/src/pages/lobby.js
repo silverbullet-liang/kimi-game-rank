@@ -6,7 +6,7 @@
  *
  * 注意：本文件为合并构建的源文件，勿出现重复函数名（tools/jscheck.py 会校验）。
  */
-import { api, state, esc, toast, btnLoading, dialog, userName, isAdminish, bindImageViewer } from '../core.js';
+import { api, state, esc, toast, btnLoading, dialog, userName, isAdminish, bindImageViewer, oidTag } from '../core.js';
 import { mdToHtml } from '../md.js';
 import { navigate } from '../router.js';
 
@@ -255,7 +255,7 @@ async function mountWorld(body) {
       ? ' · <button class="link" data-del="1" style="border:0;background:0;font-size:12px">删除</button>' : '';
     el.innerHTML = '<span class="av"><img src="' + esc(m.avatar) + '" alt="" draggable="false" style="user-select:none"></span>'
       + '<span class="bubble-wrap">'
-      +   '<span class="who">' + userName(m.username, m.role) + ' · ' + esc(m.time) + recallBtn + delBtn + '</span>'
+      +   '<span class="who">' + userName(m.username, m.role) + ' · ' + esc(m.time) + recallBtn + delBtn + (m.oid ? ' ' + oidTag(m.oid) : '') + '</span>'
       +   '<div class="bubble">' + inner + '</div>'
       +   (!m.recalled && m.flag === 'middle'
             ? '<span class="msg-flag" title="系统认为这条内容可能有恶意，但仍予放行">可能有恶意'
@@ -678,7 +678,7 @@ async function mountAi(body) {
       (d.items || []).forEach(m => {
         const text = m.role === 'user' ? m.content : stripToolTags(m.content);
         if (m.role !== 'user' && !text) { return; }
-        stream.appendChild(aiMsg(m.role === 'user' ? 'mine' : 'them', text));
+        stream.appendChild(aiMsg(m.role === 'user' ? 'mine' : 'them', text, m.oid));
       });
       if (!(d.items || []).length) {
         stream.innerHTML = '<div class="empty" style="padding:22px">开始和 AI 聊聊吧，可问榜单排名、作品详情或让我联网查资料</div>';
@@ -966,7 +966,7 @@ async function mountAi(body) {
 }
 
 /** AI 消息气泡 */
-function aiMsg(side, text) {
+function aiMsg(side, text, oid) {
   const el = document.createElement('div');
   el.className = 'msg' + (side === 'mine' ? ' mine' : '');
   const who = side === 'mine' ? esc(state.username) : 'AI 助手';
@@ -976,7 +976,7 @@ function aiMsg(side, text) {
   el.innerHTML = `
     <span class="av">${avatar}</span>
     <span class="bubble-wrap">
-      <span class="who">${who}</span>
+      <span class="who">${who}${oid ? ' ' + oidTag(oid) : ''}</span>
       <div class="bubble">${renderAiRich(text)}</div>
     </span>`;
   return el;

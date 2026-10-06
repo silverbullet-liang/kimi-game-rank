@@ -322,6 +322,12 @@ export function userName(name, role, reports, nowName) {
   return '<span class="uname">' + esc(name) + '</span>' + alt + badge(role) + tag;
 }
 
+/** 全站对象编号标签：#000000000042；无编号返回空串 */
+export function oidTag(id) {
+  const s = String(id == null ? '' : id).trim();
+  return s ? '<span class="oid" title="对象编号 ' + esc(s) + '">#' + esc(s) + '</span>' : '';
+}
+
 /** 通报里的用户名：改过名就同时给出「原名」与「现名」 */
 export function namePair(snap, now) {
   const a = String(snap == null ? '' : snap);
