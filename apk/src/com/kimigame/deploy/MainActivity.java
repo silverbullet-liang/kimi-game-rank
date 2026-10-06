@@ -1,25 +1,28 @@
 package com.kimigame.deploy;
 
-import android.app.Activity;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
-import android.widget.TextView;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.snackbar.Snackbar;
 
 import java.util.ArrayList;
 
 /**
- * 单 Activity + 自管理屏栈。
+ * 单 Activity + 自管理屏栈（基于 AppCompatActivity，跑 Material3 主题）。
  *
- * 为什么不用 Fragment / Navigation：这两个都要拉 androidx 依赖，
- * 本工程刻意零依赖（只内置一个 SSH 库），屏栈自己管更可控。
- * 状态全部在 Store 里，屏只管「照着 Store 画一遍」，所以返回时重建也不会丢东西。
+ * 屏状态全部在 Store 里，屏只管「照着 Store 画一遍」。
+ * 覆盖层改用 Material 的 BottomSheetDialog（自带滑入动画）；
+ * 底部提示改用 Snackbar。
  */
-public class MainActivity extends Activity {
+public class MainActivity extends AppCompatActivity {
 
     /** 一屏 = 一个能画出自己界面的对象（无状态，重建即可）；Activity 由外部传入，不静态持有 */
     public interface Screen {
@@ -35,12 +38,11 @@ public class MainActivity extends Activity {
         if (s instanceof Leavable) { ((Leavable) s).onLeave(); }
     }
 
-    private FrameLayout root;
+    private CoordinatorLayout root;
     private FrameLayout content;
-    private FrameLayout sheetLayer;
-    private View sheetView;
     private final ArrayList<Screen> stack = new ArrayList<Screen>();
     private Handler ui;
+    private BottomSheetDialog sheet;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,16 +50,11 @@ public class MainActivity extends Activity {
         Store.load(this);
         ui = new Handler(Looper.getMainLooper());
 
-        root = new FrameLayout(this);
+        root = new CoordinatorLayout(this);
         root.setBackgroundColor(Ui.surface(this));
 
         content = new FrameLayout(this);
         root.addView(content, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
-        sheetLayer = new FrameLayout(this);
-        sheetLayer.setVisibility(View.GONE);
-        root.addView(sheetLayer, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         setContentView(root);
@@ -104,69 +101,32 @@ public class MainActivity extends Activity {
         super.onBackPressed();
     }
 
-    /* ============================ 覆盖层 ============================ */
+    /* ============================ 覆盖层（BottomSheet） ============================ */
 
-    /** 弹出一张卡片（选择列表 / 确认 / 结果），点遮罩关闭 */
+    /** 弹出一张底部卡片（选择列表 / 确认 / 结果），下滑或点外部关闭 */
     public void showSheet(View card) {
         closeSheet();
-        FrameLayout scrim = new FrameLayout(this);
-        scrim.setBackgroundColor(Ui.c(this, R.color.md_scrim));
-        scrim.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) { closeSheet(); }
-        });
-        FrameLayout holder = new FrameLayout(this);
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.gravity = Gravity.CENTER;
-        lp.setMargins(Ui.dp(this, 20), Ui.dp(this, 24), Ui.dp(this, 20), Ui.dp(this, 24));
-        holder.setLayoutParams(lp);
-        holder.addView(card, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        holder.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) { /* 吞掉点击，避免穿透到遮罩 */ }
-        });
-        scrim.addView(holder);
-        sheetLayer.addView(scrim, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        sheetLayer.setVisibility(View.VISIBLE);
-        sheetView = scrim;
+        sheet = new BottomSheetDialog(this);
+        sheet.setContentView(card);
+        sheet.show();
     }
 
     public void closeSheet() {
-        if (sheetView != null) {
-            sheetLayer.removeAllViews();
-            sheetLayer.setVisibility(View.GONE);
-            sheetView = null;
+        if (sheet != null) {
+            sheet.dismiss();
+            sheet = null;
         }
     }
 
-    public boolean sheetOpen() { return sheetView != null; }
+    public boolean sheetOpen() { return sheet != null && sheet.isShowing(); }
 
     /* ============================ 底部提示 ============================ */
 
     public void toast(String msg) {
-        final TextView t = Ui.body(this, msg);
-        t.setTextColor(Ui.c(this, R.color.md_on_primary_container));
-        t.setBackground(Ui.fill(this, 12, Ui.primaryContainer(this)));
-        t.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 16), Ui.dp(this, 12));
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-        lp.bottomMargin = Ui.dp(this, 96);
-        t.setLayoutParams(lp);
-        t.setElevation(Ui.dp(this, 6));
-        root.addView(t);
-        ui.postDelayed(new Runnable() {
-            public void run() {
-                try { root.removeView(t); } catch (Exception ignored) { }
-            }
-        }, 2600);
-    }
-
-    /* ============================ 短工具 ============================ */
-
-    public static ViewGroup.LayoutParams match() {
-        return new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        Snackbar sb = Snackbar.make(root, msg, Snackbar.LENGTH_LONG);
+        sb.setAction("知道了", new View.OnClickListener() {
+            public void onClick(View v) { /* 收起 */ }
+        });
+        sb.show();
     }
 }

@@ -1,17 +1,19 @@
 package com.kimigame.deploy;
 
-import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
-import android.widget.TextView;
+
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.progressindicator.LinearProgressIndicator;
+import com.google.android.material.textview.MaterialTextView;
 
 /**
  * 全屏进度页。
  *
- * 进来自动开跑（两种模式共通：下载 → 解压 → 删冗余 → 处理站点 → 打包 → 存下载；
- * 自动部署末尾多一步上传）。所有更新都 post 回 UI 线程，后台线程只负责算。
- * 退出这一屏会取消任务（见 MainActivity.Leavable），不会留下还在下载的线程。
+ * 进来自动开跑（下载 → 解压 → 删冗余 → 处理站点 → 打包 → 存下载；自动部署末尾多一步上传）。
+ * 所有更新都 post 回 UI 线程；退出这一屏会取消任务。进度条用 Material 的 LinearProgressIndicator。
  */
 final class Run implements MainActivity.Screen, MainActivity.Leavable {
 
@@ -19,50 +21,50 @@ final class Run implements MainActivity.Screen, MainActivity.Leavable {
     private volatile boolean started = false;
     private volatile boolean done = false;
 
-    private Ui.Bar bar;
-    private TextView label;
-    private TextView detail;
+    private LinearProgressIndicator bar;
+    private MaterialTextView label;
+    private MaterialTextView detail;
     private LinearLayout logBox;
     private LinearLayout resultBox;
-    private TextView action;
+    private MaterialButton action;
     private String lastStep = "";
 
     public View render(final MainActivity a) {
         LinearLayout bd = Screens.body(a);
 
         /* ---- 进度 ---- */
-        LinearLayout top = Ui.card(a);
+        MaterialCardView top = Ui.card(a);
         label = Ui.title(a, "正在准备…");
-        top.addView(label);
         detail = Ui.sub(a, "");
-        Ui.add(top, detail, 8);
         bar = Ui.bar(a);
-        Ui.add(top, bar, 14);
+        Ui.add(top, label, 0);
+        Ui.add(top, detail, 8);
+        Ui.add(top, bar, 16);
         bd.addView(top);
 
-        /* ---- 过程记录（只记步骤，不刷每次进度） ---- */
-        LinearLayout logCard = Ui.card(a);
-        logCard.addView(Ui.title(a, "过程记录"));
+        /* ---- 过程记录 ---- */
+        MaterialCardView logCard = Ui.card(a);
         logBox = Ui.col(a);
-        Ui.add(logCard, logBox, 8);
+        Ui.add(logCard, Ui.title(a, "过程记录"), 0);
+        Ui.add(logCard, logBox, 10);
         Ui.add(bd, logCard, 14);
 
         resultBox = Ui.col(a);
         bd.addView(resultBox);
 
-        action = Ui.button(a, "取消", 2);
+        action = Ui.outlined(a, "取消");
         action.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 if (!done) { askCancel(a); } else { a.pop(); }
             }
         });
-        Ui.add(bd, action, 18);
+        Ui.add(bd, action, 20);
 
         if (!started) {
             started = true;
             start(a);
         }
-        return Screens.page(a, Screens.topBar(a, "正在部署", true), bd);
+        return Screens.page(a, Ui.topBar(a, "正在部署", true), bd);
     }
 
     /* ============================ 跑流程 ============================ */
@@ -96,11 +98,11 @@ final class Run implements MainActivity.Screen, MainActivity.Leavable {
     private void paint(String l, String d, float overall) {
         if (label != null) { label.setText(l); }
         if (detail != null) { detail.setText(d == null ? "" : d); }
-        if (bar != null) { bar.setValue(overall); }
+        if (bar != null) { bar.setProgressCompat(Math.round(overall * 1000f), true); }
         if (logBox != null && l != null && !l.equals(lastStep)) {
             lastStep = l;
-            Context c = logBox.getContext();
-            Ui.add(logBox, Ui.sub(c, "· " + l + (Store.blank(d) ? "" : "：" + d)), 6);
+            Ui.add(logBox, Ui.sub(logBox.getContext(), "· " + l
+                    + (Store.blank(d) ? "" : "：" + d)), 8);
         }
     }
 
@@ -108,59 +110,58 @@ final class Run implements MainActivity.Screen, MainActivity.Leavable {
         done = true;
         boolean bad = (err != null) || (r != null && !r.ok);
 
-        if (bar != null) { bar.setValue(1f); }
+        if (bar != null) { bar.setProgressCompat(1000, true); }
         if (label != null) { label.setText(err != null ? "出错了" : (bad ? "未完成" : "全部完成")); }
         if (detail != null) {
             detail.setText(err != null ? err
                     : (bad ? "没有可部署的站点" : "压缩包已保存到下载目录"));
         }
 
-        Context c = a;
         if (r != null && r.lines.size() > 0) {
-            LinearLayout res = Ui.card(a);
-            res.addView(Ui.title(a, "结果"));
+            MaterialCardView res = Ui.card(a);
+            Ui.add(res, Ui.title(a, "结果"), 0);
             for (int i = 0; i < r.lines.size(); i++) {
-                Ui.add(res, Ui.sub(c, "· " + r.lines.get(i)), 6);
+                Ui.add(res, Ui.sub(a, "· " + r.lines.get(i)), 8);
             }
             String where = Store.blank(r.outDirText) ? Deploy.outDirPath() : r.outDirText;
-            Ui.add(res, Ui.label(c, "下载位置"), 12);
-            Ui.add(res, Ui.mono(c, where, Ui.primary(c)), 6);
+            Ui.add(res, Ui.label(a, "下载位置"), 14);
+            Ui.add(res, Ui.mono(a, where, Ui.primary(a)), 6);
             Ui.add(resultBox, res, 14);
         }
 
         if (r != null && r.ok && !bad) {
-            LinearLayout tip = Ui.card(a);
-            tip.setBackground(Ui.fill(a, 20, Ui.surfaceLow(a)));
-            tip.addView(Ui.title(a, Store.MODE_AUTO.equals(Store.mode) ? "已自动上传" : "下一步"));
-            Ui.add(tip, Ui.sub(c, Store.MODE_AUTO.equals(Store.mode)
+            MaterialCardView tip = Ui.card(a);
+            Ui.add(tip, Ui.title(a, Store.MODE_AUTO.equals(Store.mode) ? "已自动上传" : "下一步"), 0);
+            Ui.add(tip, Ui.sub(a, Store.MODE_AUTO.equals(Store.mode)
                     ? "整站文件已传到你的主机。用浏览器打开站点域名，按向导完成初始化即可。"
-                    : "把压缩包解压后上传到主机根目录，再访问域名完成初始化。"), 8);
+                    : "把压缩包解压后上传到主机根目录，再访问域名完成初始化。"), 10);
             Ui.add(resultBox, tip, 14);
         }
 
         if (action != null) {
             action.setText(bad ? "返回" : "完成");
-            action.setBackground(Ui.clickable(a, 22, Ui.primary(a), 0xFFFFFFFF));
+            action.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Ui.primary(a)));
             action.setTextColor(Ui.onPrimary(a));
+            action.setStrokeWidth(0);
         }
     }
 
     private void askCancel(final MainActivity a) {
-        LinearLayout sheet = Ui.card(a);
+        LinearLayout sheet = Ui.col(a);
         sheet.addView(Ui.title(a, "停止部署？"));
-        Ui.add(sheet, Ui.sub(a, "正在进行的下载会被中断，已经完成的站点不受影响。"), 8);
+        Ui.add(sheet, Ui.sub(a, "正在进行的下载会被中断，已经完成的站点不受影响。"), 10);
         LinearLayout row = Ui.row(a);
         row.setPadding(0, Ui.dp(a, 16), 0, 0);
-        TextView cancelBtn = Ui.button(a, "继续", 2);
+        MaterialButton cancelBtn = Ui.outlined(a, "继续");
         cancelBtn.setLayoutParams(new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         cancelBtn.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) { a.closeSheet(); }
         });
-        TextView ok = Ui.button(a, "停止", 3);
+        MaterialButton ok = Ui.danger(a, "停止");
         LinearLayout.LayoutParams olp = new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        olp.leftMargin = Ui.dp(a, 10);
+        olp.leftMargin = Ui.dp(a, 12);
         ok.setLayoutParams(olp);
         ok.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -172,8 +173,8 @@ final class Run implements MainActivity.Screen, MainActivity.Leavable {
         });
         row.addView(cancelBtn);
         row.addView(ok);
-        sheet.addView(row);
-        a.showSheet(sheet);
+        Ui.add(sheet, row, 0);
+        a.showSheet(Screens.padSheet(a, sheet));
     }
 
     /** 离开这一屏：任务还在跑就取消 */

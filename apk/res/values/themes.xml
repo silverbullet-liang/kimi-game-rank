@@ -1,23 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- MD3 外壳：无 ActionBar，全部界面自绘（不使用原生控件外观） -->
+<!--
+  MD3 主题：直接继承 Material Components 的 Material3 DayNight 外壳，
+  品牌色映射到站点色板。状态栏图标亮/暗由 Material3 的 DayNight 自动处理。
+-->
 <resources>
-    <style name="AppTheme.Base" parent="@android:style/Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@color/md_background</item>
-        <item name="android:colorBackground">@color/md_background</item>
-        <item name="android:textColorPrimary">@color/md_on_surface</item>
-        <item name="android:textColorSecondary">@color/md_on_surface_variant</item>
-        <item name="android:textColorHint">@color/md_outline</item>
-        <item name="android:colorAccent">@color/md_primary</item>
-        <item name="android:statusBarColor">@color/md_surface</item>
-        <item name="android:navigationBarColor">@color/md_surface</item>
+    <style name="Theme.KimiDeploy" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/kd_primary</item>
+        <item name="colorOnPrimary">@color/kd_on_primary</item>
+        <item name="colorPrimaryContainer">@color/kd_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/kd_on_primary_container</item>
+
+        <item name="colorSecondary">@color/kd_primary</item>
+        <item name="colorSecondaryContainer">@color/kd_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/kd_on_secondary_container</item>
+
+        <item name="android:colorBackground">@color/kd_surface</item>
+        <item name="colorSurface">@color/kd_surface</item>
+        <item name="colorSurfaceContainerLow">@color/kd_surface_low</item>
+        <item name="colorSurfaceContainer">@color/kd_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/kd_surface_high</item>
+        <item name="colorOnSurface">@color/kd_on_surface</item>
+        <item name="colorOnSurfaceVariant">@color/kd_on_surface_variant</item>
+        <item name="colorOutline">@color/kd_outline</item>
+        <item name="colorOutlineVariant">@color/kd_outline_variant</item>
+
+        <item name="colorError">@color/kd_error</item>
+        <item name="colorOnError">@color/kd_on_error</item>
+        <item name="colorErrorContainer">@color/kd_error_container</item>
+        <item name="colorOnErrorContainer">@color/kd_on_error_container</item>
+
+        <item name="android:statusBarColor">@color/kd_surface</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@color/kd_surface</item>
         <item name="android:windowLightNavigationBar">true</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
-        <item name="android:windowDisablePreview">true</item>
-        <item name="android:colorEdgeEffect">@color/md_primary</item>
-    </style>
-
-    <style name="AppTheme" parent="AppTheme.Base">
-        <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>

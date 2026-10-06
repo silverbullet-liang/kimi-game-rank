@@ -1,6 +1,7 @@
 package com.kimigame.deploy;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
@@ -110,14 +111,18 @@ final class Repo {
     /** tags 接口：tag -> 日期 */
     private static Map<String, String> apiTags() throws IOException {
         String js = Net.getString(API + "tags?per_page=100", 15000);
-        JSONArray arr = new JSONArray(js);
         Map<String, String> out = new LinkedHashMap<String, String>();
-        for (int i = 0; i < arr.length(); i++) {
-            JSONObject o = arr.getJSONObject(i);
-            String name = o.optString("name", "");
-            if (name.length() == 0) { continue; }
-            String date = o.optJSONObject("commit") != null ? o.optJSONObject("commit").optString("sha", "") : "";
-            out.put(name, date.length() > 7 ? date.substring(0, 7) : "");
+        try {
+            JSONArray arr = new JSONArray(js);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject o = arr.getJSONObject(i);
+                String name = o.optString("name", "");
+                if (name.length() == 0) { continue; }
+                String date = o.optJSONObject("commit") != null ? o.optJSONObject("commit").optString("sha", "") : "";
+                out.put(name, date.length() > 7 ? date.substring(0, 7) : "");
+            }
+        } catch (JSONException e) {
+            throw new IOException("tags 解析失败：" + e.getMessage());
         }
         return out;
     }
@@ -147,15 +152,18 @@ final class Repo {
     /** 退回方案：读文件树，逐个从 raw 拉，边拉边写进 zip */
     private static void fetchByTree(String tag, File dest, Net.Progress cb, Net.Cancel cancel) throws IOException {
         String js = Net.getString(API + "git/trees/" + tag + "?recursive=1", 20000);
-        JSONArray tree = new JSONObject(js).optJSONArray("tree");
-        if (tree == null) { throw new IOException("文件树为空"); }
-
         List<String> files = new ArrayList<String>();
-        for (int i = 0; i < tree.length(); i++) {
-            JSONObject o = tree.getJSONObject(i);
-            if ("blob".equals(o.optString("type")) && o.optLong("size", 0) < 8L * 1024 * 1024) {
-                files.add(o.optString("path"));
+        try {
+            JSONArray tree = new JSONObject(js).optJSONArray("tree");
+            if (tree == null) { throw new IOException("文件树为空"); }
+            for (int i = 0; i < tree.length(); i++) {
+                JSONObject o = tree.getJSONObject(i);
+                if ("blob".equals(o.optString("type")) && o.optLong("size", 0) < 8L * 1024 * 1024) {
+                    files.add(o.optString("path"));
+                }
             }
+        } catch (JSONException e) {
+            throw new IOException("文件树解析失败：" + e.getMessage());
         }
         if (files.isEmpty()) { throw new IOException("文件树里没有可下载文件"); }
 

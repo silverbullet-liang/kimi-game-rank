@@ -161,6 +161,7 @@ final class Deploy {
             /* ---- 7 上传（自动模式） ---- */
             if (auto) {
                 final float ub = 1f - uploadSlice;
+                final int idx = i;
                 onStep(cb, "正在上传", s.name + " · " + ("ssh".equals(s.conn) ? "SSH" : "FTP"), ub + uploadSlice * (float) i / n);
                 if ("ssh".equals(s.conn) && !Upload.sftpAvailable()) {
                     throw new IOException("本次构建未内置 SSH 库，请改用 FTP，或改用「下载后手动」");
@@ -170,7 +171,7 @@ final class Deploy {
                         if (cb == null) { return; }
                         String d = Net.bytes(done) + " / " + Net.bytes(total)
                                 + (cur.length() > 0 ? " · " + cur : "");
-                        cb.on("正在上传", d, ub + uploadSlice * (float) (i + (total > 0 ? (double) done / total : 0)) / n);
+                        cb.on("正在上传", d, ub + uploadSlice * (float) (idx + (total > 0 ? (double) done / total : 0)) / n);
                     }
                 }, cancel);
                 res.lines.add(s.name + "：已上传到 " + s.host

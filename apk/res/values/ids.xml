@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 用于在代码里给卡片挂内部内容容器 -->
+<resources>
+    <item name="card_content" type="id" />
+</resources>

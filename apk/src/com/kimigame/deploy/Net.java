@@ -129,7 +129,7 @@ final class Net {
     /** 人类可读的速度 */
     static String speed(double bytesPerSec) {
         if (bytesPerSec <= 0) { return "—"; }
-        return bytes(bytesPerSec) + "/s";
+        return bytes((long) bytesPerSec) + "/s";
     }
 
     /** 人类可读的剩余时间 */
