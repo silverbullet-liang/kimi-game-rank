@@ -684,6 +684,9 @@ function storage_gc(bool $force = false): int
     /* 世界对话图片：孤儿图与沉底图一并清掉（省存储；消息本身保留） */
     if (function_exists('chat_media_gc')) { $n += chat_media_gc(); }
 
+    /* 监测明细：超过保留天数的记录一并清掉（省空间与 inode） */
+    if (function_exists('mon_cleanup')) { $n += mon_cleanup(); }
+
     return $n;
 }
 

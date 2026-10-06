@@ -1392,3 +1392,16 @@ html[data-skin="sketch"]::view-transition-group(hero) { animation-duration: .4s;
 .mon-btn.ghost { background:transparent; color:var(--mfg); border:1px solid var(--mline); }
 .mon-sk { height:140px; border-radius:12px; background:linear-gradient(90deg,var(--msoft),var(--mcard),var(--msoft)); }
 .mon-empty { color:var(--mmut); font-size:13px; padding:18px 0; text-align:center; }
+.mon-click { cursor:pointer; }
+.mon-click:hover td { background:var(--msoft); }
+.mon-bad { color:#dc2626; }
+.mon-unacked td { background:var(--msoft); }
+.mon-tl { list-style:none; margin:0; padding:0; }
+.mon-tl li { display:flex; gap:10px; align-items:baseline; padding:6px 0; font-size:13px; border-bottom:1px dashed var(--mline); }
+.mon-tl li:last-child { border-bottom:0; }
+.mon-tl .mon-tl-t { color:var(--mmut); flex:0 0 auto; font-variant-numeric:tabular-nums; }
+.mon-tl .mon-tl-k { flex:0 0 52px; color:var(--macc); font-weight:600; }
+.mon-tl .mon-tl-n { flex:0 1 auto; min-width:120px; }
+.mon-tl .mon-tl-m { flex:1 1 auto; color:var(--mmut); }
+.mon-tl li.lvl-error .mon-tl-k { color:#dc2626; }
+.mon-tl li.lvl-warn .mon-tl-k { color:#d97706; }

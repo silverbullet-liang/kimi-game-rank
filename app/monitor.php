@@ -58,3 +58,21 @@ function mon_apdex(array $msList, int $t = 1200): float
     }
     return round(($sat + $tol / 2) / $n, 3);
 }
+
+/**
+ * 明细清理：删除超过保留天数的 web_events。
+ * 共享主机没有 cron，由 storage_gc 抽样触发（见 app/helpers.php）。
+ * 返回删除行数；表不存在或失败返回 0。
+ */
+function mon_cleanup(): int
+{
+    try {
+        if (!table_exists('web_events')) { return 0; }
+        $days = max(1, min(90, (int)setting_get('monitor.keep_days', '7')));
+        return (int)db_exec('DELETE FROM web_events WHERE created_at < ?',
+            array(gmdate('Y-m-d H:i:s', time() - $days * 86400)));
+    } catch (Throwable $e) {
+        app_log('mon_cleanup failed: ' . $e->getMessage());
+        return 0;
+    }
+}

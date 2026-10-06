@@ -116,6 +116,8 @@ if ($action === 'stats') {
         WHERE os<>'' AND created_at >= ? GROUP BY os ORDER BY n DESC LIMIT 8", array($from));
     $nets = db_all("SELECT net name, COUNT(DISTINCT sid) n FROM web_events
         WHERE net<>'' AND created_at >= ? GROUP BY net ORDER BY n DESC LIMIT 8", array($from));
+    $screens = db_all("SELECT screen name, COUNT(DISTINCT sid) n FROM web_events
+        WHERE screen<>'' AND created_at >= ? GROUP BY screen ORDER BY n DESC LIMIT 8", array($from));
     $resFail = db_all("SELECT name, COUNT(*) n, MAX(created_at) last FROM web_events
         WHERE kind='resource' AND created_at >= ? GROUP BY name ORDER BY n DESC LIMIT 10", array($from));
 
@@ -145,6 +147,7 @@ if ($action === 'stats') {
         'trend' => $trend,
         'top_error' => $topErr, 'top_slow_api' => $topSlowApi, 'top_slow_page' => $topSlowPage, 'top_pv' => $topPv,
         'browsers' => $browsers, 'systems' => $systems, 'nets' => $nets, 'res_fail' => $resFail,
+        'screens' => $screens,
     ));
 }
 
@@ -194,10 +197,65 @@ if ($action === 'events') {
              'page' => $page, 'has_more' => ($off + count($rows)) < $total));
 }
 
+/* ---------- 会话追踪：会话列表 ---------- */
+if ($action === 'sessions') {
+    list($from, ) = mon_window(param_str('range', '7d'));
+    $only = param_str('only', 'all') === 'bad';
+    $having = $only ? ' HAVING bad > 0' : '';
+    $rows = db_all("SELECT sid,
+            MIN(created_at) first_t, MAX(created_at) last_t,
+            COUNT(*) total,
+            SUM(kind='pv') pv,
+            SUM(kind='js') js,
+            SUM(kind='api') api,
+            SUM(kind='api' AND status='fail') apifail,
+            SUM(kind='api' AND v1>1000) apislow,
+            MAX(CASE WHEN kind='perf' AND name='load' AND v1>0 THEN v1 ELSE 0 END) load_ms,
+            MAX(browser) browser, MAX(os) os, MAX(screen) screen, MAX(net) net, MAX(uid) uid,
+            (SUM(kind='js') + SUM(kind='api' AND status='fail') + SUM(kind='api' AND v1>1000)) bad
+        FROM web_events WHERE sid<>'' AND created_at >= ?
+        GROUP BY sid" . $having . " ORDER BY last_t DESC LIMIT 60", array($from));
+    $items = array();
+    foreach ($rows as $r) {
+        $items[] = array(
+            'sid' => (string)$r['sid'],
+            'first' => to_local((string)$r['first_t']),
+            'last' => to_local((string)$r['last_t']),
+            'dur' => max(0, (int)strtotime((string)$r['last_t'] . ' UTC') - (int)strtotime((string)$r['first_t'] . ' UTC')),
+            'total' => (int)$r['total'], 'pv' => (int)$r['pv'], 'js' => (int)$r['js'],
+            'api' => (int)$r['api'], 'apifail' => (int)$r['apifail'], 'apislow' => (int)$r['apislow'],
+            'bad' => (int)$r['bad'], 'load' => (int)$r['load_ms'],
+            'browser' => (string)$r['browser'], 'os' => (string)$r['os'],
+            'screen' => (string)$r['screen'], 'net' => (string)$r['net'], 'uid' => (int)$r['uid'],
+        );
+    }
+    ok(array('range' => param_str('range', '7d'), 'only' => $only ? 'bad' : 'all', 'items' => $items));
+}
+
+/* ---------- 会话追踪：单会话时间线 ---------- */
+if ($action === 'session') {
+    list($from, ) = mon_window(param_str('range', '7d'));
+    $sid = substr((string)preg_replace('/[^A-Za-z0-9_\-]/', '', param_str('sid', '')), 0, 40);
+    if ($sid === '') { fail(400, '参数错误'); }
+    $rows = db_all("SELECT id, kind, level, name, page, msg, v1, v2, status, browser, os, screen, net, created_at
+        FROM web_events WHERE sid = ? AND created_at >= ? ORDER BY id ASC LIMIT 300", array($sid, $from));
+    $items = array();
+    foreach ($rows as $r) {
+        $items[] = array(
+            'id' => (int)$r['id'], 'kind' => (string)$r['kind'], 'level' => (string)$r['level'],
+            'name' => mon_clean((string)$r['name']), 'msg' => (string)$r['msg'], 'page' => (string)$r['page'],
+            'v1' => (int)$r['v1'], 'v2' => (int)$r['v2'], 'status' => (string)$r['status'],
+            'time' => to_local((string)$r['created_at']),
+        );
+    }
+    ok(array('sid' => $sid, 'items' => $items));
+}
+
 /* ---------- 告警列表 ---------- */
 if ($action === 'alerts') {
     $rows = db_all("SELECT id, rule, level, message, value, threshold, acked, created_at FROM web_alerts ORDER BY id DESC LIMIT 50");
-    ok(array('items' => array_map(function ($r) {
+    $unacked = (int)db_val("SELECT COUNT(*) FROM web_alerts WHERE acked = 0");
+    ok(array('unacked' => $unacked, 'items' => array_map(function ($r) {
         return array('id' => (int)$r['id'], 'rule' => (string)$r['rule'], 'level' => (string)$r['level'],
             'message' => (string)$r['message'], 'value' => (int)$r['value'], 'threshold' => (int)$r['threshold'],
             'acked' => (int)$r['acked'] === 1, 'time' => to_local((string)$r['created_at']));
@@ -235,9 +293,7 @@ if ($action === 'alert_ack') {
 /* ---------- 清理过期明细 ---------- */
 if ($action === 'purge') {
     csrf_verify();
-    $days = max(1, min(90, (int)setting_get('monitor.keep_days', '7')));
-    $n = db_exec('DELETE FROM web_events WHERE created_at < ?', array(gmdate('Y-m-d H:i:s', time() - $days * 86400)));
-    ok(array('deleted' => $n), '已清理');
+    ok(array('deleted' => mon_cleanup()), '已清理');
 }
 
 fail(400, '未知操作');

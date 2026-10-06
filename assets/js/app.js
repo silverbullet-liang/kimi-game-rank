@@ -3824,10 +3824,11 @@ async function renderLogin(container) {
 
 const MT_KEY = 'kimgr_mon_theme';
 const MON_TABS = [
-  ['overview', '总览'], ['js', 'JS 错误'], ['api', '接口'],
-  ['perf', '加载性能'], ['resource', '资源'], ['settings', '设置'],
+  ['overview', '总览'], ['js', 'JS 错误'], ['api', '接口'], ['perf', '加载性能'],
+  ['resource', '资源'], ['session', '会话追踪'], ['custom', '自定义上报'],
+  ['alerts', '告警'], ['settings', '设置'],
 ];
-const st = { range: '7d', tab: 'overview', theme: 'light' };
+const st = { range: '7d', tab: 'overview', theme: 'light', sessOnly: 'all' };
 
 async function renderMonitor(container) {
   if (!isAdminish()) {
@@ -3890,6 +3891,8 @@ async function monRenderBody(container) {
   try {
     if (st.tab === 'overview') { return await monOverview(box); }
     if (st.tab === 'settings') { return await monSettings(box); }
+    if (st.tab === 'session') { return await monSessions(box); }
+    if (st.tab === 'alerts') { return await monAlerts(box); }
     await monEvents(box, st.tab);
   } catch (e) {
     box.innerHTML = `<div class="mon-empty">${esc(e.message)}</div>`;
@@ -3942,8 +3945,78 @@ async function monOverview(box) {
       ${monListCard('浏览器分布', (d.browsers || []).map(x => [x.name, x.n]))}
       ${monListCard('操作系统分布', (d.systems || []).map(x => [x.name, x.n]))}
       ${monListCard('网络分布', (d.nets || []).map(x => [x.name, x.n]))}
+      ${monListCard('屏幕分辨率', (d.screens || []).map(x => [x.name, x.n]))}
       ${monListCard('资源加载失败', (d.res_fail || []).map(x => [x.name, x.n + ' 次']))}
     </div>`;
+}
+
+async function monSessions(box) {
+  const only = st.sessOnly || 'all';
+  const d = await api('monitor.php', 'sessions', { range: st.range, only: only });
+  const items = d.items || [];
+  const rows = items.length ? items.map(sv => `<tr data-sid="${esc(sv.sid)}" class="mon-click">
+      <td class="mon-ell" title="${esc(sv.sid)}">${esc(sv.sid)}</td>
+      <td>${esc(sv.last)}</td><td>${sv.dur}s</td><td>${sv.pv}</td><td>${sv.js}</td><td>${sv.api}</td>
+      <td>${sv.apislow}</td><td>${sv.apifail}</td><td>${sv.bad ? '<b class="mon-bad">' + sv.bad + '</b>' : '0'}</td>
+      <td>${esc(sv.browser)}</td><td>${esc(sv.screen || '')}</td></tr>`).join('')
+    : '<tr><td class="mon-empty" colspan="11">暂无数据</td></tr>';
+  box.innerHTML =
+    monCard('筛选', `<div class="mon-seg" id="monSessOnly">
+      <button type="button" data-o="all"${only === 'all' ? ' class="on"' : ''}>全部会话</button>
+      <button type="button" data-o="bad"${only === 'bad' ? ' class="on"' : ''}>仅异常</button>
+    </div>`) +
+    monCard('会话列表（' + items.length + '）',
+      `<table class="table"><thead><tr><th>会话</th><th>最近活动</th><th>时长</th><th>PV</th><th>JS</th>
+        <th>接口</th><th>慢</th><th>失败</th><th>异常</th><th>浏览器</th><th>屏幕</th></tr></thead>
+        <tbody>${rows}</tbody></table>`) +
+    '<div id="monSessDetail"></div>';
+
+  const seg = box.querySelector('#monSessOnly');
+  seg.addEventListener('click', e => {
+    const b = e.target.closest('[data-o]'); if (!b) { return; }
+    st.sessOnly = b.dataset.o;
+    monSessions(box);
+  });
+  box.querySelectorAll('tr[data-sid]').forEach(tr =>
+    tr.addEventListener('click', () => monSessionDetail(box, tr.dataset.sid)));
+}
+
+async function monSessionDetail(box, sid) {
+  const el = box.querySelector('#monSessDetail'); if (!el) { return; }
+  el.innerHTML = '<div class="mon-sk"></div>';
+  const KIND = { pv: '访问', js: 'JS', api: '接口', resource: '资源', perf: '性能', custom: '自定义', error: '错误' };
+  try {
+    const d = await api('monitor.php', 'session', { sid: sid, range: st.range });
+    const items = d.items || [];
+    el.innerHTML = monCard('会话时间线 · ' + sid,
+      '<ul class="mon-tl">' + (items.length ? items.map(it =>
+        `<li class="lvl-${esc(it.level)}">
+          <span class="mon-tl-t">${esc(it.time)}</span>
+          <span class="mon-tl-k">${esc(KIND[it.kind] || it.kind)}</span>
+          <span class="mon-tl-n mon-ell" title="${esc(it.name)}">${esc(it.name)}</span>
+          <span class="mon-tl-m mon-ell" title="${esc(it.msg)}">${esc(it.msg || '')}${it.v1 ? ' · ' + it.v1 + (it.kind === 'api' ? ' ms' : '') : ''}</span>
+        </li>`).join('') : '<li class="mon-empty">暂无数据</li>') + '</ul>');
+  } catch (e) {
+    el.innerHTML = '<div class="mon-empty">' + esc(e.message) + '</div>';
+  }
+}
+
+async function monAlerts(box) {
+  const d = await api('monitor.php', 'alerts');
+  const items = d.items || [];
+  const rows = items.length ? items.map(a => `<tr class="${a.acked ? '' : 'mon-unacked'}">
+      <td>${esc(a.time)}</td><td>${esc(a.level)}</td>
+      <td class="mon-ell" title="${esc(a.message)}">${esc(a.message)}</td>
+      <td>${a.value}</td><td>${a.threshold}</td>
+      <td>${a.acked ? '已确认' : `<button class="mon-btn ghost" type="button" data-ack="${a.id}">确认</button>`}</td></tr>`).join('')
+    : '<tr><td class="mon-empty" colspan="6">暂无数据</td></tr>';
+  box.innerHTML = monCard('告警记录（未确认 ' + (Number(d.unacked) || 0) + '）',
+    `<table class="table"><thead><tr><th>时间</th><th>级别</th><th>内容</th><th>实测</th><th>阈值</th><th>操作</th></tr></thead>
+      <tbody>${rows}</tbody></table>`);
+  box.querySelectorAll('[data-ack]').forEach(b => b.addEventListener('click', async () => {
+    try { await api('monitor.php', 'alert_ack', { id: b.dataset.ack }); toast('已确认'); monAlerts(box); }
+    catch (e) { toast(e.message, 'err'); }
+  }));
 }
 
 async function monEvents(box, kind) {
