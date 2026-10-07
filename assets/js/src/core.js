@@ -610,13 +610,128 @@ export function readGeo() {
   } catch (e) { return null; }
 }
 
-/** 封禁状态本地缓存：启动时先据此上锁，接口返回后再校正；解封即清 */
-export function saveBanCache(b) {
-  try { if (b) { localStorage.setItem(BAN_KEY, JSON.stringify(b)); } else { localStorage.removeItem(BAN_KEY); } } catch (e) {}
+/* ---------- 封禁状态的本地冗余 ----------
+ * 同一份状态写入浏览器所有可用的持久位置，读时任一命中即视为封禁：
+ *   localStorage  ｜ sessionStorage ｜ Cookie ｜ window.name
+ *   IndexedDB     ｜ Cache Storage（异步）
+ * 目的是让「随手清一下缓存」不能立刻恢复访问；解封时逐处清除。
+ * 全部写入都包在 try/catch 里：任一存储不可用都不影响其余，也不影响主流程。 */
+const BAN_COOKIE = 'kimgr_b';
+const BAN_IDB = 'kimgr_ban_db';
+const BAN_CACHE = 'kimgr-ban-v1';
+const BAN_CACHE_URL = '/__kimgr_ban';
+const BAN_STORE = 'kv';
+const BAN_NAME_RE = /^kimgr-ban\|/;
+
+/** 最小占位对象：Cookie 里只存到期标记，读到后先用它上锁，再由接口补全详情 */
+function banStub() {
+  return { alive: true, username: '', reasons: [], note: '', ban_until: '', ip_banned: false };
 }
 
+function banCookieWrite(b) {
+  try {
+    if (b) {
+      const till = b.ban_until ? Math.floor(new Date(b.ban_until).getTime() / 1000) : 0;
+      const d = new Date();
+      d.setTime(d.getTime() + 30 * 864e5);
+      document.cookie = BAN_COOKIE + '=' + (till > 0 ? till : 'perm')
+        + ';expires=' + d.toUTCString() + ';path=/;SameSite=Lax';
+    } else {
+      document.cookie = BAN_COOKIE + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax';
+    }
+  } catch (e) {}
+}
+
+function banCookieRead() {
+  try {
+    const m = document.cookie.match(/(?:^|;\s*)kimgr_b=([^;]*)/);
+    if (!m || !m[1]) { return null; }
+    const v = m[1];
+    if (v !== 'perm') {
+      const till = Number(v);
+      if (till > 0 && till * 1000 < Date.now()) { return null; }   // 已到解封时间
+    }
+    return banStub();
+  } catch (e) { return null; }
+}
+
+function banIdb(mode, b) {
+  return new Promise(function (resolve) {
+    try {
+      if (!window.indexedDB) { return resolve(null); }
+      const req = indexedDB.open(BAN_IDB, 1);
+      req.onupgradeneeded = function () {
+        try { if (!req.result.objectStoreNames.contains(BAN_STORE)) { req.result.createObjectStore(BAN_STORE); } } catch (e) {}
+      };
+      req.onerror = function () { resolve(null); };
+      req.onsuccess = function () {
+        const db = req.result;
+        try {
+          const st = db.transaction(BAN_STORE, mode === 'read' ? 'readonly' : 'readwrite').objectStore(BAN_STORE);
+          const op = (mode === 'read') ? st.get(BAN_KEY) : (b ? st.put(b, BAN_KEY) : st.delete(BAN_KEY));
+          op.onsuccess = function () { const r = (mode === 'read') ? (op.result || null) : true; try { db.close(); } catch (e) {} resolve(r); };
+          op.onerror = function () { try { db.close(); } catch (e) {} resolve(null); };
+        } catch (e) { try { db.close(); } catch (e2) {} resolve(null); }
+      };
+    } catch (e) { resolve(null); }
+  });
+}
+
+function banCacheStore(mode, b) {
+  return new Promise(function (resolve) {
+    try {
+      if (!window.caches || !window.Response) { return resolve(null); }
+      caches.open(BAN_CACHE).then(function (c) {
+        if (mode === 'read') {
+          c.match(BAN_CACHE_URL).then(function (r) { return r ? r.text() : null; }).then(function (t) {
+            try { resolve(t ? JSON.parse(t) : null); } catch (e) { resolve(null); }
+          }).catch(function () { resolve(null); });
+        } else {
+          const p = b
+            ? c.put(BAN_CACHE_URL, new Response(JSON.stringify(b), { headers: { 'Content-Type': 'application/json' } }))
+            : c.delete(BAN_CACHE_URL);
+          p.then(function () { resolve(true); }).catch(function () { resolve(null); });
+        }
+      }).catch(function () { resolve(null); });
+    } catch (e) { resolve(null); }
+  });
+}
+
+/** 写入全部可用位置；b 为 null 表示解封，逐处清除 */
+export function saveBanCache(b) {
+  const json = b ? JSON.stringify(b) : '';
+  try { if (b) { localStorage.setItem(BAN_KEY, json); } else { localStorage.removeItem(BAN_KEY); } } catch (e) {}
+  try { if (b) { sessionStorage.setItem(BAN_KEY, json); } else { sessionStorage.removeItem(BAN_KEY); } } catch (e) {}
+  banCookieWrite(b);
+  try {
+    const cur = String(window.name || '');
+    const kept = cur.replace(/^kimgr-ban\|[\s\S]*$/, '');
+    window.name = b ? ('kimgr-ban|' + json) : kept;
+  } catch (e) {}
+  banIdb(b ? 'write' : 'delete', b);
+  banCacheStore(b ? 'write' : 'delete', b);
+}
+
+/** 同步读取（localStorage / sessionStorage / Cookie / window.name）；任一命中即返回 */
 export function readBanCache() {
-  try { return JSON.parse(localStorage.getItem(BAN_KEY) || 'null'); } catch (e) { return null; }
+  const found = [];
+  try { const v = localStorage.getItem(BAN_KEY); if (v) { found.push(JSON.parse(v)); } } catch (e) {}
+  try { const v = sessionStorage.getItem(BAN_KEY); if (v) { found.push(JSON.parse(v)); } } catch (e) {}
+  const ck = banCookieRead();
+  if (ck) { found.push(ck); }
+  try {
+    const m = String(window.name || '').match(/^kimgr-ban\|([\s\S]*)$/);
+    if (m) { found.push(JSON.parse(m[1])); }
+  } catch (e) {}
+  for (let i = 0; i < found.length; i++) { if (found[i]) { return found[i]; } }
+  return null;
+}
+
+/** 异步读取（IndexedDB / Cache Storage），供启动后再补一次校验 */
+export function readBanCacheAsync() {
+  return Promise.all([banIdb('read'), banCacheStore('read')]).then(function (r) {
+    return r[0] || r[1] || null;
+  }).catch(function () { return null; });
 }
 
 /** 向上取整数公里的中文描述 */

@@ -1,7 +1,7 @@
 /**
  * 应用入口：启动引导、路由、底栏、抽屉、搜索、通知轮询
  */
-import { boot, state, api, toast, dialog, setToken, setUnauthorizedHandler, notify, getPrefs, setPrefs, $, on, askNotifyPermission, esc, showBanLock, hideBanLock, maybeDiscPopup, readBanCache, saveBanCache } from './core.js';
+import { boot, state, api, toast, dialog, setToken, setUnauthorizedHandler, notify, getPrefs, setPrefs, $, on, askNotifyPermission, esc, showBanLock, hideBanLock, maybeDiscPopup, readBanCache, readBanCacheAsync, saveBanCache } from './core.js';
 import { applyTheme, saveTheme, initSystemWatcher, ACCENTS } from './theme.js';
 import { setNavigate } from './router.js';
 import { cacheGet, cacheSet, cacheTouch, cachePrev, runTransition, enablePredictiveBack, setNavAnim } from './transitions.js';
@@ -149,8 +149,12 @@ async function route(navType) {
   setActiveTab(name);
   updateBackBtn(name);
   closeDrawer();
-  state.ban = readBanCache();   // 先用本地缓存的封禁状态立即上锁，随后由接口校正
+  state.ban = readBanCache();   // 同步存储（localStorage / sessionStorage / Cookie / window.name）先上锁
   syncBanLock();          // 封禁状态随时刷新：任何时候都盖住整站（登录页除外）
+  /* 异步存储（IndexedDB / Cache Storage）再补一次：任一处留有记录都持续拦截 */
+  readBanCacheAsync().then(function (b) {
+    if (b && !state.ban) { state.ban = b; syncBanLock(); }
+  });
 
   // 聊天页需要内部独立滚动：锁定外层滚动
   view.classList.toggle('view-locked', name === 'chat');
