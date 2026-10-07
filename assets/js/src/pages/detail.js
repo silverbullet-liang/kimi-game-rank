@@ -2,6 +2,7 @@
  * 作品详情页：雷达图 + 六维明细 + 介绍 + 评论区
  */
 import { api, state, esc, toast, dialog, btnLoading, userName, isAdminish, isBlocked } from '../core.js';
+import { UI_PAGE } from '../config.js';
 import { setHeroDst } from '../transitions.js';
 import { navigate } from '../router.js';
 
@@ -228,12 +229,86 @@ function openLightbox(images, index) {
 /* ============================================================
  * 评论区
  * ============================================================ */
+/** 评论列表的当前上下文（每次渲染刷新，供事件委托读取，避免闭包过期） */
+let __cmtCtx = { workId: 0, ttype: 'work', refresh: null };
+
+/**
+ * 评论列表事件委托：整个列表只挂一个监听器。
+ * 点赞、回复、删除、屏蔽、取消标注、折叠展开都由它分派 —— 评论再多也不会成倍增加监听器。
+ */
+async function onCommentClick(ev) {
+  const listBox = ev.currentTarget;
+  const node = ev.target.closest('.comment');
+  if (!node || !listBox.contains(node)) { return; }
+
+  /* 折叠展开：纯前端，不发请求 */
+  const rev = ev.target.closest('[data-reveal]');
+  if (rev) {
+    const body = node.querySelector('.blocked-body');
+    if (body) {
+      body.hidden = !body.hidden;
+      rev.textContent = body.hidden ? (rev.dataset.note || '点击查看') : '收起';
+    }
+    return;
+  }
+
+  const btn = ev.target.closest('[data-act]');
+  if (!btn) { return; }
+  ev.stopPropagation();
+
+  const cid = Number(node.dataset.cid || 0);
+  const ctx = __cmtCtx;
+
+  if (btn.dataset.act === 'like') {
+    if (!canPost()) { toast('登录后才能点赞', 'err'); return; }
+    try { const r = await api('comments.php', 'vote', { id: cid }); btn.textContent = '赞 ' + r.count; } catch (e) { toast(e.message, 'err'); }
+  } else if (btn.dataset.act === 'unflag') {
+    try {
+      await api('comments.php', 'flag', { id: cid, on: 0 });
+      const f = node.querySelector('.msg-flag'); if (f) { f.remove(); }
+      toast('已取消标注');
+    } catch (e) { toast(e.message, 'err'); }
+  } else if (btn.dataset.act === 'del') {
+    if (await dialog('删除评论', '确认删除这条评论吗？删除后会移入回收站，页面不再显示。', '删除', { danger: true })) {
+      try { await api('comments.php', 'delete', { id: cid }); toast('已移入回收站'); ctx.refresh(true); } catch (e) { toast(e.message, 'err'); }
+    }
+  } else if (btn.dataset.act === 'block') {
+    try {
+      const r = await api('comments.php', 'block', { id: cid, on: btn.dataset.on === '1' ? 0 : 1 });
+      toast(r.blocked ? '已屏蔽（折叠显示）' : '已取消屏蔽');
+      ctx.refresh(true);
+    } catch (e) { toast(e.message, 'err'); }
+  } else if (btn.dataset.act === 'reply') {
+    const text = await promptReply(btn.dataset.user || '');
+    if (text) {
+      const post = async () => {
+        try {
+          await api('comments.php', 'create', { work_id: ctx.workId, target_type: ctx.ttype, content: text, parent_id: cid }, { timeout: 30000 });
+          toast('已回复');
+          ctx.refresh(true);
+        } catch (e) {
+          if (e && e.code === 422) { commentReject(node, e.message || '内容未通过审核', text, post); }
+          else { toast(e.message, 'err'); }
+        }
+      };
+      await post();
+    }
+  }
+}
+
 export async function renderComments(container, workId, targetType) {
   /* 目标类型三选一，与后端 comment_target_type() 的白名单一致。
      切勿把 discipline_list 降级成 work：列表区固定在 work_id=0，降级后必被后端判为参数错误。 */
   const ttype = ['discipline', 'discipline_list'].indexOf(targetType) >= 0 ? targetType : 'work';
   const form = container.querySelector('#cmtForm');
   const listBox = container.querySelector('#cmtList');
+
+  /* 事件委托只挂一次（列表重建时元素本身不变） */
+  if (listBox && !listBox.dataset.delBound) {
+    listBox.dataset.delBound = '1';
+    listBox.addEventListener('click', onCommentClick);
+  }
+  __cmtCtx = { workId: workId, ttype: ttype, refresh: refresh };
 
   /* ---------- 发表区 ---------- */
   if (canPost()) {
@@ -269,8 +344,8 @@ export async function renderComments(container, workId, targetType) {
   }
 
   /* ---------- 列表状态 ---------- */
-  const PAGE = 5;    // 首屏展示的根评论数
-  const FOLD = 2;    // 楼中楼默认展开条数
+  const PAGE = UI_PAGE.comments;        // 首屏展示的根评论数（见 config.js）
+  const FOLD = UI_PAGE.repliesFold;     // 楼中楼默认展开条数
   const st = { roots: [], total: -1, shown: PAGE };
   const unfolded = {};   // 根评论 id → 是否展开（自动刷新后保持）
 
@@ -400,7 +475,6 @@ function commentNode(c, workId, reload, ttype) {
      已删除的评论服务端不会再下发，因此这里完全没有「已删除」分支。 */
   const folded = !!c.blocked || isBlocked(c.content);
   const noteText = c.blocked ? '该评论已被折叠，点击查看' : '已按你的屏蔽规则收起，点击查看';
-  const modBtn = canModerate() ? `<button data-act="block">${c.blocked ? '取消屏蔽' : '屏蔽'}</button>` : '';
   box.innerHTML = `
     <span class="av"><img src="${esc(c.avatar)}" alt="" draggable="false"></span>
     <span class="body">
@@ -409,67 +483,18 @@ function commentNode(c, workId, reload, ttype) {
         <span class="tiny">${esc(c.time)}</span>
       </span>
       <span class="text">${c.reply_to ? `<span class="reply-to">@${esc(c.reply_to)}</span> ` : ''}${folded
-        ? `<span class="blocked-note" data-reveal>${noteText}</span><span class="blocked-body" hidden>${esc(c.content)}</span>`
+        ? `<span class="blocked-note" data-reveal data-note="${esc(noteText)}">${noteText}</span><span class="blocked-body" hidden>${esc(c.content)}</span>`
         : esc(c.content)}</span>
       ${c.flag === 'middle' ? '<span class="msg-flag" title="系统认为这条内容可能有恶意，但仍予放行">可能有恶意'
         + (canModerate() ? ' · <button class="link" data-act="unflag" style="border:0;background:0;font-size:12px;color:inherit;text-decoration:underline">取消标注</button>' : '')
         + '</span>' : ''}
       <span class="ops">
         <button data-act="like">赞 ${c.likes || 0}</button>
-        ${canPost() ? '<button data-act="reply">回复</button>' : ''}
+        ${canPost() ? `<button data-act="reply" data-user="${esc(c.username)}">回复</button>` : ''}
         ${(c.mine || canModerate()) ? '<button data-act="del">删除</button>' : ''}
-        ${modBtn}
+        ${canModerate() ? `<button data-act="block" data-on="${c.blocked ? 1 : 0}">${c.blocked ? '取消屏蔽' : '屏蔽'}</button>` : ''}
       </span>
     </span>`;
-
-  const rev = box.querySelector('[data-reveal]');
-  if (rev) {
-    rev.addEventListener('click', () => {
-      const body = box.querySelector('.blocked-body');
-      body.hidden = !body.hidden;
-      rev.textContent = body.hidden ? noteText : '收起';
-    });
-  }
-
-  box.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', async ev => {
-    ev.stopPropagation();
-    const act = b.dataset.act;
-    if (act === 'like') {
-      if (!canPost()) { toast('登录后才能点赞', 'err'); return; }
-      try { const r = await api('comments.php', 'vote', { id: c.id }); b.textContent = '赞 ' + r.count; } catch (e) { toast(e.message, 'err'); }
-    } else if (act === 'unflag') {
-      try {
-        await api('comments.php', 'flag', { id: c.id, on: 0 });
-        const f = box.querySelector('.msg-flag'); if (f) { f.remove(); }
-        toast('已取消标注');
-      } catch (e) { toast(e.message, 'err'); }
-    } else if (act === 'del') {
-      if (await dialog('删除评论', '确认删除这条评论吗？删除后会移入回收站，页面不再显示。', '删除', { danger: true })) {
-        try { await api('comments.php', 'delete', { id: c.id }); toast('已移入回收站'); reload(true); } catch (e) { toast(e.message, 'err'); }
-      }
-    } else if (act === 'block') {
-      try {
-        const r = await api('comments.php', 'block', { id: c.id, on: c.blocked ? 0 : 1 });
-        toast(r.blocked ? '已屏蔽（折叠显示）' : '已取消屏蔽');
-        reload(true);
-      } catch (e) { toast(e.message, 'err'); }
-    } else if (act === 'reply') {
-      const text = await promptReply(c.username);
-      if (text) {
-        const post = async () => {
-          try {
-            await api('comments.php', 'create', { work_id: workId, target_type: ttype, content: text, parent_id: c.id }, { timeout: 30000 });
-            toast('已回复');
-            reload(true);
-          } catch (e) {
-            if (e && e.code === 422) { commentReject(box, e.message || '内容未通过审核', text, post); }
-            else { toast(e.message, 'err'); }
-          }
-        };
-        await post();
-      }
-    }
-  }));
 
   return box;
 }

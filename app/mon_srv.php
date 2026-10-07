@@ -40,14 +40,9 @@ function mon_srv_cfg(): array
 {
     static $cfg = null;
     if (is_array($cfg)) { return $cfg; }
-    $cfg = array(
-        'enabled'            => '1',
-        'srv_sample'         => '30',
-        'srv_slow_ms'        => '200',
-        'srv_slow_alert_ms'  => '3000',
-        'keep_days'          => '7',
-        'apdex_t'            => '1200',
-        'track_urls'         => '',
+    $cfg = function_exists('mon_defaults') ? mon_defaults() : array(
+        'enabled' => '1', 'srv_sample' => '30', 'srv_slow_ms' => '200',
+        'srv_slow_alert_ms' => '3000', 'keep_days' => '7', 'apdex_t' => '1200', 'track_urls' => '',
     );
     try {
         foreach (db_all("SELECT k, v FROM settings WHERE k LIKE 'monitor.%'") as $r) {

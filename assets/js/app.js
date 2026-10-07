@@ -773,6 +773,7 @@ async function banGeoCheck(lockEl) {
           saveBanCache(null);
           state.ban = null;
           toast('已确认你不在限制区域，正在恢复访问');
+          /* 此前的接口全部被服务端拒绝，页面数据已不完整，需要重新拉取 —— 这里的整页刷新是必要的 */
           setTimeout(function () { location.reload(); }, 700);
         } else {
           toast('校验结果：你与当事人处在同一区域' + (r && r.distance >= 0 ? '（相距 ' + kmText(r.distance) + '）' : ''));
@@ -1854,6 +1855,7 @@ async function loadSearchAi(container, q) {
 
 
 
+
 /** 具备发言资格：普通用户 / 管理员 / 副管理员 */
 const canPost = () => state.role === 'user' || isAdminish();
 /** 可删除任意评论 */
@@ -2077,12 +2079,86 @@ function openLightbox(images, index) {
 /* ============================================================
  * 评论区
  * ============================================================ */
+/** 评论列表的当前上下文（每次渲染刷新，供事件委托读取，避免闭包过期） */
+let __cmtCtx = { workId: 0, ttype: 'work', refresh: null };
+
+/**
+ * 评论列表事件委托：整个列表只挂一个监听器。
+ * 点赞、回复、删除、屏蔽、取消标注、折叠展开都由它分派 —— 评论再多也不会成倍增加监听器。
+ */
+async function onCommentClick(ev) {
+  const listBox = ev.currentTarget;
+  const node = ev.target.closest('.comment');
+  if (!node || !listBox.contains(node)) { return; }
+
+  /* 折叠展开：纯前端，不发请求 */
+  const rev = ev.target.closest('[data-reveal]');
+  if (rev) {
+    const body = node.querySelector('.blocked-body');
+    if (body) {
+      body.hidden = !body.hidden;
+      rev.textContent = body.hidden ? (rev.dataset.note || '点击查看') : '收起';
+    }
+    return;
+  }
+
+  const btn = ev.target.closest('[data-act]');
+  if (!btn) { return; }
+  ev.stopPropagation();
+
+  const cid = Number(node.dataset.cid || 0);
+  const ctx = __cmtCtx;
+
+  if (btn.dataset.act === 'like') {
+    if (!canPost()) { toast('登录后才能点赞', 'err'); return; }
+    try { const r = await api('comments.php', 'vote', { id: cid }); btn.textContent = '赞 ' + r.count; } catch (e) { toast(e.message, 'err'); }
+  } else if (btn.dataset.act === 'unflag') {
+    try {
+      await api('comments.php', 'flag', { id: cid, on: 0 });
+      const f = node.querySelector('.msg-flag'); if (f) { f.remove(); }
+      toast('已取消标注');
+    } catch (e) { toast(e.message, 'err'); }
+  } else if (btn.dataset.act === 'del') {
+    if (await dialog('删除评论', '确认删除这条评论吗？删除后会移入回收站，页面不再显示。', '删除', { danger: true })) {
+      try { await api('comments.php', 'delete', { id: cid }); toast('已移入回收站'); ctx.refresh(true); } catch (e) { toast(e.message, 'err'); }
+    }
+  } else if (btn.dataset.act === 'block') {
+    try {
+      const r = await api('comments.php', 'block', { id: cid, on: btn.dataset.on === '1' ? 0 : 1 });
+      toast(r.blocked ? '已屏蔽（折叠显示）' : '已取消屏蔽');
+      ctx.refresh(true);
+    } catch (e) { toast(e.message, 'err'); }
+  } else if (btn.dataset.act === 'reply') {
+    const text = await promptReply(btn.dataset.user || '');
+    if (text) {
+      const post = async () => {
+        try {
+          await api('comments.php', 'create', { work_id: ctx.workId, target_type: ctx.ttype, content: text, parent_id: cid }, { timeout: 30000 });
+          toast('已回复');
+          ctx.refresh(true);
+        } catch (e) {
+          if (e && e.code === 422) { commentReject(node, e.message || '内容未通过审核', text, post); }
+          else { toast(e.message, 'err'); }
+        }
+      };
+      await post();
+    }
+  }
+}
+
 async function renderComments(container, workId, targetType) {
   /* 目标类型三选一，与后端 comment_target_type() 的白名单一致。
      切勿把 discipline_list 降级成 work：列表区固定在 work_id=0，降级后必被后端判为参数错误。 */
   const ttype = ['discipline', 'discipline_list'].indexOf(targetType) >= 0 ? targetType : 'work';
   const form = container.querySelector('#cmtForm');
   const listBox = container.querySelector('#cmtList');
+
+  /* 事件委托只挂一次（列表重建时元素本身不变） */
+  if (listBox && !listBox.dataset.delBound) {
+    listBox.dataset.delBound = '1';
+    listBox.addEventListener('click', onCommentClick);
+  }
+  __cmtCtx = { workId: workId, ttype: ttype, refresh: refresh };
 
   /* ---------- 发表区 ---------- */
   if (canPost()) {
@@ -2118,8 +2194,8 @@ async function renderComments(container, workId, targetType) {
   }
 
   /* ---------- 列表状态 ---------- */
-  const PAGE = 5;    // 首屏展示的根评论数
-  const FOLD = 2;    // 楼中楼默认展开条数
+  const PAGE = UI_PAGE.comments;        // 首屏展示的根评论数（见 config.js）
+  const FOLD = UI_PAGE.repliesFold;     // 楼中楼默认展开条数
   const st = { roots: [], total: -1, shown: PAGE };
   const unfolded = {};   // 根评论 id → 是否展开（自动刷新后保持）
 
@@ -2249,7 +2325,6 @@ function commentNode(c, workId, reload, ttype) {
      已删除的评论服务端不会再下发，因此这里完全没有「已删除」分支。 */
   const folded = !!c.blocked || isBlocked(c.content);
   const noteText = c.blocked ? '该评论已被折叠，点击查看' : '已按你的屏蔽规则收起，点击查看';
-  const modBtn = canModerate() ? `<button data-act="block">${c.blocked ? '取消屏蔽' : '屏蔽'}</button>` : '';
   box.innerHTML = `
     <span class="av"><img src="${esc(c.avatar)}" alt="" draggable="false"></span>
     <span class="body">
@@ -2258,67 +2333,18 @@ function commentNode(c, workId, reload, ttype) {
         <span class="tiny">${esc(c.time)}</span>
       </span>
       <span class="text">${c.reply_to ? `<span class="reply-to">@${esc(c.reply_to)}</span> ` : ''}${folded
-        ? `<span class="blocked-note" data-reveal>${noteText}</span><span class="blocked-body" hidden>${esc(c.content)}</span>`
+        ? `<span class="blocked-note" data-reveal data-note="${esc(noteText)}">${noteText}</span><span class="blocked-body" hidden>${esc(c.content)}</span>`
         : esc(c.content)}</span>
       ${c.flag === 'middle' ? '<span class="msg-flag" title="系统认为这条内容可能有恶意，但仍予放行">可能有恶意'
         + (canModerate() ? ' · <button class="link" data-act="unflag" style="border:0;background:0;font-size:12px;color:inherit;text-decoration:underline">取消标注</button>' : '')
         + '</span>' : ''}
       <span class="ops">
         <button data-act="like">赞 ${c.likes || 0}</button>
-        ${canPost() ? '<button data-act="reply">回复</button>' : ''}
+        ${canPost() ? `<button data-act="reply" data-user="${esc(c.username)}">回复</button>` : ''}
         ${(c.mine || canModerate()) ? '<button data-act="del">删除</button>' : ''}
-        ${modBtn}
+        ${canModerate() ? `<button data-act="block" data-on="${c.blocked ? 1 : 0}">${c.blocked ? '取消屏蔽' : '屏蔽'}</button>` : ''}
       </span>
     </span>`;
-
-  const rev = box.querySelector('[data-reveal]');
-  if (rev) {
-    rev.addEventListener('click', () => {
-      const body = box.querySelector('.blocked-body');
-      body.hidden = !body.hidden;
-      rev.textContent = body.hidden ? noteText : '收起';
-    });
-  }
-
-  box.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', async ev => {
-    ev.stopPropagation();
-    const act = b.dataset.act;
-    if (act === 'like') {
-      if (!canPost()) { toast('登录后才能点赞', 'err'); return; }
-      try { const r = await api('comments.php', 'vote', { id: c.id }); b.textContent = '赞 ' + r.count; } catch (e) { toast(e.message, 'err'); }
-    } else if (act === 'unflag') {
-      try {
-        await api('comments.php', 'flag', { id: c.id, on: 0 });
-        const f = box.querySelector('.msg-flag'); if (f) { f.remove(); }
-        toast('已取消标注');
-      } catch (e) { toast(e.message, 'err'); }
-    } else if (act === 'del') {
-      if (await dialog('删除评论', '确认删除这条评论吗？删除后会移入回收站，页面不再显示。', '删除', { danger: true })) {
-        try { await api('comments.php', 'delete', { id: c.id }); toast('已移入回收站'); reload(true); } catch (e) { toast(e.message, 'err'); }
-      }
-    } else if (act === 'block') {
-      try {
-        const r = await api('comments.php', 'block', { id: c.id, on: c.blocked ? 0 : 1 });
-        toast(r.blocked ? '已屏蔽（折叠显示）' : '已取消屏蔽');
-        reload(true);
-      } catch (e) { toast(e.message, 'err'); }
-    } else if (act === 'reply') {
-      const text = await promptReply(c.username);
-      if (text) {
-        const post = async () => {
-          try {
-            await api('comments.php', 'create', { work_id: workId, target_type: ttype, content: text, parent_id: c.id }, { timeout: 30000 });
-            toast('已回复');
-            reload(true);
-          } catch (e) {
-            if (e && e.code === 422) { commentReject(box, e.message || '内容未通过审核', text, post); }
-            else { toast(e.message, 'err'); }
-          }
-        };
-        await post();
-      }
-    }
-  }));
 
   return box;
 }
@@ -3542,8 +3568,11 @@ async function renderMine(container) {
     if (await dialog('退出登录', '确认退出当前账号吗？', '退出')) {
       try { await api('auth.php', 'logout'); } catch (e) {}
       setToken('');
+      /* 就地切到游客态并重绘，不整页刷新 */
+      state.role = 'guest'; state.uid = 0; state.username = '游客';
+      state.settings = {}; state.avatar = '';
       toast('已退出');
-      location.reload();
+      navigate('#/rank');
     }
   });
 }
@@ -4000,9 +4029,8 @@ async function renderLogin(container) {
     } catch (e) {}
     toast(guest ? '已进入游客模式' : ('欢迎，' + state.username));
     if (Number(state.settings.notify) === 1) askNotifyPermission();
-    // 登录后回「我的」；游客进入回榜单
+    // 登录后回「我的」；游客进入回榜单（路由会重绘页面与抽屉，无需整页刷新）
     navigate(guest ? '#/rank' : '#/mine');
-    location.reload();
   }
 
   paint();
@@ -4015,6 +4043,7 @@ async function renderLogin(container) {
  * 与站点主题/皮肤完全隔离：固定「蓝白 / 蓝黑」两套配色，可切换，互不影响。
  * 数据来自 api/monitor.php（stats / events / settings / purge）。
  */
+
 
 
 const MON_TABS = [
@@ -4185,7 +4214,7 @@ async function monSrv(box) {
       ${monKpi('慢请求占比', Number(k.slow_ratio || 0) + '%')}
       ${monKpi('5xx', Number(k.code5 || 0))}
       ${monKpi('异常', Number(k.errs || 0))}
-      ${monKpi('Apdex T=' + Number(d.apdex_t || 1200) + 'ms', Number(k.apdex || 0))}
+      ${monKpi('Apdex T=' + Number(d.apdex_t || MON_DEFAULT.apdexT) + 'ms', Number(k.apdex || 0))}
       ${monKpi('平均 DB 耗时', Number(k.db_avg || 0) + ' ms')}
       ${monKpi('平均查询数', Number(k.db_n || 0))}
       ${monKpi('慢查询数', Number(k.slow_q || 0))}
@@ -4338,11 +4367,11 @@ async function monSettings(box) {
           <button type="button" data-v="0"${d.enabled !== '1' ? ' class="on"' : ''}>关</button>
         </div></div>
       <div class="mon-row"><span>采样率（%）</span><input class="mon-input" id="monSample" type="number" min="1" max="100" value="${Number(d.sample || 100)}"></div>
-      <div class="mon-row"><span>数据保留（天）</span><input class="mon-input" id="monKeep" type="number" min="1" max="90" value="${Number(d.keep_days || 7)}"></div>
-      <div class="mon-row"><span>服务端采样率（%）</span><input class="mon-input" id="monSrvSample" type="number" min="1" max="100" value="${Number(d.srv_sample || 30)}"></div>
-      <div class="mon-row"><span>慢查询阈值（ms）</span><input class="mon-input" id="monSrvSlow" type="number" min="1" max="60000" value="${Number(d.srv_slow_ms || 200)}"></div>
-      <div class="mon-row"><span>单请求耗时告警（ms）</span><input class="mon-input" id="monSrvAlert" type="number" min="100" max="60000" value="${Number(d.srv_slow_alert_ms || 3000)}"></div>
-      <div class="mon-row"><span>Apdex 基线（ms）</span><input class="mon-input" id="monApdexT" type="number" min="100" max="10000" value="${Number(d.apdex_t || 1200)}"></div>
+      <div class="mon-row"><span>数据保留（天）</span><input class="mon-input" id="monKeep" type="number" min="1" max="90" value="${Number(d.keep_days || MON_DEFAULT.keepDays)}"></div>
+      <div class="mon-row"><span>服务端采样率（%）</span><input class="mon-input" id="monSrvSample" type="number" min="1" max="100" value="${Number(d.srv_sample || MON_DEFAULT.sample)}"></div>
+      <div class="mon-row"><span>慢查询阈值（ms）</span><input class="mon-input" id="monSrvSlow" type="number" min="1" max="60000" value="${Number(d.srv_slow_ms || MON_DEFAULT.slowMs)}"></div>
+      <div class="mon-row"><span>单请求耗时告警（ms）</span><input class="mon-input" id="monSrvAlert" type="number" min="100" max="60000" value="${Number(d.srv_slow_alert_ms || MON_DEFAULT.slowAlertMs)}"></div>
+      <div class="mon-row"><span>Apdex 基线（ms）</span><input class="mon-input" id="monApdexT" type="number" min="100" max="10000" value="${Number(d.apdex_t || MON_DEFAULT.apdexT)}"></div>
       <div class="mon-row"><span>重点接口白名单</span><input class="mon-input" id="monTrack" type="text" placeholder="逗号分隔，如 api/works.php" value="${esc(d.track_urls || '')}"></div>
       <div class="mon-row"><span>JS 错误率告警阈值（%）</span><input class="mon-input" id="monThErr" type="number" min="0" max="100" value="${Number(d.alert_error_rate || 5)}"></div>
       <div class="mon-row"><span>慢接口占比告警阈值（%）</span><input class="mon-input" id="monThSlow" type="number" min="0" max="100" value="${Number(d.alert_slow_ratio || 20)}"></div>
@@ -4367,10 +4396,10 @@ async function monSettings(box) {
         keep_days: Number(box.querySelector('#monKeep').value || 7),
         alert_error_rate: Number(box.querySelector('#monThErr').value || 5),
         alert_slow_ratio: Number(box.querySelector('#monThSlow').value || 20),
-        srv_sample: Number(box.querySelector('#monSrvSample').value || 30),
-        srv_slow_ms: Number(box.querySelector('#monSrvSlow').value || 200),
-        srv_slow_alert_ms: Number(box.querySelector('#monSrvAlert').value || 3000),
-        apdex_t: Number(box.querySelector('#monApdexT').value || 1200),
+        srv_sample: Number(box.querySelector('#monSrvSample').value || MON_DEFAULT.sample),
+        srv_slow_ms: Number(box.querySelector('#monSrvSlow').value || MON_DEFAULT.slowMs),
+        srv_slow_alert_ms: Number(box.querySelector('#monSrvAlert').value || MON_DEFAULT.slowAlertMs),
+        apdex_t: Number(box.querySelector('#monApdexT').value || MON_DEFAULT.apdexT),
         track_urls: String(box.querySelector('#monTrack').value || '').trim(),
       });
       toast('已保存');
@@ -7207,6 +7236,7 @@ async function route(navType) {
   setActiveTab(name);
   updateBackBtn(name);
   closeDrawer();
+  renderDrawer();               // 身份可能已变（登录 / 退出）：抽屉即时更新，无需整页刷新
   state.ban = readBanCache();   // 同步存储（localStorage / sessionStorage / Cookie / window.name）先上锁
   syncBanLock();          // 封禁状态随时刷新：任何时候都盖住整站（登录页除外）
   /* 异步存储（IndexedDB / Cache Storage）再补一次：任一处留有记录都持续拦截 */
@@ -7372,8 +7402,12 @@ function renderDrawer() {
         if (await dialog('退出登录', '确认退出当前账号吗？', '退出')) {
           try { await api('auth.php', 'logout'); } catch (e) {}
           setToken('');
+          /* 就地切到游客态：重绘抽屉并跳转，不再整页刷新 */
+          state.role = 'guest'; state.uid = 0; state.username = '游客';
+          state.settings = {}; state.avatar = '';
           toast('已退出');
-          location.reload();
+          renderDrawer();
+          navigate('#/rank');
         }
       }
     });

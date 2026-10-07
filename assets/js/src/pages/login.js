@@ -142,9 +142,8 @@ export async function renderLogin(container) {
     } catch (e) {}
     toast(guest ? '已进入游客模式' : ('欢迎，' + state.username));
     if (Number(state.settings.notify) === 1) askNotifyPermission();
-    // 登录后回「我的」；游客进入回榜单
+    // 登录后回「我的」；游客进入回榜单（路由会重绘页面与抽屉，无需整页刷新）
     navigate(guest ? '#/rank' : '#/mine');
-    location.reload();
   }
 
   paint();

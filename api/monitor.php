@@ -24,7 +24,7 @@ if ($action === 'collect') {
         }
 
         /* 采样：采样率 < 100 时，低于概率的上报整体丢弃 */
-        $sample = max(1, min(100, (int)setting_get('monitor.sample', '100')));
+        $sample = max(1, min(100, (int)setting_get('monitor.sample', mon_default('sample'))));
         if ($sample < 100 && random_int(1, 100) > $sample) { ok(array('n' => 0)); }
 
         $sid     = substr((string)preg_replace('/[^A-Za-z0-9_\-]/', '', (string)($p['sid'] ?? '')), 0, 40);
@@ -122,8 +122,8 @@ if ($action === 'stats') {
         WHERE kind='resource' AND created_at >= ? GROUP BY name ORDER BY n DESC LIMIT 10", array($from));
 
     /* 告警检测（顺手评估阈值） */
-    $thErr  = (int)setting_get('monitor.alert_error_rate', '5');
-    $thSlow = (int)setting_get('monitor.alert_slow_ratio', '20');
+    $thErr  = (int)setting_get('monitor.alert_error_rate', mon_default('alert_error_rate'));
+    $thSlow = (int)setting_get('monitor.alert_slow_ratio', mon_default('alert_slow_ratio'));
     $errRate  = $pv > 0 ? round($jsErr / $pv * 100, 1) : 0.0;
     $slowRate = $apiT > 0 ? round($apiS / $apiT * 100, 1) : 0.0;
     if ($pv >= 20 && $errRate > $thErr) {
@@ -254,8 +254,8 @@ if ($action === 'session') {
 /* ---------- 服务端请求指标（P2） ---------- */
 if ($action === 'srv') {
     list($from, ) = mon_window(param_str('range', '7d'));
-    $t  = max(100, (int)setting_get('monitor.apdex_t', '1200'));      // Apdex 基线（ms）
-    $th = max(1, (int)setting_get('monitor.srv_slow_ms', '200'));     // 慢查询阈值（ms）
+    $t  = max(100, (int)setting_get('monitor.apdex_t', mon_default('apdex_t')));      // Apdex 基线（ms）
+    $th = max(1, (int)setting_get('monitor.srv_slow_ms', mon_default('srv_slow_ms')));     // 慢查询阈值（ms）
 
     $n     = (int)db_val('SELECT COUNT(*) FROM web_srv WHERE created_at >= ?', array($from));
     $avg   = (int)round((float)db_val('SELECT AVG(dur_ms) FROM web_srv WHERE created_at >= ?', array($from)));
@@ -319,7 +319,7 @@ if ($action === 'srv') {
         }
     }
     $slowRatio = $n > 0 ? round($slow / $n * 100, 1) : 0.0;
-    $thSlow = (int)setting_get('monitor.alert_slow_ratio', '20');
+    $thSlow = (int)setting_get('monitor.alert_slow_ratio', mon_default('alert_slow_ratio'));
     if ($n >= 20 && $slowRatio > $thSlow) {
         mon_alert('srv_slow_ratio', 'warn', '服务端慢请求占比 ' . $slowRatio . '% 超过阈值 ' . $thSlow . '%', (int)$slowRatio, $thSlow);
     }
@@ -379,28 +379,28 @@ if ($action === 'settings') {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' || param('save', '') !== '') {
         csrf_verify();
         setting_set('monitor.enabled', param_str('enabled', '1') === '1' ? '1' : '0');
-        setting_set('monitor.sample', (string)max(1, min(100, param_int('sample', 100))));
-        setting_set('monitor.keep_days', (string)max(1, min(90, param_int('keep_days', 7))));
-        setting_set('monitor.alert_error_rate', (string)max(0, min(100, param_int('alert_error_rate', 5))));
-        setting_set('monitor.alert_slow_ratio', (string)max(0, min(100, param_int('alert_slow_ratio', 20))));
-        setting_set('monitor.srv_sample', (string)max(1, min(100, param_int('srv_sample', 30))));
-        setting_set('monitor.srv_slow_ms', (string)max(1, min(60000, param_int('srv_slow_ms', 200))));
-        setting_set('monitor.srv_slow_alert_ms', (string)max(100, min(60000, param_int('srv_slow_alert_ms', 3000))));
-        setting_set('monitor.apdex_t', (string)max(100, min(10000, param_int('apdex_t', 1200))));
+        setting_set('monitor.sample', (string)max(1, min(100, param_int('sample', (int)mon_default('sample')))));
+        setting_set('monitor.keep_days', (string)max(mon_keep_range()[0], min(mon_keep_range()[1], param_int('keep_days', (int)mon_default('keep_days')))));
+        setting_set('monitor.alert_error_rate', (string)max(0, min(100, param_int('alert_error_rate', (int)mon_default('alert_error_rate')))));
+        setting_set('monitor.alert_slow_ratio', (string)max(0, min(100, param_int('alert_slow_ratio', (int)mon_default('alert_slow_ratio')))));
+        setting_set('monitor.srv_sample', (string)max(1, min(100, param_int('srv_sample', (int)mon_default('srv_sample')))));
+        setting_set('monitor.srv_slow_ms', (string)max(1, min(60000, param_int('srv_slow_ms', (int)mon_default('srv_slow_ms')))));
+        setting_set('monitor.srv_slow_alert_ms', (string)max(100, min(60000, param_int('srv_slow_alert_ms', (int)mon_default('srv_slow_alert_ms')))));
+        setting_set('monitor.apdex_t', (string)max(100, min(10000, param_int('apdex_t', (int)mon_default('apdex_t')))));
         setting_set('monitor.track_urls', mb_substr((string)preg_replace('/[^A-Za-z0-9_,.\/\-]/', '', (string)param('track_urls', '')), 0, 500, 'UTF-8'));
         ok(null, '已保存');
     }
     ok(array(
         'enabled' => setting_get('monitor.enabled', '1'),
-        'sample' => (int)setting_get('monitor.sample', '100'),
-        'keep_days' => (int)setting_get('monitor.keep_days', '7'),
-        'alert_error_rate' => (int)setting_get('monitor.alert_error_rate', '5'),
-        'alert_slow_ratio' => (int)setting_get('monitor.alert_slow_ratio', '20'),
-        'srv_sample' => (int)setting_get('monitor.srv_sample', '30'),
-        'srv_slow_ms' => (int)setting_get('monitor.srv_slow_ms', '200'),
-        'srv_slow_alert_ms' => (int)setting_get('monitor.srv_slow_alert_ms', '3000'),
-        'apdex_t' => (int)setting_get('monitor.apdex_t', '1200'),
-        'track_urls' => (string)setting_get('monitor.track_urls', ''),
+        'sample' => (int)setting_get('monitor.sample', mon_default('sample')),
+        'keep_days' => (int)setting_get('monitor.keep_days', mon_default('keep_days')),
+        'alert_error_rate' => (int)setting_get('monitor.alert_error_rate', mon_default('alert_error_rate')),
+        'alert_slow_ratio' => (int)setting_get('monitor.alert_slow_ratio', mon_default('alert_slow_ratio')),
+        'srv_sample' => (int)setting_get('monitor.srv_sample', mon_default('srv_sample')),
+        'srv_slow_ms' => (int)setting_get('monitor.srv_slow_ms', mon_default('srv_slow_ms')),
+        'srv_slow_alert_ms' => (int)setting_get('monitor.srv_slow_alert_ms', mon_default('srv_slow_alert_ms')),
+        'apdex_t' => (int)setting_get('monitor.apdex_t', mon_default('apdex_t')),
+        'track_urls' => (string)setting_get('monitor.track_urls', mon_default('track_urls')),
     ));
 }
 
@@ -415,8 +415,8 @@ if ($action === 'alert_ack') {
 /* ---------- 一键导出（JSON） ---------- */
 if ($action === 'export') {
     list($from, ) = mon_window(param_str('range', '7d'));
-    $t  = max(100, (int)setting_get('monitor.apdex_t', '1200'));
-    $th = max(1, (int)setting_get('monitor.srv_slow_ms', '200'));
+    $t  = max(100, (int)setting_get('monitor.apdex_t', mon_default('apdex_t')));
+    $th = max(1, (int)setting_get('monitor.srv_slow_ms', mon_default('srv_slow_ms')));
 
     $events = db_all('SELECT kind, level, name, page, msg, stack, v1, v2, status, browser, os, screen, net, sid, uid, created_at
         FROM web_events WHERE created_at >= ? ORDER BY id DESC LIMIT 3000', array($from));

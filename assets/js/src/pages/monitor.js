@@ -5,6 +5,7 @@
  * 数据来自 api/monitor.php（stats / events / settings / purge）。
  */
 import { api, esc, isAdminish, toast, btnLoading, state } from '../core.js';
+import { MON_DEFAULT } from '../config.js';
 
 const MON_TABS = [
   ['overview', '总览'], ['js', 'JS 错误'], ['api', '接口'], ['srv', '服务端'],
@@ -174,7 +175,7 @@ async function monSrv(box) {
       ${monKpi('慢请求占比', Number(k.slow_ratio || 0) + '%')}
       ${monKpi('5xx', Number(k.code5 || 0))}
       ${monKpi('异常', Number(k.errs || 0))}
-      ${monKpi('Apdex T=' + Number(d.apdex_t || 1200) + 'ms', Number(k.apdex || 0))}
+      ${monKpi('Apdex T=' + Number(d.apdex_t || MON_DEFAULT.apdexT) + 'ms', Number(k.apdex || 0))}
       ${monKpi('平均 DB 耗时', Number(k.db_avg || 0) + ' ms')}
       ${monKpi('平均查询数', Number(k.db_n || 0))}
       ${monKpi('慢查询数', Number(k.slow_q || 0))}
@@ -327,11 +328,11 @@ async function monSettings(box) {
           <button type="button" data-v="0"${d.enabled !== '1' ? ' class="on"' : ''}>关</button>
         </div></div>
       <div class="mon-row"><span>采样率（%）</span><input class="mon-input" id="monSample" type="number" min="1" max="100" value="${Number(d.sample || 100)}"></div>
-      <div class="mon-row"><span>数据保留（天）</span><input class="mon-input" id="monKeep" type="number" min="1" max="90" value="${Number(d.keep_days || 7)}"></div>
-      <div class="mon-row"><span>服务端采样率（%）</span><input class="mon-input" id="monSrvSample" type="number" min="1" max="100" value="${Number(d.srv_sample || 30)}"></div>
-      <div class="mon-row"><span>慢查询阈值（ms）</span><input class="mon-input" id="monSrvSlow" type="number" min="1" max="60000" value="${Number(d.srv_slow_ms || 200)}"></div>
-      <div class="mon-row"><span>单请求耗时告警（ms）</span><input class="mon-input" id="monSrvAlert" type="number" min="100" max="60000" value="${Number(d.srv_slow_alert_ms || 3000)}"></div>
-      <div class="mon-row"><span>Apdex 基线（ms）</span><input class="mon-input" id="monApdexT" type="number" min="100" max="10000" value="${Number(d.apdex_t || 1200)}"></div>
+      <div class="mon-row"><span>数据保留（天）</span><input class="mon-input" id="monKeep" type="number" min="1" max="90" value="${Number(d.keep_days || MON_DEFAULT.keepDays)}"></div>
+      <div class="mon-row"><span>服务端采样率（%）</span><input class="mon-input" id="monSrvSample" type="number" min="1" max="100" value="${Number(d.srv_sample || MON_DEFAULT.sample)}"></div>
+      <div class="mon-row"><span>慢查询阈值（ms）</span><input class="mon-input" id="monSrvSlow" type="number" min="1" max="60000" value="${Number(d.srv_slow_ms || MON_DEFAULT.slowMs)}"></div>
+      <div class="mon-row"><span>单请求耗时告警（ms）</span><input class="mon-input" id="monSrvAlert" type="number" min="100" max="60000" value="${Number(d.srv_slow_alert_ms || MON_DEFAULT.slowAlertMs)}"></div>
+      <div class="mon-row"><span>Apdex 基线（ms）</span><input class="mon-input" id="monApdexT" type="number" min="100" max="10000" value="${Number(d.apdex_t || MON_DEFAULT.apdexT)}"></div>
       <div class="mon-row"><span>重点接口白名单</span><input class="mon-input" id="monTrack" type="text" placeholder="逗号分隔，如 api/works.php" value="${esc(d.track_urls || '')}"></div>
       <div class="mon-row"><span>JS 错误率告警阈值（%）</span><input class="mon-input" id="monThErr" type="number" min="0" max="100" value="${Number(d.alert_error_rate || 5)}"></div>
       <div class="mon-row"><span>慢接口占比告警阈值（%）</span><input class="mon-input" id="monThSlow" type="number" min="0" max="100" value="${Number(d.alert_slow_ratio || 20)}"></div>
@@ -356,10 +357,10 @@ async function monSettings(box) {
         keep_days: Number(box.querySelector('#monKeep').value || 7),
         alert_error_rate: Number(box.querySelector('#monThErr').value || 5),
         alert_slow_ratio: Number(box.querySelector('#monThSlow').value || 20),
-        srv_sample: Number(box.querySelector('#monSrvSample').value || 30),
-        srv_slow_ms: Number(box.querySelector('#monSrvSlow').value || 200),
-        srv_slow_alert_ms: Number(box.querySelector('#monSrvAlert').value || 3000),
-        apdex_t: Number(box.querySelector('#monApdexT').value || 1200),
+        srv_sample: Number(box.querySelector('#monSrvSample').value || MON_DEFAULT.sample),
+        srv_slow_ms: Number(box.querySelector('#monSrvSlow').value || MON_DEFAULT.slowMs),
+        srv_slow_alert_ms: Number(box.querySelector('#monSrvAlert').value || MON_DEFAULT.slowAlertMs),
+        apdex_t: Number(box.querySelector('#monApdexT').value || MON_DEFAULT.apdexT),
         track_urls: String(box.querySelector('#monTrack').value || '').trim(),
       });
       toast('已保存');

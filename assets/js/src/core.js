@@ -767,6 +767,7 @@ async function banGeoCheck(lockEl) {
           saveBanCache(null);
           state.ban = null;
           toast('已确认你不在限制区域，正在恢复访问');
+          /* 此前的接口全部被服务端拒绝，页面数据已不完整，需要重新拉取 —— 这里的整页刷新是必要的 */
           setTimeout(function () { location.reload(); }, 700);
         } else {
           toast('校验结果：你与当事人处在同一区域' + (r && r.distance >= 0 ? '（相距 ' + kmText(r.distance) + '）' : ''));

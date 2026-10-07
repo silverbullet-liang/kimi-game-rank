@@ -216,8 +216,11 @@ export async function renderMine(container) {
     if (await dialog('退出登录', '确认退出当前账号吗？', '退出')) {
       try { await api('auth.php', 'logout'); } catch (e) {}
       setToken('');
+      /* 就地切到游客态并重绘，不整页刷新 */
+      state.role = 'guest'; state.uid = 0; state.username = '游客';
+      state.settings = {}; state.avatar = '';
       toast('已退出');
-      location.reload();
+      navigate('#/rank');
     }
   });
 }

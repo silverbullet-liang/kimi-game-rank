@@ -149,6 +149,7 @@ async function route(navType) {
   setActiveTab(name);
   updateBackBtn(name);
   closeDrawer();
+  renderDrawer();               // 身份可能已变（登录 / 退出）：抽屉即时更新，无需整页刷新
   state.ban = readBanCache();   // 同步存储（localStorage / sessionStorage / Cookie / window.name）先上锁
   syncBanLock();          // 封禁状态随时刷新：任何时候都盖住整站（登录页除外）
   /* 异步存储（IndexedDB / Cache Storage）再补一次：任一处留有记录都持续拦截 */
@@ -314,8 +315,12 @@ function renderDrawer() {
         if (await dialog('退出登录', '确认退出当前账号吗？', '退出')) {
           try { await api('auth.php', 'logout'); } catch (e) {}
           setToken('');
+          /* 就地切到游客态：重绘抽屉并跳转，不再整页刷新 */
+          state.role = 'guest'; state.uid = 0; state.username = '游客';
+          state.settings = {}; state.avatar = '';
           toast('已退出');
-          location.reload();
+          renderDrawer();
+          navigate('#/rank');
         }
       }
     });
