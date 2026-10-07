@@ -385,6 +385,84 @@ function discipline_view_count(int $id)
     try { db_exec('UPDATE discipline_reports SET views = views + 1 WHERE id = ?', array($id)); } catch (Throwable $e) { }
 }
 
+/** 地区容差（公里）：同 IP 两人的定位距离超过它，判为不同的人 */
+function discipline_geo_tol_km(): float
+{
+    $v = (float)setting_get('discipline.geo_tol_km', '30');
+    if ($v < 1) { $v = 30.0; }
+    if ($v > 2000) { $v = 2000.0; }
+    return $v;
+}
+
+/** 两点球面距离（公里，Haversine） */
+function discipline_geo_dist(float $lat1, float $lng1, float $lat2, float $lng2): float
+{
+    $r = 6371.0;
+    $dLat = deg2rad($lat2 - $lat1);
+    $dLng = deg2rad($lng2 - $lng1);
+    $a = sin($dLat / 2) * sin($dLat / 2)
+       + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) * sin($dLng / 2);
+    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+    return $r * $c;
+}
+
+/** 从请求头取访客上报的定位；缺省或越界返回 null */
+function discipline_req_geo()
+{
+    $lat = isset($_SERVER['HTTP_X_GEO_LAT']) ? (float)$_SERVER['HTTP_X_GEO_LAT'] : 0.0;
+    $lng = isset($_SERVER['HTTP_X_GEO_LNG']) ? (float)$_SERVER['HTTP_X_GEO_LNG'] : 0.0;
+    if ($lat < -90.0 || $lat > 90.0 || $lng < -180.0 || $lng > 180.0) { return null; }
+    if ($lat === 0.0 && $lng === 0.0) { return null; }
+    return array($lat, $lng);
+}
+
+/** 写入地区锚点（仅在该 IP 尚无锚点时；首拦者授权定位即成为锚点） */
+function discipline_geo_anchor(string $hash, float $lat, float $lng)
+{
+    try {
+        db_exec('UPDATE banned_ips SET geo_lat = ?, geo_lng = ?, geo_at = ? WHERE ip_hash = ? AND geo_lat IS NULL',
+            array($lat, $lng, now_utc(), $hash));
+    } catch (Throwable $e) { /* 锚点写失败不影响主流程 */ }
+}
+
+/**
+ * IP 封禁的地区判定。
+ * 返回 array(blocked=>bool, anchored=>bool, distance=>float)
+ *   blocked  —— 是否仍应拦截
+ *   anchored —— 该 IP 是否已有地区锚点
+ *   distance —— 与锚点的距离（公里）；无锚点或无坐标时为 -1
+ *
+ * 规则（本项目的选择：容差 30km；未授权定位仍按 IP 封）：
+ *   · 无锚点 + 本次带坐标 → 记锚点，拦截（他就是被拦下的人）
+ *   · 无锚点 + 无坐标     → 拦截（保守）
+ *   · 有锚点 + 无坐标     → 拦截（不给「拒绝授权就自动解封」的绕过口）
+ *   · 有锚点 + 距离 ≤ 容差 → 拦截
+ *   · 有锚点 + 距离 > 容差 → 放行（同 IP 的另一个人，避免误伤）
+ */
+function discipline_geo_verdict(string $hash, $geo): array
+{
+    $none = array('blocked' => true, 'anchored' => false, 'distance' => -1.0);
+    try {
+        if ($hash === '' || !table_exists('banned_ips')) { return $none; }
+        $row = db_one('SELECT geo_lat, geo_lng FROM banned_ips WHERE ip_hash = ? LIMIT 1', array($hash));
+        if ($row === null) { return array('blocked' => false, 'anchored' => false, 'distance' => -1.0); }
+
+        $aLat = isset($row['geo_lat']) && $row['geo_lat'] !== null ? (float)$row['geo_lat'] : null;
+        $aLng = isset($row['geo_lng']) && $row['geo_lng'] !== null ? (float)$row['geo_lng'] : null;
+
+        if ($aLat === null || $aLng === null) {
+            if (is_array($geo)) { discipline_geo_anchor($hash, (float)$geo[0], (float)$geo[1]); }
+            return array('blocked' => true, 'anchored' => false, 'distance' => -1.0);
+        }
+        if (!is_array($geo)) { return array('blocked' => true, 'anchored' => true, 'distance' => -1.0); }
+
+        $d = discipline_geo_dist($aLat, $aLng, (float)$geo[0], (float)$geo[1]);
+        return array('blocked' => $d <= discipline_geo_tol_km(), 'anchored' => true, 'distance' => round($d, 1));
+    } catch (Throwable $e) {
+        return $none;
+    }
+}
+
 /**
  * 当前访问者是否处于被封禁状态（管理员与副管理员豁免）。
  * 用于评论等接口的服务端拦截 —— 前端做了限制不算数，这里才是真正的门。
@@ -397,7 +475,16 @@ function discipline_visitor_blocked(): bool
             return false;
         }
         $uid = is_array($ident) ? (int)($ident['uid'] ?? 0) : 0;
-        return discipline_hit($uid, discipline_ip_hash(discipline_client_ip())) !== null;
+        $hash = discipline_ip_hash(discipline_client_ip());
+
+        /* IP 命中时先做地区判定：请求带定位且明显不在锚点附近 → 判为同 IP 的另一个人，放行。
+           无定位（拒绝授权 / 定位失败）时仍按 IP 拦截，不留「拒绝授权即解封」的绕过口。 */
+        if ($hash !== '' && discipline_ip_banned($hash)) {
+            $verdict = discipline_geo_verdict($hash, discipline_req_geo());
+            if (empty($verdict['blocked'])) { return false; }
+            return true;
+        }
+        return discipline_user_block($uid) !== null;
     } catch (Throwable $e) {
         return false;      // 判断本身出错时放行，绝不因拦截逻辑故障而挡人
     }

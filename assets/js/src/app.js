@@ -1,7 +1,7 @@
 /**
  * 应用入口：启动引导、路由、底栏、抽屉、搜索、通知轮询
  */
-import { boot, state, api, toast, dialog, setToken, setUnauthorizedHandler, notify, getPrefs, setPrefs, $, on, askNotifyPermission, esc, showBanLock, hideBanLock, maybeDiscPopup } from './core.js';
+import { boot, state, api, toast, dialog, setToken, setUnauthorizedHandler, notify, getPrefs, setPrefs, $, on, askNotifyPermission, esc, showBanLock, hideBanLock, maybeDiscPopup, readBanCache, saveBanCache } from './core.js';
 import { applyTheme, saveTheme, initSystemWatcher, ACCENTS } from './theme.js';
 import { setNavigate } from './router.js';
 import { cacheGet, cacheSet, cacheTouch, cachePrev, runTransition, enablePredictiveBack, setNavAnim } from './transitions.js';
@@ -149,6 +149,7 @@ async function route(navType) {
   setActiveTab(name);
   updateBackBtn(name);
   closeDrawer();
+  state.ban = readBanCache();   // 先用本地缓存的封禁状态立即上锁，随后由接口校正
   syncBanLock();          // 封禁状态随时刷新：任何时候都盖住整站（登录页除外）
 
   // 聊天页需要内部独立滚动：锁定外层滚动
@@ -567,6 +568,7 @@ async function refreshDiscState(force) {
     const d = await api('start.php', 'app', null, { silent: true, tries: 1 });
     state.ban  = (d && d.ban)  ? d.ban  : null;
     state.disc = (d && d.disc) ? d.disc : null;
+    saveBanCache(state.ban);      // 缓存封禁状态：刷新 / 切页立即可见，解封自动清除
     if (force || state.ban) { syncBanLock(); }
     maybeDiscPopup(state.disc);
   } catch (e) {}

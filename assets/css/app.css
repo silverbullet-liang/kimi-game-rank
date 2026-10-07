@@ -1354,11 +1354,10 @@ html[data-skin="sketch"]::view-transition-group(hero) { animation-duration: .4s;
 }
 
 
-/* ---------- 网页异常监测（独立页面 · 固定蓝白 / 蓝黑，不跟随主题） ---------- */
-.mon-app { --mbg:#f4f8ff; --mfg:#12233f; --mmut:#5b6b86; --mline:#d8e2f5; --mcard:#ffffff; --macc:#2563eb; --msoft:#e8f0ff;
-  padding:16px; border-radius:14px; background:var(--mbg); color:var(--mfg);
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif; }
-.mon-app[data-mon="dark"] { --mbg:#0b1220; --mfg:#e6edfb; --mmut:#8ea1c0; --mline:#1e2a44; --mcard:#101a2e; --macc:#3b82f6; --msoft:#162440; }
+/* ---------- 网页异常监测（跟随站点主题、配色与皮肤） ---------- */
+.mon-app { --mbg:var(--bg-1); --mfg:var(--text); --mmut:var(--text-2); --mline:var(--border-soft);
+  --mcard:var(--surface-solid); --macc:var(--accent); --msoft:color-mix(in srgb, var(--accent) 10%, transparent);
+  padding:16px; border-radius:14px; background:var(--mbg); color:var(--mfg); }
 .mon-app *, .mon-app *::before, .mon-app *::after { box-sizing:border-box; }
 .mon-top { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
 .mon-title { font-size:18px; font-weight:800; letter-spacing:.3px; }
@@ -1366,7 +1365,6 @@ html[data-skin="sketch"]::view-transition-group(hero) { animation-duration: .4s;
 .mon-seg { display:inline-flex; border:1px solid var(--mline); border-radius:9px; overflow:hidden; background:var(--mcard); }
 .mon-seg button { border:0; background:transparent; color:var(--mmut); font-size:13px; padding:7px 13px; cursor:pointer; }
 .mon-seg button.on { background:var(--macc); color:#fff; }
-.mon-theme { border:1px solid var(--mline); background:var(--mcard); color:var(--mfg); border-radius:9px; padding:7px 13px; font-size:13px; cursor:pointer; }
 .mon-tabs { margin-bottom:12px; flex-wrap:wrap; }
 .mon-kpis { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-bottom:12px; }
 .mon-kpi { border:1px solid var(--mline); background:var(--mcard); border-radius:10px; padding:10px 12px; }
@@ -1390,6 +1388,13 @@ html[data-skin="sketch"]::view-transition-group(hero) { animation-duration: .4s;
 .mon-actions { display:flex; gap:10px; margin-top:12px; }
 .mon-btn { border:0; background:var(--macc); color:#fff; border-radius:9px; padding:8px 16px; font-size:13px; cursor:pointer; }
 .mon-btn.ghost { background:transparent; color:var(--mfg); border:1px solid var(--mline); }
+.mon-seg button.on { color:var(--accent-ink); }
+
+/* ---------- 文字溢出兜底：长链接 / 长编号 / 长用户名不撑破容器 ---------- */
+.table th, .table td, .kv dd, .rank-meta, .who, .disc-item, .bubble, .card, .chip, .badge,
+.drawer-item span, .mon-ul li, .mon-kpi .mk-v { word-break:break-word; overflow-wrap:anywhere; }
+.kv dd, .rank-meta, .who, .disc-item, .bubble, .mon-ul li, .mon-tl li { min-width:0; }
+.disc-reasons li, .kv dt, .tiny { word-break:break-word; }
 .mon-sk { height:140px; border-radius:12px; background:linear-gradient(90deg,var(--msoft),var(--mcard),var(--msoft)); }
 .mon-empty { color:var(--mmut); font-size:13px; padding:18px 0; text-align:center; }
 .mon-click { cursor:pointer; }

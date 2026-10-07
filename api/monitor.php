@@ -412,6 +412,43 @@ if ($action === 'alert_ack') {
     ok(null, '已确认');
 }
 
+/* ---------- 一键导出（JSON） ---------- */
+if ($action === 'export') {
+    list($from, ) = mon_window(param_str('range', '7d'));
+    $t  = max(100, (int)setting_get('monitor.apdex_t', '1200'));
+    $th = max(1, (int)setting_get('monitor.srv_slow_ms', '200'));
+
+    $events = db_all('SELECT kind, level, name, page, msg, stack, v1, v2, status, browser, os, screen, net, sid, uid, created_at
+        FROM web_events WHERE created_at >= ? ORDER BY id DESC LIMIT 3000', array($from));
+    $srv = db_all('SELECT route, method, code, dur_ms, db_ms, db_n, slow_n, slow_sql, mem_kb, err, created_at
+        FROM web_srv WHERE created_at >= ? ORDER BY id DESC LIMIT 3000', array($from));
+    $alerts = db_all('SELECT rule, level, message, value, threshold, acked, created_at FROM web_alerts ORDER BY id DESC LIMIT 500');
+
+    $sumE = db_all('SELECT kind, COUNT(*) n FROM web_events WHERE created_at >= ? GROUP BY kind ORDER BY n DESC', array($from));
+    $sumS = db_all('SELECT route, COUNT(*) n, ROUND(AVG(dur_ms)) avg_ms, MAX(dur_ms) max_ms,
+        SUM(dur_ms > ?) slow, SUM(code >= 500) code5, COALESCE(SUM(slow_n),0) slow_q, COALESCE(SUM(err <> \'\'),0) errs
+        FROM web_srv WHERE created_at >= ? GROUP BY route ORDER BY n DESC LIMIT 200', array($t, $from));
+
+    $payload = array(
+        'site'         => (string)cfg('site.name', ''),
+        'version'      => APP_VERSION,
+        'exported_at'  => now_utc(),
+        'range'        => param_str('range', '7d'),
+        'from'         => $from,
+        'config'       => array('apdex_t' => $t, 'slow_ms' => $th, 'apdex_formula' => 'Apdex = (满意数 + 容忍数/2) / 总数'),
+        'event_summary' => $sumE,
+        'srv_summary'   => $sumS,
+        'events'        => $events,
+        'srv'           => $srv,
+        'alerts'        => $alerts,
+    );
+    header('Content-Type: application/json; charset=utf-8');
+    header('Content-Disposition: attachment; filename="kimi-game-rank-monitor-' . gmdate('Ymd-His') . '.json"');
+    header('X-Content-Type-Options: nosniff');
+    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    exit;
+}
+
 /* ---------- 清理过期明细 ---------- */
 if ($action === 'purge') {
     csrf_verify();

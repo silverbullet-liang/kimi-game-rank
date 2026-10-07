@@ -1,7 +1,7 @@
 /**
  * 反馈页：提交反馈（公开/私密）；管理员视角为「回复反馈」
  */
-import { api, state, esc, toast, dialog, btnLoading, userName, isAdminish, oidTag } from '../core.js';
+import { api, state, esc, toast, dialog, btnLoading, userName, isAdminish } from '../core.js';
 import { navigate } from '../router.js';
 
 export async function renderFeedback(container) {
@@ -65,7 +65,7 @@ function fbNode(f, isAdmin, reload) {
   el.className = 'card';
   const badge = f.public ? '<span class="chip">公开</span>' : '<span class="chip" style="background:color-mix(in srgb,#f59e0b 16%,transparent);color:#b45309">私密</span>';
   el.innerHTML = `
-    <div class="rank-meta" style="margin:0 0 6px">${badge}${userName(f.username, f.role)}<span class="tiny">${esc(f.time)}</span>${oidTag(f.oid)}</div>
+    <div class="rank-meta" style="margin:0 0 6px">${badge}${userName(f.username, f.role)}<span class="tiny">${esc(f.time)}</span></div>
     <div style="white-space:pre-wrap">${esc(f.content)}</div>
     ${f.reply ? `<div style="margin-top:10px;padding:9px 12px;border-radius:11px;background:color-mix(in srgb,var(--accent) 9%,transparent)">
         <div class="tiny" style="color:var(--accent);margin-bottom:3px">管理员回复 · ${esc(f.replied_at)}</div>

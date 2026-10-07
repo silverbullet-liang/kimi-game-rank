@@ -201,6 +201,9 @@ async function apiOnce(file, action, data = null, opts = {}) {
     headers['X-Token'] = state.token;   // 部分主机会剥离 Authorization，双通道兜底
   }
   if (state.csrf) headers['X-CSRF-Token'] = state.csrf;
+  /* 使用者已授权的定位：随请求带上，供服务端做「同 IP 是否同一个人」的地区判定 */
+  const __geo = readGeo();
+  if (__geo) { headers['X-Geo-Lat'] = String(__geo.lat); headers['X-Geo-Lng'] = String(__geo.lng); }
 
   const init = { method, headers, credentials: 'same-origin' };
   if (method === 'POST') {
@@ -592,6 +595,80 @@ function discDaysText(it) {
   return d > 0 ? (d + ' 天') : '永久';
 }
 
+/* ============================================================
+ * 定位与封禁状态缓存
+ * ============================================================ */
+const GEO_KEY = 'kimgr_geo';
+const BAN_KEY = 'kimgr_ban';
+
+/** 缓存使用者授权的定位（仅 lat/lng，24 小时内复用；不上传明文给展示层） */
+function saveGeo(lat, lng) {
+  try { localStorage.setItem(GEO_KEY, JSON.stringify({ lat: lat, lng: lng, t: Date.now() })); } catch (e) {}
+}
+
+/** 读取已授权的定位；缺失 / 过期 / 非法均返回 null */
+function readGeo() {
+  try {
+    const g = JSON.parse(localStorage.getItem(GEO_KEY) || 'null');
+    if (!g || typeof g.lat !== 'number' || typeof g.lng !== 'number') { return null; }
+    if (Date.now() - Number(g.t || 0) > 86400000) { return null; }
+    return g;
+  } catch (e) { return null; }
+}
+
+/** 封禁状态本地缓存：启动时先据此上锁，接口返回后再校正；解封即清 */
+function saveBanCache(b) {
+  try { if (b) { localStorage.setItem(BAN_KEY, JSON.stringify(b)); } else { localStorage.removeItem(BAN_KEY); } } catch (e) {}
+}
+
+function readBanCache() {
+  try { return JSON.parse(localStorage.getItem(BAN_KEY) || 'null'); } catch (e) { return null; }
+}
+
+/** 向上取整数公里的中文描述 */
+function kmText(km) {
+  const n = Number(km);
+  if (!isFinite(n) || n < 0) { return ''; }
+  return (n < 1 ? '不到 1' : String(Math.round(n))) + ' 公里';
+}
+
+/**
+ * 「我不是当事人」位置校验：先说明为什么需要定位，用户同意后再申请浏览器定位权限。
+ * 服务端按「与封禁锚点的距离」判定：明显不在同一片区域 → 放行。
+ */
+async function banGeoCheck(lockEl) {
+  const okGo = await dialog(
+    '校验你的位置',
+    '本站按访问来源地址限制违规者。同一个地址常被很多人共用（学校、公司、公共网络），直接封禁可能误伤到与此事无关的你。\n\n'
+    + '授权定位后，会用你的大致位置判断你是否与当事人处在同一片区域：相距较远 → 判定为不同的人、立即恢复访问；'
+    + '无明显差别 → 维持限制。位置仅用于本次判断，不保存坐标明文。',
+    '允许定位并校验'
+  );
+  if (!okGo) { return; }
+  if (!navigator.geolocation) { toast('当前浏览器不支持定位', 'err'); return; }
+
+  toast('正在获取位置…');
+  navigator.geolocation.getCurrentPosition(
+    async function (pos) {
+      const lat = pos.coords.latitude, lng = pos.coords.longitude;
+      try {
+        const r = await api('discipline.php', 'geo', { lat: lat, lng: lng }, { silent: true, tries: 1 });
+        if (r && r.blocked === false) {
+          saveGeo(lat, lng);
+          saveBanCache(null);
+          state.ban = null;
+          toast('已确认你不在限制区域，正在恢复访问');
+          setTimeout(function () { location.reload(); }, 700);
+        } else {
+          toast('校验结果：你与当事人处在同一区域' + (r && r.distance >= 0 ? '（相距 ' + kmText(r.distance) + '）' : ''));
+        }
+      } catch (e) { toast((e && e.message) || '校验失败', 'err'); }
+    },
+    function (err) { toast('未能获取定位：' + ((err && err.message) || '已拒绝授权'), 'err'); },
+    { timeout: 8000, maximumAge: 300000 }
+  );
+}
+
 let __banEl = null;
 
 /** 全屏封禁说明（不可关闭）。$info 为 start.php 下发的 ban 对象。 */
@@ -615,11 +692,16 @@ function showBanLock(info) {
       </dl>
       ${reasons.length ? '<div class="banlock-reasons">' + reasons.map(r => '<span class="disc-chip">' + esc(r) + '</span>').join('') + '</div>' : ''}
       ${b.note ? '<div class="disc-note"><span class="disc-note-k">补充说明</span>' + esc(b.note) + '</div>' : ''}
-      <div class="banlock-actions"><button class="btn-ghost" id="banSwitch">切换账号登录</button></div>
-      <p class="tiny muted">解除限制前，本站功能不可用。</p>
+      <div class="banlock-actions">
+        <button class="btn-ghost" id="banGeo">我不是当事人 · 校验位置</button>
+        <button class="btn-ghost" id="banSwitch">切换账号登录</button>
+      </div>
+      <p class="tiny muted">解除限制前，本站功能不可用。若你与该地址的其他使用者并非同一人，可用位置校验恢复访问。</p>
     </div>`;
   document.body.appendChild(el);
   __banEl = el;
+  const gb = el.querySelector('#banGeo');
+  if (gb) { gb.addEventListener('click', function () { banGeoCheck(el); }); }
   const sw = el.querySelector('#banSwitch');
   if (sw) {
     sw.addEventListener('click', function () {
@@ -1592,7 +1674,6 @@ function rankRow(w, rank) {
     <span class="rank-main">
       <span class="rank-title">${esc(w.title)}</span>
       <span class="rank-meta">
-        ${oidTag(w.oid)}
         <span class="chip">${esc(w.category_name)}</span>
         <span>${esc(w.author)}</span>
         <span>热度 ${w.heat}</span>
@@ -1728,7 +1809,7 @@ async function renderDetail(container, ctx) {
         ${d.html_url ? '打开作品（CDN 直链）' : '查看作品分享链接'}
       </button>
       <div class="tiny" style="margin-top:6px;word-break:break-all">${esc(d.link)}</div>` : ''}
-      <div class="tiny" style="margin-top:8px">编号 ${oidTag(d.oid)} · 作品 ID：${esc(d.source_id || '')} · 收录于 ${esc(d.added_at || '')}</div>
+      <div class="tiny" style="margin-top:8px">作品 ID：${esc(d.source_id || '')} · 收录于 ${esc(d.added_at || '')}</div>
     </div>
 
     <div class="card">
@@ -2060,7 +2141,6 @@ function commentNode(c, workId, reload, ttype) {
       <span class="head">
         ${userName(c.username, c.role, c.reports)}
         <span class="tiny">${esc(c.time)}</span>
-        ${oidTag(c.oid)}
       </span>
       <span class="text">${c.reply_to ? `<span class="reply-to">@${esc(c.reply_to)}</span> ` : ''}${folded
         ? `<span class="blocked-note" data-reveal>${noteText}</span><span class="blocked-body" hidden>${esc(c.content)}</span>`
@@ -2401,7 +2481,7 @@ async function mountWorld(body) {
       ? ' · <button class="link" data-del="1" style="border:0;background:0;font-size:12px">删除</button>' : '';
     el.innerHTML = '<span class="av"><img src="' + esc(m.avatar) + '" alt="" draggable="false" style="user-select:none"></span>'
       + '<span class="bubble-wrap">'
-      +   '<span class="who">' + userName(m.username, m.role) + ' · ' + esc(m.time) + recallBtn + delBtn + (m.oid ? ' ' + oidTag(m.oid) : '') + '</span>'
+      +   '<span class="who">' + userName(m.username, m.role) + ' · ' + esc(m.time) + recallBtn + delBtn + '</span>'
       +   '<div class="bubble">' + inner + '</div>'
       +   (!m.recalled && m.flag === 'middle'
             ? '<span class="msg-flag" title="系统认为这条内容可能有恶意，但仍予放行">可能有恶意'
@@ -3122,7 +3202,7 @@ function aiMsg(side, text, oid) {
   el.innerHTML = `
     <span class="av">${avatar}</span>
     <span class="bubble-wrap">
-      <span class="who">${who}${oid ? ' ' + oidTag(oid) : ''}</span>
+      <span class="who">${who}</span>
       <div class="bubble">${renderAiRich(text)}</div>
     </span>`;
   return el;
@@ -3822,23 +3902,20 @@ async function renderLogin(container) {
  */
 
 
-const MT_KEY = 'kimgr_mon_theme';
 const MON_TABS = [
   ['overview', '总览'], ['js', 'JS 错误'], ['api', '接口'], ['srv', '服务端'],
   ['perf', '加载性能'], ['resource', '资源'], ['session', '会话追踪'],
   ['custom', '自定义上报'], ['alerts', '告警'], ['settings', '设置'],
 ];
-const st = { range: '7d', tab: 'overview', theme: 'light', sessOnly: 'all' };
+const st = { range: '7d', tab: 'overview', sessOnly: 'all' };
 
 async function renderMonitor(container) {
   if (!isAdminish()) {
     container.innerHTML = '<div class="empty"><p>无权限访问</p></div>';
     return;
   }
-  try { st.theme = localStorage.getItem(MT_KEY) === 'dark' ? 'dark' : 'light'; } catch (e) {}
-
   container.innerHTML = `
-    <div class="mon-app" data-mon="${st.theme}">
+    <div class="mon-app">
       <div class="mon-top">
         <div class="mon-title">网页异常监测</div>
         <div class="mon-top-r">
@@ -3848,7 +3925,7 @@ async function renderMonitor(container) {
             <button data-r="7d" class="on">7 天</button>
             <button data-r="30d">30 天</button>
           </div>
-          <button class="mon-theme" id="monTheme" type="button">${st.theme === 'dark' ? '蓝白' : '蓝黑'}</button>
+          <button class="mon-btn ghost" id="monExport" type="button">导出 JSON</button>
         </div>
       </div>
       <div class="mon-seg mon-tabs" id="monTabs">
@@ -3857,14 +3934,8 @@ async function renderMonitor(container) {
       <div id="monBody"><div class="mon-sk"></div></div>
     </div>`;
 
-  const app = container.querySelector('.mon-app');
-  const themeBtn = container.querySelector('#monTheme');
-  themeBtn.addEventListener('click', () => {
-    st.theme = st.theme === 'dark' ? 'light' : 'dark';
-    app.dataset.mon = st.theme;
-    themeBtn.textContent = st.theme === 'dark' ? '蓝白' : '蓝黑';
-    try { localStorage.setItem(MT_KEY, st.theme); } catch (e) {}
-  });
+  const exportBtn = container.querySelector('#monExport');
+  if (exportBtn) { exportBtn.addEventListener('click', () => monExport(exportBtn)); }
 
   const tabs = container.querySelector('#monTabs');
   tabs.addEventListener('click', e => {
@@ -3882,6 +3953,29 @@ async function renderMonitor(container) {
   });
 
   monRenderBody(container);
+}
+
+/** 一键导出当前范围的监测数据（JSON 文件） */
+async function monExport(btn) {
+  btnLoading(btn, true);
+  try {
+    const url = new URL('api/monitor.php', location.href);
+    url.searchParams.set('action', 'export');
+    url.searchParams.set('range', st.range);
+    const h = { 'Accept': 'application/json' };
+    if (state.token) { h['Authorization'] = 'Bearer ' + state.token; h['X-Token'] = state.token; }
+    if (state.csrf) { h['X-CSRF-Token'] = state.csrf; }
+    const r = await fetch(url, { headers: h, credentials: 'same-origin' });
+    if (!r.ok) { throw new Error('导出失败（HTTP ' + r.status + '）'); }
+    const blob = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'kimi-game-rank-monitor-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast('已导出当前范围数据');
+  } catch (e) { toast(e.message, 'err'); }
+  finally { btnLoading(btn, false); }
 }
 
 async function monRenderBody(container) {
@@ -6652,7 +6746,7 @@ function fbNode(f, isAdmin, reload) {
   el.className = 'card';
   const badge = f.public ? '<span class="chip">公开</span>' : '<span class="chip" style="background:color-mix(in srgb,#f59e0b 16%,transparent);color:#b45309">私密</span>';
   el.innerHTML = `
-    <div class="rank-meta" style="margin:0 0 6px">${badge}${userName(f.username, f.role)}<span class="tiny">${esc(f.time)}</span>${oidTag(f.oid)}</div>
+    <div class="rank-meta" style="margin:0 0 6px">${badge}${userName(f.username, f.role)}<span class="tiny">${esc(f.time)}</span></div>
     <div style="white-space:pre-wrap">${esc(f.content)}</div>
     ${f.reply ? `<div style="margin-top:10px;padding:9px 12px;border-radius:11px;background:color-mix(in srgb,var(--accent) 9%,transparent)">
         <div class="tiny" style="color:var(--accent);margin-bottom:3px">管理员回复 · ${esc(f.replied_at)}</div>
@@ -6762,7 +6856,7 @@ async function paintDetail(container, id, mine) {
       <div class="row" style="align-items:center;gap:10px">
         <img class="avatar" src="${esc(d.avatar)}" width="40" height="40" draggable="false" alt="">
         <div style="flex:1">
-          <div>${namePair(d.username, d.username_now)} ${oidTag(d.oid)}</div>
+          <div>${namePair(d.username, d.username_now)}</div>
           <div class="tiny muted">通报于 ${esc(d.created)} · 浏览 ${Number(d.views || 0)}</div>
         </div>
       </div>
@@ -6832,7 +6926,7 @@ async function renderDiscipline(container, ctx) {
         <div class="row" style="align-items:center;gap:10px">
           <img class="avatar" src="${esc(it.avatar)}" width="36" height="36" draggable="false" alt="">
           <div style="flex:1;min-width:0">
-            <div>${namePair(it.username, it.username_now)} ${discChip(it)} ${oidTag(it.oid)}</div>
+            <div>${namePair(it.username, it.username_now)} ${discChip(it)}</div>
             <div class="tiny muted">${esc(it.created)} · 封禁 ${esc(discDaysText(it))} · 评论 ${Number(it.comments || 0)}</div>
           </div>
         </div>
@@ -6998,6 +7092,7 @@ async function route(navType) {
   setActiveTab(name);
   updateBackBtn(name);
   closeDrawer();
+  state.ban = readBanCache();   // 先用本地缓存的封禁状态立即上锁，随后由接口校正
   syncBanLock();          // 封禁状态随时刷新：任何时候都盖住整站（登录页除外）
 
   // 聊天页需要内部独立滚动：锁定外层滚动
@@ -7416,6 +7511,7 @@ async function refreshDiscState(force) {
     const d = await api('start.php', 'app', null, { silent: true, tries: 1 });
     state.ban  = (d && d.ban)  ? d.ban  : null;
     state.disc = (d && d.disc) ? d.disc : null;
+    saveBanCache(state.ban);      // 缓存封禁状态：刷新 / 切页立即可见，解封自动清除
     if (force || state.ban) { syncBanLock(); }
     maybeDiscPopup(state.disc);
   } catch (e) {}

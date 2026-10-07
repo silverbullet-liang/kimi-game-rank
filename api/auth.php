@@ -26,6 +26,11 @@ switch ($action) {
     /* 注册 */
     case 'register':
         csrf_verify();
+        /* 已被封停的来源 / 账号：只能登录（登录后由全屏封禁说明接管），不给注册新号绕过的口子。
+           若其定位显示与封禁锚点相距很远，discipline_visitor_blocked() 会放行（同 IP 不同人）。 */
+        if (function_exists('discipline_visitor_blocked') && discipline_visitor_blocked()) {
+            fail(403, '当前来源已被限制，无法注册新账号');
+        }
         captcha_guard();          // 人机验证：登录与注册都要过这道门
         if (!rate_limit('reg_' . ip_hash(client_ip()), 10, 3600)) { fail(429, '注册过于频繁，请稍后再试'); }
         cooldown_guard('register');

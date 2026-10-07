@@ -4,25 +4,22 @@
  * 与站点主题/皮肤完全隔离：固定「蓝白 / 蓝黑」两套配色，可切换，互不影响。
  * 数据来自 api/monitor.php（stats / events / settings / purge）。
  */
-import { api, esc, isAdminish, toast, btnLoading } from '../core.js';
+import { api, esc, isAdminish, toast, btnLoading, state } from '../core.js';
 
-const MT_KEY = 'kimgr_mon_theme';
 const MON_TABS = [
   ['overview', '总览'], ['js', 'JS 错误'], ['api', '接口'], ['srv', '服务端'],
   ['perf', '加载性能'], ['resource', '资源'], ['session', '会话追踪'],
   ['custom', '自定义上报'], ['alerts', '告警'], ['settings', '设置'],
 ];
-const st = { range: '7d', tab: 'overview', theme: 'light', sessOnly: 'all' };
+const st = { range: '7d', tab: 'overview', sessOnly: 'all' };
 
 export async function renderMonitor(container) {
   if (!isAdminish()) {
     container.innerHTML = '<div class="empty"><p>无权限访问</p></div>';
     return;
   }
-  try { st.theme = localStorage.getItem(MT_KEY) === 'dark' ? 'dark' : 'light'; } catch (e) {}
-
   container.innerHTML = `
-    <div class="mon-app" data-mon="${st.theme}">
+    <div class="mon-app">
       <div class="mon-top">
         <div class="mon-title">网页异常监测</div>
         <div class="mon-top-r">
@@ -32,7 +29,7 @@ export async function renderMonitor(container) {
             <button data-r="7d" class="on">7 天</button>
             <button data-r="30d">30 天</button>
           </div>
-          <button class="mon-theme" id="monTheme" type="button">${st.theme === 'dark' ? '蓝白' : '蓝黑'}</button>
+          <button class="mon-btn ghost" id="monExport" type="button">导出 JSON</button>
         </div>
       </div>
       <div class="mon-seg mon-tabs" id="monTabs">
@@ -41,14 +38,8 @@ export async function renderMonitor(container) {
       <div id="monBody"><div class="mon-sk"></div></div>
     </div>`;
 
-  const app = container.querySelector('.mon-app');
-  const themeBtn = container.querySelector('#monTheme');
-  themeBtn.addEventListener('click', () => {
-    st.theme = st.theme === 'dark' ? 'light' : 'dark';
-    app.dataset.mon = st.theme;
-    themeBtn.textContent = st.theme === 'dark' ? '蓝白' : '蓝黑';
-    try { localStorage.setItem(MT_KEY, st.theme); } catch (e) {}
-  });
+  const exportBtn = container.querySelector('#monExport');
+  if (exportBtn) { exportBtn.addEventListener('click', () => monExport(exportBtn)); }
 
   const tabs = container.querySelector('#monTabs');
   tabs.addEventListener('click', e => {
@@ -66,6 +57,29 @@ export async function renderMonitor(container) {
   });
 
   monRenderBody(container);
+}
+
+/** 一键导出当前范围的监测数据（JSON 文件） */
+async function monExport(btn) {
+  btnLoading(btn, true);
+  try {
+    const url = new URL('api/monitor.php', location.href);
+    url.searchParams.set('action', 'export');
+    url.searchParams.set('range', st.range);
+    const h = { 'Accept': 'application/json' };
+    if (state.token) { h['Authorization'] = 'Bearer ' + state.token; h['X-Token'] = state.token; }
+    if (state.csrf) { h['X-CSRF-Token'] = state.csrf; }
+    const r = await fetch(url, { headers: h, credentials: 'same-origin' });
+    if (!r.ok) { throw new Error('导出失败（HTTP ' + r.status + '）'); }
+    const blob = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'kimi-game-rank-monitor-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast('已导出当前范围数据');
+  } catch (e) { toast(e.message, 'err'); }
+  finally { btnLoading(btn, false); }
 }
 
 async function monRenderBody(container) {

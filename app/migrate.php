@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 25);
+define('SCHEMA_VERSION', 26);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -997,6 +997,25 @@ function run_migrations(bool $force = false)
         }
     }
 
+    /* ---------- v26：封禁 IP 的地区锚点 ----------
+       同一出口 IP 背后可能是很多人（学校 / 公司 / 运营商 NAT）。
+       封禁时记录「首拦者授权定位后的坐标」，之后同 IP 的人若明显不在同一片区域，
+       判定为不同的人，予以放行 —— 既挡住当事人，又不牵连同 IP 的其他人。 */
+    if ($cur < 26) {
+        try {
+            if (table_exists('banned_ips') && !column_exists('banned_ips', 'geo_lat')) {
+                db_exec("ALTER TABLE `banned_ips` ADD COLUMN `geo_lat` DECIMAL(10,7) NULL COMMENT '地区锚点纬度'");
+                db_exec("ALTER TABLE `banned_ips` ADD COLUMN `geo_lng` DECIMAL(10,7) NULL COMMENT '地区锚点经度'");
+                db_exec("ALTER TABLE `banned_ips` ADD COLUMN `geo_at` DATETIME NULL COMMENT '锚点记录时间'");
+                table_columns('banned_ips', true);
+            }
+            app_log('schema migrated to v26（封禁 IP 地区锚点）');
+            setting_set('schema_version', '26');
+        } catch (Throwable $e) {
+            app_log('migrate v26 failed: ' . $e->getMessage());
+        }
+    }
+
     /* 只有结构确认完整才写版本号、落锁：
        否则锁会把「半成品」永久固定下来，此后所有请求都被短路，再也修不回来。 */
     $ok = true;
@@ -1025,6 +1044,7 @@ function run_migrations(bool $force = false)
     }
     if (table_exists('comments') && !column_exists('comments', 'target_type')) { $ok = false; }
     if (table_exists('ai_usage') && !column_exists('ai_usage', 'provider')) { $ok = false; }
+    if (table_exists('banned_ips') && !column_exists('banned_ips', 'geo_lat')) { $ok = false; }
     if ($ok) {
         setting_set('schema_version', (string)SCHEMA_VERSION);
         @file_put_contents(migration_lock_path(), gmdate('c'));

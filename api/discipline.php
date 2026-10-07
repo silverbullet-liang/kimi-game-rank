@@ -48,6 +48,21 @@ switch ($action) {
         break;
     }
 
+    /* 位置校验（公开、免登录）：被 IP 拦下的人可提交自己的定位来证明「我不是当事人」。
+       本接口在封禁白名单内，被封停时也能调用。 */
+    case 'geo': {
+        $lat = (float)param('lat', 0);
+        $lng = (float)param('lng', 0);
+        if ($lat < -90 || $lat > 90 || $lng < -180 || $lng > 180 || ($lat == 0.0 && $lng == 0.0)) {
+            fail(400, '定位数据无效');
+        }
+        $hash = discipline_ip_hash(discipline_client_ip());
+        $v = discipline_geo_verdict($hash, array($lat, $lng));
+        ok(array('blocked' => (bool)$v['blocked'], 'anchored' => (bool)$v['anchored'],
+                 'distance' => (float)$v['distance'], 'tol' => discipline_geo_tol_km()));
+        break;
+    }
+
     /* 最新一条通报（公开）：供全站弹窗使用 */
     case 'latest': {
         ok(array('item' => discipline_latest()));

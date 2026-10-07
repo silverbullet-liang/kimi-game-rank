@@ -195,6 +195,9 @@ async function apiOnce(file, action, data = null, opts = {}) {
     headers['X-Token'] = state.token;   // 部分主机会剥离 Authorization，双通道兜底
   }
   if (state.csrf) headers['X-CSRF-Token'] = state.csrf;
+  /* 使用者已授权的定位：随请求带上，供服务端做「同 IP 是否同一个人」的地区判定 */
+  const __geo = readGeo();
+  if (__geo) { headers['X-Geo-Lat'] = String(__geo.lat); headers['X-Geo-Lng'] = String(__geo.lng); }
 
   const init = { method, headers, credentials: 'same-origin' };
   if (method === 'POST') {
@@ -586,6 +589,80 @@ export function discDaysText(it) {
   return d > 0 ? (d + ' 天') : '永久';
 }
 
+/* ============================================================
+ * 定位与封禁状态缓存
+ * ============================================================ */
+const GEO_KEY = 'kimgr_geo';
+const BAN_KEY = 'kimgr_ban';
+
+/** 缓存使用者授权的定位（仅 lat/lng，24 小时内复用；不上传明文给展示层） */
+export function saveGeo(lat, lng) {
+  try { localStorage.setItem(GEO_KEY, JSON.stringify({ lat: lat, lng: lng, t: Date.now() })); } catch (e) {}
+}
+
+/** 读取已授权的定位；缺失 / 过期 / 非法均返回 null */
+export function readGeo() {
+  try {
+    const g = JSON.parse(localStorage.getItem(GEO_KEY) || 'null');
+    if (!g || typeof g.lat !== 'number' || typeof g.lng !== 'number') { return null; }
+    if (Date.now() - Number(g.t || 0) > 86400000) { return null; }
+    return g;
+  } catch (e) { return null; }
+}
+
+/** 封禁状态本地缓存：启动时先据此上锁，接口返回后再校正；解封即清 */
+export function saveBanCache(b) {
+  try { if (b) { localStorage.setItem(BAN_KEY, JSON.stringify(b)); } else { localStorage.removeItem(BAN_KEY); } } catch (e) {}
+}
+
+export function readBanCache() {
+  try { return JSON.parse(localStorage.getItem(BAN_KEY) || 'null'); } catch (e) { return null; }
+}
+
+/** 向上取整数公里的中文描述 */
+function kmText(km) {
+  const n = Number(km);
+  if (!isFinite(n) || n < 0) { return ''; }
+  return (n < 1 ? '不到 1' : String(Math.round(n))) + ' 公里';
+}
+
+/**
+ * 「我不是当事人」位置校验：先说明为什么需要定位，用户同意后再申请浏览器定位权限。
+ * 服务端按「与封禁锚点的距离」判定：明显不在同一片区域 → 放行。
+ */
+async function banGeoCheck(lockEl) {
+  const okGo = await dialog(
+    '校验你的位置',
+    '本站按访问来源地址限制违规者。同一个地址常被很多人共用（学校、公司、公共网络），直接封禁可能误伤到与此事无关的你。\n\n'
+    + '授权定位后，会用你的大致位置判断你是否与当事人处在同一片区域：相距较远 → 判定为不同的人、立即恢复访问；'
+    + '无明显差别 → 维持限制。位置仅用于本次判断，不保存坐标明文。',
+    '允许定位并校验'
+  );
+  if (!okGo) { return; }
+  if (!navigator.geolocation) { toast('当前浏览器不支持定位', 'err'); return; }
+
+  toast('正在获取位置…');
+  navigator.geolocation.getCurrentPosition(
+    async function (pos) {
+      const lat = pos.coords.latitude, lng = pos.coords.longitude;
+      try {
+        const r = await api('discipline.php', 'geo', { lat: lat, lng: lng }, { silent: true, tries: 1 });
+        if (r && r.blocked === false) {
+          saveGeo(lat, lng);
+          saveBanCache(null);
+          state.ban = null;
+          toast('已确认你不在限制区域，正在恢复访问');
+          setTimeout(function () { location.reload(); }, 700);
+        } else {
+          toast('校验结果：你与当事人处在同一区域' + (r && r.distance >= 0 ? '（相距 ' + kmText(r.distance) + '）' : ''));
+        }
+      } catch (e) { toast((e && e.message) || '校验失败', 'err'); }
+    },
+    function (err) { toast('未能获取定位：' + ((err && err.message) || '已拒绝授权'), 'err'); },
+    { timeout: 8000, maximumAge: 300000 }
+  );
+}
+
 let __banEl = null;
 
 /** 全屏封禁说明（不可关闭）。$info 为 start.php 下发的 ban 对象。 */
@@ -609,11 +686,16 @@ export function showBanLock(info) {
       </dl>
       ${reasons.length ? '<div class="banlock-reasons">' + reasons.map(r => '<span class="disc-chip">' + esc(r) + '</span>').join('') + '</div>' : ''}
       ${b.note ? '<div class="disc-note"><span class="disc-note-k">补充说明</span>' + esc(b.note) + '</div>' : ''}
-      <div class="banlock-actions"><button class="btn-ghost" id="banSwitch">切换账号登录</button></div>
-      <p class="tiny muted">解除限制前，本站功能不可用。</p>
+      <div class="banlock-actions">
+        <button class="btn-ghost" id="banGeo">我不是当事人 · 校验位置</button>
+        <button class="btn-ghost" id="banSwitch">切换账号登录</button>
+      </div>
+      <p class="tiny muted">解除限制前，本站功能不可用。若你与该地址的其他使用者并非同一人，可用位置校验恢复访问。</p>
     </div>`;
   document.body.appendChild(el);
   __banEl = el;
+  const gb = el.querySelector('#banGeo');
+  if (gb) { gb.addEventListener('click', function () { banGeoCheck(el); }); }
   const sw = el.querySelector('#banSwitch');
   if (sw) {
     sw.addEventListener('click', function () {
