@@ -652,10 +652,14 @@ switch ($action) {
         $norm  = norm_username($clean);
         $len = mb_strlen($clean, 'UTF-8');
         if ($len < 2 || $len > 64) { fail(400, '用户名长度需为 2-64 个字符'); }
+        if (username_has_bad_chars($clean)) { fail(400, '用户名不能包含换行或装饰性特殊字符'); }
         if ($norm === '') { fail(400, '用户名不能为空白'); }
         if (is_reserved_name($norm)) { fail(400, '该用户名为系统保留名'); }
         $dup = db_val('SELECT id FROM users WHERE username_norm = ? AND id <> ? LIMIT 1', array($norm, $uid));
         if ($dup) { fail(409, '该用户名已被使用'); }
+        /* 用户名也过内容审核（与评论同一套）：只有明确违规才拦，「可能有恶意」放行 */
+        $mv = moderate_text($clean, 'username', $uid);
+        if (empty($mv['ok'])) { fail(400, '该用户名未通过内容审核，请更换'); }
         if ($clean === (string)$u['username']) {
             ok(array('id' => $uid, 'username' => $clean, 'old' => (string)$u['username']), '名字没有变化');
         }

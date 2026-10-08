@@ -51,11 +51,12 @@ function discipline_reasons_set(array $list)
 
 /** 由封禁天数算出解封时间（UTC 字符串）；0 表示永久，返回 null。
     支持小数天：0.5 = 12 小时，1.5 = 36 小时 —— 短时冷静期不必凑整天。 */
-function discipline_ban_until($days)
+function discipline_ban_until($days, $baseTs = null)
 {
     $d = (float)$days;
     if ($d <= 0) { return null; }
-    return gmdate('Y-m-d H:i:s', time() + (int)round($d * 86400));
+    if ($baseTs === null) { $baseTs = time(); }
+    return gmdate('Y-m-d H:i:s', (int)$baseTs + (int)round($d * 86400));
 }
 
 /** IP 指纹：加盐单向哈希，够用来匹配，不足以反推 */
@@ -585,7 +586,23 @@ function discipline_update(int $id, array $patch)
         $set[] = 'banned = 0'; $set[] = 'ban_days = 0'; $set[] = 'ban_until = NULL';
         db_exec('UPDATE users SET is_banned = 0, ban_until = NULL WHERE id = ?', array($uid));
     } elseif ($banDays !== null) {
-        $until = discipline_ban_until($banDays);
+        /* 改时长从「刚开始封禁的时刻」起算，而不是从本次修改时刻重新计时：
+           已封停且有限期 → 由 ban_until 反推原起点；永久封停 → 通报创建即封禁起点；
+           此前未封停 → 现在才开始封，从当前时刻起算。 */
+        $baseTs = null;
+        if ((int)$row['banned'] === 1 && $row['ban_until'] !== null && (float)$row['ban_days'] > 0) {
+            $ts = strtotime((string)$row['ban_until'] . ' UTC');
+            if ($ts !== false) { $baseTs = $ts - (int)round((float)$row['ban_days'] * 86400); }
+        }
+        if ($baseTs === null) {
+            if ((int)$row['banned'] === 1) {
+                $cts = isset($row['created_at']) ? strtotime((string)$row['created_at'] . ' UTC') : false;
+                $baseTs = $cts !== false ? $cts : time();
+            } else {
+                $baseTs = time();
+            }
+        }
+        $until = discipline_ban_until($banDays, $baseTs);
         $set[] = 'banned = 1'; $set[] = 'ban_days = ?'; $set[] = 'ban_until = ?';
         $args[] = $banDays; $args[] = $until;
         db_exec('UPDATE users SET is_banned = 1, ban_until = ? WHERE id = ?', array($until, $uid));
@@ -603,46 +620,6 @@ function discipline_update(int $id, array $patch)
         app_log('discipline: report #' . $id . ' updated');
     }
     return discipline_get($id);
-}
-
-/**
- * 反篡改上报：前端发现有人试图绕过全屏封禁说明（例如用脚本删掉它）时调用。
- * 前三次只提醒，第四次起每次把封禁时间延长 0.05 天（72 分钟）。
- * 「同一会话不重复增加」由前端按会话去重，这里再做一层按通报的频率限制。
- */
-function discipline_tamper(int $id): array
-{
-    $row = discipline_get($id);
-    if ($row === null) { return array('count' => 0, 'added' => false, 'reason' => 'not_found'); }
-
-    $cnt = (int)($row['tamper_count'] ?? 0) + 1;
-    try {
-        db_exec('UPDATE discipline_reports SET tamper_count = ?, tamper_at = UTC_TIMESTAMP() WHERE id = ?', array($cnt, $id));
-    } catch (Throwable $e) { app_log('discipline tamper write failed: ' . $e->getMessage()); }
-
-    $base = array('count' => $cnt, 'added' => false,
-                  'left' => max(0, 3 - $cnt),
-                  'until' => isset($row['ban_until']) && $row['ban_until'] !== null ? to_local((string)$row['ban_until']) : '');
-
-    /* 前三次放过 */
-    if ($cnt <= 3) { return $base; }
-    /* 未封停 / 永久封停：没有可延长的期限，只计数 */
-    if ((int)$row['banned'] !== 1 || $row['ban_until'] === null) { return $base; }
-
-    $ts = strtotime((string)$row['ban_until'] . ' UTC');
-    if ($ts === false) { return $base; }
-    $newUntil = gmdate('Y-m-d H:i:s', $ts + (int)round(0.05 * 86400));
-    $newDays  = (float)$row['ban_days'] + 0.05;
-    try {
-        db_exec('UPDATE discipline_reports SET ban_until = ?, ban_days = ? WHERE id = ?', array($newUntil, $newDays, $id));
-        if ((int)$row['user_id'] > 0) {
-            db_exec('UPDATE users SET ban_until = ? WHERE id = ?', array($newUntil, (int)$row['user_id']));
-        }
-        app_log('discipline: report #' . $id . ' tamper #' . $cnt . ' → 封禁延长 0.05 天');
-        $base['added'] = true;
-        $base['until'] = to_local($newUntil);
-    } catch (Throwable $e) { app_log('discipline tamper extend failed: ' . $e->getMessage()); }
-    return $base;
 }
 
 /** 撤销：删记录并解除账号封停与 IP 黑名单 */

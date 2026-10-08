@@ -276,6 +276,7 @@ function user_register(string $username, string $password): array
 
     $len = mb_strlen($clean, 'UTF-8');
     if ($len < 2 || $len > 64) { fail(400, '用户名长度需为 2-64 个字符'); }
+    if (username_has_bad_chars($clean)) { fail(400, '用户名不能包含换行或装饰性特殊字符'); }
     $plen = mb_strlen($password, 'UTF-8');
     if ($plen < 8 || $plen > 64) { fail(400, '密码长度需为 8-64 个字符'); }
     if (strpbrk($password, "\0\r\n") !== false) { fail(400, '密码包含非法字符'); }
@@ -285,6 +286,10 @@ function user_register(string $username, string $password): array
 
     $exists = db_val('SELECT id FROM users WHERE username_norm = ? LIMIT 1', array($norm));
     if ($exists) { fail(409, '该用户名已被使用'); }
+
+    /* 用户名也过内容审核（与评论同一套）：只有明确违规才拦，「可能有恶意」放行 */
+    $mv = moderate_text($clean, 'username', 0);
+    if (empty($mv['ok'])) { fail(400, '该用户名未通过内容审核，请更换'); }
 
     $registeredAt = now_utc();
     $salt = password_make_salt();

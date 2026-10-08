@@ -17,6 +17,8 @@ function setting_get(string $k, $d = null) { return $d; }
 function setting_set(string $k, $v): void { }
 function table_exists(string $t): bool { return true; }
 function column_exists(string $t, string $c): bool { return true; }
+function col_ok(string $t, string $c): bool { return true; }
+function oid_new(string $t): string { return '20260101' . '02' . '0000'; }
 function now_utc(): string { return gmdate('Y-m-d H:i:s'); }
 function to_local(string $utc, string $fmt = 'Y-m-d H:i'): string { return $utc; }
 function app_log(string $m): void { }
@@ -68,6 +70,58 @@ $u15 = discipline_ban_until(1.5);
 ck('1.5 天 ≈ 现在 + 36 小时',         abs(strtotime($u15 . ' UTC') - ($now + 129600)) <= 2, true);
 
 ck('0.01 天 ≈ 现在 + 14.4 分钟',      abs(strtotime(discipline_ban_until(0.01) . ' UTC') - ($now + 864)) <= 2, true);
+
+/* 基点参数：管理员改时长从「刚开始封禁的时刻」起算 */
+$base = $now - 3 * 86400;
+$ub = discipline_ban_until(7, $base);
+ck('基点参数：7 天从 3 天前起算',     abs(strtotime($ub . ' UTC') - ($base + 7 * 86400)) <= 2, true);
+ck('基点参数：0 天仍为永久',          discipline_ban_until(0, $base), null);
+
+/* ---------- 1.5 改时长从原封禁起点起算 ---------- */
+function upd_row($id, $banned, $days, $until, $createdAt)
+{
+    return array('id' => $id, 'user_id' => 90 + $id, 'username' => 'u' . $id,
+                 'reasons' => '[]', 'note' => '', 'banned' => $banned, 'ban_days' => $days,
+                 'ban_until' => $until, 'purged' => 0, 'ip_banned' => 0, 'by_uid' => 1,
+                 'created_at' => $createdAt);
+}
+function upd_exec($sql)
+{
+    $GLOBALS['SQL'][] = array('exec', $sql, array_slice(func_get_args(), 1));
+}
+$GLOBALS['SQL'] = array();
+$GLOBALS['ONE'] = upd_row(5, 1, 3.0, gmdate('Y-m-d H:i:s', $now - 86400), gmdate('Y-m-d H:i:s', $now - 10 * 86400));
+discipline_update(5, array('ban_days' => 9.0));
+$rUntil = null; $userUntil = null;
+foreach ($GLOBALS['SQL'] as $q) {
+    if ($q[0] === 'exec' && strpos($q[1], 'UPDATE discipline_reports') !== false) { $rUntil = $q[2][1]; }
+    if ($q[0] === 'exec' && strpos($q[1], 'UPDATE users') !== false) { $userUntil = $q[2][0]; }
+}
+/* 原 until = now-1d、原 3 天 → 起点 now-4d；改 9 天 → now+5d */
+ck('已封停：改时长从原起点起算（now+5d）', $rUntil !== null && abs(strtotime($rUntil . ' UTC') - ($now + 5 * 86400)) <= 2, true);
+ck('已封停：users 表同步同值',            $userUntil === $rUntil, true);
+
+$GLOBALS['SQL'] = array();
+$GLOBALS['ONE'] = upd_row(6, 1, 0.0, null, gmdate('Y-m-d H:i:s', $now - 2 * 86400));
+discipline_update(6, array('ban_days' => 3.0));
+$rUntil = null;
+foreach ($GLOBALS['SQL'] as $q) {
+    if ($q[0] === 'exec' && strpos($q[1], 'UPDATE discipline_reports') !== false) { $rUntil = $q[2][1]; }
+}
+/* 永久封停：通报创建即封禁起点（now-2d）→ 改 3 天 = now+1d */
+ck('永久封停：从通报创建时刻起算（now+1d）', $rUntil !== null && abs(strtotime($rUntil . ' UTC') - ($now + 86400)) <= 2, true);
+
+$GLOBALS['SQL'] = array();
+$GLOBALS['ONE'] = upd_row(7, 0, 0.0, null, gmdate('Y-m-d H:i:s', $now - 100 * 86400));
+discipline_update(7, array('ban_days' => 2.0));
+$rUntil = null;
+foreach ($GLOBALS['SQL'] as $q) {
+    if ($q[0] === 'exec' && strpos($q[1], 'UPDATE discipline_reports') !== false) { $rUntil = $q[2][1]; }
+}
+/* 此前未封停：现在才开始封，从当前时刻起算（≈now+2d），与 100 天前的创建时刻无关 */
+ck('未封停：现在起算（≈now+2d）', $rUntil !== null && abs(strtotime($rUntil . ' UTC') - ($now + 2 * 86400)) <= 2, true);
+
+unset($GLOBALS['ONE']);   // 清桩：db_one 优先读 ONE，残留会污染后续 discipline_create 测试
 
 /* ---------- 2. 封禁是否仍在有效期 ---------- */
 ck('ban_until 为 null → 视为永久在效', discipline_ban_alive(array('ban_until' => null)), true);

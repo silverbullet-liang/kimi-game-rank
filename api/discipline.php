@@ -69,19 +69,6 @@ switch ($action) {
         break;
     }
 
-    /* 说明：这个动作刻意起个平常名字（beat）、参数与回包用单字母 —— 越不起眼，
-       越不容易被人照着名字去屏蔽。本接口在封禁白名单内，被封停时也能调用。 */
-    case 'beat': {
-        $tid = param_int('k', 0);
-        if ($tid <= 0) { fail(400, '参数错误'); }
-        /* 同一通报 10 分钟内最多计 4 次，避免被刷 */
-        if (!rate_limit('bt_' . $tid, 4, 600)) { ok(array('n' => 0, 'a' => false, 'q' => true)); break; }
-        $r = discipline_tamper($tid);
-        ok(array('n' => (int)$r['count'], 'a' => (bool)$r['added'],
-                 'u' => (string)$r['until'], 'm' => (int)(isset($r['left']) ? $r['left'] : 0)));
-        break;
-    }
-
     default:
         fail(400, '未知操作');
 }

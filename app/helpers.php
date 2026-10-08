@@ -157,6 +157,18 @@ function is_reserved_name(string $normName): bool
     return in_array($normName, $black, true);
 }
 
+/** 用户名禁用字符：换行/回车，以及可堆叠装饰符、变体选择符与双向控制符
+    （zalgo 骚扰文本与隐形字符的常见手法；在 NFC 规整之后仍残留即拦截，
+    合法的预组合字符不受影响）。 */
+function username_has_bad_chars(string $s): bool
+{
+    if (strpbrk($s, "\n\r") !== false) { return true; }
+    $re = '/[\x{0300}-\x{036F}\x{1AB0}-\x{1AFF}\x{1DC0}-\x{1DFF}\x{20D0}-\x{20F0}\x{FE20}-\x{FE2F}'
+        . '\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2060}-\x{2064}\x{FEFF}\x{FE00}-\x{FE0F}'
+        . '\x{180B}-\x{180D}\x{E0000}-\x{E007F}\x{E0100}-\x{E01EF}]/u';
+    return (bool)preg_match($re, $s);
+}
+
 /* ============================================================
  * IP
  * ============================================================ */
