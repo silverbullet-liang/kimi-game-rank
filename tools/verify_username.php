@@ -6,6 +6,15 @@
  */
 declare(strict_types=1);
 
+/* username_suggest 会查重：桩件默认「无冲突」，可用 $GLOBALS['DBVAL_SEQ'] 控制序列 */
+$GLOBALS['DBVAL'] = 0;
+$GLOBALS['DBVAL_SEQ'] = array();
+function db_val(string $sql, array $a = array()) {
+    if ($GLOBALS['DBVAL_SEQ']) { return array_shift($GLOBALS['DBVAL_SEQ']); }
+    return $GLOBALS['DBVAL'];
+}
+
+require __DIR__ . '/../app/crypto.php';          // nfc_normalize（username_suggest 用）
 require __DIR__ . '/../app/helpers.php';
 
 $GLOBALS['fail_n'] = 0;
@@ -47,6 +56,32 @@ ck('蒙文变体选择符拒绝',   username_has_bad_chars("a\u{180B}b"), true);
 ck('U+202E 双向拒绝',      username_has_bad_chars("abc\u{202E}def"), true);
 ck('U+2060 词连接符拒绝',  username_has_bad_chars("a\u{2060}b"), true);
 ck('U+FEFF 拒绝',          username_has_bad_chars("a\u{FEFF}b"), true);
+
+/* ---------- 存量用户名：是否需要更新 / 清洗 / 建议名 ---------- */
+ck('needs_fix：正常名 → false',      username_needs_fix('小明'), false);
+ck('needs_fix：含换行 → true',       username_needs_fix("小明\n同学"), true);
+ck('needs_fix：含组合符 → true',     username_needs_fix("小\u{0301}明"), true);
+
+ck('scrub：剥换行与组合符',          username_scrub("小\u{0301}明\n同学"), '小明同学');
+ck('scrub：压缩连续空白',            username_scrub("a  \t b"), 'a b');
+ck('scrub：正常名原样',              username_scrub('小明'), '小明');
+
+ck('suggest：清洗后可辨识 → 保留原名', username_suggest("小明\n同学", 5, 'abcd1234'), '小明同学');
+ck('suggest：清洗后为空 → 用户+uid8', username_suggest("\n\u{0301}", 5, 'abcd1234'), '用户abcd1234');
+ck('suggest：无 uid8 → 用户+uid',     username_suggest("\n", 7, ''), '用户7');
+ck('suggest：清洗后落到保留名 → 兜底', username_suggest("admin\n", 9, 'ff00ff00'), '用户ff00ff00');
+ck('suggest：清洗后过短 → 兜底',      username_suggest("x\n", 3, 'aa11bb22'), '用户aa11bb22');
+ck('suggest：超长截到 56 字',         mb_strlen(username_suggest(str_repeat('测', 80) . "\n", 1, 'aa'), 'UTF-8'), 56);
+
+/* 重名：第一次查中、第二次落空 → 追加 -2 */
+$GLOBALS['DBVAL_SEQ'] = array(1, 0);
+ck('suggest：撞名 → 追加 -2',        username_suggest("小明\n", 5, 'abcd1234'), '小明-2');
+$GLOBALS['DBVAL_SEQ'] = array();
+
+ck('fix_info：正常名 → null',         username_fix_info('小明', 5, 'ab'), null);
+$fi = username_fix_info("小明\n", 5, 'ab');
+ck('fix_info：不合规 → current 原样',  $fi['current'], "小明\n");
+ck('fix_info：不合规 → suggest 可用',  $fi['suggest'], '小明');
 
 printf("\n%d 项，%d 通过，%d 失败\n", $GLOBALS['pass_n'] + $GLOBALS['fail_n'], $GLOBALS['pass_n'], $GLOBALS['fail_n']);
 exit($GLOBALS['fail_n'] === 0 ? 0 : 1);

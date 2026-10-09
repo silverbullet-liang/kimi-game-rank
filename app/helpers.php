@@ -157,16 +157,65 @@ function is_reserved_name(string $normName): bool
     return in_array($normName, $black, true);
 }
 
+/** 用户名禁用字符正则（组合附加符 / 变体选择符 / 零宽与双向控制符 / TAG） */
+function username_bad_re(): string
+{
+    return '/[\x{0300}-\x{036F}\x{1AB0}-\x{1AFF}\x{1DC0}-\x{1DFF}\x{20D0}-\x{20F0}\x{FE20}-\x{FE2F}'
+        . '\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2060}-\x{2064}\x{FEFF}\x{FE00}-\x{FE0F}'
+        . '\x{180B}-\x{180D}\x{E0000}-\x{E007F}\x{E0100}-\x{E01EF}]/u';
+}
+
 /** 用户名禁用字符：换行/回车，以及可堆叠装饰符、变体选择符与双向控制符
     （zalgo 骚扰文本与隐形字符的常见手法；在 NFC 规整之后仍残留即拦截，
     合法的预组合字符不受影响）。 */
 function username_has_bad_chars(string $s): bool
 {
     if (strpbrk($s, "\n\r") !== false) { return true; }
-    $re = '/[\x{0300}-\x{036F}\x{1AB0}-\x{1AFF}\x{1DC0}-\x{1DFF}\x{20D0}-\x{20F0}\x{FE20}-\x{FE2F}'
-        . '\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2060}-\x{2064}\x{FEFF}\x{FE00}-\x{FE0F}'
-        . '\x{180B}-\x{180D}\x{E0000}-\x{E007F}\x{E0100}-\x{E01EF}]/u';
-    return (bool)preg_match($re, $s);
+    return (bool)preg_match(username_bad_re(), $s);
+}
+
+/** 规整存量用户名：剥掉换行与装饰字符、压缩连续空白（用于生成「更新后」的建议名） */
+function username_scrub(string $s): string
+{
+    $s = str_replace(array("\n", "\r"), '', $s);
+    $r = preg_replace(username_bad_re(), '', $s);
+    $s = $r === null ? $s : $r;
+    $s = (string)preg_replace('/\s+/u', ' ', $s);
+    return trim($s);
+}
+
+/** 存量用户名是否需要用户更新（规范收紧前注册的名字可能含换行/装饰字符） */
+function username_needs_fix(string $name): bool
+{
+    return username_has_bad_chars($name);
+}
+
+/** 为不合规的存量用户名生成建议名：尽量保留原名可辨识部分（剥掉装饰与换行），
+    清洗后长度不足或仍不合规则以「用户+编号」兜底；一律保证不与现存用户名重复。 */
+function username_suggest(string $name, int $uid, string $uid8): string
+{
+    $s = username_scrub(strip_invisible(nfc_normalize($name)));
+    if (mb_strlen($s, 'UTF-8') > 56) { $s = mb_substr($s, 0, 56, 'UTF-8'); }
+    $fallback = '用户' . ($uid8 !== '' ? $uid8 : (string)$uid);
+    if (mb_strlen($s, 'UTF-8') < 2 || username_has_bad_chars($s) || is_reserved_name(norm_username($s))) {
+        $s = $fallback;
+    }
+    $base = $s;
+    for ($n = 2; $n <= 30; $n++) {
+        $norm = norm_username($s);
+        if ($norm === '') { break; }
+        $hit = db_val('SELECT id FROM users WHERE username_norm = ? AND id <> ? LIMIT 1', array($norm, $uid));
+        if (!$hit) { return $s; }
+        $s = $base . '-' . $n;
+    }
+    return $fallback . '-' . $uid;
+}
+
+/** 身份载荷里的「用户名待更新」信息；无需更新时返回 null */
+function username_fix_info(string $name, int $uid, string $uid8)
+{
+    if (!username_needs_fix($name)) { return null; }
+    return array('current' => $name, 'suggest' => username_suggest($name, $uid, $uid8));
 }
 
 /* ============================================================

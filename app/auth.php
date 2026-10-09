@@ -97,6 +97,8 @@ function identity_payload(array $id): array
         $data['settings'] = user_settings($u);
         $data['csrf']     = csrf_token();
         $data['uid8']     = uid_of_user($u, subadmin_seq_of((int)$u['id']));
+        /* 存量用户名可能含换行/装饰字符（规范收紧前注册的）：下发待更新信息，由前端提醒并引导改名 */
+        $data['name_fix'] = username_fix_info((string)$u['username'], (int)$u['id'], (string)$data['uid8']);
         if ($id['role'] === 'subadmin') { $data['is_admin'] = true; $data['subadmin'] = true; }
     } elseif ($id['role'] === 'admin') {
         $data['username'] = 'admin';
@@ -304,6 +306,38 @@ function user_register(string $username, string $password): array
     stats_bump('signups');
     record_visit($uid);
     return array('uid' => $uid, 'token' => issue_user_token($uid), 'username' => $clean);
+}
+
+/**
+ * 用户自行更新用户名。只用于修正不符合当前规范的历史用户名 ——
+ * 校验口径与管理员改名完全一致（字符、长度、保留名、唯一性、内容审核），
+ * 「可能有恶意」的审核结论不拦截。
+ */
+function user_rename_self(int $uid, string $raw): array
+{
+    $u = db_one('SELECT id, username, role FROM users WHERE id = ?', array($uid));
+    if ($u === null) { fail(401, '账号不可用'); }
+    $clean = strip_invisible(nfc_normalize($raw));
+    $norm  = norm_username($clean);
+    $len = mb_strlen($clean, 'UTF-8');
+    if ($len < 2 || $len > 64) { fail(400, '用户名长度需为 2-64 个字符'); }
+    if (username_has_bad_chars($clean)) { fail(400, '用户名不能包含换行或装饰性特殊字符'); }
+    if ($norm === '') { fail(400, '用户名不能为空白'); }
+    if (is_reserved_name($norm)) { fail(400, '该用户名为系统保留名'); }
+    $dup = db_val('SELECT id FROM users WHERE username_norm = ? AND id <> ? LIMIT 1', array($norm, $uid));
+    if ($dup) { fail(409, '该用户名已被使用'); }
+    if ($clean === (string)$u['username']) {
+        return array('username' => $clean, 'old' => $clean, 'changed' => false);
+    }
+    $mv = moderate_text($clean, 'username', $uid);
+    if (empty($mv['ok'])) { fail(400, '该用户名未通过内容审核，请更换'); }
+    db_exec('UPDATE users SET username = ?, username_norm = ? WHERE id = ?', array($clean, $norm, $uid));
+    if ((string)$u['role'] === 'subadmin') {
+        try { db_admin_exec('UPDATE sub_admins SET username = ?, username_norm = ? WHERE user_id = ?',
+                            array($clean, $norm, $uid)); } catch (Throwable $e) { }
+    }
+    app_log('user renamed (self): #' . $uid . ' -> ' . $clean);
+    return array('username' => $clean, 'old' => (string)$u['username'], 'changed' => true);
 }
 
 function user_login(string $username, string $password): array

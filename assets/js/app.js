@@ -22,6 +22,7 @@ const state = {
   settings: {},
   csrf: '',
   booted: false,
+  nameFix: null,     // 存量用户名待更新：{ current, suggest } | null
 };
 
 /* ============================================================
@@ -502,6 +503,7 @@ function applyIdentity(d) {
   state.uid = d.uid || 0;
   state.uid8 = d.uid8 || '';
   state.username = d.username || '游客';
+  state.nameFix = d.name_fix || null;
   state.avatar = d.avatar || '';
   state.settings = d.settings || {};
   if (d.csrf) state.csrf = d.csrf;
@@ -3919,6 +3921,7 @@ async function renderLogin(container) {
     if (Number(state.settings.notify) === 1) askNotifyPermission();
     // 登录后回「我的」；游客进入回榜单（路由会重绘页面与抽屉，无需整页刷新）
     navigate(guest ? '#/rank' : '#/mine');
+    if (!guest && typeof window.__nameFixCheck === 'function') { window.__nameFixCheck(); }
   }
 
   paint();
@@ -7530,6 +7533,47 @@ function bindToTop() {
  * 违纪通报：全屏封禁说明 + 最新通报弹窗
  * ============================================================ */
 /** 按当前封禁状态显示 / 收起全屏封禁说明（登录页除外，便于换账号登录）。 */
+/* ============================================================
+ * 存量用户名待更新提醒
+ * ------------------------------------------------------------
+ * 用户名规范收紧前注册的名字可能含换行或异常装饰字符。后端在身份载荷里下发
+ * name_fix = { current, suggest }，这里弹输入框（预填建议名），用户确认后调
+ * 自助改名接口。点「取消」= 稍后再说，不阻断任何功能，刷新后仍会再提醒。
+ * ============================================================ */
+let __nameFixShown = false;
+function maybeNameFix() {
+  const fix = state.nameFix;
+  if (!fix || !fix.suggest || __nameFixShown) { return; }
+  if (state.role !== 'user' && state.role !== 'subadmin') { return; }
+  __nameFixShown = true;
+  prompt_('请更新你的用户名',
+    '你现在的用户名是「<b>' + esc(fix.current) + '</b>」，其中含有换行或异常装饰字符，'
+    + '不符合当前的用户名规范，可能导致页面显示异常。<br>已为你填好一个建议名，可直接使用或自行修改。',
+    '保存并继续', fix.suggest).then(async function (v) {
+    if (v === null) { return; }                    // 稍后再说
+    const name = String(v).trim();
+    if (!name) { toast('用户名不能为空', 'err'); __nameFixShown = false; return; }
+    try {
+      const r = await api('auth.php', 'rename', { username: name });
+      state.username = r.username || name;
+      state.nameFix = null;
+      try {
+        const vv = await api('auth.php', 'verify');   // 头像按用户名生成，一并刷新
+        state.avatar = vv.avatar || '';
+        state.settings = vv.settings || state.settings;
+        state.nameFix = vv.name_fix || null;
+      } catch (e) {}
+      toast('用户名已更新为「' + state.username + '」');
+      renderDrawer();
+      if (typeof window.__reRenderCurrent === 'function') { window.__reRenderCurrent(); }
+    } catch (e) {
+      toast(e.message, 'err');
+      __nameFixShown = false;                      // 失败允许立即重试
+    }
+  });
+}
+window.__nameFixCheck = maybeNameFix;             // 登录成功后由登录页调用
+
 function syncBanLock() {
   /* 登录页只在「尚未登录」时豁免 —— 被封的来源地址要能进登录页换账号；
      一旦以被封账号登录成功，就该盖上全屏说明（说明里自带「切换账号登录」）。 */
@@ -7627,6 +7671,7 @@ async function main() {
   const safeInitial = (initial && SENSITIVE_PAGES.indexOf(initialPage) < 0) ? initial : '#/mine';
   history.replaceState({}, '', routeToUrl(safeInitial));
   await route();
+  maybeNameFix();          // 存量用户名待更新：提醒并引导改名（不阻断功能）
   startPolling();
 
   // 首次交互时请求通知权限

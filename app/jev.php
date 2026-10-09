@@ -190,6 +190,8 @@ function jev_classify(string $text): array
     ), JSON_UNESCAPED_UNICODE);
 
     if (net_channel_cooling('jev')) { return array('ok' => null, 'reason' => 'jev_cooling'); }
+    /* 环境缺 curl 扩展：按「服务不可用」返回（上层据此降级放行），不要抛致命错误 */
+    if (!function_exists('curl_init')) { return array('ok' => null, 'reason' => 'no_curl'); }
 
     $ch = curl_init(jev_endpoint());
     curl_setopt_array($ch, array(

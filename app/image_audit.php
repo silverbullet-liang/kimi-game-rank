@@ -34,6 +34,7 @@ function image_audit_enabled(): bool
  */
 function image_audit_post(string $url, array $payload, int $timeout = 45): array
 {
+    if (!function_exists('curl_init')) { return array('code' => 0, 'body' => '', 'err' => 1); }
     $ch = curl_init($url);
     curl_setopt_array($ch, array(
         CURLOPT_POST           => true,

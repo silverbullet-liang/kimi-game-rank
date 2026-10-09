@@ -108,6 +108,7 @@ function zhipu_chat(array $messages, string $model = ''): array
     for ($i = 0; $i < $tries; $i++) {
         $key = zhipu_pick_key();
         $payload = zhipu_payload($messages, $model);
+        if (!function_exists('curl_init')) { $lastErr = 'AI 服务不可用（缺少 curl 扩展）'; continue; }
         $ch = curl_init((string)$cfg['endpoint']);
         curl_setopt_array($ch, array(
             CURLOPT_POST           => true,
@@ -160,6 +161,7 @@ function zhipu_chat_stream(array $messages, callable $onDelta): string
         $buffer = '';
         $full = '';
 
+        if (!function_exists('curl_init')) { $lastErr = 'AI 服务不可用（缺少 curl 扩展）'; continue; }
         $ch = curl_init((string)$cfg['endpoint']);
         curl_setopt_array($ch, array(
             CURLOPT_POST           => true,

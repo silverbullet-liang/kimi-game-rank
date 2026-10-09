@@ -16,6 +16,7 @@ export const state = {
   settings: {},
   csrf: '',
   booted: false,
+  nameFix: null,     // 存量用户名待更新：{ current, suggest } | null
 };
 
 /* ============================================================
@@ -496,6 +497,7 @@ function applyIdentity(d) {
   state.uid = d.uid || 0;
   state.uid8 = d.uid8 || '';
   state.username = d.username || '游客';
+  state.nameFix = d.name_fix || null;
   state.avatar = d.avatar || '';
   state.settings = d.settings || {};
   if (d.csrf) state.csrf = d.csrf;

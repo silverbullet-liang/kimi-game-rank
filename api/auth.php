@@ -54,6 +54,18 @@ switch ($action) {
         ok(null, '已退出');
         break;
 
+    /* 用户自行更新用户名（仅用于修正不符合当前规范的历史用户名） */
+    case 'rename': {
+        $id = require_token();
+        if ($id['role'] !== 'user' && $id['role'] !== 'subadmin') { fail(403, '请登录后再操作'); }
+        csrf_verify();
+        if (!rate_limit('ren_' . (int)$id['uid'], 5, 3600)) { fail(429, '改名过于频繁，请稍后再试'); }
+        $r = user_rename_self((int)$id['uid'], param_str('username', ''));
+        ok(array('username' => $r['username'], 'old' => $r['old']),
+           $r['changed'] ? '用户名已更新' : '名字没有变化');
+        break;
+    }
+
     /* 每次打开网页的后端重新验证 */
     case 'verify':
         $id = current_identity();

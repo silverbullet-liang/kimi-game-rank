@@ -144,6 +144,7 @@ export async function renderLogin(container) {
     if (Number(state.settings.notify) === 1) askNotifyPermission();
     // 登录后回「我的」；游客进入回榜单（路由会重绘页面与抽屉，无需整页刷新）
     navigate(guest ? '#/rank' : '#/mine');
+    if (!guest && typeof window.__nameFixCheck === 'function') { window.__nameFixCheck(); }
   }
 
   paint();
