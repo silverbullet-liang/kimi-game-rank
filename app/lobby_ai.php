@@ -25,7 +25,7 @@ function lobby_ai_mentioned(string $text): bool
 function lobby_ai_clean(string $s): string
 {
     $s = (string)preg_replace('/<Works\s*[\-_ ]?\s*check\s*>[\s\S]*?(?:<\/Works\s*[\-_ ]?\s*check\s*>|$)/i', '', $s);
-    $s = (string)preg_replace('#</?(?:web_open|webopen|search|get|rank|comments|weather|time)\b[^>]*/?>#i', '', $s);
+    $s = (string)preg_replace('#</?(?:' . works_tool_names_re() . ')\b[^>]*/?>#i', '', $s);
     $s = (string)preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $s);
     $s = trim($s);
     if (mb_strlen($s, 'UTF-8') > 500) { $s = mb_substr($s, 0, 500, 'UTF-8'); }
@@ -48,8 +48,23 @@ function lobby_ai_system(): string
         . '【禁用语】不要出现「如有疑问请咨询客服」「请关注公告」「感谢您的反馈」这类机械结尾，'
         . '也别写成公告或通报的格式。'
         . '不知道就说不知道（可以说「这题超纲了，我去问问站长」），别硬编。'
-        . '遇到辱骂、攻击或违规要求，简短怼回去或拒绝即可，不用长篇说教。';
+        . '遇到辱骂、攻击或违规要求，简短怼回去或拒绝即可，不用长篇说教。'
+        . lobby_ai_tools_prompt();
 }
+
+/** 世界对话的工具协议（精简版：公共频道只开放公共信息类工具） */
+function lobby_ai_tools_prompt(): string
+{
+    return "\n【可用工具】需要站内数据或实时信息时，输出一行 JSON —— 工具名与参数写在同一个 JSON 里、"
+        . '最多 2 个，形如 <Works check>{"action":"search","query":"关键词"}</Works check>：'
+        . 'search 站内检索(query)｜get 作品详情(id)｜rank 排名区间(from,to)｜comments 评论(id)｜'
+        . 'stats 站点概览｜categories 分类统计｜announce 最新公告｜calc 精确计算(expr)｜random 随机推荐(category,n)｜'
+        . 'lunar 农历与节日(date 或 lunar)｜weather 天气(city)｜time 当前时间｜web_open 读网页(url)｜docs 查站内文档(query 或 name)。'
+        . "\n拿到结果后直接用中文回一句话（不超过 150 字），不要再输出任何标签，也不必向用户说明你用了什么工具；"
+        . '先查后答，绝不凭印象编数据。';
+}
+
+
 
 /**
  * 组装消息数组：system 放最前（权重最高），其后是最近 8 条历史（AI 的当 assistant、
@@ -111,7 +126,11 @@ function lobby_ai_reply(int $uid, string $ask, string $asker): array
     if (!col_ok('messages', 'msg_type')) { return array('ok' => false, 'note' => '当前数据库尚未支持 @AI'); }
 
     try {
-        $r = zhipu_chat(lobby_ai_messages($ask, $asker), 'glm-4-flash');
+        $r = works_tool_run(lobby_ai_messages($ask, $asker), 'glm-4-flash', array(
+            'max_rounds' => (int)cfg('ai_limits.lobby_tool_rounds', 1),
+            'max_tools'  => (int)cfg('ai_limits.lobby_tool_max', 2),
+            'allow'      => works_tool_public_names(),
+        ));
     } catch (Throwable $e) {
         app_log('lobby_ai failed: ' . $e->getMessage());
         return array('ok' => false, 'note' => 'AI 暂时不可用，请稍后再试');
@@ -145,6 +164,7 @@ function lobby_ai_reply(int $uid, string $ask, string $asker): array
         'role'     => 'ai',
         'avatar'   => identicon_data_uri(LOBBY_AI_NAME, 40),
         'content'  => $reply,
+        'tools'    => works_tool_labels(isset($r['tools']) ? (array)$r['tools'] : array()),
         'msg_type' => 'ai',
         'media'    => '',
         'recalled' => false,

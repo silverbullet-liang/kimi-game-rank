@@ -75,6 +75,8 @@ return array(
         'per_minute'     => 6,      // 登录用户每分钟调用上限
         /* 开启「深度思考」时改用这个思考型模型（默认模型 glm-4-flash 不支持思考）。
            需确保你的 API Key 有该模型权限；不支持时系统会自动去掉思考参数重试。 */
+        'lobby_tool_rounds' => 1,   // 世界对话 @官方AI 的工具轮次上限（0 = 不调用工具）
+        'lobby_tool_max'    => 2,   // 世界对话每轮最多执行的工具数
         'think_model'    => 'glm-4.5-air',
     ),
 

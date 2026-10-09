@@ -14,12 +14,12 @@
  */
 declare(strict_types=1);
 
-define('WORKS_TOOL_NAMES', 'search, get, rank, comments, web_open, weather, time, docs');
+define('WORKS_TOOL_NAMES', 'search, get, rank, comments, web_open, weather, time, docs, stats, categories, announce, calc, random, lunar, user');
 
 /** 工具名正则片段（供解析器复用） */
 function works_tool_names_re(): string
 {
-    return 'web_open|webopen|search|get|rank|comments|weather|time|docs?';
+    return 'web_open|webopen|search|get|rank|comments|weather|time|docs?|stats|categories|announce|calc|random|lunar|user';
 }
 
 /** 名称归一化 */
@@ -43,7 +43,7 @@ function works_tool_norm_name(string $n): string
  */
 function works_tool_guess_action(array $j, string $hint = ''): string
 {
-    $known = array('search', 'get', 'rank', 'comments', 'web_open', 'weather', 'time', 'docs');
+    $known = array_values(array_filter(array_map('trim', explode(',', WORKS_TOOL_NAMES))));
 
     if (isset($j['action'])) {
         $a = works_tool_norm_name((string)$j['action']);
@@ -56,6 +56,8 @@ function works_tool_guess_action(array $j, string $hint = ''): string
 
     /* 参数键的唯一归属：只有某个工具会用到这个键 */
     if (isset($j['url']))      { return 'web_open'; }
+    if (isset($j['expr']) || isset($j['expression'])) { return 'calc'; }
+    if (isset($j['lunar']))    { return 'lunar'; }
     /* 文档工具：name / doc / title 只可能属于它（query 留给 search，按提示词要求显式写 action） */
     if (isset($j['name']) || isset($j['doc']) || isset($j['title'])) { return 'docs'; }
     if (isset($j['city']))     { return 'weather'; }
@@ -70,6 +72,9 @@ function works_tool_guess_action(array $j, string $hint = ''): string
 function works_tool_execute(array $params): array
 {
     $action = isset($params['action']) ? strtolower(trim((string)$params['action'])) : 'search';
+
+    /* 扩展组工具（stats/categories/announce/calc/random/lunar/user）走独立实现 */
+    if (in_array($action, works_tool_extra_names(), true)) { return works_tool_extra_execute($params); }
 
     if ($action === 'search') {
         $q = isset($params['query']) ? trim((string)$params['query']) : '';
@@ -284,6 +289,9 @@ function html_to_text(string $html): string
  * ============================================================ */
 function works_tool_result_text(array $result): string
 {
+    if (isset($result['action']) && in_array((string)$result['action'], works_tool_extra_names(), true)) {
+        return works_tool_extra_result_text($result);
+    }
     if (empty($result['ok'])) {
         $act = isset($result['action']) ? (string)$result['action'] : '';
         $err = isset($result['error']) ? (string)$result['error'] : '未知错误';
@@ -381,6 +389,9 @@ function works_tool_result_text(array $result): string
 /** 工具结果一句话摘要（下发前端卡片显示） */
 function works_tool_summary(array $r): string
 {
+    if (isset($r['action']) && in_array((string)$r['action'], works_tool_extra_names(), true)) {
+        return works_tool_extra_summary($r);
+    }
     if (empty($r['ok'])) { return '失败：' . (isset($r['error']) ? $r['error'] : '未知错误'); }
     $a = isset($r['action']) ? $r['action'] : '';
     if ($a === 'search')   { return '检索「' . $r['query'] . '」命中 ' . $r['count'] . ' 件作品'; }
@@ -415,7 +426,7 @@ function works_tool_parse(string $text): array
 {
     $calls = array();
     $clean = (string)$text;
-    $TOOL_NAMES = 'web_open|webopen|search|get|rank|comments|weather|time';
+    $TOOL_NAMES = works_tool_names_re();
 
     /* ---------- 1) 标准 JSON 标签 ---------- */
     if (preg_match_all('#<Works\s*[\-_ ]?\s*check\s*>(.*?)(?:</Works\s*[\-_ ]?\s*check\s*>|$)#is', $clean, $m, PREG_SET_ORDER)) {
@@ -443,7 +454,7 @@ function works_tool_parse(string $text): array
             if (!empty($attrs)) { $calls[] = array_merge(array('action' => $name), $attrs); }
             else { $calls[] = array('action' => $name); }
         }
-        $clean = preg_replace('#<' . $TOOL_NAMES . '\b[^>]*>.*?(?:</(?:' . $TOOL_NAMES . ')\s*>|$)#is', '', $clean);
+        $clean = preg_replace('#<(?:' . $TOOL_NAMES . ')\b[^>]*>.*?</(?:' . $TOOL_NAMES . ')\s*>#is', '', $clean);
         $clean = preg_replace('#</?(?:' . $TOOL_NAMES . ')\b[^>]*/?>#i', '', $clean);
     }
 
@@ -606,7 +617,7 @@ function works_tool_maybe_tag(string $rest): bool
     $name = strtolower((string)$m[1]);
     if ($name === '') { return true; }        // 只有 '<' 或 '</'
 
-    $names = array('works', 'web_open', 'webopen', 'search', 'get', 'rank', 'comments', 'weather', 'time');
+    $names = array_merge(array('works', 'webopen'), array_values(array_filter(array_map('trim', explode(',', WORKS_TOOL_NAMES)))));
     foreach ($names as $nm) {
         if ($nm === $name || substr($nm, 0, strlen($name)) === $name) { return true; }
     }

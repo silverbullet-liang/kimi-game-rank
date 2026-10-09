@@ -20,8 +20,25 @@ function ai_usage_record(int $uid, array $u, string $p) { }
 function identicon_data_uri(string $s, int $n): string { return ''; }
 function to_local(string $t, string $f): string { return ''; }
 function now_utc(): string { return '2026-10-04 05:00:00'; }
-function zhipu_chat(array $m, string $model = ''): array { return array('text' => '好嘞', 'usage' => array()); }
+function db_one(string $sql, array $a = array()) { return null; }
+function db_val(string $sql, array $a = array()) { return 0; }
+function work_link(array $r) { return ''; }
+function norm_username(string $s) { return strtolower(trim($s)); }
+function site_announce() { return ''; }
 
+/* zhipu_chat 队列化：按序返回，供工具循环的两轮调用 */
+$GLOBALS['ZHIPU'] = array();
+function zhipu_chat(array $m, string $model = ''): array
+{
+    if ($GLOBALS['ZHIPU']) { return array_shift($GLOBALS['ZHIPU']); }
+    return array('text' => '好嘞', 'usage' => array());
+}
+
+require APP_ROOT . '/app/lunar.php';
+require APP_ROOT . '/app/festival.php';
+require APP_ROOT . '/app/works_tool.php';
+require APP_ROOT . '/app/works_tool_extra.php';
+require APP_ROOT . '/app/works_tool_loop.php';
 require APP_ROOT . '/app/lobby_ai.php';
 
 $GLOBALS['fail_n'] = 0; $GLOBALS['pass_n'] = 0;
@@ -71,6 +88,30 @@ ck('历史长文被截断到 120 字 + 省略号', mb_substr($m2[1]['content'], 
 /* ---------- 5. 清理函数 ---------- */
 ck('清掉工具标签（保留标签内文字）', lobby_ai_clean('<search>abc</search>正文') , 'abc正文');
 ck('限长 500', mb_strlen(lobby_ai_clean(str_repeat('x', 800)), 'UTF-8'), 500);
+
+/* ---------- 6. 世界对话接入工具（非流式循环） ---------- */
+ck('系统提示含工具协议', strpos(lobby_ai_system(), '可用工具') !== false, true);
+ck('工具协议含 calc', strpos(lobby_ai_tools_prompt(), 'calc') !== false, true);
+ck('工具协议含 docs', strpos(lobby_ai_tools_prompt(), 'docs') !== false, true);
+
+$GLOBALS['ZHIPU'] = array(
+    array('text' => '<Works check>{"action":"calc","expr":"1/3"}</Works check>', 'usage' => array()),
+    array('text' => '三分之一，约 0.333', 'usage' => array()),
+);
+$rep = lobby_ai_reply(7, '@官方AI 1/3 是多少', '小明');
+ck('世界对话回复 ok', !empty($rep['ok']), true);
+ck('回复是最终文本（标签已剥）', isset($rep['item']['content']) ? $rep['item']['content'] : '', '三分之一，约 0.333');
+ck('回复不含工具标签', strpos((string)(isset($rep['item']['content']) ? $rep['item']['content'] : ''), '<') === false, true);
+ck('下发工具痕迹（中文）', isset($rep['item']['tools'][0]) ? $rep['item']['tools'][0] : '', '精确计算');
+
+/* user 工具在公共频道被白名单挡下 → 通告不可用，第二轮直接作答 */
+$GLOBALS['ZHIPU'] = array(
+    array('text' => '<Works check>{"action":"user","name":"张三"}</Works check>', 'usage' => array()),
+    array('text' => '这个我不清楚', 'usage' => array()),
+);
+$rep2 = lobby_ai_reply(7, '@官方AI 张三是谁', '小明');
+ck('user 工具被挡下后仍作答', isset($rep2['item']['content']) ? $rep2['item']['content'] : '', '这个我不清楚');
+ck('被挡下的工具不留痕迹', empty($rep2['item']['tools']), true);
 
 printf("\n通过 %d，失败 %d\n", $GLOBALS['pass_n'], $GLOBALS['fail_n']);
 exit($GLOBALS['fail_n'] === 0 ? 0 : 1);

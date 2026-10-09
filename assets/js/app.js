@@ -2514,6 +2514,8 @@ async function mountWorld(body) {
       + '<span class="bubble-wrap">'
       +   '<span class="who">' + userName(m.username, m.role) + ' · ' + esc(m.time) + recallBtn + delBtn + '</span>'
       +   '<div class="bubble">' + inner + '</div>'
+      +   (m.msg_type === 'ai' && m.tools && m.tools.length
+            ? '<span class="tool-note">参考：' + esc(m.tools.join('、')) + '</span>' : '')
       +   (!m.recalled && m.flag === 'middle'
             ? '<span class="msg-flag" title="系统认为这条内容可能有恶意，但仍予放行">可能有恶意'
               + (isAdminish() ? ' · <button class="link" data-unflag="1" style="border:0;background:0;font-size:12px;color:inherit;text-decoration:underline">取消标注</button>' : '')
@@ -2813,6 +2815,13 @@ const TOOL_META = {
   weather:  { n: '查询天气',     d: 'M6.5 19a4.5 4.5 0 0 1-.7-8.95A5.6 5.6 0 0 1 16.4 9.2 3.9 3.9 0 0 1 16 17H6.5zm-2 2h13v1.6h-13V21z' },
   time:     { n: '获取当前时间', d: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1.2 4.6v5.1l3.9 2.3-1.1 1.9-5-3V6.6h2.2z' },
   docs:     { n: '查阅站内文档', d: 'M6 2h7l5 5v15H6V2zm2 2v16h8V8h-3V4H8zm2 6h6v2h-6v-2zm0 4h6v2h-6v-2z' },
+  stats:      { n: '查看站点概览', d: 'M12 3l9 5v3H3V8l9-5zM5 12h2v7H5v-7zm6 0h2v7h-2v-7zm6 0h2v7h-2v-7zM3 20h18v2H3v-2z' },
+  categories: { n: '统计作品分类', d: 'M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z' },
+  announce:   { n: '读取站点公告', d: 'M4 9h3l7-4v14l-7-4H4V9zm12-1a5 5 0 0 1 0 8v-2a3 3 0 0 0 0-4V8z' },
+  calc:       { n: '精确计算',     d: 'M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm2 3v3h8V6H8zm0 5h2v2H8v-2zm3 0h2v2h-2v-2zm3 0h2v2h-2v-2zM8 14h2v2H8v-2zm3 0h2v2h-2v-2zm3 0h2v2h-2v-2z' },
+  random:     { n: '随机推荐作品', d: 'M4 5h4l3 4 3-4h4l-5 7 5 7h-4l-3-4-3 4H4l5-7L4 5z' },
+  lunar:      { n: '查询农历节日', d: 'M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z' },
+  user:       { n: '查询用户资料', d: 'M12 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 10c4 0 7 2 7 4v3H5v-3c0-2 3-4 7-4z' },
 };
 
 /** 气泡内容分区：工具卡片区 + 思考区（可多块）+ 正文区 */
