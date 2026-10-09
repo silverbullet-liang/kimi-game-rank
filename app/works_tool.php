@@ -14,12 +14,12 @@
  */
 declare(strict_types=1);
 
-define('WORKS_TOOL_NAMES', 'search, get, rank, comments, web_open, weather, time');
+define('WORKS_TOOL_NAMES', 'search, get, rank, comments, web_open, weather, time, docs');
 
 /** 工具名正则片段（供解析器复用） */
 function works_tool_names_re(): string
 {
-    return 'web_open|webopen|search|get|rank|comments|weather|time';
+    return 'web_open|webopen|search|get|rank|comments|weather|time|docs?';
 }
 
 /** 名称归一化 */
@@ -27,6 +27,7 @@ function works_tool_norm_name(string $n): string
 {
     $n = strtolower(trim($n));
     if ($n === 'webopen' || $n === 'web-open') { return 'web_open'; }
+    if ($n === 'doc' || $n === 'document' || $n === 'documentation') { return 'docs'; }
     return $n;
 }
 
@@ -42,7 +43,7 @@ function works_tool_norm_name(string $n): string
  */
 function works_tool_guess_action(array $j, string $hint = ''): string
 {
-    $known = array('search', 'get', 'rank', 'comments', 'web_open', 'weather', 'time');
+    $known = array('search', 'get', 'rank', 'comments', 'web_open', 'weather', 'time', 'docs');
 
     if (isset($j['action'])) {
         $a = works_tool_norm_name((string)$j['action']);
@@ -55,6 +56,8 @@ function works_tool_guess_action(array $j, string $hint = ''): string
 
     /* 参数键的唯一归属：只有某个工具会用到这个键 */
     if (isset($j['url']))      { return 'web_open'; }
+    /* 文档工具：name / doc / title 只可能属于它（query 留给 search，按提示词要求显式写 action） */
+    if (isset($j['name']) || isset($j['doc']) || isset($j['title'])) { return 'docs'; }
     if (isset($j['city']))     { return 'weather'; }
     if (isset($j['timezone'])) { return 'time'; }
     if (isset($j['from']) || isset($j['to'])) { return 'rank'; }
@@ -154,6 +157,11 @@ function works_tool_execute(array $params): array
     if ($action === 'web_open') {
         $url = isset($params['url']) ? trim((string)$params['url']) : '';
         return web_open_text($url);
+    }
+
+    /* 站内公开文档（assets/docs/*.md）：清单 / 关键词检索 / 读取单篇 */
+    if ($action === 'docs') {
+        return docs_tool_execute($params);
     }
 
     return array('ok' => false, 'error' => '未知 action，可用：' . WORKS_TOOL_NAMES);
@@ -350,6 +358,21 @@ function works_tool_result_text(array $result): string
     } elseif ($result['action'] === 'web_open') {
         $head .= ' url=' . $result['url'] . ' 字数=' . $result['length'];
         $lines[] = (string)$result['text'];
+    } elseif ($result['action'] === 'docs') {
+        $mode = isset($result['mode']) ? (string)$result['mode'] : 'list';
+        if ($mode === 'list') {
+            $head .= ' 文档清单 共' . $result['count'] . ' 篇';
+            foreach ((array)$result['docs'] as $d) { $lines[] = $d['name'] . '：' . $d['intro']; }
+        } elseif ($mode === 'search') {
+            $head .= ' query=' . $result['query'] . ' 命中文档数=' . $result['count'];
+            foreach ((array)$result['hits'] as $h) {
+                $lines[] = '《' . $h['name'] . '》';
+                foreach ((array)$h['excerpts'] as $e) { $lines[] = '  ' . str_replace("\n", ' ', $e); }
+            }
+        } else {
+            $head .= ' 文档=' . $result['name'] . ' 全文约' . $result['chars'] . ' 字';
+            $lines[] = (string)$result['text'];
+        }
     }
 
     return "<tool_result>\n" . $head . "\n" . implode("\n", $lines) . "\n</tool_result>";
@@ -366,6 +389,12 @@ function works_tool_summary(array $r): string
     if ($a === 'comments') { return '《' . $r['work'] . '》评论 ' . $r['total'] . ' 条，读取 ' . $r['count'] . ' 条'; }
     if ($a === 'web_open') { return '已读取网页正文 ' . $r['length'] . ' 字'; }
     if ($a === 'time')    { return '当前时间：' . $r['site_time'] . '（' . $r['site_timezone'] . '）'; }
+    if ($a === 'docs') {
+        $mode = isset($r['mode']) ? $r['mode'] : 'list';
+        if ($mode === 'list')   { return '读取文档清单，共 ' . $r['count'] . ' 篇'; }
+        if ($mode === 'search') { return '在文档中检索「' . $r['query'] . '」，命中 ' . $r['count'] . ' 篇'; }
+        return '已读取《' . $r['name'] . '》（约 ' . $r['chars'] . ' 字）';
+    }
     if ($a === 'weather') {
         $t = ($r['temperature'] === null) ? '' : (' ' . $r['temperature'] . '°C');
         return $r['city'] . '：' . $r['condition'] . $t . '（' . (isset($r['source']) ? $r['source'] : '') . '）';

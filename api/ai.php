@@ -307,6 +307,8 @@ switch ($action) {
         $isReplay = param_int('fallback', 0) === 1;
 
         $model = ai_pick_model(param_str('model'));
+        $think = param_int('think', 0) === 1;      // 深度思考开关
+        $thinkModel = $think ? (string)cfg('ai_limits.think_model', 'glm-4.5-air') : '';
         ai_gate($isAdmin, $uid, $model !== '', $text, $isReplay);
 
         $hist = db_all('SELECT role, content FROM ai_messages WHERE user_id = ? ORDER BY id DESC LIMIT 20', array($uid));
@@ -314,19 +316,24 @@ switch ($action) {
         $msgs = zhipu_messages($hist, $text);
         ai_save_user_msg($uid, $text, $isReplay);
 
-        $visible = ''; $usage = array(); $cards = array();
+        $visible = ''; $usage = array(); $cards = array(); $thinks = array();
         $aiProvider = '';                    // 本轮的账记在哪条通道（每轮覆盖，以最后一轮为准）
         $modelCalls = 3;
         for ($round = 0; $round < $modelCalls; $round++) {
-            $r = ai_respond($msgs, $model, $aiProvider);
+            $r = ai_respond($msgs, $model, $aiProvider, $think, $thinkModel);
             $raw = isset($r['text']) ? (string)$r['text'] : '';
+            $rd  = isset($r['reasoning']) ? trim((string)$r['reasoning']) : '';
+            if ($rd !== '') { $thinks[] = $rd; }
             if (!empty($r['usage'])) { $usage = $r['usage']; }
             $calls = works_tool_extract($raw, 3);
             $part = works_tool_strip($raw);
             if ($part !== '') { $visible .= ($visible === '' ? '' : "\n") . $part; }
             if (empty($calls) || $round + 1 >= $modelCalls) { break; }
 
-            $msgs[] = array('role' => 'assistant', 'content' => $raw);
+            /* 思考型模型多轮推理要求原样带回 reasoning_content，否则推理链会断 */
+            $asst = array('role' => 'assistant', 'content' => $raw);
+            if ($rd !== '') { $asst['reasoning_content'] = $rd; }
+            $msgs[] = $asst;
             $toolText = '';
             foreach ($calls as $call) {
                 $res = works_tool_execute($call);
@@ -345,7 +352,7 @@ switch ($action) {
         ai_store_row($uid, 'assistant', $visible);
         ai_trim_history($uid);
         ai_usage_record($uid, $usage, $aiProvider);
-        ok(array('text' => $visible, 'usage' => $usage, 'tools' => $cards));
+        ok(array('text' => $visible, 'usage' => $usage, 'tools' => $cards, 'thinks' => $thinks));
         break;
     }
 
@@ -372,6 +379,8 @@ if (mb_strlen($text, 'UTF-8') > 2000) { fail(400, '内容过长'); }
 
 /* 配额闸门：免费模型按次数，自有模型按 token（管理员放行） */
 $model = ai_pick_model(param_str('model'));
+$think = param_int('think', 0) === 1;          // 深度思考开关
+$thinkModel = $think ? (string)cfg('ai_limits.think_model', 'glm-4.5-air') : '';
 ai_gate($isAdmin, $uid, $model !== '', $text);
 
 /* 取最近历史（先于本条用户消息，避免重复） */
@@ -404,11 +413,22 @@ $MAX_ROUNDS = 2;      // 工具调用最大轮次
  * 流式执行一轮：$sniff=true 时用扫描器拦截工具标签（兼容多种标签写法），
  * 任何标签都不会下发给用户。返回 array(raw, clean, calls)
  */
-$runRound = function (array $msgs, $sniff) use ($emit, $MAX_TOOLS, &$finalUsage, &$aiProvider, $model) {
+$runRound = function (array $msgs, $sniff) use ($emit, $MAX_TOOLS, &$finalUsage, &$aiProvider, $model, $think, $thinkModel) {
     $rest = '';      // 未决缓冲：可能是未完成的标签
     $raw = '';       // 模型原始输出
     $clean = '';     // 去掉标签后的可见文本
     $calls = array();
+    $thinkBuf = '';  // 本轮思考全文
+    $thinkOpen = false;
+
+    /* 思考增量：本轮首个思考片段到达时才开块（空思考不留空卡片）。
+       每轮各开一块 —— 多轮工具循环就会留下多段思考，正是「多次深度思考」。 */
+    $onReason = function ($rt) use ($emit, &$thinkBuf, &$thinkOpen) {
+        if ($rt === '') { return; }
+        if (!$thinkOpen) { $emit(array('think_start' => true)); $thinkOpen = true; }
+        $thinkBuf .= $rt;
+        $emit(array('think' => $rt));
+    };
 
     $onDelta = function ($delta, $usage) use (&$rest, &$raw, &$clean, &$calls, $emit, $sniff, $MAX_TOOLS, &$finalUsage) {
         if (!empty($usage)) { $finalUsage = $usage; $emit(array('usage' => $usage)); }
@@ -435,7 +455,7 @@ $runRound = function (array $msgs, $sniff) use ($emit, $MAX_TOOLS, &$finalUsage,
     };
 
     $aiProvider = '';
-    $answer = ai_respond_stream($msgs, $model, $onDelta, $aiProvider);
+    $answer = ai_respond_stream($msgs, $model, $onDelta, $aiProvider, $think, $onReason, $thinkModel);
 
     /* 收尾：未闭合的标签在结束时再解析一次（模型可能省略了闭合标签） */
     if ($rest !== '') {
@@ -466,7 +486,7 @@ $runRound = function (array $msgs, $sniff) use ($emit, $MAX_TOOLS, &$finalUsage,
         $rest = '';
     }
 
-    return array('raw' => $raw !== '' ? $raw : $answer, 'clean' => $clean, 'calls' => $calls);
+    return array('raw' => $raw !== '' ? $raw : $answer, 'clean' => $clean, 'calls' => $calls, 'reason' => $thinkBuf);
 };
 
 $finalUsage = array();
@@ -497,7 +517,9 @@ try {
 
         if (!$sniff) { break; }
 
-        $msgs[] = array('role' => 'assistant', 'content' => $r['raw']);
+        $asst = array('role' => 'assistant', 'content' => $r['raw']);
+        if (!empty($r['reason'])) { $asst['reasoning_content'] = (string)$r['reason']; }
+        $msgs[] = $asst;
         $toolText = '';
         foreach ($results as $res) { $toolText .= works_tool_result_text($res) . "\n"; }
         $msgs[] = array('role' => 'user', 'content' => trim($toolText));

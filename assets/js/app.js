@@ -2812,15 +2812,54 @@ const TOOL_META = {
   web_open: { n: '联网读取网页', d: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm7 9h-3a15 15 0 0 0-1.2-5.4A8 8 0 0 1 19 11zM12 4c1 1.6 1.7 4.2 1.8 7h-3.6C10.3 8.2 11 5.6 12 4zM5 11a8 8 0 0 1 4.2-5.4A15 15 0 0 0 8 11H5zm0 2h3a15 15 0 0 0 1.2 5.4A8 8 0 0 1 5 13zm7 7c-1-1.6-1.7-4.2-1.8-7h3.6c-.1 2.8-.8 5.4-1.8 7zm2.8-1.6A15 15 0 0 0 16 13h3a8 8 0 0 1-4.2 5.4z' },
   weather:  { n: '查询天气',     d: 'M6.5 19a4.5 4.5 0 0 1-.7-8.95A5.6 5.6 0 0 1 16.4 9.2 3.9 3.9 0 0 1 16 17H6.5zm-2 2h13v1.6h-13V21z' },
   time:     { n: '获取当前时间', d: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1.2 4.6v5.1l3.9 2.3-1.1 1.9-5-3V6.6h2.2z' },
+  docs:     { n: '查阅站内文档', d: 'M6 2h7l5 5v15H6V2zm2 2v16h8V8h-3V4H8zm2 6h6v2h-6v-2zm0 4h6v2h-6v-2z' },
 };
 
-/** 气泡内容分区：工具卡片区 + 文本区 */
+/** 气泡内容分区：工具卡片区 + 思考区（可多块）+ 正文区 */
 function aiParts(target) {
   if (!target.querySelector('.ai-text')) {
     target.innerHTML = '<div class="tool-cards"></div>'
+      + '<div class="ai-thinks"></div>'
       + '<div class="ai-text"><span class="typing"><i></i><i></i><i></i></span></div>';
   }
-  return { cards: target.querySelector('.tool-cards'), text: target.querySelector('.ai-text') };
+  return { cards: target.querySelector('.tool-cards'),
+           thinks: target.querySelector('.ai-thinks'),
+           text: target.querySelector('.ai-text') };
+}
+
+/* ---------- 深度思考块 ----------
+   每轮模型调用各可能产生一段思考（工具调用前后各一次），各开一块 —— 这就是「多次深度思考」。
+   点标题可折叠；正文开始输出时自动收起，仍可随时展开回看。内容同样走 markdown 渲染。 */
+function addThink(container) {
+  if (!container) { return null; }
+  const el = document.createElement('div');
+  el.className = 'ai-think open live';
+  el.innerHTML = '<button type="button" class="tk-head">'
+    + '<svg viewBox="0 0 24 24" class="tk-ic"><path d="M12 3a7 7 0 0 0-4 12.7V19a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3.3A7 7 0 0 0 12 3zM9 22h6v1H9v-1z"/></svg>'
+    + '<span class="tk-title">深度思考</span><span class="tk-state">进行中</span>'
+    + '<svg viewBox="0 0 24 24" class="tk-chev"><path d="M7 10l5 5 5-5z"/></svg></button>'
+    + '<div class="tk-body"></div>';
+  container.appendChild(el);
+  el.querySelector('.tk-head').addEventListener('click', () => el.classList.toggle('open'));
+  return el;
+}
+function thinkAppend(el, text) {
+  if (!el || !text) { return; }
+  el.dataset.raw = (el.dataset.raw || '') + text;
+  el.querySelector('.tk-body').innerHTML = renderAiRich(el.dataset.raw);
+}
+function thinkSettle(el) {
+  if (!el) { return; }
+  el.classList.remove('live');
+  el.classList.remove('open');
+  const st = el.querySelector('.tk-state');
+  if (st) { st.textContent = '已思考'; }
+}
+/** 正文开始输出 → 收起本轮所有思考块 */
+function closeThinks(target) {
+  const box = target.querySelector('.ai-thinks');
+  if (!box) { return; }
+  box.querySelectorAll('.ai-think.live').forEach(thinkSettle);
 }
 
 function addToolCall(cards, action) {
@@ -2872,6 +2911,10 @@ async function mountAi(body) {
           <span class="mp-name" id="modelBtnName">模型</span>
           <svg viewBox="0 0 24 24" class="mp-chev"><path d="M7 10l5 5 5-5z"/></svg>
         </button>
+        <button type="button" class="think-toggle" id="thinkBtn" aria-pressed="false" title="开启后 AI 会先推理再回答（本站模型支持）">
+          <svg viewBox="0 0 24 24" class="tt-ic"><path d="M12 3a7 7 0 0 0-4 12.7V19a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3.3A7 7 0 0 0 12 3zM9 22h6v1H9v-1z"/></svg>
+          <span>深度思考</span>
+        </button>
       </div>
       <div class="model-sheet" id="modelPanel" hidden>
         <div class="ms-head">选择模型</div>
@@ -2914,6 +2957,9 @@ async function mountAi(body) {
   let rawText = '';        // 本轮回答的原始文本（渲染的唯一真源）
   let tailHtml = '';       // 追加在正文之后的系统提示（错误等）
   let lastPaint = 0;
+  let thinkOn = false;     // 深度思考开关（本机偏好）
+  let curThink = null;     // 本轮正在写入的思考块
+  try { thinkOn = localStorage.getItem('kimgr_ai_think') === '1'; } catch (e) {}
 
   function setSendState(busy) {
     if (busy) {
@@ -2996,6 +3042,21 @@ async function mountAi(body) {
     }
   }
 
+  const thinkBtn = body.querySelector('#thinkBtn');
+  function paintThinkBtn() {
+    if (!thinkBtn) { return; }
+    thinkBtn.classList.toggle('on', thinkOn);
+    thinkBtn.setAttribute('aria-pressed', thinkOn ? 'true' : 'false');
+  }
+  paintThinkBtn();
+  if (thinkBtn) {
+    thinkBtn.addEventListener('click', () => {
+      thinkOn = !thinkOn;
+      try { localStorage.setItem('kimgr_ai_think', thinkOn ? '1' : '0'); } catch (e) {}
+      paintThinkBtn();
+    });
+  }
+
   modelBtn.addEventListener('click', () => {
     const open = modelPanel.hidden;
     if (open) { renderModelPanel(); }
@@ -3012,9 +3073,13 @@ async function mountAi(body) {
 
   /** 非流式兜底：返回完整回答文本。counted = 流式那次服务端是否已受理（受理过才算「已计入」，否则必须重新检查并占用额度） */
   async function sendSync(text, target, counted) {
-    const d = await api('ai.php', 'send_sync', { content: text, fallback: counted ? 1 : 0, model: selModel }, { timeout: 180000, silent: true });
+    const d = await api('ai.php', 'send_sync',
+      { content: text, fallback: counted ? 1 : 0, model: selModel, think: thinkOn ? 1 : 0 },
+      { timeout: 180000, silent: true });
     const p = aiParts(target);
     (d.tools || []).forEach(t => { addToolCall(p.cards, t.action); resolveTool(p.cards, t); });
+    /* 非流式兜底同样补齐思考块（多轮就有多段） */
+    (d.thinks || []).forEach(t => { const el = addThink(p.thinks); thinkAppend(el, t); thinkSettle(el); });
     return d.text || '';
   }
 
@@ -3060,7 +3125,7 @@ async function mountAi(body) {
           'X-Token': state.token,
           'X-CSRF-Token': state.csrf,
         },
-        body: JSON.stringify({ content: text, model: selModel }),
+        body: JSON.stringify({ content: text, model: selModel, think: thinkOn ? 1 : 0 }),
         credentials: 'same-origin',
       });
       if (!resp.ok || !resp.body) {
@@ -3074,7 +3139,7 @@ async function mountAi(body) {
       }
       streamAccepted = true;     // 服务端已受理：这次的降级才是「已计入额度」的重放
 
-      rawText = ''; tailHtml = ''; lastPaint = 0;
+      rawText = ''; tailHtml = ''; lastPaint = 0; curThink = null;
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let buf = '';
@@ -3093,7 +3158,7 @@ async function mountAi(body) {
 
           if (ev.delta) {
             const p = aiParts(target);
-            if (firstChunk) { p.text.textContent = ''; firstChunk = false; }
+            if (firstChunk) { p.text.textContent = ''; firstChunk = false; closeThinks(target); curThink = null; }
             rawText += ev.delta;
             gotAny = true;
             const now = Date.now();
@@ -3102,6 +3167,16 @@ async function mountAi(body) {
               paintAi(target, rawText, tailHtml);
               if (atBottom(stream)) { toBottom(stream); }
             }
+          }
+          if (ev.think_start) {
+            curThink = addThink(aiParts(target).thinks);
+          }
+          if (ev.think) {
+            const p = aiParts(target);
+            if (!curThink || !curThink.parentNode) { curThink = addThink(p.thinks); }
+            thinkAppend(curThink, ev.think);
+            gotAny = true;
+            if (atBottom(stream)) { toBottom(stream); }
           }
           if (ev.tool_call) {
             const p = aiParts(target);

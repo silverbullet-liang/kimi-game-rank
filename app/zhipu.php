@@ -82,13 +82,16 @@ function zhipu_key_fail(string $key)
 /* ============================================================
  * 请求
  * ============================================================ */
-function zhipu_payload(array $messages, string $model = ''): array
+function zhipu_payload(array $messages, string $model = '', bool $thinking = false): array
 {
     $cfg = zhipu_config();
     $payload = array(
         'model'    => $model !== '' ? $model : (string)$cfg['model'],
         'messages' => $messages,
     );
+    /* 深度思考：思考型模型按 thinking.type 开关；不支持该参数的模型会返回 400，
+       由调用方自动去掉参数重试一次（见 zhipu_chat / zhipu_chat_stream）。 */
+    if ($thinking) { $payload['thinking'] = array('type' => 'enabled'); }
     /* 说明：glm-4-flash 系列的 web_search 工具实测不生效，
        联网检索改由 <Works check> 协议中的 web_open 工具完成。 */
     return $payload;
@@ -98,16 +101,17 @@ function zhipu_payload(array $messages, string $model = ''): array
  * 非流式调用（多 key 轮询，失败自动切换）。
  * $model 非空时覆盖配置模型（如搜索总结固定用 glm-4-flash 保速度）。
  */
-function zhipu_chat(array $messages, string $model = ''): array
+function zhipu_chat(array $messages, string $model = '', bool $thinking = false): array
 {
     $cfg = zhipu_config();
     $keys = isset($cfg['keys']) ? array_values($cfg['keys']) : array();
     $tries = max(1, count($keys));
     $lastErr = 'AI 服务不可用';
+    $noThink = false;      // 模型不支持 thinking → 去掉参数重试一次
 
     for ($i = 0; $i < $tries; $i++) {
         $key = zhipu_pick_key();
-        $payload = zhipu_payload($messages, $model);
+        $payload = zhipu_payload($messages, $model, $thinking && !$noThink);
         if (!function_exists('curl_init')) { $lastErr = 'AI 服务不可用（缺少 curl 扩展）'; continue; }
         $ch = curl_init((string)$cfg['endpoint']);
         curl_setopt_array($ch, array(
@@ -127,14 +131,20 @@ function zhipu_chat(array $messages, string $model = ''): array
         if ($code === 200) {
             $j = json_decode((string)$resp, true);
             if (is_array($j) && isset($j['choices'][0]['message']['content'])) {
+                $msg = $j['choices'][0]['message'];
                 return array(
-                    'text' => (string)$j['choices'][0]['message']['content'],
+                    'text' => (string)$msg['content'],
+                    'reasoning' => isset($msg['reasoning_content']) ? (string)$msg['reasoning_content'] : '',
                     'usage' => isset($j['usage']) ? $j['usage'] : array(),
                 );
             }
             $lastErr = 'AI 返回格式异常';
             zhipu_key_fail($key);
             continue;
+        }
+        if ($code === 400 && $thinking && !$noThink) {
+            /* 该模型不接受 thinking 参数：去掉它重试，别让整个请求失败 */
+            $noThink = true; $i--; continue;
         }
         $lastErr = 'AI 接口 HTTP ' . $code;
         zhipu_key_fail($key);
@@ -145,16 +155,17 @@ function zhipu_chat(array $messages, string $model = ''): array
 /**
  * 流式调用。$onDelta(string $text, array $usage) 每段回调；返回累计文本。
  */
-function zhipu_chat_stream(array $messages, callable $onDelta): string
+function zhipu_chat_stream(array $messages, callable $onDelta, bool $thinking = false, $onReason = null, string $model = ''): string
 {
     $cfg = zhipu_config();
     $keys = isset($cfg['keys']) ? array_values($cfg['keys']) : array();
     $tries = max(1, count($keys));
     $lastErr = 'AI 服务不可用';
+    $noThink = false;      // 不支持 thinking 的模型：去掉参数重试一次
 
     for ($i = 0; $i < $tries; $i++) {
         $key = zhipu_pick_key();
-        $payload = zhipu_payload($messages);
+        $payload = zhipu_payload($messages, $model, $thinking && !$noThink);
         $payload['stream'] = true;
         $payload['stream_options'] = array('include_usage' => true);
         $usage = array();
@@ -169,7 +180,7 @@ function zhipu_chat_stream(array $messages, callable $onDelta): string
             CURLOPT_HTTPHEADER     => array('Authorization: Bearer ' . $key, 'Content-Type: application/json', 'Accept: text/event-stream'),
             CURLOPT_TIMEOUT        => 120,
             CURLOPT_CONNECTTIMEOUT => 6,
-            CURLOPT_WRITEFUNCTION  => function ($ch, $chunk) use (&$buffer, &$full, &$usage, $onDelta) {
+            CURLOPT_WRITEFUNCTION  => function ($ch, $chunk) use (&$buffer, &$full, &$usage, $onDelta, $onReason) {
                 $buffer .= $chunk;
                 while (($pos = strpos($buffer, "\n")) !== false) {
                     $line = trim(substr($buffer, 0, $pos));
@@ -180,8 +191,14 @@ function zhipu_chat_stream(array $messages, callable $onDelta): string
                     $j = json_decode($data, true);
                     if (!is_array($j)) { continue; }
                     if (!empty($j['usage'])) { $usage = $j['usage']; }
-                    if (isset($j['choices'][0]['delta']['content'])) {
-                        $piece = (string)$j['choices'][0]['delta']['content'];
+                    $d = isset($j['choices'][0]['delta']) ? $j['choices'][0]['delta'] : array();
+                    /* 思考内容（reasoning_content）在正文之前整段输出，单独回调 */
+                    if ($onReason !== null && isset($d['reasoning_content'])) {
+                        $rt = (string)$d['reasoning_content'];
+                        if ($rt !== '') { $onReason($rt); }
+                    }
+                    if (isset($d['content'])) {
+                        $piece = (string)$d['content'];
                         if ($piece !== '') { $full .= $piece; $onDelta($piece, array()); }
                     }
                 }
@@ -196,6 +213,10 @@ function zhipu_chat_stream(array $messages, callable $onDelta): string
         if ($httpCode === 200 && $full !== '') {
             $onDelta('', $usage);   // 收尾回调携带 usage
             return $full;
+        }
+        if ($httpCode === 400 && $thinking && !$noThink) {
+            /* 该模型不接受 thinking：去掉参数重试（此时尚无内容下发，重试安全） */
+            $noThink = true; $i--; continue;
         }
         $lastErr = ($httpCode === 200) ? 'AI 未返回内容' : ('AI 接口 HTTP ' . $httpCode . ($cerr !== '' ? ' / ' . $cerr : ''));
         zhipu_key_fail($key);
@@ -289,10 +310,12 @@ function build_system_prompt(): string
     $p .= '5. web_open 读取任意网页正文：{"action":"web_open","url":"https://..."}' . "\n";
     $p .= '6. weather 查询任意城市实时天气：{"action":"weather","city":"北京"}' . "\n";
     $p .= '7. time 获取当前日期与时间：{"action":"time"}，指定时区：{"action":"time","timezone":"Asia/Tokyo"}' . "\n";
+    $p .= '8. docs 查站内文档（用户协议 / 隐私政策 / 社区公约 / 功能说明 / 评分标准 / 入榜规则 / AI 使用说明 / 更新日志）：列出清单 {"action":"docs"}；关键词检索 {"action":"docs","query":"封禁"}；读某篇全文 {"action":"docs","name":"用户协议"}' . "\n";
     $p .= "【硬性要求】\n";
     $p .= "- 用户问天气（任何城市）：必须调用 weather 工具，禁止回答“我无法获取天气”，也不要用 web_open 去抓天气网页。\n";
     $p .= "- 用户问现在几点、今天几号、今天星期几、当前时间：必须调用 time 工具，禁止回答“我无法提供实时时间”。\n";
     $p .= "- 用户问站内榜单/作品：调用 search / get / rank / comments。\n";
+    $p .= "- 用户问站内规则、协议、公约、隐私、怎么参与、评分怎么算、AI 怎么用、封禁规定：必须调用 docs 工具查文档后再答，禁止凭印象编造站内规则。\n";
     $p .= "【格式铁律】（违反会导致调用失败、参数丢失，用户会看到一串乱码 JSON）\n";
     $p .= "1. 工具名 action 与它需要的参数必须写在同一个 JSON 对象里，一次写完。\n";
     $p .= "2. 严禁先单独写一行工具名、再另起一行写参数。这样参数会丢，调用必定失败。\n";
@@ -312,6 +335,14 @@ function build_system_prompt(): string
     $p .= "两次仍失败就如实向用户说明失败原因，绝不能编造或假装拿到了数据。\n";
     $p .= "系统执行后会把结果放在 <tool_result> 中回传给你；收到结果后必须给出最终中文回答，且不要再输出任何标签。\n";
     $p .= "不需要数据时直接回答，不要输出标签；不要编造或假装工具结果。\n";
+
+    $p .= "\n【思考方式】（好答案来自清楚的思考；开启深度思考时请显式展开，未开启时也在心里执行）\n";
+    $p .= "1. 先判断问题类型：站内数据（榜单/作品/评论）｜站内规则与文档｜通用知识｜需要实时信息（时间/天气/网页）。\n";
+    $p .= "2. 想清楚「要什么」：需要哪些字段、哪篇文档、哪个作品，再决定用哪个工具、参数怎么填。\n";
+    $p .= "3. 需要数据就先调用工具，一次把参数带全；信息不足时不要急着作答。\n";
+    $p .= "4. 拿到 <tool_result> 先核验：它真的回答了问题吗？缺什么就再补一轮调用（最多两轮）；仍然缺就说明缺什么。\n";
+    $p .= "5. 组织回答：先给结论，再给依据；数字、时间、链接必须来自工具结果，绝不凭印象编造。\n";
+    $p .= "6. 不确定就直说不确定，并告诉用户怎么问能更具体；不要为了显得确定而捏造细节。\n";
 
     $ann = setting_get('announcement', '');
     if ($ann !== '') { $p .= "\n【最新公告】" . $ann . "\n"; }

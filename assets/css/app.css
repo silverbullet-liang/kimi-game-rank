@@ -824,6 +824,31 @@ html[data-theme="dark"] .table th, html[data-theme="dark"] .table td { border-co
 /* ---------- AI 工具调用卡片 ---------- */
 .tool-cards { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
 .tool-cards:empty { display: none; }
+
+/* 深度思考块（AI 对话）：可折叠，内容同样走 markdown 渲染 */
+.ai-thinks { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.ai-thinks:empty { display: none; }
+.ai-think { border: 1px solid var(--border-soft); border-radius: var(--radius-sm); background: var(--bg-2); overflow: hidden; }
+.ai-think .tk-head { display: flex; align-items: center; gap: 6px; width: 100%; padding: 7px 10px;
+  background: 0; border: 0; cursor: pointer; font: inherit; color: var(--text-2); text-align: left; }
+.ai-think .tk-ic { width: 14px; height: 14px; fill: var(--accent); flex: 0 0 auto; }
+.ai-think .tk-title { font-size: 12px; font-weight: 700; }
+.ai-think .tk-state { font-size: 11px; color: var(--text-3); }
+.ai-think .tk-chev { width: 16px; height: 16px; fill: var(--text-3); margin-left: auto; transition: transform .18s ease; }
+.ai-think.open .tk-chev { transform: rotate(180deg); }
+.ai-think .tk-body { display: none; padding: 2px 10px 9px; border-top: 1px dashed var(--border-soft);
+  font-size: 12.5px; line-height: 1.75; color: var(--text-2); }
+.ai-think.open .tk-body { display: block; }
+.ai-think .tk-body > :first-child { margin-top: 6px; }
+.ai-think .tk-body > :last-child { margin-bottom: 0; }
+.ai-think.live .tk-state { color: var(--accent); }
+
+/* 深度思考开关（模型栏内，非原生控件） */
+.think-toggle { display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 11px; margin-left: auto;
+  border: 1px solid var(--border-soft); border-radius: 999px; background: var(--surface-solid); color: var(--text-2);
+  font-size: 12px; cursor: pointer; flex: 0 0 auto; }
+.think-toggle .tt-ic { width: 14px; height: 14px; fill: currentColor; }
+.think-toggle.on { border-color: var(--accent); color: var(--accent); background: var(--tab-active-bg); }
 .tool-card {
   display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 11px;
   background: color-mix(in srgb, var(--accent) 8%, transparent);

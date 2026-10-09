@@ -333,7 +333,7 @@ function or_chat(array $messages, string $model): array
 }
 
 /** 流式对话；每段回调 $onDelta(string $piece, array $usage)，返回累计文本 */
-function or_chat_stream(array $messages, string $model, callable $onDelta): string
+function or_chat_stream(array $messages, string $model, callable $onDelta, $onReason = null): string
 {
     $timeout = (int)(or_config()['timeout'] ?? 90);
     $payload = or_payload($messages, $model);
@@ -348,7 +348,7 @@ function or_chat_stream(array $messages, string $model, callable $onDelta): stri
         CURLOPT_HTTPHEADER     => array_merge(or_headers(true), array('Accept: text/event-stream')),
         CURLOPT_TIMEOUT        => $timeout,
         CURLOPT_CONNECTTIMEOUT => 8,
-        CURLOPT_WRITEFUNCTION  => function ($ch, $chunk) use (&$buffer, &$full, &$usage, $onDelta) {
+        CURLOPT_WRITEFUNCTION  => function ($ch, $chunk) use (&$buffer, &$full, &$usage, $onDelta, $onReason) {
             $buffer .= $chunk;
             while (($pos = strpos($buffer, "\n")) !== false) {
                 $line = trim(substr($buffer, 0, $pos));
@@ -359,6 +359,14 @@ function or_chat_stream(array $messages, string $model, callable $onDelta): stri
                 $j = json_decode($data, true);
                 if (!is_array($j)) { continue; }
                 if (!empty($j['usage'])) { $usage = $j['usage']; }
+                $d = isset($j['choices'][0]['delta']) ? $j['choices'][0]['delta'] : array();
+                /* 推理模型的思考增量：OpenRouter 用 reasoning，部分上游用 reasoning_content */
+                if ($onReason !== null) {
+                    $rt = '';
+                    if (isset($d['reasoning'])) { $rt = (string)$d['reasoning']; }
+                    elseif (isset($d['reasoning_content'])) { $rt = (string)$d['reasoning_content']; }
+                    if ($rt !== '') { $onReason($rt); }
+                }
                 if (isset($j['choices'][0]['delta']['content'])) {
                     $piece = (string)$j['choices'][0]['delta']['content'];
                     if ($piece !== '') { $full .= $piece; $onDelta($piece, array()); }
@@ -402,7 +410,7 @@ function ai_pick_model(string $want = ''): string
  * $provider 回传**实际生效**的通道（gateway=模型网关 / glm=本站模型），
  * 供用量分账使用——「选了免费模型但实际回退了」也算 glm，账要记在真身上。
  */
-function ai_respond(array $messages, string $model, string &$provider = ''): array
+function ai_respond(array $messages, string $model, string &$provider = '', bool $think = false, string $glmModel = ''): array
 {
     if ($model !== '') {
         try {
@@ -412,11 +420,11 @@ function ai_respond(array $messages, string $model, string &$provider = ''): arr
         } catch (Throwable $e) { app_log('openrouter chat failed: ' . $e->getMessage()); }
     }
     $provider = 'glm';
-    return zhipu_chat($messages);
+    return zhipu_chat($messages, $glmModel, $think);
 }
 
 /** 流式：OpenRouter 优先；已产出内容后失败则不回退（避免正文重复）。$provider 语义同上 */
-function ai_respond_stream(array $messages, string $model, callable $onDelta, string &$provider = ''): string
+function ai_respond_stream(array $messages, string $model, callable $onDelta, string &$provider = '', bool $think = false, $onReason = null, string $glmModel = ''): string
 {
     if ($model !== '') {
         $got = false;
@@ -424,7 +432,7 @@ function ai_respond_stream(array $messages, string $model, callable $onDelta, st
             $out = or_chat_stream($messages, $model, function ($d, $u) use ($onDelta, &$got) {
                 if ($d !== '') { $got = true; }
                 $onDelta($d, $u);
-            });
+            }, $onReason);
             $provider = 'gateway';
             return $out;
         } catch (Throwable $e) {
@@ -433,7 +441,7 @@ function ai_respond_stream(array $messages, string $model, callable $onDelta, st
         }
     }
     $provider = 'glm';
-    return zhipu_chat_stream($messages, $onDelta);
+    return zhipu_chat_stream($messages, $onDelta, $think, $onReason, $glmModel);
 }
 
 /* ============================================================
