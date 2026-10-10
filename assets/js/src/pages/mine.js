@@ -6,6 +6,10 @@ import { navigate } from '../router.js';
 import { saveTheme, ACCENTS, SKINS, hexToHsl, FESTIVAL_KEYS, festivalNow } from '../theme.js';
 import { setNavAnim } from '../transitions.js';
 
+/* 管理入口按钮图标（内联 SVG，避免额外依赖） */
+const G_ICON = 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 4l-2 1.5.3 2.5-2 1-1.8-1.8-2.3.8L12 18l-1.2-2-2.3-.8L6.7 17l-2-1 .3-2.5L3 12l2-1.5L4.7 8l2-1 1.8 1.8 2.3-.8L12 6l1.2 2 2.3.8L17.3 7l2 1-.3 2.5L21 12z';
+const S_ICON = 'M12 2 4 5.2v5.9c0 4.7 3.3 8.8 8 10.9 4.7-2.1 8-6.2 8-10.9V5.2L12 2z';
+
 /** 配额上限展示（数据缺失时返回空串，不显示占位符） */
 function limit(key, d) {
   const n = d && d.quota && d.quota.limits ? Number(d.quota.limits[key]) : 0;
@@ -66,7 +70,14 @@ export async function renderMine(container) {
         <button class="btn-ghost btn-sm" id="copyUid">复制</button>
       </div>
       <div class="tiny" style="margin-top:6px">由账号经可逆算法唯一生成${d.uid8_babao ? ' · 管理身份专用豹子号' : ''}，可据此反查账号</div>
-      ${isAdmin ? '<button class="btn" id="panelBtn" style="width:100%;margin-top:10px">进入控制面板</button>' : ''}
+      ${isAdmin ? '<div class="adm-actions">'
+        + '<button type="button" class="adm-btn" id="panelBtn">'
+        +   '<svg viewBox="0 0 24 24" class="ic"><path d="' + G_ICON + '"/></svg><span>控制面板</span>'
+        + '</button>'
+        + '<button type="button" class="adm-btn" id="monitorBtn">'
+        +   '<svg viewBox="0 0 24 24" class="ic"><path d="' + S_ICON + '"/></svg><span>异常监测</span>'
+        + '</button>'
+        + '</div>' : ''}
     </div>
 
     <div class="card">
@@ -155,7 +166,10 @@ export async function renderMine(container) {
   })();
 
   if (isAdmin) {
-    container.querySelector('#panelBtn').addEventListener('click', () => navigate('#/panel'));
+    const panelBtn = container.querySelector('#panelBtn');
+    if (panelBtn) { panelBtn.addEventListener('click', () => navigate('#/panel')); }
+    const monBtn = container.querySelector('#monitorBtn');
+    if (monBtn) { monBtn.addEventListener('click', () => navigate('#/monitor')); }
     const copyBtn = container.querySelector('#copyUid');
     if (copyBtn) copyBtn.addEventListener('click', async () => {
       const v = String(d.uid8 || '');

@@ -65,22 +65,42 @@ function kimi_call(string $path, array $payload, string $token): array
 
 /* ---------- 具体端点 ---------- */
 
-function kimi_list_feeds(string $token, string $category = 'recommend', string $pageToken = ''): array
+/** 信息流分类 → 接口枚举名（接口按 proto JSON 约定用 FEED_CATEGORY_* 全名） */
+function kimi_feed_category(string $c): string
 {
-    $payload = array('sessionId' => 'feed-' . time(), 'category' => $category);
+    $c = trim($c);
+    if ($c === '') { return 'FEED_CATEGORY_RECOMMEND'; }
+    if (stripos($c, 'FEED_CATEGORY_') === 0) { return strtoupper($c); }
+    $map = array(
+        'recommend' => 'FEED_CATEGORY_RECOMMEND',
+        'follow'    => 'FEED_CATEGORY_FOLLOW',
+        'hashtag'   => 'FEED_CATEGORY_HASHTAG',
+        'favorite'  => 'FEED_CATEGORY_USER_FAVORITE',
+        'likes'     => 'FEED_CATEGORY_USER_LIKES',
+        'publish'   => 'FEED_CATEGORY_USER_PUBLISH',
+    );
+    $k = strtolower($c);
+    return isset($map[$k]) ? $map[$k] : strtoupper($c);
+}
+
+function kimi_list_feeds(string $token, string $category = 'recommend', string $pageToken = '', int $pageSize = 0): array
+{
+    $payload = array('sessionId' => 'feed-' . time(), 'category' => kimi_feed_category($category));
+    if ($pageSize > 0) { $payload['pageSize'] = $pageSize; }
     if ($pageToken !== '') { $payload['pageToken'] = $pageToken; }
     return kimi_call('moment.v1.FeedService/ListFeeds', $payload, $token);
 }
 
-function kimi_get_feed(string $token, string $feedId, int $feedType = 0): array
+function kimi_get_feed(string $token, string $feedId, string $feedType = 'FEED_TYPE_MOMENT'): array
 {
     return kimi_call('moment.v1.FeedService/GetFeed', array('feedType' => $feedType, 'feedId' => $feedId), $token);
 }
 
-function kimi_search(string $token, string $query, string $pageToken = ''): array
+function kimi_search(string $token, string $query, string $pageToken = '', int $pageSize = 0): array
 {
-    $payload = array('query' => $query, 'sessionId' => 'search-' . time());
-    if ($pageToken !== '') { $payload['_nextPageToken'] = $pageToken; }
+    $payload = array('query' => $query);
+    if ($pageSize > 0) { $payload['pageSize'] = $pageSize; }
+    if ($pageToken !== '') { $payload['pageToken'] = $pageToken; }
     return kimi_call('moment.v1.SearchService/SearchMoments', $payload, $token);
 }
 

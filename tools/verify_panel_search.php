@@ -41,10 +41,19 @@ ck('添加复用 add_work 手动分支', strpos($panel, "mode: 'manual', work_id
 ck('已收录条目按钮禁用', strpos($panel, "it.exists ? ' disabled'") !== false, true);
 ck('收录成功后刷新作品列表', strpos($panel, 'loadWorks(container,') !== false, true);
 
+/* ---------- 我的页入口（控制面板旁）与美化 ---------- */
+$mine = (string)file_get_contents(APP_ROOT . '/assets/js/src/pages/mine.js');
+ck('我的页有异常监测入口按钮', strpos($mine, 'id="monitorBtn"') !== false, true);
+ck('与「控制面板」并排（adm-actions）', strpos($mine, 'class="adm-actions"') !== false, true);
+ck('monitorBtn 绑定到 #/monitor', strpos($mine, "navigate('#/monitor')") !== false, true);
+
 /* ---------- 样式 ---------- */
 $css = (string)file_get_contents(APP_ROOT . '/assets/css/app.css');
 ck('app.css 有 .cs-list 样式', strpos($css, '.cs-list {') !== false, true);
 ck('app.css 有 .cs-item 样式', strpos($css, '.cs-item {') !== false, true);
+ck('app.css 有 .adm-actions 样式', strpos($css, '.adm-actions {') !== false, true);
+ck('监测页已美化（标题竖条）', strpos($css, '.mon-title::before') !== false, true);
+ck('监测页已美化（KPI 悬浮）', strpos($css, '.mon-kpi:hover') !== false, true);
 
 printf("\n通过 %d，失败 %d\n", $P, $F);
 exit($F === 0 ? 0 : 1);

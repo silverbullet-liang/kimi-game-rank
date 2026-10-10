@@ -99,7 +99,7 @@ switch ($action) {
         $token = admin_actor_token();
         if ($token === '') { fail(400, '请先在上方「社区凭证」里填写并保存 cookie/token'); }
         try {
-            $resp = kimi_search($token, $q, trim(param_str('page_token', '')));
+            $resp = kimi_search($token, $q, trim(param_str('page_token', '')), 10);   // 每页 10 条（接口原生 pageSize）
         } catch (Exception $e) {
             fail(400, $e->getMessage());
         }
