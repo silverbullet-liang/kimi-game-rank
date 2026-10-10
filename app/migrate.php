@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 26);
+define('SCHEMA_VERSION', 27);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -1013,6 +1013,26 @@ function run_migrations(bool $force = false)
             setting_set('schema_version', '26');
         } catch (Throwable $e) {
             app_log('migrate v26 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v27：对话消息的工具卡片与思考 ----------
+       此前只存最终文本，重新加载历史时工具卡片与深度思考全部丢失。
+       meta 存一份精简结构（工具卡片 action/ok/summary + 思考文本），前端据此还原。 */
+    if ($cur < 27) {
+        try {
+            if (table_exists('ai_messages') && !column_exists('ai_messages', 'meta')) {
+                db_exec("ALTER TABLE `ai_messages` ADD COLUMN `meta` TEXT NULL COMMENT '工具卡片与思考 JSON'");
+                table_columns('ai_messages', true);
+            }
+            if (table_exists('messages') && !column_exists('messages', 'meta')) {
+                db_exec("ALTER TABLE `messages` ADD COLUMN `meta` TEXT NULL COMMENT 'AI 回复的工具卡片 JSON'");
+                table_columns('messages', true);
+            }
+            app_log('schema migrated to v27（对话工具卡片与思考持久化）');
+            setting_set('schema_version', '27');
+        } catch (Throwable $e) {
+            app_log('migrate v27 failed: ' . $e->getMessage());
         }
     }
 

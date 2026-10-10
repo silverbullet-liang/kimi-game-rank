@@ -24,6 +24,7 @@ function chat_out(array $r, int $myUid): array
     /* 官方 AI 消息：user_id=0、msg_type='ai'，身份不再来自 users 表 */
     $isAi = ((string)($r['msg_type'] ?? '') === 'ai');
     $name = $isAi ? LOBBY_AI_NAME : (string)($r['username'] ?? '已注销用户');
+    $meta = chat_meta_unpack(isset($r['meta']) ? $r['meta'] : '');
     return array(
         'id'       => (int)$r['id'],
         'oid'      => (string)($r['oid'] ?? ''),
@@ -38,6 +39,7 @@ function chat_out(array $r, int $myUid): array
         /* AI 重审判为 middle 时的标注（撤回后不再提示） */
         'flag'     => $recalled ? '' : (string)($r['review_flag'] ?? ''),
         'mine'     => $myUid > 0 && (int)$r['user_id'] === $myUid,
+        'cards'    => $recalled ? array() : $meta['cards'],
         'time'     => to_local((string)$r['created_at'], 'm-d H:i'),
     );
 }
@@ -50,7 +52,8 @@ function chat_msg_cols(): string
     $rec   = col_ok('messages', 'is_recalled') ? 'm.is_recalled'  : '0 AS is_recalled';
     $flag  = col_ok('messages', 'review_flag') ? 'm.review_flag'  : "'' AS review_flag";
     $oid   = col_ok('messages', 'oid')         ? 'm.oid'          : "'' AS oid";
-    return 'm.id, ' . $oid . ', m.user_id, m.content, ' . $type . ', ' . $media . ', ' . $rec . ', ' . $flag . ', m.created_at, '
+    $meta  = col_ok('messages', 'meta')        ? 'm.meta'         : "'' AS meta";
+    return 'm.id, ' . $oid . ', ' . $meta . ', m.user_id, m.content, ' . $type . ', ' . $media . ', ' . $rec . ', ' . $flag . ', m.created_at, '
          . "COALESCE(u.username, '已注销用户') AS username, COALESCE(u.role, 'user') AS role";
 }
 

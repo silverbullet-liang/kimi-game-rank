@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '3.26.0');
+define('APP_VERSION', '3.27.0');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);
@@ -79,6 +79,7 @@ require_once APP_ROOT . '/app/works_list.php';
 require_once APP_ROOT . '/app/works_tool.php';
 require_once APP_ROOT . '/app/works_tool_extra.php';
 require_once APP_ROOT . '/app/works_tool_loop.php';
+require_once APP_ROOT . '/app/chat_meta.php';
 require_once APP_ROOT . '/app/docs_tool.php';
 require_once APP_ROOT . '/app/checkin.php';
 require_once APP_ROOT . '/app/uid.php';

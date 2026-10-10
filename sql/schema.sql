@@ -158,6 +158,7 @@ CREATE TABLE IF NOT EXISTS `messages` (
   `media_url`   VARCHAR(255) NOT NULL DEFAULT '' COMMENT '图片消息的地址（本地或代理）',
   `is_recalled` TINYINT(1)   NOT NULL DEFAULT 0,
   `review_flag` VARCHAR(12)  NOT NULL DEFAULT '' COMMENT 'AI 重审标注：空=正常 middle=可能有恶意',
+  `meta`        TEXT         NULL COMMENT 'AI 回复的工具卡片 JSON',
   `created_at`  DATETIME     NOT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_time` (`id`, `created_at`)
@@ -171,6 +172,7 @@ CREATE TABLE IF NOT EXISTS `ai_messages` (
   `user_id`    INT UNSIGNED NOT NULL,
   `role`       ENUM('user','assistant') NOT NULL,
   `content`    MEDIUMTEXT   NOT NULL,
+  `meta`       TEXT         NULL COMMENT '工具卡片与思考 JSON',
   `created_at` DATETIME     NOT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_user_time` (`user_id`, `id`)

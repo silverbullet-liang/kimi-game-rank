@@ -826,12 +826,15 @@ html[data-theme="dark"] .table th, html[data-theme="dark"] .table td { border-co
 }
 
 /* ---------- AI 工具调用卡片 ---------- */
-.tool-cards { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-.tool-cards:empty { display: none; }
+.ai-flow { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.ai-flow:empty { display: none; margin-bottom: 0; }
 
 /* 深度思考块（AI 对话）：可折叠，内容同样走 markdown 渲染 */
-.ai-thinks { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-.ai-thinks:empty { display: none; }
+/* 乐观发出后等待官方 AI 的提示（世界对话） */
+.ai-thinking { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; font-size: 11px; color: var(--text-3); }
+.ai-thinking i { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); opacity: .45; animation: dotPulse .9s ease-in-out infinite; }
+.ai-thinking i:nth-child(2) { animation-delay: .15s; }
+.ai-thinking i:nth-child(3) { animation-delay: .3s; }
 .ai-think { border: 1px solid var(--border-soft); border-radius: var(--radius-sm); background: var(--bg-2); overflow: hidden; }
 .ai-think .tk-head { display: flex; align-items: center; gap: 6px; width: 100%; padding: 7px 10px;
   background: 0; border: 0; cursor: pointer; font: inherit; color: var(--text-2); text-align: left; }

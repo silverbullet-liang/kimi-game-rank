@@ -2502,6 +2502,8 @@ async function mountWorld(body) {
       inner = '<span class="recall">该消息已撤回</span>';
     } else if (m.msg_type === 'image' && m.media) {
       inner = '<img class="msg-img" src="' + imgSrc(m.media) + '" alt="图片消息" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false">';
+    } else if (m.msg_type === 'ai' && m.cards && m.cards.length) {
+      inner = cardsHtml(m.cards) + renderRich(m.content);
     } else {
       inner = renderRich(m.content);
     }
@@ -2512,9 +2514,11 @@ async function mountWorld(body) {
       ? ' · <button class="link" data-del="1" style="border:0;background:0;font-size:12px">删除</button>' : '';
     el.innerHTML = '<span class="av"><img src="' + esc(m.avatar) + '" alt="" draggable="false" style="user-select:none"></span>'
       + '<span class="bubble-wrap">'
-      +   '<span class="who">' + userName(m.username, m.role) + ' · ' + esc(m.time) + recallBtn + delBtn + '</span>'
+      +   '<span class="who">' + userName(m.username, m.role) + ' · ' + esc(m.time)
+            + (m.pending ? ' · 发送中…' : '') + recallBtn + delBtn + '</span>'
       +   '<div class="bubble">' + inner + '</div>'
-      +   (m.msg_type === 'ai' && m.tools && m.tools.length
+      +   (m.aiPending ? '<span class="ai-thinking"><i></i><i></i><i></i>官方AI 正在思考…</span>' : '')
+      +   (m.msg_type === 'ai' && !(m.cards && m.cards.length) && m.tools && m.tools.length
             ? '<span class="tool-note">参考：' + esc(m.tools.join('、')) + '</span>' : '')
       +   (!m.recalled && m.flag === 'middle'
             ? '<span class="msg-flag" title="系统认为这条内容可能有恶意，但仍予放行">可能有恶意'
@@ -2653,12 +2657,29 @@ async function mountWorld(body) {
     });
   }
 
+  function timeNow() {
+    const d = new Date(), p = n => (n < 10 ? '0' : '') + n;
+    return p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
   async function submit(type, payload) {
     if (!canSend) { toast('游客仅可查看，登录后可发言', 'err'); return; }
+    const hasAi = type !== 'image' && payload.content && payload.content.indexOf(AI_MENTION.trim()) >= 0;
+    /* 乐观上屏：消息立刻出现，不必等后端（含 @AI 时后端要跑模型，会等十几秒） */
+    const optimistic = {
+      id: -Date.now(), uid: state.uid || 0, username: state.username, role: state.role,
+      avatar: state.avatar, content: payload.content || '', msg_type: type,
+      media: payload.media || '', recalled: false, flag: '', mine: true,
+      time: timeNow(), pending: true, aiPending: hasAi,
+    };
+    if (stream.querySelector('.empty')) { stream.innerHTML = ''; seen.clear(); }
+    const optEl = render(optimistic);
+    stream.appendChild(optEl);
+    stick();
     btnLoading(sendBtn, true);
     try {
-      const m = await api('lobby.php', 'send', Object.assign({ type: type }, payload), { timeout: 30000 });
-      if (stream.querySelector('.empty')) { stream.innerHTML = ''; seen.clear(); }
+      const m = await api('lobby.php', 'send', Object.assign({ type: type }, payload), { timeout: 60000 });
+      optEl.remove();
       put(m, true);
       if (m && m.ai) { put(m.ai, true); }
       if (m && m.ai_note) { toast(m.ai_note, 'err'); }
@@ -2666,6 +2687,8 @@ async function mountWorld(body) {
       const bar = stream.parentNode.querySelector('.reject-note');
       if (bar) { bar.remove(); }
     } catch (e) {
+      optEl.remove();
+      if (type === 'text' && input) { input.value = payload.content || ''; input.dispatchEvent(new Event('input')); }
       if (e && e.code === 422) {
         /* 图片同样给一条明确的通知条，而不是静默失败（用户以为发出去了） */
         rejectNote(e.message || '内容未通过审核', { type: type, content: payload.content, media: payload.media });
@@ -2827,13 +2850,23 @@ const TOOL_META = {
 /** 气泡内容分区：工具卡片区 + 思考区（可多块）+ 正文区 */
 function aiParts(target) {
   if (!target.querySelector('.ai-text')) {
-    target.innerHTML = '<div class="tool-cards"></div>'
-      + '<div class="ai-thinks"></div>'
+    target.innerHTML = '<div class="ai-flow"></div>'
       + '<div class="ai-text"><span class="typing"><i></i><i></i><i></i></span></div>';
   }
-  return { cards: target.querySelector('.tool-cards'),
-           thinks: target.querySelector('.ai-thinks'),
-           text: target.querySelector('.ai-text') };
+  return { flow: target.querySelector('.ai-flow'), text: target.querySelector('.ai-text') };
+}
+
+/** 已完成的工具卡片（静态渲染：世界对话 AI 回复 / 历史还原） */
+function cardsHtml(cards) {
+  const rows = (cards || []).map(c => {
+    const meta = TOOL_META[c.action] || { n: c.action || '工具调用', d: TOOL_META.search.d };
+    const ok = c.ok !== false;
+    return '<div class="tool-card ' + (ok ? 'ok' : 'err') + '">'
+      + '<svg viewBox="0 0 24 24" class="tc-ic"><path d="' + meta.d + '"/></svg>'
+      + '<span class="tc-body"><b>' + esc(meta.n) + '</b>'
+      + '<span class="tiny">' + (ok ? '已完成 · ' : '失败 · ') + esc(c.summary || '') + '</span></span></div>';
+  }).join('');
+  return rows ? '<div class="ai-flow">' + rows + '</div>' : '';
 }
 
 /* ---------- 深度思考块 ----------
@@ -2866,7 +2899,7 @@ function thinkSettle(el) {
 }
 /** 正文开始输出 → 收起本轮所有思考块 */
 function closeThinks(target) {
-  const box = target.querySelector('.ai-thinks');
+  const box = target.querySelector('.ai-flow');
   if (!box) { return; }
   box.querySelectorAll('.ai-think.live').forEach(thinkSettle);
 }
@@ -2989,8 +3022,10 @@ async function mountAi(body) {
       stream.innerHTML = '';
       (d.items || []).forEach(m => {
         const text = m.role === 'user' ? m.content : stripToolTags(m.content);
-        if (m.role !== 'user' && !text) { return; }
-        stream.appendChild(aiMsg(m.role === 'user' ? 'mine' : 'them', text, m.oid));
+        const hasMeta = m.role !== 'user' && ((m.cards && m.cards.length) || (m.thinks && m.thinks.length));
+        if (m.role !== 'user' && !text && !hasMeta) { return; }
+        stream.appendChild(aiMsg(m.role === 'user' ? 'mine' : 'them', text, m.oid,
+          hasMeta ? { cards: m.cards || [], thinks: m.thinks || [] } : null));
       });
       if (!(d.items || []).length) {
         stream.innerHTML = '<div class="empty" style="padding:22px">开始和 AI 聊聊吧，可问榜单排名、作品详情或让我联网查资料</div>';
@@ -3178,23 +3213,23 @@ async function mountAi(body) {
             }
           }
           if (ev.think_start) {
-            curThink = addThink(aiParts(target).thinks);
+            curThink = addThink(aiParts(target).flow);
           }
           if (ev.think) {
             const p = aiParts(target);
-            if (!curThink || !curThink.parentNode) { curThink = addThink(p.thinks); }
+            if (!curThink || !curThink.parentNode) { curThink = addThink(p.flow); }
             thinkAppend(curThink, ev.think);
             gotAny = true;
             if (atBottom(stream)) { toBottom(stream); }
           }
           if (ev.tool_call) {
             const p = aiParts(target);
-            addToolCall(p.cards, ev.tool_call.action || '');
+            addToolCall(p.flow, ev.tool_call.action || '');
             gotAny = true;
             toBottom(stream);
           }
           if (ev.tool_result) {
-            resolveTool(aiParts(target).cards, ev.tool_result);
+            resolveTool(aiParts(target).flow, ev.tool_result);
             toBottom(stream);
           }
           if (ev.error) {
@@ -3307,7 +3342,7 @@ async function mountAi(body) {
 }
 
 /** AI 消息气泡 */
-function aiMsg(side, text, oid) {
+function aiMsg(side, text, oid, meta) {
   const el = document.createElement('div');
   el.className = 'msg' + (side === 'mine' ? ' mine' : '');
   const who = side === 'mine' ? esc(state.username) : 'AI 助手';
@@ -3318,8 +3353,29 @@ function aiMsg(side, text, oid) {
     <span class="av">${avatar}</span>
     <span class="bubble-wrap">
       <span class="who">${who}</span>
-      <div class="bubble">${renderAiRich(text)}</div>
+      <div class="bubble"></div>
     </span>`;
+  const bubble = el.querySelector('.bubble');
+  /* 有 meta：还原当时的深度思考块（折叠、标「已思考」）与工具卡片，正文放最后 */
+  if (meta && ((meta.thinks && meta.thinks.length) || (meta.cards && meta.cards.length))) {
+    const flow = document.createElement('div');
+    flow.className = 'ai-flow';
+    (meta.thinks || []).forEach(t => {
+      const ti = addThink(flow);
+      if (ti) { thinkAppend(ti, t); thinkSettle(ti); }
+    });
+    (meta.cards || []).forEach(c => {
+      addToolCall(flow, c.action || '');
+      resolveTool(flow, { ok: c.ok !== false, summary: c.summary || '' });
+    });
+    bubble.appendChild(flow);
+    const tx = document.createElement('div');
+    tx.className = 'ai-text';
+    tx.innerHTML = renderAiRich(text);
+    bubble.appendChild(tx);
+  } else {
+    bubble.innerHTML = renderAiRich(text);
+  }
   return el;
 }
 

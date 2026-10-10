@@ -39,6 +39,7 @@ require APP_ROOT . '/app/festival.php';
 require APP_ROOT . '/app/works_tool.php';
 require APP_ROOT . '/app/works_tool_extra.php';
 require APP_ROOT . '/app/works_tool_loop.php';
+require APP_ROOT . '/app/chat_meta.php';
 require APP_ROOT . '/app/lobby_ai.php';
 
 $GLOBALS['fail_n'] = 0; $GLOBALS['pass_n'] = 0;
@@ -103,6 +104,8 @@ ck('世界对话回复 ok', !empty($rep['ok']), true);
 ck('回复是最终文本（标签已剥）', isset($rep['item']['content']) ? $rep['item']['content'] : '', '三分之一，约 0.333');
 ck('回复不含工具标签', strpos((string)(isset($rep['item']['content']) ? $rep['item']['content'] : ''), '<') === false, true);
 ck('下发工具痕迹（中文）', isset($rep['item']['tools'][0]) ? $rep['item']['tools'][0] : '', '精确计算');
+ck('下发卡片结构 action', isset($rep['item']['cards'][0]['action']) ? $rep['item']['cards'][0]['action'] : '', 'calc');
+ck('下发卡片结构 ok', isset($rep['item']['cards'][0]['ok']) ? $rep['item']['cards'][0]['ok'] : null, true);
 
 /* user 工具在公共频道被白名单挡下 → 通告不可用，第二轮直接作答 */
 $GLOBALS['ZHIPU'] = array(

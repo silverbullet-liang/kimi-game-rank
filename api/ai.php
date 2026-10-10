@@ -46,14 +46,14 @@ function ai_gate(bool $isAdmin, int $uid, bool $online, string $text = '', bool 
 }
 
 /** 落一条 AI 对话消息（自动分配全站对象编号） */
-function ai_store_row(int $uid, string $role, string $text) {
-    if (oid_ready('ai_messages')) {
-        db_insert('INSERT INTO ai_messages (user_id, role, content, oid, created_at) VALUES (?, ?, ?, ?, UTC_TIMESTAMP())',
-            array($uid, $role, $text, oid_new('ai_messages')));
-        return;
-    }
-    db_insert('INSERT INTO ai_messages (user_id, role, content, created_at) VALUES (?, ?, ?, UTC_TIMESTAMP())',
-        array($uid, $role, $text));
+function ai_store_row(int $uid, string $role, string $text, string $meta = '') {
+    $cols = array('user_id', 'role', 'content');
+    $vals = array($uid, $role, $text);
+    if (col_ok('ai_messages', 'meta'))    { $cols[] = 'meta'; $vals[] = $meta; }
+    if (oid_ready('ai_messages'))         { $cols[] = 'oid';  $vals[] = oid_new('ai_messages'); }
+    $ph = array_fill(0, count($cols), '?');
+    db_insert('INSERT INTO ai_messages (`' . implode('`, `', $cols) . '`, created_at) VALUES ('
+        . implode(', ', $ph) . ', UTC_TIMESTAMP())', $vals);
 }
 
 /** 保存本条用户消息（降级重放时不重复写入同一条） */
@@ -173,12 +173,15 @@ switch ($action) {
     case 'history': {
         $id = require_member();
         $oidSel = oid_ready('ai_messages') ? ', oid' : '';
-        $rows = db_all('SELECT role, content, created_at' . $oidSel . ' FROM ai_messages WHERE user_id = ? ORDER BY id DESC LIMIT 40',
+        $metaSel = col_ok('ai_messages', 'meta') ? ', meta' : '';
+        $rows = db_all('SELECT role, content, created_at' . $oidSel . $metaSel . ' FROM ai_messages WHERE user_id = ? ORDER BY id DESC LIMIT 40',
             array(actor_uid($id)));
         $rows = array_reverse($rows);
         $items = array_map(function ($r) {
+            $meta = chat_meta_unpack(isset($r['meta']) ? $r['meta'] : '');
             return array('role' => (string)$r['role'], 'content' => (string)$r['content'], 'time' => to_local((string)$r['created_at'], 'm-d H:i'),
-                'oid' => (string)(isset($r['oid']) ? $r['oid'] : ''));
+                'oid' => (string)(isset($r['oid']) ? $r['oid'] : ''),
+                'cards' => $meta['cards'], 'thinks' => $meta['thinks']);
         }, $rows);
         ok(array('items' => $items));
         break;
@@ -349,7 +352,7 @@ switch ($action) {
         }
 
         if (trim($visible) === '') { $visible = '（无内容返回，请稍后重试）'; }
-        ai_store_row($uid, 'assistant', $visible);
+        ai_store_row($uid, 'assistant', $visible, chat_meta_pack($cards, $thinks));
         ai_trim_history($uid);
         ai_usage_record($uid, $usage, $aiProvider);
         ok(array('text' => $visible, 'usage' => $usage, 'tools' => $cards, 'thinks' => $thinks));
@@ -399,7 +402,29 @@ header('Connection: keep-alive');
 header('X-Accel-Buffering: no');
 while (ob_get_level() > 0) { ob_end_flush(); }
 
-$emit = function (array $payload) {
+/* 顺带收集本轮的工具卡片与思考，收尾时随回答一起落库（重新加载历史即可还原） */
+$sCards = array(); $sThinks = array();
+$emit = function (array $payload) use (&$sCards, &$sThinks) {
+    if (isset($payload['tool_call'])) {
+        $a = isset($payload['tool_call']['action']) ? (string)$payload['tool_call']['action'] : '';
+        $sCards[] = array('action' => $a, 'ok' => null, 'summary' => '');
+    }
+    if (isset($payload['tool_result'])) {
+        $tr = (array)$payload['tool_result'];
+        for ($i = count($sCards) - 1; $i >= 0; $i--) {
+            if ($sCards[$i]['ok'] === null) {
+                $sCards[$i]['ok'] = !empty($tr['ok']);
+                $sCards[$i]['summary'] = isset($tr['summary']) ? (string)$tr['summary'] : '';
+                if (isset($tr['action']) && $tr['action'] !== '') { $sCards[$i]['action'] = (string)$tr['action']; }
+                break;
+            }
+        }
+    }
+    if (isset($payload['think_start'])) { $sThinks[] = ''; }
+    if (isset($payload['think'])) {
+        if (!$sThinks) { $sThinks[] = ''; }
+        $sThinks[count($sThinks) - 1] .= (string)$payload['think'];
+    }
     echo 'data: ' . json_encode($payload, JSON_UNESCAPED_UNICODE) . "\n\n";
     flush();
 };
@@ -527,7 +552,7 @@ try {
 
     $hasContent = (trim($visible) !== '');
     if (!$hasContent) { $visible = '（无内容返回，请稍后重试）'; }
-    ai_store_row($uid, 'assistant', $visible);
+    ai_store_row($uid, 'assistant', $visible, chat_meta_pack($sCards, $sThinks));
     ai_trim_history($uid);
     ai_usage_record($uid, $finalUsage, $aiProvider);
     $emit(array('done' => true, 'usage' => $finalUsage));

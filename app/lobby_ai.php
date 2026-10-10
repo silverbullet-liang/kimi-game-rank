@@ -52,6 +52,19 @@ function lobby_ai_system(): string
         . lobby_ai_tools_prompt();
 }
 
+/** 工具结果 → 卡片结构（世界对话前端按此渲染，与 AI 对话同一套） */
+function lobby_ai_cards(array $tools): array
+{
+    $out = array();
+    foreach ($tools as $t) {
+        $a = isset($t['action']) ? (string)$t['action'] : '';
+        if ($a === '') { continue; }
+        $out[] = array('action' => $a, 'ok' => !empty($t['ok']),
+                       'summary' => isset($t['summary']) ? (string)$t['summary'] : '');
+    }
+    return $out;
+}
+
 /** 世界对话的工具协议（精简版：公共频道只开放公共信息类工具） */
 function lobby_ai_tools_prompt(): string
 {
@@ -143,6 +156,7 @@ function lobby_ai_reply(int $uid, string $ask, string $asker): array
     $vals = array(0, $reply, 'ai');
     if (col_ok('messages', 'media_url'))   { $cols[] = 'media_url';   $vals[] = ''; }
     if (col_ok('messages', 'is_recalled')) { $cols[] = 'is_recalled'; $vals[] = 0; }
+    if (col_ok('messages', 'meta'))        { $cols[] = 'meta';        $vals[] = chat_meta_pack((array)$r['tools'], array()); }
     $ph = array_fill(0, count($cols), '?');
     try {
         $mid = db_insert(
@@ -165,6 +179,7 @@ function lobby_ai_reply(int $uid, string $ask, string $asker): array
         'avatar'   => identicon_data_uri(LOBBY_AI_NAME, 40),
         'content'  => $reply,
         'tools'    => works_tool_labels(isset($r['tools']) ? (array)$r['tools'] : array()),
+        'cards'    => lobby_ai_cards(isset($r['tools']) ? (array)$r['tools'] : array()),
         'msg_type' => 'ai',
         'media'    => '',
         'recalled' => false,
