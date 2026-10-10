@@ -540,7 +540,125 @@ function addWorkBlock() {
       </div>
       <button class="btn" id="addBtn">开始</button>
       <p class="tiny muted" data-link-state style="margin-top:8px"></p>
+
+      <div class="cs-box">
+        <label class="cs-label">从社区搜索并一键收录</label>
+        <div class="tok-row">
+          <input class="input" id="csq" placeholder="输入关键词，搜索 Kimi 社区作品" autocomplete="off">
+          <button class="btn btn-sm" id="csBtn" type="button">搜索</button>
+        </div>
+        <p class="tiny muted" id="csHint">需先在上方「社区凭证」保存 cookie/token。每页 10 条，滚到列表底部自动加载下一页。</p>
+        <div class="cs-list" id="csList" hidden></div>
+        <div class="cs-more" id="csMore" hidden><span class="tiny muted" id="csMoreText"></span></div>
+      </div>
     </div>`;
+}
+
+/* 从社区搜索并一键收录（管理员 / 副管理员均可用）。
+   每页 10 条；列表滚到底自动取下一页；「添加」直接走既有 add_work 的手动分支。 */
+function bindCommunitySearch(container) {
+  const qEl = container.querySelector('#csq');
+  const btn = container.querySelector('#csBtn');
+  const list = container.querySelector('#csList');
+  const more = container.querySelector('#csMore');
+  const moreText = container.querySelector('#csMoreText');
+  if (!qEl || !btn || !list || !more) { return; }
+
+  const PAGE = 10;
+  let pool = [], shown = 0, cursor = '', q = '', busy = false;
+
+  const rowHtml = it => {
+    const cover = it.cover
+      ? '<img src="' + esc(it.cover) + '" alt="" loading="lazy" referrerpolicy="no-referrer" draggable="false">'
+      : '<span class="cs-noimg"></span>';
+    const meta = [(it.author || '未知作者'), '点赞 ' + (it.like_num || 0), '评论 ' + (it.comment_num || 0)].join(' · ');
+    return '<div class="cs-item">'
+      + '<span class="cs-cover">' + cover + '</span>'
+      + '<span class="cs-meta"><span class="cs-title">' + esc(it.title) + '</span>'
+      + '<span class="tiny muted">' + esc(meta) + '</span></span>'
+      + '<button class="btn btn-sm cs-add"' + (it.exists ? ' disabled' : '')
+      + ' data-id="' + esc(it.community_id) + '" data-title="' + esc(it.title) + '">'
+      + (it.exists ? '已收录' : '添加') + '</button></div>';
+  };
+
+  function paintMore() {
+    if (busy) { more.hidden = false; moreText.textContent = '正在加载…'; return; }
+    if (cursor || pool.length > shown) { more.hidden = false; moreText.textContent = '滚动到此处自动加载'; return; }
+    if (shown > 0) { more.hidden = false; moreText.textContent = '— 没有更多了 —'; return; }
+    more.hidden = true;
+  }
+
+  function append() {
+    const end = Math.min(shown + PAGE, pool.length);
+    for (; shown < end; shown++) { list.insertAdjacentHTML('beforeend', rowHtml(pool[shown])); }
+    paintMore();
+    /* 池子不足一页且还有下一页 → 自动续拉，保证滚动不间断 */
+    if (pool.length - shown < PAGE && cursor) { fetchMore(); }
+  }
+
+  async function fetchMore() {
+    if (busy || !cursor) { return; }
+    busy = true; paintMore();
+    try {
+      const d = await api('admin.php', 'community_search', { q: q, page_token: cursor }, { timeout: 30000 });
+      (d.items || []).forEach(it => pool.push(it));
+      cursor = d.next_page_token || '';
+      busy = false;
+      append();
+    } catch (e) {
+      busy = false;
+      moreText.textContent = '加载失败：' + e.message;
+    }
+  }
+
+  async function search() {
+    const val = qEl.value.trim();
+    if (!val) { toast('请输入搜索关键词', 'err'); return; }
+    q = val; pool = []; shown = 0; cursor = '';
+    list.innerHTML = ''; list.hidden = false; more.hidden = true;
+    btnLoading(btn, true);
+    try {
+      const d = await api('admin.php', 'community_search', { q: q }, { timeout: 30000 });
+      pool = (d.items || []).slice();
+      cursor = d.next_page_token || '';
+      if (!pool.length) {
+        list.innerHTML = '<p class="tiny muted" style="padding:8px">没有搜到相关作品</p>';
+        paintMore();
+      } else { append(); }
+    } catch (e) {
+      list.innerHTML = '<p class="tiny muted" style="padding:8px">' + esc(e.message) + '</p>';
+      paintMore();
+    } finally { btnLoading(btn, false); }
+  }
+
+  btn.addEventListener('click', search);
+  qEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); search(); } });
+
+  /* 滚到列表底部自动加载下一页；more 提示条也可点击（触屏/键盘友好） */
+  const atEnd = () => list.scrollTop + list.clientHeight >= list.scrollHeight - 40;
+  list.addEventListener('scroll', () => {
+    if (atEnd()) { if (pool.length > shown) { append(); } else { fetchMore(); } }
+  });
+  more.addEventListener('click', () => {
+    if (pool.length > shown) { append(); } else { fetchMore(); }
+  });
+
+  /* 一键收录：复用 add_work 的手动分支（服务端会先拉取该作品的完整信息再入库） */
+  list.addEventListener('click', async e => {
+    const b = e.target.closest('.cs-add');
+    if (!b || b.disabled) { return; }
+    const id = b.dataset.id || '';
+    b.disabled = true; b.textContent = '添加中…';
+    try {
+      const r = await api('admin.php', 'add_work', { mode: 'manual', work_id: id }, { timeout: 60000 });
+      b.textContent = '已收录';
+      toast('已收录：' + (b.dataset.title || id) + (r.scored === false ? '（未改动评分）' : ''));
+      loadWorks(container, container.querySelector('#wq').value.trim(), state.role === 'subadmin');
+    } catch (e2) {
+      b.disabled = false; b.textContent = '添加';
+      toast(e2.message, 'err');
+    }
+  });
 }
 
 /* 评分方式：收录与「全部更新」是否重算评分。
@@ -1246,6 +1364,8 @@ function bindAddWork(container) {
     } catch (e) { toast(e.message, 'err'); }
     finally { btnLoading(btn, false); btn.textContent = '开始'; }
   });
+
+  bindCommunitySearch(container);
 }
 
 /* ============================================================

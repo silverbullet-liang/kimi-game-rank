@@ -826,6 +826,20 @@ html[data-theme="dark"] .table th, html[data-theme="dark"] .table td { border-co
 }
 
 /* ---------- AI 工具调用卡片 ---------- */
+/* 面板：从社区搜索并一键收录 */
+.cs-box { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border-soft); }
+.cs-box .cs-label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+.cs-list { max-height: 420px; overflow: auto; margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.cs-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px;
+  border: 1px solid var(--border-soft); border-radius: var(--radius-sm); background: var(--bg-2); }
+.cs-cover { width: 44px; height: 44px; border-radius: 8px; overflow: hidden; flex: 0 0 auto; background: var(--bg-2); }
+.cs-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cs-noimg { display: block; width: 100%; height: 100%; background: var(--bg-2); }
+.cs-meta { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cs-title { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-add { flex: 0 0 auto; }
+.cs-more { padding: 8px 0; text-align: center; }
+
 .ai-flow { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
 .ai-flow:empty { display: none; margin-bottom: 0; }
 

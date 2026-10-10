@@ -1,7 +1,7 @@
 <?php
 /**
  * API：管理后台
- * actions: panel_auth | add_work | sync | works | search_works | work_save | work_delete
+ * actions: panel_auth | add_work | community_search | sync | works | search_works | work_save | work_delete
  *          | refresh_plan | refresh_batch | users | user_delete | visits_top | announce_get | announce_set
  *          | token_set | userscript | subs | sub_add | sub_del
  *          | comments_deleted | comment_restore | comment_purge（评论回收站，仅主管理员）
@@ -46,7 +46,7 @@ if (in_array($action, $WRITE_ACTIONS, true)) { register_shutdown_function('cache
 
 /* 副管理员可用操作白名单：作品搜索 / 上传 / 同步 + 只读数据（访问排行、用户列表）
    + 自备社区凭证（token_set / userscript —— 副管理员抓取依赖自己的 Token，各存各的） */
-$SUB_ALLOWED = array('works', 'search_works', 'add_work', 'sync', 'visits_top', 'users', 'token_set', 'userscript',
+$SUB_ALLOWED = array('works', 'search_works', 'add_work', 'community_search', 'sync', 'visits_top', 'users', 'token_set', 'userscript',
                      'score_mode', 'link_mode', 'link_mode_set');
 if ($IS_SUB && !in_array($action, $SUB_ALLOWED, true)) {
     fail(403, '副管理员无权执行该操作');
@@ -69,6 +69,14 @@ function actor_token_key(): string
     return 'kimi_token';
 }
 
+/** 当前操作者已保存的社区凭证（解密后）；未保存或解密失败返回空串 */
+function admin_actor_token(): string
+{
+    $saved = setting_get(actor_token_key(), '');
+    if ($saved === '') { return ''; }
+    try { return (string)aes_decrypt((string)$saved); } catch (Exception $e) { return ''; }
+}
+
 switch ($action) {
 
     /* 保存 / 更新社区 cookie（用于抓取） */
@@ -79,6 +87,58 @@ switch ($action) {
         if ($tok === '') { fail(400, 'cookie/token 不能为空'); }
         setting_set(actor_token_key(), aes_encrypt($tok));
         ok(null, '社区凭证已加密保存');
+        break;
+    }
+
+    /* 在 Kimi 社区搜索作品（管理员 / 副管理员均可，需已保存自己的社区凭证）。
+       返回归一化候选列表 + 翻页游标，供面板「一键收录」；已收录的条目带 exists 标记。 */
+    case 'community_search': {
+        require_panel();
+        $q = trim(nfc_normalize(param_str('q', '')));
+        if ($q === '') { fail(400, '请输入搜索关键词'); }
+        $token = admin_actor_token();
+        if ($token === '') { fail(400, '请先在上方「社区凭证」里填写并保存 cookie/token'); }
+        try {
+            $resp = kimi_search($token, $q, trim(param_str('page_token', '')));
+        } catch (Exception $e) {
+            fail(400, $e->getMessage());
+        }
+        $moments = isset($resp['moments']) && is_array($resp['moments']) ? $resp['moments'] : array();
+        $items = array();
+        foreach ($moments as $m) {
+            if (!is_array($m)) { continue; }
+            $it = kimi_normalize_item($m);
+            if ($it['community_id'] === '') { continue; }
+            $title = trim((string)$it['title']);
+            if ($title === '') { $title = trim(mb_substr((string)$it['intro'], 0, 40, 'UTF-8')); }
+            if ($title === '') { $title = '（无标题）'; }
+            $items[] = array(
+                'community_id' => (string)$it['community_id'],
+                'title'        => $title,
+                'author'       => (string)$it['author_name'],
+                'intro'        => mb_substr((string)$it['intro'], 0, 120, 'UTF-8'),
+                'cover'        => !empty($it['images'][0]) ? (string)$it['images'][0] : '',
+                'like_num'     => (int)$it['like_num'],
+                'comment_num'  => (int)$it['comment_num'],
+                'exists'       => false,
+            );
+        }
+        /* 一次性标记哪些已收录，避免重复点「添加」 */
+        if ($items) {
+            $ids = array_map(function ($x) { return $x['community_id']; }, $items);
+            $ph = implode(', ', array_fill(0, count($ids), '?'));
+            try {
+                $has = db_all('SELECT community_id FROM works WHERE community_id IN (' . $ph . ')', $ids);
+                $set = array();
+                foreach ((array)$has as $r) { $set[(string)$r['community_id']] = true; }
+                foreach ($items as $i => $x) { $items[$i]['exists'] = isset($set[$x['community_id']]); }
+            } catch (Throwable $e) { /* 标记失败不阻断搜索 */ }
+        }
+        $next = '';
+        foreach (array('nextPageToken', '_nextPageToken', 'pageToken') as $k) {
+            if (!empty($resp[$k]) && is_string($resp[$k])) { $next = (string)$resp[$k]; break; }
+        }
+        ok(array('items' => $items, 'count' => count($items), 'next_page_token' => $next, 'q' => $q));
         break;
     }
 
