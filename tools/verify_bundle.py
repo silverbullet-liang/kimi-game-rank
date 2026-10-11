@@ -84,6 +84,10 @@ for rel, ref in [('pages/detail.js', 'UI_PAGE.comments'), ('pages/detail.js', 'U
     mod = open(os.path.join(SRC, rel), encoding='utf-8').read()
     check(ref in mod, '%s 应引用 %s（单一来源原则）' % (rel, ref))
 
+# 4) 首屏图片优先级（LCP 长尾回归锚点）：关键图必须带 fetchpriority="high"
+check('fetchpriority="high"' in bundle, '产物缺少 fetchpriority="high"（首屏/详情关键图未提优先级，LCP 会变差）')
+check('fetchpriority="low"' in bundle, '产物缺少 fetchpriority="low"（非首屏图未让出带宽）')
+
 print('产物完整性闸门：%d 项，失败 %d 项' % (total, len(fails)))
 for f in fails:
     print('  FAIL:', f)

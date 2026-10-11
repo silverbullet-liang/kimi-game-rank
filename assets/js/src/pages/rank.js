@@ -208,7 +208,7 @@ function rankRow(w, rank) {
   el.innerHTML = `
     <span class="medal ${medal}">${rank}</span>
     ${w.cover
-      ? `<span class="thumb"><img src="${esc(w.cover)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false"></span>`
+      ? `<span class="thumb"><img src="${esc(w.cover)}" alt="" ${rank <= 4 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy" fetchpriority="low"'} decoding="async" referrerpolicy="no-referrer" draggable="false"></span>`
       : '<span class="thumb ph" aria-hidden="true"></span>'}
     <span class="rank-main">
       <span class="rank-title">${esc(w.title)}</span>

@@ -1691,7 +1691,7 @@ function rankRow(w, rank) {
   el.innerHTML = `
     <span class="medal ${medal}">${rank}</span>
     ${w.cover
-      ? `<span class="thumb"><img src="${esc(w.cover)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false"></span>`
+      ? `<span class="thumb"><img src="${esc(w.cover)}" alt="" ${rank <= 4 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy" fetchpriority="low"'} decoding="async" referrerpolicy="no-referrer" draggable="false"></span>`
       : '<span class="thumb ph" aria-hidden="true"></span>'}
     <span class="rank-main">
       <span class="rank-title">${esc(w.title)}</span>
@@ -1816,7 +1816,7 @@ async function renderDetail(container, ctx) {
         作品预览
       </div>
       <div class="shot-grid">
-        ${(d.images && d.images.length ? d.images : [d.cover]).map((u, i) => `<button class="shot" data-i="${i}"><img src="${esc(u)}" alt="预览图 ${i + 1}" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false"></button>`).join('')}
+        ${(d.images && d.images.length ? d.images : [d.cover]).map((u, i) => `<button class="shot" data-i="${i}"><img src="${esc(u)}" alt="预览图 ${i + 1}" ${i === 0 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy" fetchpriority="low"'} decoding="async" referrerpolicy="no-referrer" draggable="false"></button>`).join('')}
       </div>
       <div class="tiny" style="margin-top:8px">点击图片可查看大图</div>
     </div>` : ''}
