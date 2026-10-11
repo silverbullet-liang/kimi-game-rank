@@ -4183,8 +4183,37 @@ async function monRenderBody(container) {
   }
 }
 
-function monKpi(label, value) {
-  return `<div class="mon-kpi"><div class="mk-v">${esc(String(value))}</div><div class="mk-l">${esc(label)}</div></div>`;
+/** 单个指标卡；tone: '' | 'ok' | 'warn' | 'bad' —— 决定数值配色 */
+function monKpi(label, value, tone) {
+  const t = tone ? ' mk-' + tone : '';
+  return `<div class="mon-kpi${t}"><div class="mk-v">${esc(String(value))}</div><div class="mk-l">${esc(label)}</div></div>`;
+}
+/** 指标分组（带小标题），一眼分清「流量 / 性能 / 错误」 */
+function monKpiGroup(title, items) {
+  return `<div class="mon-kgroup"><div class="mon-kgroup-t">${esc(title)}</div>
+    <div class="mon-kpis">${items.join('')}</div></div>`;
+}
+/** 顶部健康总览：把最该关注的指标聚成一句结论 + 状态色 */
+function monHealth(kpis) {
+  const fmt = (list, cls) => list
+    .map(k => `<i class="${cls}">${esc(k.label)} ${esc(String(k.value))}</i>`).join(' · ');
+  const bad = kpis.filter(k => k.tone === 'bad');
+  const warn = kpis.filter(k => k.tone === 'warn');
+  if (bad.length) {
+    return `<div class="mon-health bad"><span class="mh-dot"></span>
+      <b>需要处理</b><span class="mh-txt">${fmt(bad, 'mh-bad')}${warn.length ? '；' + fmt(warn, 'mh-warn') : ''}</span></div>`;
+  }
+  if (warn.length) {
+    return `<div class="mon-health warn"><span class="mh-dot"></span>
+      <b>有波动</b><span class="mh-txt">${fmt(warn, 'mh-warn')}</span></div>`;
+  }
+  return `<div class="mon-health ok"><span class="mh-dot"></span>
+    <b>一切正常</b><span class="mh-txt">当前范围内未发现异常指标</span></div>`;
+}
+/** 阈值判定：>0 即异常 / 超过阈值即警告 */
+function toneOf(v, warnAt, badAt) {
+  const n = Number(v) || 0;
+  return n >= badAt ? 'bad' : (n >= warnAt ? 'warn' : '');
 }
 function monCard(title, inner) {
   return `<div class="mon-card"><div class="mon-card-t">${esc(title)}</div>${inner}</div>`;
@@ -4195,31 +4224,62 @@ function monListCard(title, rows) {
     : '<li class="mon-li-n">暂无数据</li>';
   return monCard(title, `<ul class="mon-ul">${items}</ul>`);
 }
+/** 面积趋势图（网格 + 峰值点 + 均值/峰值副标）—— unit 决定副标单位 */
+function monAreaChart(trend, getV, unit) {
+  if (!trend || !trend.length) { return '<div class="mon-empty">暂无数据</div>'; }
+  const w = 640, h = 140, padX = 6, padT = 14, padB = 10;
+  const vals = trend.map(t => Number(getV(t)) || 0);
+  const maxV = Math.max(1, ...vals);
+  const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+  const step = trend.length > 1 ? (w - padX * 2) / (trend.length - 1) : 0;
+  const y = v => (h - padB - (v / maxV) * (h - padT - padB));
+  const pts = vals.map((v, i) => (padX + i * step).toFixed(1) + ',' + y(v).toFixed(1));
+  const area = 'M' + padX + ',' + (h - padB) + ' L' + pts.join(' L') + ' L' + (padX + (vals.length - 1) * step).toFixed(1) + ',' + (h - padB) + ' Z';
+  const grid = [0.25, 0.5, 0.75].map(r => `<line x1="0" y1="${(padT + (h - padT - padB) * r).toFixed(1)}" x2="${w}" y2="${(padT + (h - padT - padB) * r).toFixed(1)}" class="mon-grid"/>`).join('');
+  const iMax = vals.indexOf(maxV);
+  const px = (padX + iMax * step).toFixed(1), py = y(maxV).toFixed(1);
+  return `<svg viewBox="0 0 ${w} ${h}" class="mon-trend" preserveAspectRatio="none">
+      <defs><linearGradient id="monArea" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="var(--macc)" stop-opacity=".38"/>
+        <stop offset="100%" stop-color="var(--macc)" stop-opacity="0"/></linearGradient></defs>
+      ${grid}
+      <path d="${area}" fill="url(#monArea)"/>
+      <polyline points="${pts.join(' ')}" fill="none" stroke="var(--macc)" stroke-width="2.2" stroke-linejoin="round"/>
+      <circle cx="${px}" cy="${py}" r="3.4" class="mon-peak"/>
+    </svg>
+    <div class="mon-sub"><span>${esc(String(trend[0].d))} → ${esc(String(trend[trend.length - 1].d))}</span>
+      <span>峰值 <b>${maxV}${esc(unit)}</b></span><span>均值 <b>${avg.toFixed(1)}${esc(unit)}</b></span></div>`;
+}
+
 function monTrend(trend) {
   if (!trend || !trend.length) { return monCard('访问趋势（PV）', '<div class="mon-empty">暂无数据</div>'); }
-  const w = 640, h = 120, pad = 8;
-  const maxV = Math.max(1, ...trend.map(t => Number(t.pv) || 0));
-  const step = trend.length > 1 ? (w - pad * 2) / (trend.length - 1) : 0;
-  const pts = trend.map((t, i) => (pad + i * step).toFixed(1) + ',' + (h - pad - ((Number(t.pv) || 0) / maxV) * (h - pad * 2)).toFixed(1)).join(' ');
-  return monCard('访问趋势（PV）',
-    `<svg viewBox="0 0 ${w} ${h}" class="mon-trend" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="var(--macc)" stroke-width="2"/></svg>
-     <div class="mon-sub">${esc(String(trend[0].d))} → ${esc(String(trend[trend.length - 1].d))} · 峰值 ${maxV}</div>`);
+  return monCard('访问趋势（PV）', monAreaChart(trend, t => t.pv, ''));
 }
 
 async function monOverview(box) {
   const d = await api('monitor.php', 'stats', { range: st.range });
   const k = d.kpi || {};
+  const js = Number(k.js || 0), succ = Number(k.api_succ || 100), slowR = Number(k.slow_ratio || 0);
   box.innerHTML = `
-    <div class="mon-kpis">
-      ${monKpi('访问量 PV', Number(k.pv || 0))}
-      ${monKpi('访客 UV', Number(k.uv || 0))}
-      ${monKpi('平均加载', Number(k.load || 0) + ' ms')}
-      ${monKpi('JS 错误', Number(k.js || 0) + ' · ' + Number(k.js_rate || 0) + '%')}
-      ${monKpi('接口成功率', Number(k.api_succ || 0) + '%')}
-      ${monKpi('慢接口占比', Number(k.slow_ratio || 0) + '%')}
-      ${monKpi('Apdex', Number(k.apdex || 0))}
-      ${monKpi('接口调用', Number(k.api_total || 0))}
-    </div>
+    ${monHealth([
+      { label: 'JS 错误', value: js, tone: toneOf(js, 1, 20) },
+      { label: '接口成功率', value: succ + '%', tone: succ < 95 ? 'bad' : (succ < 99 ? 'warn' : '') },
+      { label: '慢接口占比', value: slowR + '%', tone: toneOf(slowR, 5, 15) },
+    ])}
+    ${monKpiGroup('流量', [
+      monKpi('访问量 PV', Number(k.pv || 0)),
+      monKpi('访客 UV', Number(k.uv || 0)),
+      monKpi('接口调用', Number(k.api_total || 0)),
+    ])}
+    ${monKpiGroup('性能', [
+      monKpi('平均加载', Number(k.load || 0) + ' ms'),
+      monKpi('Apdex', Number(k.apdex || 0), Number(k.apdex || 1) < 0.85 ? 'warn' : ''),
+      monKpi('慢接口占比', slowR + '%', toneOf(slowR, 5, 15)),
+    ])}
+    ${monKpiGroup('错误', [
+      monKpi('JS 错误', js, toneOf(js, 1, 20)),
+      monKpi('接口成功率', succ + '%', succ < 95 ? 'bad' : (succ < 99 ? 'warn' : '')),
+    ])}
     ${monTrend(d.trend)}
     <div class="mon-cards">
       ${monListCard('慢页面 TOP5', (d.top_slow_page || []).map(x => [x.name, (x.avg_ms || 0) + ' ms']))}
@@ -4236,13 +4296,8 @@ async function monOverview(box) {
 
 function monSrvTrend(trend, slowMs) {
   if (!trend || !trend.length) { return monCard('平均耗时趋势', '<div class="mon-empty">暂无数据</div>'); }
-  const w = 640, h = 120, pad = 8;
-  const maxV = Math.max(1, ...trend.map(t => Number(t.avg_ms) || 0));
-  const step = trend.length > 1 ? (w - pad * 2) / (trend.length - 1) : 0;
-  const pts = trend.map((t, i) => (pad + i * step).toFixed(1) + ',' + (h - pad - ((Number(t.avg_ms) || 0) / maxV) * (h - pad * 2)).toFixed(1)).join(' ');
   return monCard('平均耗时趋势（慢查询阈值 ' + Number(slowMs || 200) + ' ms）',
-    `<svg viewBox="0 0 ${w} ${h}" class="mon-trend" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="var(--macc)" stroke-width="2"/></svg>
-     <div class="mon-sub">${esc(String(trend[0].d))} → ${esc(String(trend[trend.length - 1].d))} · 峰值 ${maxV} ms</div>`);
+    monAreaChart(trend, t => t.avg_ms, ' ms'));
 }
 
 async function monSrv(box) {
@@ -4250,27 +4305,43 @@ async function monSrv(box) {
   const k = d.kpi || {};
   const track = d.track_urls || [];
   const routes = d.routes || [];
+  const n5 = Number(k.code5 || 0), errs = Number(k.errs || 0), slowR = Number(k.slow_ratio || 0), slowQ = Number(k.slow_q || 0);
+  const apdex = Number(k.apdex || 1), apdexT = Number(d.apdex_t || MON_DEFAULT.apdexT);
   box.innerHTML = `
-    <div class="mon-kpis">
-      ${monKpi('请求数', Number(k.n || 0))}
-      ${monKpi('平均耗时', Number(k.avg || 0) + ' ms')}
-      ${monKpi('P95 耗时', Number(k.p95 || 0) + ' ms')}
-      ${monKpi('最慢', Number(k.max || 0) + ' ms')}
-      ${monKpi('慢请求占比', Number(k.slow_ratio || 0) + '%')}
-      ${monKpi('5xx', Number(k.code5 || 0))}
-      ${monKpi('异常', Number(k.errs || 0))}
-      ${monKpi('Apdex T=' + Number(d.apdex_t || MON_DEFAULT.apdexT) + 'ms', Number(k.apdex || 0))}
-      ${monKpi('平均 DB 耗时', Number(k.db_avg || 0) + ' ms')}
-      ${monKpi('平均查询数', Number(k.db_n || 0))}
-      ${monKpi('慢查询数', Number(k.slow_q || 0))}
-    </div>
+    ${monHealth([
+      { label: '5xx', value: n5, tone: toneOf(n5, 1, 5) },
+      { label: '异常', value: errs, tone: toneOf(errs, 1, 10) },
+      { label: '慢请求占比', value: slowR + '%', tone: toneOf(slowR, 5, 15) },
+      { label: 'Apdex', value: apdex, tone: apdex < 0.85 ? 'warn' : '' },
+    ])}
+    ${monKpiGroup('流量', [
+      monKpi('请求数', Number(k.n || 0)),
+      monKpi('平均 DB 耗时', Number(k.db_avg || 0) + ' ms'),
+      monKpi('平均查询数', Number(k.db_n || 0)),
+    ])}
+    ${monKpiGroup('性能', [
+      monKpi('平均耗时', Number(k.avg || 0) + ' ms'),
+      monKpi('P95 耗时', Number(k.p95 || 0) + ' ms'),
+      monKpi('最慢', Number(k.max || 0) + ' ms'),
+      monKpi('Apdex T=' + apdexT + 'ms', apdex, apdex < 0.85 ? 'warn' : ''),
+    ])}
+    ${monKpiGroup('错误', [
+      monKpi('慢请求占比', slowR + '%', toneOf(slowR, 5, 15)),
+      monKpi('慢查询数', slowQ, toneOf(slowQ, 10, 50)),
+      monKpi('5xx', n5, toneOf(n5, 1, 5)),
+      monKpi('异常', errs, toneOf(errs, 1, 10)),
+    ])}
     ${monSrvTrend(d.trend, d.slow_ms)}
     ${monCard('按路由（' + routes.length + '）', `<table class="table"><thead><tr>
         <th>路由</th><th>请求</th><th>平均</th><th>最大</th><th>慢</th><th>5xx</th><th>慢查询</th><th>异常</th></tr></thead>
         <tbody>${routes.length ? routes.map(r => `<tr data-route="${esc(r.route)}" class="mon-click">
           <td class="mon-ell" title="${esc(r.route)}">${track.indexOf(r.route) >= 0 ? '<b class="mon-track">' + esc(r.route) + '</b>' : esc(r.route)}</td>
-          <td>${r.n}</td><td>${r.avg_ms} ms</td><td>${r.max_ms} ms</td><td>${r.slow}</td><td>${r.code5}</td>
-          <td>${r.slow_q}</td><td>${r.errs}</td></tr>`).join('')
+          <td class="mon-n">${Number(r.n).toLocaleString()}</td><td class="mon-n">${r.avg_ms} ms</td>
+          <td class="mon-n">${r.max_ms} ms</td>
+          <td class="mon-n">${Number(r.slow) ? '<b class="mon-warnv">' + r.slow + '</b>' : '0'}</td>
+          <td class="mon-n">${Number(r.code5) ? '<b class="mon-bad">' + r.code5 + '</b>' : '0'}</td>
+          <td class="mon-n">${Number(r.slow_q) ? '<b class="mon-warnv">' + r.slow_q + '</b>' : '0'}</td>
+          <td class="mon-n">${Number(r.errs) ? '<b class="mon-bad">' + r.errs + '</b>' : '0'}</td></tr>`).join('')
         : '<tr><td class="mon-empty" colspan="8">暂无数据</td></tr>'}</tbody></table>`)}
     <div class="mon-cards">
       ${monListCard('慢查询 TOP', (d.slow_top || []).map(x => [(x.slow_sql || '').slice(0, 56), x.n + ' 次']))}
@@ -4291,8 +4362,12 @@ async function monSrvList(box, route) {
     el.innerHTML = monCard('请求明细 · ' + route + '（共 ' + Number(d.total || 0) + '）',
       '<table class="table"><thead><tr><th>时间</th><th>方法</th><th>状态</th><th>耗时</th><th>DB</th><th>查询</th><th>慢</th><th>内存</th><th>信息</th></tr></thead><tbody>' +
       (items.length ? items.map(it => `<tr class="${(it.err || it.code >= 500) ? 'mon-unacked' : ''}">
-        <td>${esc(it.time)}</td><td>${esc(it.method)}</td><td>${it.code}</td><td>${it.dur} ms</td>
-        <td>${it.db} ms</td><td>${it.db_n}</td><td>${it.slow_n}</td><td>${Math.round(Number(it.mem || 0) / 1024)} MB</td>
+        <td class="mon-t">${esc(it.time)}</td><td>${esc(it.method)}</td>
+        <td class="mon-n">${Number(it.code) >= 500 ? '<b class="mon-bad">' + it.code + '</b>' : it.code}</td>
+        <td class="mon-n">${it.dur} ms</td>
+        <td class="mon-n">${it.db} ms</td><td class="mon-n">${it.db_n}</td>
+        <td class="mon-n">${Number(it.slow_n) ? '<b class="mon-warnv">' + it.slow_n + '</b>' : '0'}</td>
+        <td class="mon-n">${Math.round(Number(it.mem || 0) / 1024)} MB</td>
         <td class="mon-ell" title="${esc(it.err || it.slow_sql || '')}">${esc(it.err || it.slow_sql || '')}</td></tr>`).join('')
       : '<tr><td class="mon-empty" colspan="9">暂无数据</td></tr>') + '</tbody></table>');
   } catch (e) {
@@ -4306,8 +4381,12 @@ async function monSessions(box) {
   const items = d.items || [];
   const rows = items.length ? items.map(sv => `<tr data-sid="${esc(sv.sid)}" class="mon-click">
       <td class="mon-ell" title="${esc(sv.sid)}">${esc(sv.sid)}</td>
-      <td>${esc(sv.last)}</td><td>${sv.dur}s</td><td>${sv.pv}</td><td>${sv.js}</td><td>${sv.api}</td>
-      <td>${sv.apislow}</td><td>${sv.apifail}</td><td>${sv.bad ? '<b class="mon-bad">' + sv.bad + '</b>' : '0'}</td>
+      <td class="mon-t">${esc(sv.last)}</td><td class="mon-n">${sv.dur}s</td><td class="mon-n">${sv.pv}</td>
+      <td class="mon-n">${Number(sv.js) ? '<b class="mon-warnv">' + sv.js + '</b>' : '0'}</td>
+      <td class="mon-n">${sv.api}</td>
+      <td class="mon-n">${Number(sv.apislow) ? '<b class="mon-warnv">' + sv.apislow + '</b>' : '0'}</td>
+      <td class="mon-n">${Number(sv.apifail) ? '<b class="mon-bad">' + sv.apifail + '</b>' : '0'}</td>
+      <td class="mon-n">${sv.bad ? '<b class="mon-bad">' + sv.bad + '</b>' : '0'}</td>
       <td>${esc(sv.browser)}</td><td>${esc(sv.screen || '')}</td></tr>`).join('')
     : '<tr><td class="mon-empty" colspan="11">暂无数据</td></tr>';
   box.innerHTML =

@@ -53,7 +53,8 @@ ck('app.css 有 .cs-list 样式', strpos($css, '.cs-list {') !== false, true);
 ck('app.css 有 .cs-item 样式', strpos($css, '.cs-item {') !== false, true);
 ck('app.css 有 .adm-actions 样式', strpos($css, '.adm-actions {') !== false, true);
 ck('监测页已美化（标题竖条）', strpos($css, '.mon-title::before') !== false, true);
-ck('监测页已美化（KPI 悬浮）', strpos($css, '.mon-kpi:hover') !== false, true);
+ck('监测页已重构（KPI 状态色条）', strpos($css, '.mon-kpi.mk-bad::before') !== false, true);
+ck('监测页已重构（健康总览条）', strpos($css, '.mon-health {') !== false, true);
 
 printf("\n通过 %d，失败 %d\n", $P, $F);
 exit($F === 0 ? 0 : 1);
