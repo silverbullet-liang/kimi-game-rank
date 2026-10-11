@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 27);
+define('SCHEMA_VERSION', 28);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -1036,6 +1036,23 @@ function run_migrations(bool $force = false)
         }
     }
 
+    /* ---------- v28：监测事件记录「访问时的站点版本」 ----------
+       会话追踪要能回答「这位用户当时访问的是哪个版本的站点」。
+       排查「只有某个版本才出现的问题」时，光有时间不够，必须知道当时的代码版本。
+       前端 SDK 上报时带上版本号，随事件一起落库。 */
+    if ($cur < 28) {
+        try {
+            if (table_exists('web_events') && !column_exists('web_events', 'version')) {
+                db_exec("ALTER TABLE `web_events` ADD COLUMN `version` VARCHAR(16) NOT NULL DEFAULT '' COMMENT '访问时的站点版本' AFTER `page`");
+                table_columns('web_events', true);
+            }
+            app_log('schema migrated to v28（监测事件记录站点版本）');
+            setting_set('schema_version', '28');
+        } catch (Throwable $e) {
+            app_log('migrate v28 failed: ' . $e->getMessage());
+        }
+    }
+
     /* 只有结构确认完整才写版本号、落锁：
        否则锁会把「半成品」永久固定下来，此后所有请求都被短路，再也修不回来。 */
     $ok = true;
@@ -1062,6 +1079,7 @@ function run_migrations(bool $force = false)
     foreach (array('web_events', 'web_alerts', 'web_srv') as $t) {
         if (!table_exists($t)) { $ok = false; }
     }
+    if (table_exists('web_events') && !column_exists('web_events', 'version')) { $ok = false; }
     if (table_exists('comments') && !column_exists('comments', 'target_type')) { $ok = false; }
     if (table_exists('ai_usage') && !column_exists('ai_usage', 'provider')) { $ok = false; }
     if (table_exists('banned_ips') && !column_exists('banned_ips', 'geo_lat')) { $ok = false; }
@@ -1091,6 +1109,7 @@ function db_report(): array
         'ai_daily_quota' => array('user_id', 'day', 'used'),
         'ai_answer_cache'=> array('q_norm', 'question', 'answer', 'hits', 'updated_at'),
         'ai_usage'       => array('user_id', 'provider', 'total_tokens', 'created_at'),
+        'web_events'     => array('version'),
     );
 
     $missing = array();

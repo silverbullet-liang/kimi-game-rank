@@ -55,5 +55,17 @@ ck('总览/服务端均有健康条', substr_count($js, 'monHealth([') >= 2, tru
 ck('表格数值右对齐类已用', substr_count($js, 'class="mon-n"') >= 8, true);
 ck('异常值标红已用', strpos($js, 'mon-bad') !== false, true);
 
+/* ---------- 滑动自动分页与防溢出（对副管理员可见、列表可无限滚动） ---------- */
+ck('宽表横向滚动容器样式', strpos($css, '.mon-scroll {') !== false, true);
+ck('滚动容器最小宽度', strpos($css, '.mon-scroll .table { min-width') !== false, true);
+ck('自动加载进度条样式', strpos($css, '.mon-moreline {') !== false, true);
+ck('会话元信息样式', strpos($css, '.mon-sess-meta {') !== false, true);
+ck('monitor.js 会话列表按键分页', strpos($js, "'sessions', { range: st.range, only: only, page: page }") !== false, true);
+ck('monitor.js 事件明细按键分页', strpos($js, "'events', { kind: kind, range: st.range, page: page }") !== false, true);
+ck('monitor.js 会话展示用户与版本', strpos($js, 'sv.uid8') !== false && strpos($js, 'sv.version') !== false, true);
+ck('monitor.js 明细含版本列', strpos($js, "it.version ? 'v'") !== false, true);
+ck('monitor.js 滑动监听自动加载', substr_count($js, 'scrollHeight - 900') >= 2, true);
+ck('monitor.js 会话详情含用户与版本', strpos($js, 'mon-sess-meta') !== false, true);
+
 printf("\n通过 %d，失败 %d\n", $P, $F);
 exit($F === 0 ? 0 : 1);

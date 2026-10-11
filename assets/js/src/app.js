@@ -138,6 +138,15 @@ function routeKeyOf(name, sub, params) {
   return name + '|' + (sub || '') + '|' + q;
 }
 
+/* 替换 #view 的内容：内核对 replaceChildren 的支持不一 —— 旧内核缺失时调用会抛
+   「replaceChildren is not a function」，整页切换随之失败（监控里已收到此类上报）。
+   能用则用，不能用退回「逐个移除 + 追加」的等效写法。 */
+function setViewNode(el, node) {
+  if (typeof el.replaceChildren === 'function') { el.replaceChildren(node); return; }
+  while (el.firstChild) { el.removeChild(el.firstChild); }
+  el.appendChild(node);
+}
+
 async function route(navType) {
   clearPageTimers();                            // 离开上一页时清理其轮询定时器
   let { name, sub, params } = parseHash();
@@ -166,7 +175,7 @@ async function route(navType) {
     const hit = cacheGet(key);
     if (hit && hit.node) {
       ++routeSeq;                               // 使进行中的渲染作废
-      view.replaceChildren(hit.node);
+      setViewNode(view, hit.node);
       view.scrollTop = hit.scrollTop || 0;
       cacheTouch(key);
       scrollKey = key;                          // 恢复后滚动位置继续写回缓存
@@ -205,7 +214,7 @@ async function route(navType) {
   // 3) 数据已就绪 → 用转场包裹「原子替换」：一次性换掉骨架，杜绝中间态。
   //    转场只包住替换这一步（毫秒级），因此不会出现「旧页定格等接口」的延迟感。
   await runTransition(navType === 'traverse' ? 'back' : 'fwd', function () {
-    view.replaceChildren(holder);
+    setViewNode(view, holder);
     view.scrollTop = 0;
   });
 

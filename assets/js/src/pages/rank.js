@@ -19,7 +19,7 @@ const BOARDS = [
   { k: 'cold', name: '冷门榜' },
 ];
 const AI_SUM_FOLD = 240;      // AI 总结折叠阈值（纯文本字数）
-export const PAGE_SIZE = 12;  // 小分页：首屏更快，一次别拉太多（服务端按此值返回）
+export const PAGE_SIZE = 20;  // 每页 20 件（服务端按此值返回）：首屏够快，滚动时自动续拉
 
 /* 刚在榜单里点开的作品：从详情返回时用它自动定位（见 locateFocus）。
    带时间戳，避免很久之后的一次返回把页面跳走。 */
@@ -63,7 +63,6 @@ export async function renderRank(container, ctx) {
     </div>
     <div class="rank-list" id="rankList"></div>
     <div class="rank-more" id="rankMoreBox">
-      <button class="btn btn-sm" id="rankMore" hidden>加载更多</button>
       <div class="tiny" id="rankFoot"></div>
     </div>
   `;
@@ -73,20 +72,14 @@ export async function renderRank(container, ctx) {
   const list = container.querySelector('#rankList');
   const foot = container.querySelector('#rankFoot');
   const moreBox = container.querySelector('#rankMoreBox');
-  const moreBtn = container.querySelector('#rankMore');
 
   function paintFoot() {
-    /* 手动加载按钮：还有下一页时出现，加载中置灰，到底后收起 */
-    if (moreBtn) {
-      moreBtn.hidden = done || totalCount <= 0;
-      moreBtn.disabled = loading;
-      moreBtn.textContent = loading ? '加载中…' : '加载更多';
-    }
+    /* 无按钮，纯滚动自动加载：底部小字只做进度提示 */
     if (totalCount <= 0) { foot.textContent = ''; return; }
     if (loading) { foot.textContent = '加载中…'; return; }
     foot.textContent = done
       ? ('已显示全部 ' + shownCount + ' 件')
-      : ('已显示 ' + shownCount + ' / 共 ' + totalCount + ' 件 · 下滑自动加载，也可点上方按钮');
+      : ('已显示 ' + shownCount + ' / 共 ' + totalCount + ' 件 · 继续下滑自动加载');
   }
 
   async function load(reset) {
@@ -158,16 +151,14 @@ export async function renderRank(container, ctx) {
     load(true);
   });
 
-  /* 手动加载：点按钮取下一页 */
-  if (moreBtn) { moreBtn.addEventListener('click', () => load(false)); }
-
-  /* 自动加载：用观察器盯着列表末尾，提前 700px 触发 —— 比「滚动事件 + 高度比对」
-     灵敏得多，首屏不满一屏时也能立刻续拉；不支持观察器的环境退回滚动兜底。 */
+  /* 自动加载：观察器盯着列表末尾，提前 1400px 就续拉 —— 越灵敏越好，
+     几乎「滑到底」的同时下一页已经接上，首屏不满一屏也会立刻续拉。
+     不支持观察器的旧内核退回滚动事件兜底（同样给足提前量）。 */
   const scroller = document.getElementById('view');
   function onScroll() {
     if (!list.isConnected) { scroller.removeEventListener('scroll', onScroll); return; }
     if (done || loading) { return; }
-    if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 800) { load(false); }
+    if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1400) { load(false); }
   }
   let io = null;
   if (typeof IntersectionObserver === 'function' && moreBox) {
@@ -175,7 +166,7 @@ export async function renderRank(container, ctx) {
       if (!list.isConnected) { io.disconnect(); return; }
       if (done || loading) { return; }
       load(false);
-    }, { rootMargin: '700px 0px' });          // 默认以视口为根：无论哪个祖先在滚动，进入提前量都能命中
+    }, { rootMargin: '1400px 0px' });          // 默认以视口为根：无论哪个祖先在滚动，进入提前量都能命中
     io.observe(moreBox);
   } else {
     scroller.addEventListener('scroll', onScroll, { passive: true });

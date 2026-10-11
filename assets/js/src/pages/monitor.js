@@ -293,28 +293,69 @@ async function monSrvList(box, route) {
 
 async function monSessions(box) {
   const only = st.sessOnly || 'all';
-  const d = await api('monitor.php', 'sessions', { range: st.range, only: only });
-  const items = d.items || [];
-  const rows = items.length ? items.map(sv => `<tr data-sid="${esc(sv.sid)}" class="mon-click">
+  let page = 1, loading = false, done = false, total = 0, shown = 0;
+
+  box.innerHTML =
+    monCard('筛选', `<div class="mon-seg" id="monSessOnly">
+      <button type="button" data-o="all"${only === 'all' ? ' class="on"' : ''}>全部会话</button>
+      <button type="button" data-o="bad"${only === 'bad' ? ' class="on"' : ''}>仅异常</button>
+    </div>`) +
+    monCard('会话列表',
+      `<div class="mon-scroll"><table class="table"><thead><tr><th>会话</th><th>用户</th><th>版本</th>
+        <th>最近活动</th><th>时长</th><th>PV</th><th>JS</th><th>接口</th><th>慢</th><th>失败</th><th>异常</th>
+        <th>浏览器</th><th>屏幕</th></tr></thead>
+        <tbody id="monSessBody"></tbody></table></div>`) +
+    '<div class="mon-moreline tiny" id="monSessFoot"></div>' +
+    '<div id="monSessDetail"></div>';
+
+  const body = box.querySelector('#monSessBody');
+  const foot = box.querySelector('#monSessFoot');
+
+  function row(sv) {
+    const who = Number(sv.uid) > 0 ? (sv.user || ('#' + sv.uid)) : '游客';
+    const userCell = `<td class="mon-ell" title="${esc(sv.uid8 || who)}">${esc(who)}`
+      + (sv.uid8 ? ' <span class="mon-mut">' + esc(sv.uid8) + '</span>' : '') + '</td>';
+    return `<tr data-sid="${esc(sv.sid)}" class="mon-click">
       <td class="mon-ell" title="${esc(sv.sid)}">${esc(sv.sid)}</td>
+      ${userCell}
+      <td class="mon-n">${sv.version ? 'v' + esc(sv.version) : '—'}</td>
       <td class="mon-t">${esc(sv.last)}</td><td class="mon-n">${sv.dur}s</td><td class="mon-n">${sv.pv}</td>
       <td class="mon-n">${Number(sv.js) ? '<b class="mon-warnv">' + sv.js + '</b>' : '0'}</td>
       <td class="mon-n">${sv.api}</td>
       <td class="mon-n">${Number(sv.apislow) ? '<b class="mon-warnv">' + sv.apislow + '</b>' : '0'}</td>
       <td class="mon-n">${Number(sv.apifail) ? '<b class="mon-bad">' + sv.apifail + '</b>' : '0'}</td>
       <td class="mon-n">${sv.bad ? '<b class="mon-bad">' + sv.bad + '</b>' : '0'}</td>
-      <td>${esc(sv.browser)}</td><td>${esc(sv.screen || '')}</td></tr>`).join('')
-    : '<tr><td class="mon-empty" colspan="11">暂无数据</td></tr>';
-  box.innerHTML =
-    monCard('筛选', `<div class="mon-seg" id="monSessOnly">
-      <button type="button" data-o="all"${only === 'all' ? ' class="on"' : ''}>全部会话</button>
-      <button type="button" data-o="bad"${only === 'bad' ? ' class="on"' : ''}>仅异常</button>
-    </div>`) +
-    monCard('会话列表（' + items.length + '）',
-      `<table class="table"><thead><tr><th>会话</th><th>最近活动</th><th>时长</th><th>PV</th><th>JS</th>
-        <th>接口</th><th>慢</th><th>失败</th><th>异常</th><th>浏览器</th><th>屏幕</th></tr></thead>
-        <tbody>${rows}</tbody></table>`) +
-    '<div id="monSessDetail"></div>';
+      <td>${esc(sv.browser)}</td><td>${esc(sv.screen || '')}</td></tr>`;
+  }
+
+  function paintFoot() {
+    if (total <= 0) { foot.textContent = ''; return; }
+    foot.textContent = done
+      ? ('已显示全部 ' + shown + ' 个会话')
+      : (loading ? '加载中…' : ('已显示 ' + shown + ' / 共 ' + total + ' 个会话 · 继续下滑自动加载'));
+  }
+
+  async function load(reset) {
+    if (loading || (done && !reset)) { return; }
+    if (reset) { page = 1; done = false; shown = 0; body.innerHTML = ''; }
+    loading = true; paintFoot();
+    try {
+      const d = await api('monitor.php', 'sessions', { range: st.range, only: only, page: page });
+      const items = d.items || [];
+      total = Number(d.total || 0);
+      if (!items.length && page === 1) {
+        body.innerHTML = '<tr><td class="mon-empty" colspan="13">暂无数据</td></tr>';
+      }
+      items.forEach(sv => body.insertAdjacentHTML('beforeend', row(sv)));
+      shown += items.length;
+      done = !d.has_more;
+      page++;
+    } catch (e) {
+      foot.textContent = '加载失败：' + e.message;
+    } finally {
+      loading = false; paintFoot();
+    }
+  }
 
   const seg = box.querySelector('#monSessOnly');
   seg.addEventListener('click', e => {
@@ -322,8 +363,19 @@ async function monSessions(box) {
     st.sessOnly = b.dataset.o;
     monSessions(box);
   });
-  box.querySelectorAll('tr[data-sid]').forEach(tr =>
-    tr.addEventListener('click', () => monSessionDetail(box, tr.dataset.sid)));
+  body.addEventListener('click', e => {
+    const tr = e.target.closest('tr[data-sid]'); if (!tr) { return; }
+    monSessionDetail(box, tr.dataset.sid);
+  });
+  /* 滑动自动分页：贴近底部即续拉下一页（提前 900px，越灵敏越好） */
+  const scroller = document.getElementById('view') || box;
+  function onScroll() {
+    if (!body.isConnected) { scroller.removeEventListener('scroll', onScroll); return; }
+    if (done || loading) { return; }
+    if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 900) { load(false); }
+  }
+  scroller.addEventListener('scroll', onScroll, { passive: true });
+  await load(true);
 }
 
 async function monSessionDetail(box, sid) {
@@ -333,13 +385,17 @@ async function monSessionDetail(box, sid) {
   try {
     const d = await api('monitor.php', 'session', { sid: sid, range: st.range });
     const items = d.items || [];
+    const who = Number(d.uid) > 0 ? (d.user ? esc(d.user) : ('#' + d.uid)) : '游客';
+    const meta = '<div class="mon-sess-meta">用户：<b>' + who + '</b>'
+      + (d.uid8 ? '（UID ' + esc(d.uid8) + '）' : '')
+      + (d.version ? ' · 访问版本：<b>v' + esc(d.version) + '</b>' : '') + '</div>';
     el.innerHTML = monCard('会话时间线 · ' + sid,
-      '<ul class="mon-tl">' + (items.length ? items.map(it =>
+      meta + '<ul class="mon-tl">' + (items.length ? items.map(it =>
         `<li class="lvl-${esc(it.level)}">
           <span class="mon-tl-t">${esc(it.time)}</span>
           <span class="mon-tl-k">${esc(KIND[it.kind] || it.kind)}</span>
           <span class="mon-tl-n mon-ell" title="${esc(it.name)}">${esc(it.name)}</span>
-          <span class="mon-tl-m mon-ell" title="${esc(it.msg)}">${esc(it.msg || '')}${it.v1 ? ' · ' + it.v1 + (it.kind === 'api' ? ' ms' : '') : ''}</span>
+          <span class="mon-tl-m mon-ell" title="${esc(it.msg)}">${esc(it.msg || '')}${it.v1 ? ' · ' + it.v1 + (it.kind === 'api' ? ' ms' : '') : ''}${it.version ? ' · v' + esc(it.version) : ''}</span>
         </li>`).join('') : '<li class="mon-empty">暂无数据</li>') + '</ul>');
   } catch (e) {
     el.innerHTML = '<div class="mon-empty">' + esc(e.message) + '</div>';
@@ -365,9 +421,6 @@ async function monAlerts(box) {
 }
 
 async function monEvents(box, kind) {
-  const d = await api('monitor.php', 'events', { kind: kind, range: st.range, page: 1 });
-  const groups = d.groups || [];
-  const items = d.items || [];
   const HEADS = {
     api: ['接口', '次数', '平均耗时', '慢', '失败'],
     perf: ['指标', '次数', '平均', '最大'],
@@ -376,6 +429,10 @@ async function monEvents(box, kind) {
     js: ['位置', '错误信息', '次数', '影响 UV', '最近'],
   };
   const head = HEADS[kind] || HEADS.js;
+  const isDetail = (kind !== 'api' && kind !== 'perf' && kind !== 'custom');
+
+  const d = await api('monitor.php', 'events', { kind: kind, range: st.range, page: 1 });
+  const groups = d.groups || [];
   const rows = groups.length ? groups.map(x => {
     if (kind === 'api') { return `<tr><td class="mon-ell" title="${esc(x.name)}">${esc(x.name)}</td><td>${x.n}</td><td>${x.avg_ms} ms</td><td>${x.slow}</td><td>${x.fails}</td></tr>`; }
     if (kind === 'perf') { return `<tr><td>${esc(x.name)}</td><td>${x.n}</td><td>${x.avg_ms} ms</td><td>${x.max_ms} ms</td></tr>`; }
@@ -383,19 +440,62 @@ async function monEvents(box, kind) {
     return `<tr><td class="mon-ell" title="${esc(x.name)}">${esc(x.name)}</td><td class="mon-ell" title="${esc(x.msg || '')}">${esc(x.msg || '')}</td><td>${x.n}</td><td>${x.uv || 0}</td><td>${esc(String(x.last || ''))}</td></tr>`;
   }).join('') : `<tr><td class="mon-empty" colspan="${head.length}">暂无数据</td></tr>`;
 
-  let detail = '';
-  if (kind !== 'api' && kind !== 'perf' && kind !== 'custom') {
-    detail = monCard('明细',
-      `<table class="table"><thead><tr><th>时间</th><th>位置</th><th>信息</th><th>浏览器</th></tr></thead><tbody>` +
-      (items.length ? items.map(it => `<tr><td>${esc(it.time)}</td><td class="mon-ell" title="${esc(it.name)}">${esc(it.name)}</td><td class="mon-ell" title="${esc(it.msg)}">${esc(it.msg)}</td><td>${esc(it.browser)}</td></tr>`).join('')
-        : '<tr><td class="mon-empty" colspan="4">暂无数据</td></tr>') +
-      '</tbody></table>');
-  }
-
   box.innerHTML =
     monCard('聚合（TOP ' + groups.length + '）',
-      `<table class="table"><thead><tr>${head.map(t => '<th>' + t + '</th>').join('')}</tr></thead><tbody>${rows}</tbody></table>`) +
-    detail;
+      `<div class="mon-scroll"><table class="table"><thead><tr>${head.map(t => '<th>' + t + '</th>').join('')}</tr></thead><tbody>${rows}</tbody></table></div>`) +
+    (isDetail ? monCard('明细',
+      `<div class="mon-scroll"><table class="table"><thead><tr><th>时间</th><th>位置</th><th>信息</th><th>版本</th><th>浏览器</th></tr></thead>
+        <tbody id="monEvtBody"></tbody></table></div><div class="mon-moreline tiny" id="monEvtFoot"></div>`) : '');
+
+  if (!isDetail) { return; }
+
+  const body = box.querySelector('#monEvtBody');
+  const foot = box.querySelector('#monEvtFoot');
+  let page = 2, loading = false, done = false, shown = 0;
+  let total = Number(d.total || 0);
+
+  function detailRow(it) {
+    return `<tr><td class="mon-t">${esc(it.time)}</td>
+      <td class="mon-ell" title="${esc(it.name)}">${esc(it.name)}</td>
+      <td class="mon-ell" title="${esc(it.msg)}">${esc(it.msg)}</td>
+      <td class="mon-n">${it.version ? 'v' + esc(it.version) : '—'}</td>
+      <td>${esc(it.browser)}</td></tr>`;
+  }
+  function paintFoot() {
+    if (total <= 0) { foot.textContent = ''; return; }
+    foot.textContent = done
+      ? ('已显示全部 ' + shown + ' 条')
+      : (loading ? '加载中…' : ('已显示 ' + shown + ' / 共 ' + total + ' 条 · 继续下滑自动加载'));
+  }
+  function append(items) {
+    if (!items.length) { return; }
+    items.forEach(it => body.insertAdjacentHTML('beforeend', detailRow(it)));
+    shown += items.length;
+  }
+  append(d.items || []);
+  done = !d.has_more;
+  if (shown === 0) { body.innerHTML = '<tr><td class="mon-empty" colspan="5">暂无数据</td></tr>'; }
+  paintFoot();
+
+  async function more() {
+    if (loading || done) { return; }
+    loading = true; paintFoot();
+    try {
+      const r = await api('monitor.php', 'events', { kind: kind, range: st.range, page: page });
+      append(r.items || []);
+      done = !r.has_more;
+      page++;
+    } catch (e) { foot.textContent = '加载失败：' + e.message; }
+    finally { loading = false; paintFoot(); }
+  }
+  /* 滑动自动分页：贴近底部即续拉下一页（提前 900px） */
+  const scroller = document.getElementById('view') || box;
+  function onScroll() {
+    if (!body.isConnected) { scroller.removeEventListener('scroll', onScroll); return; }
+    if (done || loading) { return; }
+    if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 900) { more(); }
+  }
+  scroller.addEventListener('scroll', onScroll, { passive: true });
 }
 
 async function monSettings(box) {

@@ -1502,7 +1502,7 @@ const BOARDS = [
   { k: 'cold', name: '冷门榜' },
 ];
 const AI_SUM_FOLD = 240;      // AI 总结折叠阈值（纯文本字数）
-const PAGE_SIZE = 12;  // 小分页：首屏更快，一次别拉太多（服务端按此值返回）
+const PAGE_SIZE = 20;  // 每页 20 件（服务端按此值返回）：首屏够快，滚动时自动续拉
 
 /* 刚在榜单里点开的作品：从详情返回时用它自动定位（见 locateFocus）。
    带时间戳，避免很久之后的一次返回把页面跳走。 */
@@ -1546,7 +1546,6 @@ async function renderRank(container, ctx) {
     </div>
     <div class="rank-list" id="rankList"></div>
     <div class="rank-more" id="rankMoreBox">
-      <button class="btn btn-sm" id="rankMore" hidden>加载更多</button>
       <div class="tiny" id="rankFoot"></div>
     </div>
   `;
@@ -1556,20 +1555,14 @@ async function renderRank(container, ctx) {
   const list = container.querySelector('#rankList');
   const foot = container.querySelector('#rankFoot');
   const moreBox = container.querySelector('#rankMoreBox');
-  const moreBtn = container.querySelector('#rankMore');
 
   function paintFoot() {
-    /* 手动加载按钮：还有下一页时出现，加载中置灰，到底后收起 */
-    if (moreBtn) {
-      moreBtn.hidden = done || totalCount <= 0;
-      moreBtn.disabled = loading;
-      moreBtn.textContent = loading ? '加载中…' : '加载更多';
-    }
+    /* 无按钮，纯滚动自动加载：底部小字只做进度提示 */
     if (totalCount <= 0) { foot.textContent = ''; return; }
     if (loading) { foot.textContent = '加载中…'; return; }
     foot.textContent = done
       ? ('已显示全部 ' + shownCount + ' 件')
-      : ('已显示 ' + shownCount + ' / 共 ' + totalCount + ' 件 · 下滑自动加载，也可点上方按钮');
+      : ('已显示 ' + shownCount + ' / 共 ' + totalCount + ' 件 · 继续下滑自动加载');
   }
 
   async function load(reset) {
@@ -1641,16 +1634,14 @@ async function renderRank(container, ctx) {
     load(true);
   });
 
-  /* 手动加载：点按钮取下一页 */
-  if (moreBtn) { moreBtn.addEventListener('click', () => load(false)); }
-
-  /* 自动加载：用观察器盯着列表末尾，提前 700px 触发 —— 比「滚动事件 + 高度比对」
-     灵敏得多，首屏不满一屏时也能立刻续拉；不支持观察器的环境退回滚动兜底。 */
+  /* 自动加载：观察器盯着列表末尾，提前 1400px 就续拉 —— 越灵敏越好，
+     几乎「滑到底」的同时下一页已经接上，首屏不满一屏也会立刻续拉。
+     不支持观察器的旧内核退回滚动事件兜底（同样给足提前量）。 */
   const scroller = document.getElementById('view');
   function onScroll() {
     if (!list.isConnected) { scroller.removeEventListener('scroll', onScroll); return; }
     if (done || loading) { return; }
-    if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 800) { load(false); }
+    if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1400) { load(false); }
   }
   let io = null;
   if (typeof IntersectionObserver === 'function' && moreBox) {
@@ -1658,7 +1649,7 @@ async function renderRank(container, ctx) {
       if (!list.isConnected) { io.disconnect(); return; }
       if (done || loading) { return; }
       load(false);
-    }, { rootMargin: '700px 0px' });          // 默认以视口为根：无论哪个祖先在滚动，进入提前量都能命中
+    }, { rootMargin: '1400px 0px' });          // 默认以视口为根：无论哪个祖先在滚动，进入提前量都能命中
     io.observe(moreBox);
   } else {
     scroller.addEventListener('scroll', onScroll, { passive: true });
@@ -4402,28 +4393,69 @@ async function monSrvList(box, route) {
 
 async function monSessions(box) {
   const only = st.sessOnly || 'all';
-  const d = await api('monitor.php', 'sessions', { range: st.range, only: only });
-  const items = d.items || [];
-  const rows = items.length ? items.map(sv => `<tr data-sid="${esc(sv.sid)}" class="mon-click">
+  let page = 1, loading = false, done = false, total = 0, shown = 0;
+
+  box.innerHTML =
+    monCard('筛选', `<div class="mon-seg" id="monSessOnly">
+      <button type="button" data-o="all"${only === 'all' ? ' class="on"' : ''}>全部会话</button>
+      <button type="button" data-o="bad"${only === 'bad' ? ' class="on"' : ''}>仅异常</button>
+    </div>`) +
+    monCard('会话列表',
+      `<div class="mon-scroll"><table class="table"><thead><tr><th>会话</th><th>用户</th><th>版本</th>
+        <th>最近活动</th><th>时长</th><th>PV</th><th>JS</th><th>接口</th><th>慢</th><th>失败</th><th>异常</th>
+        <th>浏览器</th><th>屏幕</th></tr></thead>
+        <tbody id="monSessBody"></tbody></table></div>`) +
+    '<div class="mon-moreline tiny" id="monSessFoot"></div>' +
+    '<div id="monSessDetail"></div>';
+
+  const body = box.querySelector('#monSessBody');
+  const foot = box.querySelector('#monSessFoot');
+
+  function row(sv) {
+    const who = Number(sv.uid) > 0 ? (sv.user || ('#' + sv.uid)) : '游客';
+    const userCell = `<td class="mon-ell" title="${esc(sv.uid8 || who)}">${esc(who)}`
+      + (sv.uid8 ? ' <span class="mon-mut">' + esc(sv.uid8) + '</span>' : '') + '</td>';
+    return `<tr data-sid="${esc(sv.sid)}" class="mon-click">
       <td class="mon-ell" title="${esc(sv.sid)}">${esc(sv.sid)}</td>
+      ${userCell}
+      <td class="mon-n">${sv.version ? 'v' + esc(sv.version) : '—'}</td>
       <td class="mon-t">${esc(sv.last)}</td><td class="mon-n">${sv.dur}s</td><td class="mon-n">${sv.pv}</td>
       <td class="mon-n">${Number(sv.js) ? '<b class="mon-warnv">' + sv.js + '</b>' : '0'}</td>
       <td class="mon-n">${sv.api}</td>
       <td class="mon-n">${Number(sv.apislow) ? '<b class="mon-warnv">' + sv.apislow + '</b>' : '0'}</td>
       <td class="mon-n">${Number(sv.apifail) ? '<b class="mon-bad">' + sv.apifail + '</b>' : '0'}</td>
       <td class="mon-n">${sv.bad ? '<b class="mon-bad">' + sv.bad + '</b>' : '0'}</td>
-      <td>${esc(sv.browser)}</td><td>${esc(sv.screen || '')}</td></tr>`).join('')
-    : '<tr><td class="mon-empty" colspan="11">暂无数据</td></tr>';
-  box.innerHTML =
-    monCard('筛选', `<div class="mon-seg" id="monSessOnly">
-      <button type="button" data-o="all"${only === 'all' ? ' class="on"' : ''}>全部会话</button>
-      <button type="button" data-o="bad"${only === 'bad' ? ' class="on"' : ''}>仅异常</button>
-    </div>`) +
-    monCard('会话列表（' + items.length + '）',
-      `<table class="table"><thead><tr><th>会话</th><th>最近活动</th><th>时长</th><th>PV</th><th>JS</th>
-        <th>接口</th><th>慢</th><th>失败</th><th>异常</th><th>浏览器</th><th>屏幕</th></tr></thead>
-        <tbody>${rows}</tbody></table>`) +
-    '<div id="monSessDetail"></div>';
+      <td>${esc(sv.browser)}</td><td>${esc(sv.screen || '')}</td></tr>`;
+  }
+
+  function paintFoot() {
+    if (total <= 0) { foot.textContent = ''; return; }
+    foot.textContent = done
+      ? ('已显示全部 ' + shown + ' 个会话')
+      : (loading ? '加载中…' : ('已显示 ' + shown + ' / 共 ' + total + ' 个会话 · 继续下滑自动加载'));
+  }
+
+  async function load(reset) {
+    if (loading || (done && !reset)) { return; }
+    if (reset) { page = 1; done = false; shown = 0; body.innerHTML = ''; }
+    loading = true; paintFoot();
+    try {
+      const d = await api('monitor.php', 'sessions', { range: st.range, only: only, page: page });
+      const items = d.items || [];
+      total = Number(d.total || 0);
+      if (!items.length && page === 1) {
+        body.innerHTML = '<tr><td class="mon-empty" colspan="13">暂无数据</td></tr>';
+      }
+      items.forEach(sv => body.insertAdjacentHTML('beforeend', row(sv)));
+      shown += items.length;
+      done = !d.has_more;
+      page++;
+    } catch (e) {
+      foot.textContent = '加载失败：' + e.message;
+    } finally {
+      loading = false; paintFoot();
+    }
+  }
 
   const seg = box.querySelector('#monSessOnly');
   seg.addEventListener('click', e => {
@@ -4431,8 +4463,19 @@ async function monSessions(box) {
     st.sessOnly = b.dataset.o;
     monSessions(box);
   });
-  box.querySelectorAll('tr[data-sid]').forEach(tr =>
-    tr.addEventListener('click', () => monSessionDetail(box, tr.dataset.sid)));
+  body.addEventListener('click', e => {
+    const tr = e.target.closest('tr[data-sid]'); if (!tr) { return; }
+    monSessionDetail(box, tr.dataset.sid);
+  });
+  /* 滑动自动分页：贴近底部即续拉下一页（提前 900px，越灵敏越好） */
+  const scroller = document.getElementById('view') || box;
+  function onScroll() {
+    if (!body.isConnected) { scroller.removeEventListener('scroll', onScroll); return; }
+    if (done || loading) { return; }
+    if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 900) { load(false); }
+  }
+  scroller.addEventListener('scroll', onScroll, { passive: true });
+  await load(true);
 }
 
 async function monSessionDetail(box, sid) {
@@ -4442,13 +4485,17 @@ async function monSessionDetail(box, sid) {
   try {
     const d = await api('monitor.php', 'session', { sid: sid, range: st.range });
     const items = d.items || [];
+    const who = Number(d.uid) > 0 ? (d.user ? esc(d.user) : ('#' + d.uid)) : '游客';
+    const meta = '<div class="mon-sess-meta">用户：<b>' + who + '</b>'
+      + (d.uid8 ? '（UID ' + esc(d.uid8) + '）' : '')
+      + (d.version ? ' · 访问版本：<b>v' + esc(d.version) + '</b>' : '') + '</div>';
     el.innerHTML = monCard('会话时间线 · ' + sid,
-      '<ul class="mon-tl">' + (items.length ? items.map(it =>
+      meta + '<ul class="mon-tl">' + (items.length ? items.map(it =>
         `<li class="lvl-${esc(it.level)}">
           <span class="mon-tl-t">${esc(it.time)}</span>
           <span class="mon-tl-k">${esc(KIND[it.kind] || it.kind)}</span>
           <span class="mon-tl-n mon-ell" title="${esc(it.name)}">${esc(it.name)}</span>
-          <span class="mon-tl-m mon-ell" title="${esc(it.msg)}">${esc(it.msg || '')}${it.v1 ? ' · ' + it.v1 + (it.kind === 'api' ? ' ms' : '') : ''}</span>
+          <span class="mon-tl-m mon-ell" title="${esc(it.msg)}">${esc(it.msg || '')}${it.v1 ? ' · ' + it.v1 + (it.kind === 'api' ? ' ms' : '') : ''}${it.version ? ' · v' + esc(it.version) : ''}</span>
         </li>`).join('') : '<li class="mon-empty">暂无数据</li>') + '</ul>');
   } catch (e) {
     el.innerHTML = '<div class="mon-empty">' + esc(e.message) + '</div>';
@@ -4474,9 +4521,6 @@ async function monAlerts(box) {
 }
 
 async function monEvents(box, kind) {
-  const d = await api('monitor.php', 'events', { kind: kind, range: st.range, page: 1 });
-  const groups = d.groups || [];
-  const items = d.items || [];
   const HEADS = {
     api: ['接口', '次数', '平均耗时', '慢', '失败'],
     perf: ['指标', '次数', '平均', '最大'],
@@ -4485,6 +4529,10 @@ async function monEvents(box, kind) {
     js: ['位置', '错误信息', '次数', '影响 UV', '最近'],
   };
   const head = HEADS[kind] || HEADS.js;
+  const isDetail = (kind !== 'api' && kind !== 'perf' && kind !== 'custom');
+
+  const d = await api('monitor.php', 'events', { kind: kind, range: st.range, page: 1 });
+  const groups = d.groups || [];
   const rows = groups.length ? groups.map(x => {
     if (kind === 'api') { return `<tr><td class="mon-ell" title="${esc(x.name)}">${esc(x.name)}</td><td>${x.n}</td><td>${x.avg_ms} ms</td><td>${x.slow}</td><td>${x.fails}</td></tr>`; }
     if (kind === 'perf') { return `<tr><td>${esc(x.name)}</td><td>${x.n}</td><td>${x.avg_ms} ms</td><td>${x.max_ms} ms</td></tr>`; }
@@ -4492,19 +4540,62 @@ async function monEvents(box, kind) {
     return `<tr><td class="mon-ell" title="${esc(x.name)}">${esc(x.name)}</td><td class="mon-ell" title="${esc(x.msg || '')}">${esc(x.msg || '')}</td><td>${x.n}</td><td>${x.uv || 0}</td><td>${esc(String(x.last || ''))}</td></tr>`;
   }).join('') : `<tr><td class="mon-empty" colspan="${head.length}">暂无数据</td></tr>`;
 
-  let detail = '';
-  if (kind !== 'api' && kind !== 'perf' && kind !== 'custom') {
-    detail = monCard('明细',
-      `<table class="table"><thead><tr><th>时间</th><th>位置</th><th>信息</th><th>浏览器</th></tr></thead><tbody>` +
-      (items.length ? items.map(it => `<tr><td>${esc(it.time)}</td><td class="mon-ell" title="${esc(it.name)}">${esc(it.name)}</td><td class="mon-ell" title="${esc(it.msg)}">${esc(it.msg)}</td><td>${esc(it.browser)}</td></tr>`).join('')
-        : '<tr><td class="mon-empty" colspan="4">暂无数据</td></tr>') +
-      '</tbody></table>');
-  }
-
   box.innerHTML =
     monCard('聚合（TOP ' + groups.length + '）',
-      `<table class="table"><thead><tr>${head.map(t => '<th>' + t + '</th>').join('')}</tr></thead><tbody>${rows}</tbody></table>`) +
-    detail;
+      `<div class="mon-scroll"><table class="table"><thead><tr>${head.map(t => '<th>' + t + '</th>').join('')}</tr></thead><tbody>${rows}</tbody></table></div>`) +
+    (isDetail ? monCard('明细',
+      `<div class="mon-scroll"><table class="table"><thead><tr><th>时间</th><th>位置</th><th>信息</th><th>版本</th><th>浏览器</th></tr></thead>
+        <tbody id="monEvtBody"></tbody></table></div><div class="mon-moreline tiny" id="monEvtFoot"></div>`) : '');
+
+  if (!isDetail) { return; }
+
+  const body = box.querySelector('#monEvtBody');
+  const foot = box.querySelector('#monEvtFoot');
+  let page = 2, loading = false, done = false, shown = 0;
+  let total = Number(d.total || 0);
+
+  function detailRow(it) {
+    return `<tr><td class="mon-t">${esc(it.time)}</td>
+      <td class="mon-ell" title="${esc(it.name)}">${esc(it.name)}</td>
+      <td class="mon-ell" title="${esc(it.msg)}">${esc(it.msg)}</td>
+      <td class="mon-n">${it.version ? 'v' + esc(it.version) : '—'}</td>
+      <td>${esc(it.browser)}</td></tr>`;
+  }
+  function paintFoot() {
+    if (total <= 0) { foot.textContent = ''; return; }
+    foot.textContent = done
+      ? ('已显示全部 ' + shown + ' 条')
+      : (loading ? '加载中…' : ('已显示 ' + shown + ' / 共 ' + total + ' 条 · 继续下滑自动加载'));
+  }
+  function append(items) {
+    if (!items.length) { return; }
+    items.forEach(it => body.insertAdjacentHTML('beforeend', detailRow(it)));
+    shown += items.length;
+  }
+  append(d.items || []);
+  done = !d.has_more;
+  if (shown === 0) { body.innerHTML = '<tr><td class="mon-empty" colspan="5">暂无数据</td></tr>'; }
+  paintFoot();
+
+  async function more() {
+    if (loading || done) { return; }
+    loading = true; paintFoot();
+    try {
+      const r = await api('monitor.php', 'events', { kind: kind, range: st.range, page: page });
+      append(r.items || []);
+      done = !r.has_more;
+      page++;
+    } catch (e) { foot.textContent = '加载失败：' + e.message; }
+    finally { loading = false; paintFoot(); }
+  }
+  /* 滑动自动分页：贴近底部即续拉下一页（提前 900px） */
+  const scroller = document.getElementById('view') || box;
+  function onScroll() {
+    if (!body.isConnected) { scroller.removeEventListener('scroll', onScroll); return; }
+    if (done || loading) { return; }
+    if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 900) { more(); }
+  }
+  scroller.addEventListener('scroll', onScroll, { passive: true });
 }
 
 async function monSettings(box) {
@@ -7494,6 +7585,15 @@ function routeKeyOf(name, sub, params) {
   return name + '|' + (sub || '') + '|' + q;
 }
 
+/* 替换 #view 的内容：内核对 replaceChildren 的支持不一 —— 旧内核缺失时调用会抛
+   「replaceChildren is not a function」，整页切换随之失败（监控里已收到此类上报）。
+   能用则用，不能用退回「逐个移除 + 追加」的等效写法。 */
+function setViewNode(el, node) {
+  if (typeof el.replaceChildren === 'function') { el.replaceChildren(node); return; }
+  while (el.firstChild) { el.removeChild(el.firstChild); }
+  el.appendChild(node);
+}
+
 async function route(navType) {
   clearPageTimers();                            // 离开上一页时清理其轮询定时器
   let { name, sub, params } = parseHash();
@@ -7522,7 +7622,7 @@ async function route(navType) {
     const hit = cacheGet(key);
     if (hit && hit.node) {
       ++routeSeq;                               // 使进行中的渲染作废
-      view.replaceChildren(hit.node);
+      setViewNode(view, hit.node);
       view.scrollTop = hit.scrollTop || 0;
       cacheTouch(key);
       scrollKey = key;                          // 恢复后滚动位置继续写回缓存
@@ -7561,7 +7661,7 @@ async function route(navType) {
   // 3) 数据已就绪 → 用转场包裹「原子替换」：一次性换掉骨架，杜绝中间态。
   //    转场只包住替换这一步（毫秒级），因此不会出现「旧页定格等接口」的延迟感。
   await runTransition(navType === 'traverse' ? 'back' : 'fwd', function () {
-    view.replaceChildren(holder);
+    setViewNode(view, holder);
     view.scrollTop = 0;
   });
 

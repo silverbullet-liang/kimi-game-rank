@@ -69,6 +69,7 @@
     os: str(osOf(UA), 32),
     screen: window.screen ? (screen.width + 'x' + screen.height) : '',
     net: str(netOf(), 16),
+    ver: str(CFG.version || '', 16),
     uid: (CFG.uid | 0) || 0
   };
 
@@ -111,7 +112,7 @@
     if (!queue.length || sending) { return; }
     sending = true;
     var batch = queue.splice(0, queue.length); seen = {};
-    var payload = { sid: SID, page: ENV.page, browser: ENV.browser, os: ENV.os, screen: ENV.screen, net: ENV.net, uid: ENV.uid, events: batch };
+    var payload = { sid: SID, page: ENV.page, version: ENV.ver, browser: ENV.browser, os: ENV.os, screen: ENV.screen, net: ENV.net, uid: ENV.uid, events: batch };
     var url = END + '?action=collect';
     var json;
     try { json = JSON.stringify(payload); } catch (e) { sending = false; return; }

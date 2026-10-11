@@ -29,6 +29,7 @@ if ($action === 'collect') {
 
         $sid     = substr((string)preg_replace('/[^A-Za-z0-9_\-]/', '', (string)($p['sid'] ?? '')), 0, 40);
         $page    = mb_substr(mon_clean((string)($p['page'] ?? '')), 0, 191, 'UTF-8');
+        $ver     = mb_substr(mon_clean((string)($p['version'] ?? '')), 0, 16, 'UTF-8');
         $browser = mb_substr(mon_clean((string)($p['browser'] ?? '')), 0, 32, 'UTF-8');
         $os      = mb_substr(mon_clean((string)($p['os'] ?? '')), 0, 32, 'UTF-8');
         $screen  = mb_substr(mon_clean((string)($p['screen'] ?? '')), 0, 16, 'UTF-8');
@@ -46,12 +47,12 @@ if ($action === 'collect') {
             $level = (string)($e['level'] ?? 'error');
             if (!in_array($level, array('info', 'warn', 'error'), true)) { $level = 'error'; }
             try {
-                db_exec('INSERT INTO web_events (kind, level, name, page, msg, stack, v1, v2, status, browser, os, screen, net, sid, uid, ip_hash, created_at)
-                         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                db_exec('INSERT INTO web_events (kind, level, name, page, version, msg, stack, v1, v2, status, browser, os, screen, net, sid, uid, ip_hash, created_at)
+                         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                     array(
                         $kind, $level,
                         mb_substr(mon_clean((string)($e['name'] ?? $page)), 0, 191, 'UTF-8'),
-                        $page,
+                        $page, $ver,
                         mb_substr(mon_clean((string)($e['msg'] ?? '')), 0, 255, 'UTF-8'),
                         mb_substr((string)($e['stack'] ?? ''), 0, 2000, 'UTF-8'),
                         (int)($e['v1'] ?? 0), (int)($e['v2'] ?? 0),
@@ -68,8 +69,12 @@ if ($action === 'collect') {
     }
 }
 
-/* ==================== 以下仅总管理员（独立页面，无需面板二次验证） ==================== */
-require_admin();
+/* ==================== 以下需后台权限 ====================
+   总览 / 事件 / 会话 / 服务端 / 告警 / 导出 / 设置读取：主管理员与副管理员均可；
+   仅「保存设置」与「清理明细」两个写操作仍限主管理员（改配置、删数据属危险操作）。
+   独立页面，无需面板二次验证。 */
+$__ident   = require_any_admin();
+$__isAdmin = (($__ident['role'] ?? '') === 'admin');
 
 /* ---------- 总览统计 ---------- */
 if ($action === 'stats') {
@@ -161,7 +166,7 @@ if ($action === 'events') {
     $page = max(1, param_int('page', 1));
     $off  = ($page - 1) * $size;
 
-    $rows = db_all("SELECT id, kind, level, name, page, msg, stack, v1, v2, status, browser, os, screen, net, sid, created_at
+    $rows = db_all("SELECT id, kind, level, name, page, version, msg, stack, v1, v2, status, browser, os, screen, net, sid, created_at
         FROM web_events WHERE kind = ? AND created_at >= ? ORDER BY id DESC LIMIT $size OFFSET $off", array($kind, $from));
     $total = (int)db_val("SELECT COUNT(*) FROM web_events WHERE kind = ? AND created_at >= ?", array($kind, $from));
 
@@ -186,6 +191,7 @@ if ($action === 'events') {
         $items[] = array(
             'id' => (int)$r['id'], 'kind' => (string)$r['kind'], 'level' => (string)$r['level'],
             'name' => mon_clean((string)$r['name']), 'page' => (string)$r['page'],
+            'version' => (string)$r['version'],
             'msg' => (string)$r['msg'], 'stack' => (string)$r['stack'],
             'v1' => (int)$r['v1'], 'v2' => (int)$r['v2'], 'status' => (string)$r['status'],
             'browser' => (string)$r['browser'], 'os' => (string)$r['os'],
@@ -197,11 +203,15 @@ if ($action === 'events') {
              'page' => $page, 'has_more' => ($off + count($rows)) < $total));
 }
 
-/* ---------- 会话追踪：会话列表 ---------- */
+/* ---------- 会话追踪：会话列表（分页） ---------- */
 if ($action === 'sessions') {
     list($from, ) = mon_window(param_str('range', '7d'));
     $only = param_str('only', 'all') === 'bad';
     $having = $only ? ' HAVING bad > 0' : '';
+    $size = 20;
+    $page = max(1, param_int('page', 1));
+    $off  = ($page - 1) * $size;
+
     $rows = db_all("SELECT sid,
             MIN(created_at) first_t, MAX(created_at) last_t,
             COUNT(*) total,
@@ -212,11 +222,25 @@ if ($action === 'sessions') {
             SUM(kind='api' AND v1>1000) apislow,
             MAX(CASE WHEN kind='perf' AND name='load' AND v1>0 THEN v1 ELSE 0 END) load_ms,
             MAX(browser) browser, MAX(os) os, MAX(screen) screen, MAX(net) net, MAX(uid) uid,
+            SUBSTRING_INDEX(GROUP_CONCAT(NULLIF(version,'') ORDER BY created_at DESC, id DESC SEPARATOR ','), ',', 1) version,
             (SUM(kind='js') + SUM(kind='api' AND status='fail') + SUM(kind='api' AND v1>1000)) bad
         FROM web_events WHERE sid<>'' AND created_at >= ?
-        GROUP BY sid" . $having . " ORDER BY last_t DESC LIMIT 60", array($from));
+        GROUP BY sid" . $having . " ORDER BY last_t DESC LIMIT " . $size . " OFFSET " . $off, array($from));
+
+    /* 副表：本页会话涉及的用户 → 用户名与 8 位 UID（游客 uid=0 不查） */
+    $uids = array();
+    foreach ($rows as $r) { $u = (int)$r['uid']; if ($u > 0) { $uids[$u] = true; } }
+    $umap = array();
+    if ($uids) {
+        $in = implode(',', array_fill(0, count($uids), '?'));
+        foreach (db_all("SELECT id, username, uid8 FROM users WHERE id IN ($in)", array_keys($uids)) as $u) {
+            $umap[(int)$u['id']] = array('name' => (string)$u['username'], 'uid8' => (string)$u['uid8']);
+        }
+    }
+
     $items = array();
     foreach ($rows as $r) {
+        $uid = (int)$r['uid'];
         $items[] = array(
             'sid' => (string)$r['sid'],
             'first' => to_local((string)$r['first_t']),
@@ -226,10 +250,19 @@ if ($action === 'sessions') {
             'api' => (int)$r['api'], 'apifail' => (int)$r['apifail'], 'apislow' => (int)$r['apislow'],
             'bad' => (int)$r['bad'], 'load' => (int)$r['load_ms'],
             'browser' => (string)$r['browser'], 'os' => (string)$r['os'],
-            'screen' => (string)$r['screen'], 'net' => (string)$r['net'], 'uid' => (int)$r['uid'],
+            'screen' => (string)$r['screen'], 'net' => (string)$r['net'],
+            'uid' => $uid, 'version' => (string)$r['version'],
+            'user' => $uid > 0 ? (isset($umap[$uid]) ? $umap[$uid]['name'] : ('#' . $uid)) : '',
+            'uid8' => ($uid > 0 && isset($umap[$uid])) ? $umap[$uid]['uid8'] : '',
         );
     }
-    ok(array('range' => param_str('range', '7d'), 'only' => $only ? 'bad' : 'all', 'items' => $items));
+    /* 总数：按 sid 去重（与分页同口径） */
+    $cntSql = "SELECT COUNT(*) FROM (SELECT sid FROM web_events WHERE sid<>'' AND created_at >= ?
+        GROUP BY sid" . $having . ") t";
+    $total = (int)db_val($cntSql, array($from));
+    ok(array('range' => param_str('range', '7d'), 'only' => $only ? 'bad' : 'all',
+             'items' => $items, 'page' => $page, 'size' => $size,
+             'total' => $total, 'has_more' => ($off + count($rows)) < $total));
 }
 
 /* ---------- 会话追踪：单会话时间线 ---------- */
@@ -237,18 +270,30 @@ if ($action === 'session') {
     list($from, ) = mon_window(param_str('range', '7d'));
     $sid = substr((string)preg_replace('/[^A-Za-z0-9_\-]/', '', param_str('sid', '')), 0, 40);
     if ($sid === '') { fail(400, '参数错误'); }
-    $rows = db_all("SELECT id, kind, level, name, page, msg, v1, v2, status, browser, os, screen, net, created_at
+    $rows = db_all("SELECT id, kind, level, name, page, version, msg, v1, v2, status, browser, os, screen, net, uid, created_at
         FROM web_events WHERE sid = ? AND created_at >= ? ORDER BY id ASC LIMIT 300", array($sid, $from));
     $items = array();
     foreach ($rows as $r) {
         $items[] = array(
             'id' => (int)$r['id'], 'kind' => (string)$r['kind'], 'level' => (string)$r['level'],
             'name' => mon_clean((string)$r['name']), 'msg' => (string)$r['msg'], 'page' => (string)$r['page'],
+            'version' => (string)$r['version'],
             'v1' => (int)$r['v1'], 'v2' => (int)$r['v2'], 'status' => (string)$r['status'],
             'time' => to_local((string)$r['created_at']),
         );
     }
-    ok(array('sid' => $sid, 'items' => $items));
+    /* 会话主体：登录用户（uid>0）与访问时的站点版本 —— 便于「按人 / 按版本」定位问题 */
+    $uid = 0; $ver = '';
+    foreach ($rows as $r) {
+        $u = (int)$r['uid']; if ($u > 0) { $uid = $u; }
+        $v = (string)$r['version']; if ($v !== '') { $ver = $v; }
+    }
+    $user = ''; $uid8 = '';
+    if ($uid > 0) {
+        $u = db_one('SELECT username, uid8 FROM users WHERE id = ?', array($uid));
+        if ($u !== null) { $user = (string)$u['username']; $uid8 = (string)$u['uid8']; }
+    }
+    ok(array('sid' => $sid, 'uid' => $uid, 'user' => $user, 'uid8' => $uid8, 'version' => $ver, 'items' => $items));
 }
 
 /* ---------- 服务端请求指标（P2） ---------- */
@@ -378,6 +423,7 @@ if ($action === 'alerts') {
 if ($action === 'settings') {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' || param('save', '') !== '') {
         csrf_verify();
+        if (!$__isAdmin) { fail(403, '仅主管理员可修改监测设置'); }
         setting_set('monitor.enabled', param_str('enabled', '1') === '1' ? '1' : '0');
         setting_set('monitor.sample', (string)max(1, min(100, param_int('sample', (int)mon_default('sample')))));
         setting_set('monitor.keep_days', (string)max(mon_keep_range()[0], min(mon_keep_range()[1], param_int('keep_days', (int)mon_default('keep_days')))));
@@ -418,7 +464,7 @@ if ($action === 'export') {
     $t  = max(100, (int)setting_get('monitor.apdex_t', mon_default('apdex_t')));
     $th = max(1, (int)setting_get('monitor.srv_slow_ms', mon_default('srv_slow_ms')));
 
-    $events = db_all('SELECT kind, level, name, page, msg, stack, v1, v2, status, browser, os, screen, net, sid, uid, created_at
+    $events = db_all('SELECT kind, level, name, page, version, msg, stack, v1, v2, status, browser, os, screen, net, sid, uid, created_at
         FROM web_events WHERE created_at >= ? ORDER BY id DESC LIMIT 3000', array($from));
     $srv = db_all('SELECT route, method, code, dur_ms, db_ms, db_n, slow_n, slow_sql, mem_kb, err, created_at
         FROM web_srv WHERE created_at >= ? ORDER BY id DESC LIMIT 3000', array($from));
@@ -452,6 +498,7 @@ if ($action === 'export') {
 /* ---------- 清理过期明细 ---------- */
 if ($action === 'purge') {
     csrf_verify();
+    if (!$__isAdmin) { fail(403, '仅主管理员可清理监测明细'); }
     ok(array('deleted' => mon_cleanup()), '已清理');
 }
 

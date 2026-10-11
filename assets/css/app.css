@@ -1546,5 +1546,12 @@ html[data-theme="dark"] .mon-app { --mok:#4ade80; --mwarn:#fbbf24; --mbad:#f8717
 .mon-tl .mon-tl-k { color:var(--macc); font-weight:700; }
 .mon-tl .mon-tl-n { min-width:0; overflow-wrap:anywhere; }
 .mon-tl .mon-tl-m { color:var(--mmut); min-width:0; overflow-wrap:anywhere; }
+/* 宽表在窄容器内横向滚动，避免内容被挤出卡片（此前溢出、右侧列看不到） */
+.mon-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.mon-scroll .table { min-width:640px; }
+.mon-mut { color:var(--mmut); font-size:12px; margin-left:4px; }
+.mon-moreline { text-align:center; color:var(--mmut); padding:12px 0 4px; }
+.mon-sess-meta { font-size:12.5px; color:var(--mmut); margin:-2px 0 10px; }
+.mon-sess-meta b { color:var(--mfg); font-weight:700; }
 .mon-tl li.lvl-error .mon-tl-k { color:var(--mbad); }
 .mon-tl li.lvl-warn .mon-tl-k  { color:var(--mwarn); }
