@@ -1517,6 +1517,7 @@ async function renderRank(container, ctx) {
   let page = 1;
   let loading = false;
   let done = false;
+  let errored = false;
   let totalCount = 0;
   let shownCount = 0;
 
@@ -1546,6 +1547,7 @@ async function renderRank(container, ctx) {
     </div>
     <div class="rank-list" id="rankList"></div>
     <div class="rank-more" id="rankMoreBox">
+      <button class="btn btn-sm" id="rankMore" hidden>加载更多</button>
       <div class="tiny" id="rankFoot"></div>
     </div>
   `;
@@ -1555,19 +1557,34 @@ async function renderRank(container, ctx) {
   const list = container.querySelector('#rankList');
   const foot = container.querySelector('#rankFoot');
   const moreBox = container.querySelector('#rankMoreBox');
+  const moreBtn = container.querySelector('#rankMore');
 
   function paintFoot() {
-    /* 无按钮，纯滚动自动加载：底部小字只做进度提示 */
+    /* 自动加载为主；「加载更多」按钮保留作手动兜底 */
+    if (moreBtn) {
+      moreBtn.hidden = done || totalCount <= 0;
+      moreBtn.disabled = loading;
+      moreBtn.textContent = loading ? '加载中…' : '加载更多';
+    }
     if (totalCount <= 0) { foot.textContent = ''; return; }
     if (loading) { foot.textContent = '加载中…'; return; }
     foot.textContent = done
       ? ('已显示全部 ' + shownCount + ' 件')
-      : ('已显示 ' + shownCount + ' / 共 ' + totalCount + ' 件 · 继续下滑自动加载');
+      : ('已显示 ' + shownCount + ' / 共 ' + totalCount + ' 件 · 下滑自动加载，也可点上方按钮');
+  }
+
+  /* 列表底部是否已进入可视范围（「填满视口」判定）：以视口为准，
+     不依赖具体滚动容器，能覆盖「内容不足一屏、根本滚不动」的情况。 */
+  function fillIfNeeded() {
+    if (done || loading || !list.isConnected) { return; }
+    const r = moreBox.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    if (r.top <= vh + 600) { load(false); }
   }
 
   async function load(reset) {
     if (loading) return;
-    if (reset) { page = 1; done = false; list.innerHTML = ''; }
+    if (reset) { page = 1; done = false; errored = false; list.innerHTML = ''; }
     if (done) return;
     loading = true;
     if (reset) list.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
@@ -1590,14 +1607,16 @@ async function renderRank(container, ctx) {
       }
       items.forEach((w, idx) => list.appendChild(rankRow(w, (page - 1) * PAGE_SIZE + idx + 1)));
       shownCount += items.length;
-      done = !d.has_more;
+      done = !d.has_more || items.length === 0;   // 返回空页也视作到底，避免自动续拉空转
       page++;
     } catch (e) {
       if (reset) list.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`;
       foot.textContent = '加载失败：' + e.message;
+      errored = true;                     // 暂停自动续拉，可点按钮重试
     } finally {
       loading = false;
       paintFoot();
+      if (!errored) { fillIfNeeded(); }   // 底部已进入视口则继续拉（解决「内容不足一屏」）
     }
   }
 
@@ -1634,26 +1653,28 @@ async function renderRank(container, ctx) {
     load(true);
   });
 
-  /* 自动加载：观察器盯着列表末尾，提前 1400px 就续拉 —— 越灵敏越好，
-     几乎「滑到底」的同时下一页已经接上，首屏不满一屏也会立刻续拉。
-     不支持观察器的旧内核退回滚动事件兜底（同样给足提前量）。 */
+  /* 手动兜底：点「加载更多」取下一页 */
+  if (moreBtn) { moreBtn.addEventListener('click', () => { errored = false; load(false); }); }
+
+  /* 自动加载三重保障，确保「滚到底一定能续拉」：
+     ① 载入后 fillIfNeeded：内容不足一屏时立即继续拉（此前只触发一次就卡住）；
+     ② 观察器：盯着列表末尾提前触发；
+     ③ 滚动事件：始终挂上，兼容无观察器的旧内核。 */
   const scroller = document.getElementById('view');
   function onScroll() {
     if (!list.isConnected) { scroller.removeEventListener('scroll', onScroll); return; }
     if (done || loading) { return; }
-    if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1400) { load(false); }
+    if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 800) { load(false); }
   }
-  let io = null;
   if (typeof IntersectionObserver === 'function' && moreBox) {
-    io = new IntersectionObserver(() => {
+    const io = new IntersectionObserver(() => {
       if (!list.isConnected) { io.disconnect(); return; }
       if (done || loading) { return; }
       load(false);
-    }, { rootMargin: '1400px 0px' });          // 默认以视口为根：无论哪个祖先在滚动，进入提前量都能命中
+    }, { rootMargin: '900px 0px' });
     io.observe(moreBox);
-  } else {
-    scroller.addEventListener('scroll', onScroll, { passive: true });
   }
+  scroller.addEventListener('scroll', onScroll, { passive: true });
 
   /* 从作品详情返回时自动定位：滚到那件作品并短暂高亮；若它还没被加载出来，
      按需继续取下一页直到找到（最多 12 页），省掉手动翻找。 */
@@ -4454,6 +4475,12 @@ async function monSessions(box) {
       foot.textContent = '加载失败：' + e.message;
     } finally {
       loading = false; paintFoot();
+      /* 内容不足一屏时继续拉，直到填满或到底 —— 保证「滚到底一定能续拉」 */
+      if (!done && body.isConnected) {
+        const r = foot.getBoundingClientRect();
+        const vh = window.innerHeight || document.documentElement.clientHeight;
+        if (r.top <= vh + 600) { load(false); }
+      }
     }
   }
 
@@ -4586,7 +4613,15 @@ async function monEvents(box, kind) {
       done = !r.has_more;
       page++;
     } catch (e) { foot.textContent = '加载失败：' + e.message; }
-    finally { loading = false; paintFoot(); }
+    finally {
+      loading = false; paintFoot();
+      /* 内容不足一屏时继续拉，直到填满或到底 */
+      if (!done && body.isConnected) {
+        const r = foot.getBoundingClientRect();
+        const vh = window.innerHeight || document.documentElement.clientHeight;
+        if (r.top <= vh + 600) { more(); }
+      }
+    }
   }
   /* 滑动自动分页：贴近底部即续拉下一页（提前 900px） */
   const scroller = document.getElementById('view') || box;

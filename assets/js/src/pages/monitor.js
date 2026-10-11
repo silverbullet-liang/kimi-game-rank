@@ -354,6 +354,12 @@ async function monSessions(box) {
       foot.textContent = '加载失败：' + e.message;
     } finally {
       loading = false; paintFoot();
+      /* 内容不足一屏时继续拉，直到填满或到底 —— 保证「滚到底一定能续拉」 */
+      if (!done && body.isConnected) {
+        const r = foot.getBoundingClientRect();
+        const vh = window.innerHeight || document.documentElement.clientHeight;
+        if (r.top <= vh + 600) { load(false); }
+      }
     }
   }
 
@@ -486,7 +492,15 @@ async function monEvents(box, kind) {
       done = !r.has_more;
       page++;
     } catch (e) { foot.textContent = '加载失败：' + e.message; }
-    finally { loading = false; paintFoot(); }
+    finally {
+      loading = false; paintFoot();
+      /* 内容不足一屏时继续拉，直到填满或到底 */
+      if (!done && body.isConnected) {
+        const r = foot.getBoundingClientRect();
+        const vh = window.innerHeight || document.documentElement.clientHeight;
+        if (r.top <= vh + 600) { more(); }
+      }
+    }
   }
   /* 滑动自动分页：贴近底部即续拉下一页（提前 900px） */
   const scroller = document.getElementById('view') || box;

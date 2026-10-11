@@ -88,6 +88,10 @@ for rel, ref in [('pages/detail.js', 'UI_PAGE.comments'), ('pages/detail.js', 'U
 check('fetchpriority="high"' in bundle, '产物缺少 fetchpriority="high"（首屏/详情关键图未提优先级，LCP 会变差）')
 check('fetchpriority="low"' in bundle, '产物缺少 fetchpriority="low"（非首屏图未让出带宽）')
 
+# 5) 榜单翻页兜底（回归锚点）：自动续拉 + 手动按钮都必须存在
+check('id="rankMore"' in bundle, '产物缺少「加载更多」按钮（榜单翻页的手动兜底被删了）')
+check('fillIfNeeded' in bundle, '产物缺少 fillIfNeeded（「填满视口」自动续拉被删，内容不足一屏时会拉不动）')
+
 print('产物完整性闸门：%d 项，失败 %d 项' % (total, len(fails)))
 for f in fails:
     print('  FAIL:', f)
