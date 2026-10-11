@@ -18,7 +18,14 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, 'assets', 'js', 'src')
 OUT = os.path.join(ROOT, 'assets', 'js', 'app.js')
 
+# 刻意不合并的模块：
+#   router.js 是「路由桥」（页面模块从它取 navigate），而 app.js 自身定义了 navigate；
+#   两者合并会跨文件重名冲突，构建后由 app.js 的实现接管，故列为例外。
+ORDER_EXEMPT = {'router.js'}
+
 ORDER = [
+    # config.js：集中常量（UI_PAGE / MON_DEFAULT）—— 必须最先合并，其余模块依赖它
+    'config.js',
     # md.js：Markdown 渲染，文档页与 AI 回复共用
     'core.js', 'md.js', 'theme.js', 'transitions.js', 'captcha.js',
     'pages/rank.js', 'pages/detail.js', 'pages/lobby.js', 'pages/mine.js',
@@ -45,11 +52,35 @@ def strip_multiline_imports(src):
     return src
 
 
+def check_registered():
+    """src 下的每个模块都必须出现在 ORDER 里。
+    漏登记 = 该模块根本不进 app.js，引用它导出量的页面会以「X is not defined」白屏，
+    而语法检查与重名检查都拦不住 —— 例如 v3.22.0 新增 config.js 时漏登记，
+    导致 UI_PAGE / MON_DEFAULT 一直未定义（游客浏览作品详情即报错）。"""
+    listed = set(ORDER)
+    missing = []
+    for dirpath, _dirs, files in os.walk(SRC):
+        for fn in files:
+            if not fn.endswith('.js'):
+                continue
+            rel = os.path.relpath(os.path.join(dirpath, fn), SRC).replace(os.sep, '/')
+            if rel == 'app.js' or rel in ORDER_EXEMPT:
+                continue
+            if rel not in listed:
+                missing.append(rel)
+    return sorted(missing)
+
+
 def check_sources():
     """构建前静态校验：跨文件/同文件重名会互相覆盖，必须拦下"""
     # 合并器是「整行剥离 import」，因此 `import { A as B }` 的别名会被静默丢弃，
     # 合并产物里只剩对 B 的使用、没有定义 → 线上 ReferenceError，页面脚本失效。
     # 这类错误语法检查与重名检查都拦不住，必须在这里显式拦下。
+    missing = check_registered()
+    if missing:
+        raise SystemExit('❌ 以下模块未登记进 ORDER，会被漏掉（线上将报 X is not defined），构建中止：\n   - '
+                         + '\n   - '.join(missing))
+
     for fn in ORDER:
         p = os.path.join(SRC, fn)
         if not os.path.isfile(p):
