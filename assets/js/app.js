@@ -2490,7 +2490,59 @@ function toBottom(el) {
  * ============================================================ */
 const W_ICON_SMILE = '<svg viewBox="0 0 24 24" class="ic"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zM8.5 9.5a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zm7 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zM7.6 14.2a1 1 0 0 1 1.4-.1 4.6 4.6 0 0 0 6 0 1 1 0 0 1 1.3 1.5 6.6 6.6 0 0 1-8.6 0 1 1 0 0 1-.1-1.4z"/></svg>';
 const W_ICON_IMAGE = '<svg viewBox="0 0 24 24" class="ic"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 12h14l-4.5-6-3.5 4.5-2.5-2.5L5 17zm3.5-7a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2z"/></svg>';
+const W_ICON_VIDEO = '<svg viewBox="0 0 24 24" class="ic"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2v10h14V7H5zm3.4 1.2l6.2 3.8-6.2 3.8V8.2z"/></svg>';
 const W_ICON_SEND = '<svg viewBox="0 0 24 24" class="ic" style="width:18px;height:18px;fill:#fff"><path d="M3 20l18-8L3 4v6l12 2-12 2v6z"/></svg>';
+
+/* ---------- 视频消息：卡片（点击才加载播放，省流量） ---------- */
+const MV_PLAY_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6L19 12z"/></svg>';
+const MV_FULL_ICON = '<svg viewBox="0 0 24 24" class="ic"><path d="M4 4h6v2H6v4H4V4zm10 0h6v6h-2V6h-4V4zM4 14h2v4h4v2H4v-6zm14 0h2v6h-6v-2h4v-4z"/></svg>';
+
+function videoCardHtml(bv, v) {
+  v = v || {};
+  const cover = v.cover
+    ? ('<img src="' + esc(v.cover) + '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false">') : '';
+  return '<div class="mv-card" data-play="1" data-bv="' + esc(bv) + '">'
+    + '<div class="mv-cover">' + cover + '<span class="mv-play">' + MV_PLAY_ICON + '</span>'
+    + (v.dur_f ? '<span class="mv-dur">' + esc(v.dur_f) + '</span>' : '') + '</div>'
+    + '<div class="mv-meta"><div class="mv-title">' + esc(v.title || ('B站视频 ' + bv)) + '</div>'
+    + '<div class="mv-sub">' + (v.author ? esc(v.author) + ' · ' : '') + 'B站视频 · 点击播放</div></div>'
+    + '</div>';
+}
+
+/* 点击卡片 → 实时解析直链 → 内嵌播放；支持全屏。
+   直链带防盗链且有时效，播放前才取一次，本站不代理视频流量。 */
+async function playVideo(card, bv) {
+  if (card.dataset.loading) { return; }
+  card.dataset.loading = '1';
+  card.classList.add('mv-loading');
+  try {
+    const d = await api('video.php', 'url', { bv: bv }, { timeout: 20000 });
+    const url = String((d && d.url) || '');
+    if (!url) { throw new Error('视频解析失败'); }
+    card.classList.remove('mv-loading');
+    card.classList.add('mv-on');
+    card.innerHTML = '<div class="mv-player"><video class="mv-video" controls playsinline preload="metadata" src="' + esc(url) + '"></video>'
+      + '<button class="mv-full" type="button" aria-label="全屏播放">' + MV_FULL_ICON + '</button></div>'
+      + '<div class="mv-fallback">播放不了？<a href="https://www.bilibili.com/video/' + esc(bv) + '/" target="_blank" rel="noopener">去 B站观看</a></div>';
+    const vd = card.querySelector('video');
+    const fb = card.querySelector('.mv-full');
+    fb.addEventListener('click', () => {
+      try {
+        if (vd.webkitEnterFullscreen) { vd.webkitEnterFullscreen(); }        // iOS Safari
+        else if (vd.requestFullscreen) { vd.requestFullscreen(); }
+        else if (vd.webkitRequestFullscreen) { vd.webkitRequestFullscreen(); }
+      } catch (e) { toast('当前浏览器不支持全屏', 'err'); }
+    });
+    const p = vd.play();
+    if (p && p.catch) { p.catch(() => {}); }
+  } catch (e) {
+    card.dataset.loading = '';
+    card.classList.remove('mv-loading');
+    card.classList.add('mv-err');
+    card.innerHTML = '<div class="mv-errbox">' + esc(e.message || '视频加载失败')
+      + '<br><a href="https://www.bilibili.com/video/' + esc(bv) + '/" target="_blank" rel="noopener">去 B站观看</a></div>';
+  }
+}
 
 async function mountWorld(body) {
   const canSend = state.role === 'user' || isAdminish();
@@ -2507,6 +2559,7 @@ async function mountWorld(body) {
       <div class="chat-input">
         <button class="icon-btn pk-btn" id="wEmoji" aria-label="表情" ${canSend ? '' : 'disabled'}>${W_ICON_SMILE}</button>
         <button class="icon-btn pk-btn" id="wImage" aria-label="图片" ${canSend ? '' : 'disabled'}>${W_ICON_IMAGE}</button>
+        <button class="icon-btn pk-btn" id="wVideo" aria-label="视频" ${canSend ? '' : 'disabled'}>${W_ICON_VIDEO}</button>
         <button class="icon-btn pk-btn at-txt" id="wAt" aria-label="@ 官方AI" ${canSend ? '' : 'disabled'}>@</button>
         <div class="cnt" id="wCount">0/500</div>
         <textarea class="input" id="wInput" rows="1" maxlength="500"
@@ -2539,6 +2592,8 @@ async function mountWorld(body) {
       inner = '<span class="recall">该消息已撤回</span>';
     } else if (m.msg_type === 'image' && m.media) {
       inner = '<img class="msg-img" src="' + imgSrc(m.media) + '" alt="图片消息" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false">';
+    } else if (m.msg_type === 'video' && m.media) {
+      inner = videoCardHtml(m.media, m.video);
     } else if (m.msg_type === 'ai' && m.cards && m.cards.length) {
       inner = cardsHtml(m.cards) + renderRich(m.content);
     } else {
@@ -2604,6 +2659,15 @@ async function mountWorld(body) {
           const f = el.querySelector('.msg-flag'); if (f) { f.remove(); }
           toast('已取消标注');
         } catch (e) { ub.disabled = false; toast(e.message, 'err'); }
+      });
+    }
+
+    /* 视频卡片：点击才解析直链并内嵌播放 */
+    const pv = el.querySelector('[data-play]');
+    if (pv) {
+      pv.addEventListener('click', () => {
+        if (pv.dataset.loading) { return; }
+        playVideo(pv, pv.dataset.bv);
       });
     }
     return el;
@@ -2706,7 +2770,7 @@ async function mountWorld(body) {
     const optimistic = {
       id: -Date.now(), uid: state.uid || 0, username: state.username, role: state.role,
       avatar: state.avatar, content: payload.content || '', msg_type: type,
-      media: payload.media || '', recalled: false, flag: '', mine: true,
+      media: payload.media || '', video: payload.video || null, recalled: false, flag: '', mine: true,
       time: timeNow(), pending: true, aiPending: hasAi,
     };
     if (stream.querySelector('.empty')) { stream.innerHTML = ''; seen.clear(); }
@@ -2715,7 +2779,9 @@ async function mountWorld(body) {
     stick();
     btnLoading(sendBtn, true);
     try {
-      const m = await api('lobby.php', 'send', Object.assign({ type: type }, payload), { timeout: 60000 });
+      const m = (type === 'video')
+        ? await api('video.php', 'send', { input: payload.media, content: payload.content || '' }, { timeout: 90000 })
+        : await api('lobby.php', 'send', Object.assign({ type: type }, payload), { timeout: 60000 });
       optEl.remove();
       put(m, true);
       if (m && m.ai) { put(m.ai, true); }
@@ -2858,6 +2924,52 @@ async function mountWorld(body) {
   }
   const imageBtn = body.querySelector('#wImage');
   if (imageBtn) { imageBtn.addEventListener('click', openImagePicker); }
+
+  const videoBtn = body.querySelector('#wVideo');
+  if (videoBtn) { videoBtn.addEventListener('click', openVideoPicker); }
+
+  function pickerSendVideo(bv, vinfo) { submit('video', { media: bv, content: '', video: vinfo || null }); }
+
+  function openVideoPicker() {
+    if (!picker.hidden && picker.dataset.kind === 'video') { picker.hidden = true; return; }
+    picker.dataset.kind = 'video';
+    picker.innerHTML = '<div class="picker-head">发送 B站视频</div>'
+      + '<div class="picker-body">'
+      +   '<input class="input" id="wVidUrl" placeholder="粘贴 B站链接或 BV 号（如 BV1eb411L7g3）" style="margin-bottom:8px">'
+      +   '<div class="row-gap"><button class="btn btn-sm" id="wVidGo">解析</button></div>'
+      +   '<div class="tiny" id="wVidHint" style="margin-top:8px">支持 B站视频；番剧 / 电影 / 电视剧无法解析</div>'
+      +   '<div id="wVidPrev"></div>'
+      + '</div>';
+    picker.hidden = false;
+
+    const hint  = picker.querySelector('#wVidHint');
+    const urlIn = picker.querySelector('#wVidUrl');
+    const prev  = picker.querySelector('#wVidPrev');
+
+    const doParse = async () => {
+      const val = (urlIn.value || '').trim();
+      if (!val) { hint.textContent = '请输入 B站链接或 BV 号'; return; }
+      hint.textContent = '解析中…';
+      prev.innerHTML = '';
+      try {
+        const d = await api('video.php', 'preview', { input: val }, { timeout: 25000 });
+        hint.textContent = '解析成功，确认后发送（发送时会对视频内容做审核）';
+        prev.innerHTML = videoCardHtml(d.bv, { title: d.title, cover: d.cover, dur_f: d.duration_f, author: d.author }).replace(' data-play="1"', '');
+        const b = document.createElement('button');
+        b.className = 'btn btn-sm';
+        b.style.marginTop = '8px';
+        b.textContent = '发送视频';
+        b.addEventListener('click', () => {
+          b.disabled = true;
+          hint.textContent = '审核中，请稍候…（约需数秒）';
+          pickerSendVideo(d.bv, { title: d.title, cover: d.cover, dur_f: d.duration_f, author: d.author });
+        });
+        prev.appendChild(b);
+      } catch (e) { hint.textContent = e.message || '解析失败'; }
+    };
+    picker.querySelector('#wVidGo').addEventListener('click', doParse);
+    urlIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doParse(); } });
+  }
 
   await loadEmoji();
   await load();

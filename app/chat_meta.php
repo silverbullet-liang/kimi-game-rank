@@ -8,8 +8,8 @@
  */
 declare(strict_types=1);
 
-/** 打包；两者都空则返回空串（不写冗余） */
-function chat_meta_pack(array $cards, array $thinks): string
+/** 打包；三者都空则返回空串（不写冗余）。extra 供视频等附加展示信息使用。 */
+function chat_meta_pack(array $cards, array $thinks, array $extra = array()): string
 {
     $cards = array_values(array_filter($cards, function ($c) {
         return isset($c['action']) && (string)$c['action'] !== '';
@@ -18,11 +18,13 @@ function chat_meta_pack(array $cards, array $thinks): string
         return trim((string)$t);
     }, $thinks), function ($t) { return $t !== ''; }));
 
-    if (!$cards && !$thinks) { return ''; }
-
     $m = array();
     if ($cards)  { $m['cards']  = $cards; }
     if ($thinks) { $m['thinks'] = array_map(function ($t) { return mb_substr($t, 0, 4000, 'UTF-8'); }, $thinks); }
+    foreach ($extra as $k => $v) {
+        if (!isset($m[$k]) && $v !== null && $v !== array() && $v !== '') { $m[$k] = $v; }
+    }
+    if (!$m) { return ''; }
     return (string)json_encode($m, JSON_UNESCAPED_UNICODE);
 }
 
@@ -33,8 +35,10 @@ function chat_meta_unpack($s): array
     if (!is_string($s) || $s === '') { return $empty; }
     $j = json_decode($s, true);
     if (!is_array($j)) { return $empty; }
-    return array(
+    $out = array(
         'cards'  => (isset($j['cards'])  && is_array($j['cards']))  ? array_values($j['cards'])  : array(),
         'thinks' => (isset($j['thinks']) && is_array($j['thinks'])) ? array_values($j['thinks']) : array(),
     );
+    if (isset($j['v']) && is_array($j['v'])) { $out['v'] = $j['v']; }   // 视频展示信息
+    return $out;
 }

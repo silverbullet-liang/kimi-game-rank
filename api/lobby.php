@@ -40,6 +40,7 @@ function chat_out(array $r, int $myUid): array
         'flag'     => $recalled ? '' : (string)($r['review_flag'] ?? ''),
         'mine'     => $myUid > 0 && (int)$r['user_id'] === $myUid,
         'cards'    => $recalled ? array() : $meta['cards'],
+        'video'    => ($recalled || !isset($meta['v'])) ? null : $meta['v'],
         'time'     => to_local((string)$r['created_at'], 'm-d H:i'),
     );
 }

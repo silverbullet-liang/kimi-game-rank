@@ -429,6 +429,27 @@ html[data-theme="dark"] .dim .v { color: #f3c453; }
 }
 .msg { display: flex; gap: 9px; max-width: 88%; }
 .msg .av { width: 36px; height: 36px; border-radius: 11px; overflow: hidden; flex: 0 0 auto; }
+
+/* ---------- 世界对话 · 视频消息卡片 ---------- */
+.mv-card { width: min(280px, 76vw); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
+.mv-cover { position: relative; aspect-ratio: 16 / 9; background: color-mix(in srgb, var(--text-3) 16%, transparent); }
+.mv-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mv-play { position: absolute; inset: 0; display: grid; place-items: center; }
+.mv-play svg { width: 46px; height: 46px; fill: #fff; opacity: .92; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .45)); }
+.mv-dur { position: absolute; right: 6px; bottom: 6px; font-size: 11px; color: #fff; background: rgba(0, 0, 0, .55); padding: 1px 6px; border-radius: 6px; }
+.mv-meta { padding: 8px 10px; }
+.mv-title { font-size: 13px; font-weight: 600; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.mv-sub { font-size: 11.5px; color: var(--text-3); margin-top: 3px; }
+.mv-card.mv-loading { cursor: progress; }
+.mv-card.mv-loading .mv-play svg { opacity: .4; }
+.mv-player { position: relative; }
+.mv-video { width: 100%; display: block; background: #000; aspect-ratio: 16 / 9; }
+.mv-full { position: absolute; right: 8px; top: 8px; background: rgba(0, 0, 0, .5); border: 0; border-radius: 8px; padding: 4px; cursor: pointer; }
+.mv-full svg { width: 18px; height: 18px; fill: #fff; display: block; }
+.mv-fallback { font-size: 11.5px; color: var(--text-3); padding: 6px 10px; }
+.mv-fallback a, .mv-errbox a { color: var(--accent); }
+.mv-errbox { padding: 12px; font-size: 12.5px; color: var(--text-2); line-height: 1.6; }
+.mv-card.mv-err { cursor: default; }
 .msg .bubble-wrap { min-width: 0; }
 .msg .who { font-size: 12px; color: var(--text-3); margin-bottom: 3px; }
 .msg .bubble { padding: 9px 13px; border-radius: 15px; background: color-mix(in srgb, var(--text-3) 16%, transparent); word-break: break-word; white-space: pre-wrap; }
