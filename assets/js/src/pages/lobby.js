@@ -659,7 +659,7 @@ async function mountWorld(body) {
       prev.innerHTML = '';
       try {
         const d = await api('video.php', 'preview', { input: val }, { timeout: 25000 });
-        hint.textContent = '解析成功，确认后发送（发送时会对视频内容做审核）';
+        hint.textContent = '解析成功，确认后发送（发送时会检查视频标题与简介）';
         prev.innerHTML = videoCardHtml(d.bv, { title: d.title, cover: d.cover, dur_f: d.duration_f, author: d.author }).replace(' data-play="1"', '');
         const b = document.createElement('button');
         b.className = 'btn btn-sm';
@@ -667,7 +667,7 @@ async function mountWorld(body) {
         b.textContent = '发送视频';
         b.addEventListener('click', () => {
           b.disabled = true;
-          hint.textContent = '审核中，请稍候…（约需数秒）';
+          hint.textContent = '审核中，请稍候…';
           pickerSendVideo(d.bv, { title: d.title, cover: d.cover, dur_f: d.duration_f, author: d.author });
         });
         prev.appendChild(b);

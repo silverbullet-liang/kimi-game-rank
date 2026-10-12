@@ -54,21 +54,14 @@ if ($action === 'send') {
     $text = trim(strip_invisible(nfc_normalize(param_str('content', ''))));
     if (mb_strlen($text, 'UTF-8') > 500) { fail(400, '附言最长 500 字'); }
 
-    /* 附言按文本过审（与普通发言同一条链路） */
-    $flag = '';
-    if ($text !== '') {
-        $verdict = moderate_text($text, 'message', (int)$uid);
-        if (empty($verdict['ok'])) { moderate_reject($verdict); }
-        $flag = (string)(isset($verdict['flag']) ? $verdict['flag'] : '');
-    }
-
     $m = bili_miren($bv);
     if ($m === null) { fail(502, '解析失败：仅支持 B 站视频（番剧 / 电影 / 电视剧无法解析）'); }
 
-    /* 视频本体：随机抽帧过图片审核 */
-    $au = bili_audit($bv, 3);
-    if (empty($au['ok']))      { fail(503, '视频审核服务暂不可用，请稍后再试'); }
-    if (!empty($au['reject'])) { fail(422, '视频未通过审核：' . ($au['reason'] !== '' ? $au['reason'] : '含违规内容')); }
+    /* 内容审核：只审标题 + 简介（连同附言一起过文本审核），不对视频抽帧 */
+    $audit = trim($m['title'] . "\n" . $m['desc'] . "\n" . $text);
+    $verdict = moderate_text(mb_substr($audit, 0, 2000, 'UTF-8'), 'message', (int)$uid);
+    if (empty($verdict['ok'])) { moderate_reject($verdict); }
+    $flag = (string)(isset($verdict['flag']) ? $verdict['flag'] : '');
 
     /* 入库：media_url 只存 BV 号；展示信息进 meta，不含直链 */
     $video = array(
