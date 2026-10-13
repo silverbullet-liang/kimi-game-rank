@@ -268,6 +268,33 @@ function html_title(string $html): string
  * @param string $html     作品 HTML（可空；空则尝试抓取）
  * @param mixed $autoScore 是否重算评分；null = 读站点设置（面板可统一关闭）
  */
+/** 作品是否带有可访问的链接（CDN 直链 html_url，或社区分享链接） */
+function work_has_link(array $item): bool
+{
+    if (trim((string)(isset($item['html_url']) ? $item['html_url'] : '')) !== '') { return true; }
+    if (!empty($item['chat_share_id'])) { return true; }
+    if (trim((string)(isset($item['share_link']) ? $item['share_link'] : '')) !== '') { return true; }
+    return false;
+}
+
+/**
+ * 下架「既无 CDN 链接、也无分享链接」的作品（软删，可在后台恢复）。
+ * 这类作品点开没有内容可访问，不纳入榜单。返回本次下架数量。
+ */
+function work_prune_nolink(): int
+{
+    try {
+        $n = db_exec("UPDATE works SET is_hidden = 1, updated_at = UTC_TIMESTAMP()
+                      WHERE is_hidden = 0
+                        AND (html_url = '' OR html_url IS NULL)
+                        AND (share_link = '' OR share_link IS NULL)");
+        return (int)$n;
+    } catch (Throwable $e) {
+        app_log('work_prune_nolink failed: ' . $e->getMessage());
+        return 0;
+    }
+}
+
 function work_upsert(array $item, string $html = '', $autoScore = null): array
 {
     if ($item['community_id'] === '') { throw new InvalidArgumentException('缺少作品 ID'); }
@@ -321,6 +348,13 @@ function work_upsert(array $item, string $html = '', $autoScore = null): array
     $auto = ($autoScore === null) ? score_auto_enabled() : (bool)$autoScore;
 
     $existing = db_one('SELECT id, total_score FROM works WHERE community_id = ? LIMIT 1', array($item['community_id']));
+
+    /* 收录门槛：既没有 CDN 链接、也没有分享链接的作品一律不收（点开没有内容可访问）。
+       仅在「新增」时判定；已存在的作品照常更新信息。 */
+    if ($existing === null && !work_has_link($item)) {
+        throw new RuntimeException('作品没有 CDN / 分享链接，已跳过');
+    }
+
     $now = now_utc();
 
     $scoreIt = $auto || $existing === null;
@@ -436,10 +470,12 @@ function sync_from_feeds(string $token, string $category = 'recommend', int $max
         if ($pageToken === '') { break; }
         usleep(500000);
     }
+    /* 同步顺带清理：把既无 CDN 链接、也无分享链接的作品下架（自动执行，无需手动） */
+    $pruned = work_prune_nolink();
     db_exec('INSERT INTO sync_log (mode, found, inserted, updated, created_at) VALUES (?, ?, ?, ?, UTC_TIMESTAMP())',
         array('feeds', $found, $inserted, $updated));
     return array('found' => $found, 'inserted' => $inserted, 'updated' => $updated,
-                 'scored' => score_auto_enabled());
+                 'pruned' => $pruned, 'scored' => score_auto_enabled());
 }
 
 /**

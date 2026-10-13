@@ -41,7 +41,7 @@ $ACTOR = require_any_admin();
 $IS_SUB = $ACTOR['role'] === 'subadmin';
 
 /* 作品写操作结束时清空榜单缓存 */
-$WRITE_ACTIONS = array('add_work', 'sync', 'work_save', 'work_delete', 'refresh_batch');
+$WRITE_ACTIONS = array('add_work', 'sync', 'work_save', 'work_delete', 'refresh_batch', 'prune_nolink');
 if (in_array($action, $WRITE_ACTIONS, true)) { register_shutdown_function('cache_flush'); }
 
 /* 副管理员可用操作白名单：作品搜索 / 上传 / 同步 + 只读数据（访问排行、用户列表）
@@ -329,6 +329,15 @@ switch ($action) {
         $n = db_exec('DELETE FROM works WHERE id = ?', array($wid));
         if ($n === 0) { fail(404, '作品不存在'); }
         ok(null, '已删除');
+        break;
+    }
+
+    /* 清理无链接作品：把既无 CDN 链接、也无分享链接的作品下架（软删，可在后台恢复） */
+    case 'prune_nolink': {
+        require_panel();
+        csrf_verify();
+        $n = work_prune_nolink();
+        ok(array('pruned' => $n), $n > 0 ? ('已下架 ' . $n . ' 件无链接作品') : '没有需要清理的作品');
         break;
     }
 

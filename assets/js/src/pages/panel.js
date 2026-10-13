@@ -800,6 +800,7 @@ function refreshBlock() {
       <div class="prog" id="refreshProg" hidden><div class="prog-bar"><i style="width:0%"></i></div><span class="tiny" id="refreshText"></span></div>
       <button class="btn btn-sm" id="refreshBtn">开始更新</button>
       <button class="btn-ghost btn-sm" id="refreshStop" hidden>停止</button>
+      <button class="btn-ghost btn-sm" id="pruneBtn" style="margin-left:8px">清理无链接作品</button>
     </div>`;
 }
 
@@ -1494,6 +1495,21 @@ function bindReclassify(container) {
  * ============================================================ */
 function bindRefresh(container) {
   const btn = container.querySelector('#refreshBtn');
+  const pruneBtn = container.querySelector('#pruneBtn');
+  if (pruneBtn) {
+    pruneBtn.addEventListener('click', async () => {
+      if (!(await dialog('清理无链接作品',
+        '将把「既没有 CDN 直链、也没有分享链接」的作品下架（可在作品列表恢复）。确认清理？',
+        '清理', { danger: true }))) { return; }
+      btnLoading(pruneBtn, true);
+      try {
+        const r = await api('admin.php', 'prune_nolink', {});
+        const n = Number(r && r.pruned) || 0;
+        toast(n > 0 ? ('已下架 ' + n + ' 件无链接作品') : '没有需要清理的作品');
+      } catch (e) { toast(e.message, 'err'); }
+      finally { btnLoading(pruneBtn, false); }
+    });
+  }
   const stopBtn = container.querySelector('#refreshStop');
   const prog = container.querySelector('#refreshProg');
   const bar = prog ? prog.querySelector('i') : null;
