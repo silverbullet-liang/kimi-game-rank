@@ -450,6 +450,28 @@ function smart_link_norm(string $u): string
     return strtolower(rtrim($u, '/'));
 }
 
+/** 取基础地址的 协议 + 主机（含端口），用于拼绝对地址 */
+function smart_link_origin(array $p): string
+{
+    $host = (string)$p['host'];
+    if (isset($p['port'])) { $host .= ':' . $p['port']; }
+    return (isset($p['scheme']) ? $p['scheme'] : 'https') . '://' . $host;
+}
+
+/** 归并路径里的 . 与 .. 段（相对地址补全后常见） */
+function smart_link_clean_path(string $path): string
+{
+    $q = '';
+    if (preg_match('#^([^?#]*)([?#].*)?$#', $path, $m)) { $path = $m[1]; $q = isset($m[2]) ? $m[2] : ''; }
+    $seg = array();
+    foreach (explode('/', $path) as $s) {
+        if ($s === '' || $s === '.') { continue; }
+        if ($s === '..') { array_pop($seg); continue; }
+        $seg[] = $s;
+    }
+    return '/' . implode('/', $seg) . $q;
+}
+
 /** 相对地址补全成绝对地址 */
 function smart_link_abs(string $url, string $baseUrl): string
 {
@@ -458,10 +480,62 @@ function smart_link_abs(string $url, string $baseUrl): string
     if (strpos($url, '//') === 0) { return 'https:' . $url; }
     $p = parse_url($baseUrl);
     if (!is_array($p) || empty($p['host'])) { return ''; }
-    $scheme = isset($p['scheme']) ? $p['scheme'] : 'https';
-    if (strpos($url, '/') === 0) { return $scheme . '://' . $p['host'] . $url; }
+    $origin = smart_link_origin($p);
+    if (strpos($url, '/') === 0) { return $origin . $url; }
     $dir = isset($p['path']) ? (string)preg_replace('#/[^/]*$#', '/', (string)$p['path']) : '/';
-    return $scheme . '://' . $p['host'] . $dir . $url;
+    return $origin . smart_link_clean_path($dir . $url);
+}
+
+/** 该地址是否属于本站（排除本站自身资源，避免自我引用） */
+function smart_link_is_site(string $url): bool
+{
+    $host = strtolower((string)parse_url($url, PHP_URL_HOST));
+    if ($host === '') { return false; }
+    $h = strtolower((string)parse_url((string)cfg('site.url', ''), PHP_URL_HOST));
+    return $h !== '' && ($host === $h || substr($host, -strlen('.' . $h)) === '.' . $h);
+}
+
+/**
+ * 页面里 <script src="…"> 引用的外部脚本地址。
+ * 跳过 CDN / 素材站（那些脚本里不会有作品的真实地址，体积也大）与本站自身资源；
+ * **不**跳过与来源页同域的脚本——跳转逻辑与页面同目录、同域是最常见的写法。
+ * 最多返回 3 个（按出现顺序）。
+ */
+function smart_link_script_src_urls(string $html, string $baseUrl): array
+{
+    $out = array();
+    if (!preg_match_all('#<script\b[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']#i', $html, $m)) { return array(); }
+    foreach ($m[1] as $src) {
+        $u = smart_link_abs(str_replace(array('\\/', '&amp;'), array('/', '&'), trim($src)), $baseUrl);
+        if ($u === '' || !preg_match('#^https?://#i', $u)) { continue; }
+        $host = strtolower((string)parse_url($u, PHP_URL_HOST));
+        if ($host === '') { continue; }
+        if (smart_link_host_in($host, smart_link_common_hosts())) { continue; }   // CDN / 素材站
+        if (smart_link_is_site($u)) { continue; }                                // 本站自身
+        $key = smart_link_norm($u);
+        if ($key !== '' && !isset($out[$key])) { $out[$key] = $u; }
+    }
+    return array_slice(array_values($out), 0, 3);
+}
+
+/** 抓取文本资源（外部脚本）。限 256KB、6 秒；失败返回空串 */
+function smart_link_fetch_text(string $url): string
+{
+    if (!function_exists('curl_init') || !preg_match('#^https?://#i', $url)) { return ''; }
+    $ch = curl_init($url);
+    curl_setopt_array($ch, array(
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 6,
+        CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS      => 3,
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; KimiRankBot/1.0)',
+    ));
+    $body = curl_exec($ch);
+    curl_close($ch);
+    if (!is_string($body)) { return ''; }
+    if (strlen($body) > 262144) { $body = substr($body, 0, 262144); }
+    return $body;
 }
 
 /* ============================================================
@@ -514,6 +588,21 @@ function smart_link_resolve(string $html, string $baseUrl): string
         $key = smart_link_norm($u);
         if ($key !== '' && $key !== smart_link_norm($baseUrl) && !isset($found[$key])) {
             $found[$key] = $u;
+        }
+    }
+    /* 兜底：候选可能写在外部脚本里（页面用 <script src="…"> 引入）。跳转页的内联脚本
+       往往很短、甚至为空，真正的去向却在那支外链 JS 中——把非 CDN 的外链脚本抓下来再扫一遍。 */
+    if (empty($found)) {
+        foreach (smart_link_script_src_urls($html, $baseUrl) as $jsUrl) {
+            $js = smart_link_fetch_text($jsUrl);
+            if ($js === '') { continue; }
+            foreach (smart_link_urls_in($js) as $u) {
+                $u = smart_link_abs((string)$u, $jsUrl);
+                if ($u === '' || !smart_link_acceptable($u, $baseUrl)) { continue; }
+                $key = smart_link_norm($u);
+                if ($key !== '' && $key !== smart_link_norm($baseUrl) && !isset($found[$key])) { $found[$key] = $u; }
+            }
+            if (!empty($found)) { break; }        // 找到就不再拉后面的脚本
         }
     }
     if (empty($found)) { return ''; }

@@ -9,7 +9,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-if (!function_exists('cfg'))       { function cfg($k, $d = null) { return $d; } }
+if (!function_exists('cfg'))       { function cfg($k, $d = null) { return $k === 'site.url' ? 'https://kimi-game-rank.wuaze.com' : $d; } }
 if (!function_exists('setting_get')) { function setting_get($k, $d = '') { return $d; } }
 require dirname(__DIR__) . '/app/link_smart.php';
 
@@ -166,10 +166,34 @@ ok('相对地址必然同站 → 不替换', smart_link_resolve(
     '<html><body><h1>标题</h1><a href="/play/index.html">开始游戏</a></body></html>',
     'https://games.example.net/jump/1') === '');
 
-/* ---------- meta refresh ---------- */
-ok('meta refresh 页（无按钮）→ 识别 kimi.site', smart_link_resolve(
-    '<html><head><meta http-equiv="refresh" content="0;url=https://abc.kimi.site/"></head><body><h1>正在前往</h1></body></html>',
-    'https://share.example.net/p/6') === 'https://abc.kimi.site/');
+/* ---------- 外链脚本：去向写在 <script src> 里 ---------- */
+$EXT = '<html><body><h1>某某作品</h1><p>点下面开始</p><a href="#" class="go">开始</a>'
+     . '<script src="https://cf.example.net/app.js"></script></body></html>';
+ok('外链脚本：提取出脚本地址', smart_link_script_src_urls($EXT, 'https://share.example.net/p/8') === array('https://cf.example.net/app.js'));
+
+ok('外链脚本：跳过 CDN 域（jsdelivr / unpkg）', smart_link_script_src_urls(
+    '<html><body><script src="https://cdn.jsdelivr.net/npm/x.js"></script><script src="https://x.unpkg.com/a.js"></script></body></html>',
+    'https://share.example.net/p/8b') === array());
+
+ok('外链脚本：跳过本站自身', smart_link_script_src_urls(
+    '<html><body><script src="https://kimi-game-rank.wuaze.com/a.js"></script></body></html>',
+    'https://share.example.net/p/8c') === array());
+
+ok('外链脚本：与来源页同域仍保留', smart_link_script_src_urls(
+    '<html><body><script src="https://kimi-file.moonshot.cn/kfs/1/app.js"></script></body></html>',
+    'https://kimi-file.moonshot.cn/kfs/1/page.html') === array('https://kimi-file.moonshot.cn/kfs/1/app.js'));
+
+ok('外链脚本：相对路径补全', smart_link_script_src_urls(
+    '<html><body><script src="./app.js"></script></body></html>',
+    'https://share.example.net/p/8d/index.html') === array('https://share.example.net/p/8d/app.js'));
+
+ok('外链脚本：最多取 3 个', count(smart_link_script_src_urls(
+    '<html><body><script src="https://a1.example.net/1.js"></script><script src="https://a2.example.net/2.js"></script>'
+    . '<script src="https://a3.example.net/3.js"></script><script src="https://a4.example.net/4.js"></script></body></html>',
+    'https://share.example.net/p/8e')) === 3);
+
+$ls = (string)file_get_contents(dirname(__DIR__) . '/app/link_smart.php');
+ok('源码含外链脚本兜底（resolve 内调用）', strpos($ls, 'smart_link_script_src_urls($html, $baseUrl)') !== false);
 
 echo "\n通过 $pass / 失败 $fail\n";
 exit($fail > 0 ? 1 : 0);

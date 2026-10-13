@@ -278,19 +278,22 @@ function work_has_link(array $item): bool
 }
 
 /**
- * 下架「既无 CDN 链接、也无分享链接」的作品（软删，可在后台恢复）。
- * 这类作品点开没有内容可访问，不纳入榜单。返回本次下架数量。
+ * 下架「无效作品」：没有标题（或仍是兜底名「未命名作品」）、或既无 CDN 链接也无分享链接的
+ * —— 这类点开没有内容可看，不纳入榜单。软删（is_hidden=1），可在后台恢复。返回本次下架数量。
  */
-function work_prune_nolink(): int
+function work_prune_invalid(): int
 {
     try {
         $n = db_exec("UPDATE works SET is_hidden = 1, updated_at = UTC_TIMESTAMP()
                       WHERE is_hidden = 0
-                        AND (html_url = '' OR html_url IS NULL)
-                        AND (share_link = '' OR share_link IS NULL)");
+                        AND (
+                          title = '' OR title = '未命名作品' OR title IS NULL
+                          OR ((html_url = '' OR html_url IS NULL)
+                              AND (share_link = '' OR share_link IS NULL))
+                        )");
         return (int)$n;
     } catch (Throwable $e) {
-        app_log('work_prune_nolink failed: ' . $e->getMessage());
+        app_log('work_prune_invalid failed: ' . $e->getMessage());
         return 0;
     }
 }
@@ -315,7 +318,8 @@ function work_upsert(array $item, string $html = '', $autoScore = null): array
 
     $htmlTitle = $html !== '' ? html_title($html) : '';
     if ($htmlTitle !== '') { $item['title'] = $htmlTitle; }
-    if ($item['title'] === '') { $item['title'] = '未命名作品'; }
+    $titleGiven = ($item['title'] !== '');    // 是否拿到真正的标题（含取自页面 <title>）
+    if (!$titleGiven) { $item['title'] = '未命名作品'; }
 
     // 库内其它标题（创意-标题独特性参照）
     $titles = array();
@@ -349,8 +353,11 @@ function work_upsert(array $item, string $html = '', $autoScore = null): array
 
     $existing = db_one('SELECT id, total_score FROM works WHERE community_id = ? LIMIT 1', array($item['community_id']));
 
-    /* 收录门槛：既没有 CDN 链接、也没有分享链接的作品一律不收（点开没有内容可访问）。
+    /* 收录门槛：没有标题、或既没有 CDN 链接也没有分享链接的作品一律不收。
        仅在「新增」时判定；已存在的作品照常更新信息。 */
+    if ($existing === null && !$titleGiven) {
+        throw new RuntimeException('作品没有标题，已跳过');
+    }
     if ($existing === null && !work_has_link($item)) {
         throw new RuntimeException('作品没有 CDN / 分享链接，已跳过');
     }
@@ -470,8 +477,8 @@ function sync_from_feeds(string $token, string $category = 'recommend', int $max
         if ($pageToken === '') { break; }
         usleep(500000);
     }
-    /* 同步顺带清理：把既无 CDN 链接、也无分享链接的作品下架（自动执行，无需手动） */
-    $pruned = work_prune_nolink();
+    /* 同步顺带清理：把没有标题、或无链接的作品下架（自动执行，无需手动） */
+    $pruned = work_prune_invalid();
     db_exec('INSERT INTO sync_log (mode, found, inserted, updated, created_at) VALUES (?, ?, ?, ?, UTC_TIMESTAMP())',
         array('feeds', $found, $inserted, $updated));
     return array('found' => $found, 'inserted' => $inserted, 'updated' => $updated,
