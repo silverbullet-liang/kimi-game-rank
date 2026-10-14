@@ -44,8 +44,7 @@ return array(
         'w_text'     => 0.30, 'text_ref'   => 800,
         'w_struct'   => 0.20, 'struct_ref' => 6,
         'w_code'     => 0.30, 'lines_ref'  => 400, 'funcs_ref' => 30,
-        'w_discuss'  => 0.20, 'comment_ref'=> 30,  'sublayer_ref' => 10,
-        'discuss_w_comment' => 0.7, 'discuss_w_sub' => 0.3,
+        'w_discuss'  => 0.20, 'comment_ref'=> 30,
     ),
 
     /* ---------- 成本 ---------- */
@@ -57,14 +56,17 @@ return array(
         'w_text'    => 0.20, 'text_ref'  => 1500,
     ),
 
-    /* ---------- 态度 ---------- */
+    /* ---------- 态度（依据成本判定）----------
+       不另立主观信号：以「成本」维的客观投入为基线，再叠加作者「交代用心」与「交付完成」。
+       成本高说明作者上心；配文/正文是否交代清楚、是否交付了可运行成品，补足「用心」差异。 */
     'attitude' => array(
-        'max'         => 200,
-        'w_reply'     => 0.35,
-        'w_maint'     => 0.25,
-        'w_intro'     => 0.20, 'intro_full' => 50, 'intro_half' => 20,
-        'w_ongoing'   => 0.20,
-        'maint_words' => array('更新','修复','优化','感谢','反馈','抱歉','调整'),
+        'max'        => 200,
+        'w_cost'     => 0.60,   // 基线：该作品的成本维得分（归一）
+        'w_care'     => 0.25,   // 交代用心：配文/正文长度分级（或 Jev 用心度）
+        'w_deliver'  => 0.15,   // 交付完成：有可运行文件或 artifactShareId
+        'intro_full' => 60,     // 用心度退化为长度分级时的锚点
+        'intro_half' => 20,
+        'use_jev'    => 0,      // 1 = 用 Jev 判「用心度」；0 = 用长度分级（默认关）
     ),
 
     /* ---------- 评级 ---------- */

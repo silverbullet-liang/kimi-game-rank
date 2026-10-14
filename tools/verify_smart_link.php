@@ -166,34 +166,27 @@ ok('相对地址必然同站 → 不替换', smart_link_resolve(
     '<html><body><h1>标题</h1><a href="/play/index.html">开始游戏</a></body></html>',
     'https://games.example.net/jump/1') === '');
 
-/* ---------- 外链脚本：去向写在 <script src> 里 ---------- */
-$EXT = '<html><body><h1>某某作品</h1><p>点下面开始</p><a href="#" class="go">开始</a>'
-     . '<script src="https://cf.example.net/app.js"></script></body></html>';
-ok('外链脚本：提取出脚本地址', smart_link_script_src_urls($EXT, 'https://share.example.net/p/8') === array('https://cf.example.net/app.js'));
+/* ---------- 变量式跳转：去向先存进变量，再交给 location ---------- */
+$VARHOP = '<html><body><canvas id="c"></canvas>'
+        . '<script>const TARGET_URL = "https://app-dxmee7bvos8x.appmiaoda.com";'
+        . 'function go(){ window.location.href = TARGET_URL; } setTimeout(go, 4000);</script></body></html>';
+ok('变量式跳转（装饰画布 + 目标在变量里）→ 判为跳转页', smart_link_looks_like_jump($VARHOP));
+ok('变量式跳转 → 解析出落地地址', smart_link_resolve($VARHOP,
+    'https://kimi-file.moonshot.cn/prod-chat-kimi/kfs/4/1/2026-10-11/1db5j9vff2ena622bec5g') === 'https://app-dxmee7bvos8x.appmiaoda.com');
 
-ok('外链脚本：跳过 CDN 域（jsdelivr / unpkg）', smart_link_script_src_urls(
-    '<html><body><script src="https://cdn.jsdelivr.net/npm/x.js"></script><script src="https://x.unpkg.com/a.js"></script></body></html>',
-    'https://share.example.net/p/8b') === array());
+ok('导航语句 + 非平台分享域名 → 不判跳转页', !smart_link_looks_like_jump(
+    '<html><body><canvas id="c"></canvas><script>const U="https://example.org/x";window.location.href=U;</script></body></html>'));
 
-ok('外链脚本：跳过本站自身', smart_link_script_src_urls(
-    '<html><body><script src="https://kimi-game-rank.wuaze.com/a.js"></script></body></html>',
-    'https://share.example.net/p/8c') === array());
+ok('仅含平台链接、无导航语句 → 不算跳转声明', !smart_link_declares_nav(
+    '<html><body><script>const U="https://a.kimi.link/";console.log(U);</script></body></html>'));
 
-ok('外链脚本：与来源页同域仍保留', smart_link_script_src_urls(
-    '<html><body><script src="https://kimi-file.moonshot.cn/kfs/1/app.js"></script></body></html>',
-    'https://kimi-file.moonshot.cn/kfs/1/page.html') === array('https://kimi-file.moonshot.cn/kfs/1/app.js'));
-
-ok('外链脚本：相对路径补全', smart_link_script_src_urls(
-    '<html><body><script src="./app.js"></script></body></html>',
-    'https://share.example.net/p/8d/index.html') === array('https://share.example.net/p/8d/app.js'));
-
-ok('外链脚本：最多取 3 个', count(smart_link_script_src_urls(
-    '<html><body><script src="https://a1.example.net/1.js"></script><script src="https://a2.example.net/2.js"></script>'
-    . '<script src="https://a3.example.net/3.js"></script><script src="https://a4.example.net/4.js"></script></body></html>',
-    'https://share.example.net/p/8e')) === 3);
+ok('导航语句识别：变量赋值也算', smart_link_declares_nav('<script>var t="x";location.href = t;</script>')
+    && smart_link_declares_nav('<script>window.open("https://a.b/")</script>')
+    && smart_link_declares_nav('<script>location.replace(u)</script>'));
 
 $ls = (string)file_get_contents(dirname(__DIR__) . '/app/link_smart.php');
-ok('源码含外链脚本兜底（resolve 内调用）', strpos($ls, 'smart_link_script_src_urls($html, $baseUrl)') !== false);
+ok('外链脚本兜底已移除（不再抓 <script src> 找地址）', strpos($ls, 'smart_link_script_src_urls') === false);
+ok('源码含变量式跳转判据', strpos($ls, 'smart_link_declares_nav') !== false);
 
 echo "\n通过 $pass / 失败 $fail\n";
 exit($fail > 0 ? 1 : 0);

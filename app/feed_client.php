@@ -260,6 +260,38 @@ function html_title(string $html): string
     return '';
 }
 
+/**
+ * 作品页的「代码体量」：页面本身 + 它用 <script src> 引用的外部脚本内容。
+ * 有些作品（跳转落地后的应用页尤其常见）页面只是个壳，真正的逻辑全在外部打包文件里；
+ * 只统计页面 HTML 会把这类作品的代码量严重漏算。这里把**非 CDN**的外部脚本抓下来一并并入。
+ * 忽略项：CDN / 素材站（smart_link_common_hosts）。抓取与作品页共用同一出站预算，
+ * 失败 / 超限一律跳过，绝不影响入库。上限：8 个脚本、单文件 256KB、合计 1.5MB。
+ */
+function work_code_blob(string $html, string $baseUrl): string
+{
+    if ($html === '' || !preg_match_all('#<script\b[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']#i', $html, $m)) {
+        return $html;
+    }
+    $seen = array(); $out = ''; $n = 0; $total = 0;
+    foreach ($m[1] as $src) {
+        if ($n >= 8) { break; }
+        $u = smart_link_abs(str_replace(array('\\/', '&amp;'), array('/', '&'), trim($src)), $baseUrl);
+        if (!preg_match('#^https?://#i', $u)) { continue; }
+        $host = strtolower((string)parse_url($u, PHP_URL_HOST));
+        if ($host === '' || smart_link_host_in($host, smart_link_common_hosts())) { continue; }  // CDN / 素材站：忽略
+        $key = smart_link_norm($u);
+        if ($key === '' || isset($seen[$key])) { continue; }
+        $seen[$key] = true;
+        if (!net_budget_allow('work_html', (int)cfg('feed.fetch_max_per_hour', 150), 3600)) { break; }
+        $js = smart_link_fetch_text($u);
+        if ($js === '') { continue; }
+        $out .= "\n" . $js;
+        $n++; $total += strlen($js);
+        if ($total >= 1572864) { break; }
+    }
+    return $out === '' ? $html : $html . $out;
+}
+
 /* ---------- 入库（查重 + 部分更新 + 重算） ---------- */
 
 /**
@@ -336,9 +368,6 @@ function work_upsert(array $item, string $html = '', $autoScore = null): array
         'collect_num' => $item['collect_num'],
         'images' => isset($item['image_count']) ? (int)$item['image_count'] : count($item['images']),
         'artifact_share_id' => $item['artifact_share_id'],
-        'author_reply' => isset($item['author_reply']) ? $item['author_reply'] : 0,
-        'sub_comment'  => isset($item['sub_comment']) ? $item['sub_comment'] : 0,
-        'ongoing'      => isset($item['ongoing']) ? $item['ongoing'] : false,
         'age_hours'    => 999.0,
     );
     if ($item['create_time'] !== '') {
@@ -365,7 +394,14 @@ function work_upsert(array $item, string $html = '', $autoScore = null): array
     $now = now_utc();
 
     $scoreIt = $auto || $existing === null;
-    $scores  = $scoreIt ? compute_scores(extract_features($work, $html, $titles)) : null;
+    /* 代码体量：页面 + 它引用的外部脚本（非 CDN）。只在实际评分时才抓，避免多余请求。 */
+    $code    = $scoreIt ? work_code_blob($html, $item['html_url']) : '';
+    /* 「态度」依据「成本」判定；「用心度」可选改用 Jev（config/scoring.php 的 attitude.use_jev，默认关） */
+    if ($scoreIt && !empty(score_weights()['attitude']['use_jev'])) {
+        $careText = trim($item['title'] . "\n" . $item['intro'] . "\n" . $item['body']);
+        $work['care'] = $careText !== '' ? jev_care($careText) : null;
+    }
+    $scores  = $scoreIt ? compute_scores(extract_features($work, $html, $titles, $code)) : null;
     $scoreJson = ($scores === null) ? '' : json_encode(array(
         'creativity' => $scores['creativity'], 'experience' => $scores['experience'],
         'depth' => $scores['depth'], 'cost' => $scores['cost'],

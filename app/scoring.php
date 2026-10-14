@@ -32,11 +32,12 @@ function bell(float $x, float $a, float $b, float $decay = 10.0): float
  * 特征提取
  * ============================================================ */
 /**
- * @param array  $work  含 title/intro/body/like_num/comment_num/collect_num/images/age_hours/author_reply/sub_comment 等
+ * @param array  $work  含 title/intro/body/like_num/comment_num/collect_num/images/age_hours/artifact_share_id/care 等
  * @param string $html  作品 HTML 源码（可空）
  * @param array  $titles 库内其它作品标题（用于标题独特性）
+ * @param string $code  代码体量文本（页面 + 它引用的外部脚本；空则退化为只算 $html）
  */
-function extract_features(array $work, string $html = '', array $titles = array()): array
+function extract_features(array $work, string $html = '', array $titles = array(), string $code = ''): array
 {
     $title  = isset($work['title']) ? (string)$work['title'] : '';
     $intro  = isset($work['intro']) ? (string)$work['intro'] : '';
@@ -50,8 +51,6 @@ function extract_features(array $work, string $html = '', array $titles = array(
         'comment'   => isset($work['comment_num']) ? (int)$work['comment_num'] : 0,
         'collect'   => isset($work['collect_num']) ? (int)$work['collect_num'] : 0,
         'age_hours' => isset($work['age_hours']) ? (float)$work['age_hours'] : 999.0,
-        'author_reply'  => isset($work['author_reply']) ? (int)$work['author_reply'] : 0,
-        'sub_comment'   => isset($work['sub_comment']) ? (int)$work['sub_comment'] : 0,
         'has_artifact'  => !empty($work['artifact_share_id']),
         'has_html'      => $hasHtml,
         // 文本
@@ -59,6 +58,8 @@ function extract_features(array $work, string $html = '', array $titles = array(
         'text_len'  => mb_strlen($text, 'UTF-8'),
         'intro_len' => mb_strlen($intro, 'UTF-8'),
         'images'    => isset($work['images']) ? (int)$work['images'] : 0,
+        /* 「用心度」（可选，Jev 判定；缺失为 null，态度维回落到长度分级） */
+        'care'      => (isset($work['care']) && $work['care'] !== null) ? (float)$work['care'] : null,
     );
 
     /* 标题独特性：与库内标题的 2-gram 最大相似度 */
@@ -94,25 +95,19 @@ function extract_features(array $work, string $html = '', array $titles = array(
     }
     $f['guide_ratio'] = count($kw) > 0 ? $hit / count($kw) : 0.0;
 
-    /* 维护词命中 */
-    $mw = $w['attitude']['maint_words'];
-    $mhit = 0;
-    foreach ($mw as $k) {
-        if (mb_strpos($text, $k, 0, 'UTF-8') !== false) { $mhit++; }
-    }
-    $f['maint_ratio'] = count($mw) > 0 ? $mhit / count($mw) : 0.0;
-
-    /* HTML 特征 */
+    /* 代码规模（bytes / lines / funcs）：按「页面 + 它引用的外部脚本」计 —— 有些作品
+       页面只是个壳，逻辑全在外部打包文件里，只统计页面 HTML 会把代码量严重漏算。
+       $code 为空时退化为只看页面本身。结构 / 媒体特征（交互标签、音视频）仍只看页面。 */
+    $codeTxt = ($code !== '') ? $code : $html;
+    $f['bytes'] = $codeTxt !== '' ? strlen($codeTxt) : 0;
+    $f['lines'] = $codeTxt !== '' ? substr_count($codeTxt, "\n") + 1 : 0;
+    $f['funcs'] = $codeTxt !== '' ? (int)preg_match_all('/\b(function\s+\w+|=>\s*\{|function\s*\()/i', $codeTxt, $mf) : 0;
     if ($hasHtml) {
-        $f['bytes'] = strlen($html);
-        $f['lines'] = substr_count($html, "\n") + 1;
-        $f['tags_interactive'] = preg_match_all('/<(button|input|select|textarea|canvas|audio|video|svg)\b/i', $html, $mt);
-        $f['funcs'] = preg_match_all('/\b(function\s+\w+|=>\s*\{|function\s*\()/i', $html, $mf);
+        $f['tags_interactive'] = (int)preg_match_all('/<(button|input|select|textarea|canvas|audio|video|svg)\b/i', $html, $mt);
         $f['has_audio'] = preg_match('/<audio\b/i', $html) === 1;
         $f['has_video'] = preg_match('/<video\b/i', $html) === 1;
     } else {
-        $f['bytes'] = 0; $f['lines'] = 0; $f['tags_interactive'] = 0;
-        $f['funcs'] = 0; $f['has_audio'] = false; $f['has_video'] = false;
+        $f['tags_interactive'] = 0; $f['has_audio'] = false; $f['has_video'] = false;
     }
     return $f;
 }
@@ -178,13 +173,15 @@ function score_creativity(array $f, array $w): float
 
 function score_experience(array $f, array $w): float
 {
-    $e1 = $f['has_html'] ? 1.0 : 0.0;
+    /* 可运行 = 有作品文件或 artifactShareId（此前只判作品文件，漏了 artifact） */
+    $runnable = (!empty($f['has_html']) || !empty($f['has_artifact']));
+    $e1 = $runnable ? 1.0 : 0.0;
     $e2 = min(1.0, (float)$f['tags_interactive'] / max(1.0, (float)$w['interact_ref']));
     $e3 = min(1.0, (float)$f['images'] / max(1.0, (float)$w['media_ref']));
     $e4 = clamp01((float)$f['guide_ratio']);
     $s  = $w['w_runnable'] * $e1 + $w['w_interact'] * $e2 + $w['w_media'] * $e3 + $w['w_guide'] * $e4;
     $v  = $w['max'] * clamp01($s);
-    if (!$f['has_html']) { $v *= (float)$w['penalty_no_html']; }
+    if (!$runnable) { $v *= (float)$w['penalty_no_html']; }
     return $v;
 }
 
@@ -196,10 +193,8 @@ function score_depth(array $f, array $w): float
         min(1.0, (float)$f['lines'] / max(1.0, (float)$w['lines_ref'])),
         min(1.0, (float)$f['funcs'] / max(1.0, (float)$w['funcs_ref']))
     );
-    $d4 = clamp01(
-        $w['discuss_w_comment'] * lns((float)$f['comment'], (float)$w['comment_ref'])
-        + $w['discuss_w_sub'] * min(1.0, (float)$f['sub_comment'] / max(1.0, (float)$w['sublayer_ref']))
-    );
+    /* 讨论深度：只看评论量；楼中楼无数据来源（恒 0），不再虚占权重 */
+    $d4 = clamp01(lns((float)$f['comment'], (float)$w['comment_ref']));
     $s = $w['w_text'] * $d1 + $w['w_struct'] * $d2 + $w['w_code'] * $d3 + $w['w_discuss'] * $d4;
     return $w['max'] * clamp01($s);
 }
@@ -224,15 +219,25 @@ function score_cost(array $f, array $w): float
     return $w['max'] * clamp01($den > 0 ? $s / $den : 0);
 }
 
+/**
+ * 态度（依据成本判定）：以「成本」维的归一分（0–1，由 compute_scores 注入 cost_norm）为基线，
+ * 再叠加「交代用心」与「交付完成」。三项都来自真实数据，不再使用任何恒空的信号。
+ */
 function score_attitude(array $f, array $w): float
 {
-    $a1 = $f['comment'] > 0 ? clamp01((float)$f['author_reply'] / (float)$f['comment']) : 0.0;
-    $a2 = clamp01((float)$f['maint_ratio']);
-    $a3 = 0.0;
-    if ($f['intro_len'] >= $w['intro_full']) { $a3 = 1.0; }
-    elseif ($f['intro_len'] >= $w['intro_half']) { $a3 = 0.5; }
-    $a4 = !empty($f['ongoing']) ? 1.0 : 0.0;
-    $s = $w['w_reply'] * $a1 + $w['w_maint'] * $a2 + $w['w_intro'] * $a3 + $w['w_ongoing'] * $a4;
+    $base = isset($f['cost_norm']) ? clamp01((float)$f['cost_norm']) : 0.0;
+
+    /* 交代用心：优先用 Jev 判定的用心度（0–1）；缺失则由配文/正文长度分级兜底 */
+    if (isset($f['care']) && $f['care'] !== null) {
+        $care = clamp01((float)$f['care']);
+    } else {
+        $care = 0.0;
+        if ($f['intro_len'] >= $w['intro_full']) { $care = 1.0; }
+        elseif ($f['intro_len'] >= $w['intro_half']) { $care = 0.5; }
+    }
+    $deliver = (!empty($f['has_html']) || !empty($f['has_artifact'])) ? 1.0 : 0.0;
+
+    $s = $w['w_cost'] * $base + $w['w_care'] * $care + $w['w_deliver'] * $deliver;
     return $w['max'] * clamp01($s);
 }
 
@@ -247,9 +252,11 @@ function compute_scores(array $features): array
         'experience' => (int)round(score_experience($features, $w['experience'])),
         'depth'      => (int)round(score_depth($features, $w['depth'])),
         'cost'       => (int)round(score_cost($features, $w['cost'])),
-        'attitude'   => (int)round(score_attitude($features, $w['attitude'])),
-        'heat'       => (int)round(score_heat($features, $w['heat'])),
     );
+    /* 「态度」依据「成本」判定：把成本归一后交给 score_attitude */
+    $features['cost_norm'] = $out['cost'] / (float)max(1, (int)$w['cost']['max']);
+    $out['attitude'] = (int)round(score_attitude($features, $w['attitude']));
+    $out['heat']     = (int)round(score_heat($features, $w['heat']));
     $out['total']  = $out['creativity'] + $out['experience'] + $out['depth'] + $out['cost'] + $out['attitude'] + $out['heat'];
     $out['rating'] = rating_of($out['total']);
     return $out;

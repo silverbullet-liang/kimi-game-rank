@@ -256,3 +256,89 @@ function jev_classify(string $text): array
         'reason'    => 'jev',
     );
 }
+
+/**
+ * 作者「用心度」档位（1 = 最随意 … 5 = 最用心）。供「态度」维度的可选 Jev 判定使用。
+ */
+function jev_care_labels(): array
+{
+    return array(
+        '没有说明，只有标题',
+        '很简短或敷衍的说明',
+        '普通、平实的说明',
+        '比较详细、用心的说明',
+        '非常详尽、用心的说明',
+    );
+}
+
+/**
+ * 用 Jev 判定作者配文/正文的「用心度」，返回 0–1（越小越随意）；服务不可用返回 null。
+ * PHP 7.0 基线：不用可空返回类型。
+ */
+function jev_care(string $text)
+{
+    $text = trim($text);
+    if ($text === '') { return null; }
+    if (net_channel_cooling('jev')) { return null; }
+    if (!function_exists('curl_init')) { return null; }
+
+    $labels  = jev_care_labels();
+    $payload = json_encode(array(
+        'input'      => mb_substr($text, 0, 4000, 'UTF-8'),
+        'dimensions' => array('care' => $labels),
+    ), JSON_UNESCAPED_UNICODE);
+
+    $ch = curl_init(jev_endpoint());
+    curl_setopt_array($ch, array(
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_HTTPHEADER     => array('Content-Type: application/json'),
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 6,
+        CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_SSL_VERIFYPEER => true,
+    ));
+    $resp = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = (int)curl_errno($ch);
+    curl_close($ch);
+    if ($code === 429) { net_channel_cool('jev', 60); return null; }
+    if (!is_string($resp) || $code !== 200) {
+        if ($err !== 0 || $code === 0) { net_channel_cool('jev', 30); }
+        return null;
+    }
+    $j = json_decode($resp, true);
+    $r = (is_array($j) && isset($j['results'][0]) && is_array($j['results'][0])) ? $j['results'][0] : null;
+    if ($r === null) { return null; }
+
+    /* 本次 Jev 实例只在 dimensions 里给 argmax label、不给 scores：有 scores 就用期望，
+       没有就把 label 落到对应档位。 */
+    $scores = array();
+    if (isset($r['dimensions']['care']['scores']) && is_array($r['dimensions']['care']['scores'])) {
+        $scores = $r['dimensions']['care']['scores'];
+    } elseif (isset($r['scores']) && is_array($r['scores'])) {
+        $scores = $r['scores'];
+    }
+    $n = count($labels);
+    if ($scores) {
+        $weighted = 0.0; $total = 0.0;
+        foreach ($labels as $i => $lb) {
+            $pr = isset($scores[$lb]) ? (float)$scores[$lb] : 0.0;
+            if ($pr < 0) { $pr = 0.0; }
+            $weighted += $i * $pr;
+            $total    += $pr;
+        }
+        if ($total <= 0) { return null; }
+        $idx = $weighted / $total;               // 0 .. n-1
+    } else {
+        $label = isset($r['dimensions']['care']['label']) ? (string)$r['dimensions']['care']['label']
+               : (isset($r['label']) ? (string)$r['label'] : '');
+        $idx = array_search($label, $labels, true);
+        if ($idx === false) { return null; }
+    }
+    $care = ($n > 1) ? ($idx / ($n - 1)) : 0.0;  // 0..1
+    if ($care < 0) { $care = 0.0; }
+    if ($care > 1) { $care = 1.0; }
+    return $care;
+}
+

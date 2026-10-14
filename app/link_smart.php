@@ -256,7 +256,36 @@ function smart_link_is_hop_page(string $html): bool
     foreach (smart_link_hop_urls($html) as $u) {
         if (preg_match('#^https?://#i', $u) && smart_link_priority($u) >= 20) { return true; }
     }
+    /* 变量式跳转：去向先存进变量再交给 location（如 const TARGET_URL='…';
+       window.location.href = TARGET_URL）——此时「紧跟在 location 后的字面量」取不到。
+       改为：页面确有导航语句 + 脚本里出现平台分享型字面量地址，即认定它要走。 */
+    if (smart_link_declares_nav($html)) {
+        foreach (smart_link_inline_script_urls($html) as $u) {
+            if (preg_match('#^https?://#i', $u) && smart_link_priority($u) >= 20) { return true; }
+        }
+    }
     return false;
+}
+
+/** 脚本里是否出现「离开本页」的导航语句（目标可以是字面量，也可以是变量） */
+function smart_link_declares_nav(string $html): bool
+{
+    return (bool)preg_match(
+        '#(?:\blocation\s*(?:\.\s*(?:href|replace|assign))?\s*=(?!=)|\blocation\s*\.\s*(?:replace|assign)\s*\(|\bwindow\s*\.\s*open\s*\()#i',
+        $html
+    );
+}
+
+/** 页面内联脚本里出现的全部 http(s) 地址（「变量式跳转」的判定与提取都用它） */
+function smart_link_inline_script_urls(string $html): array
+{
+    $out = array();
+    if (preg_match_all('#<script\b[^>]*>(.*?)</script>#is', $html, $m)) {
+        foreach ($m[1] as $js) {
+            foreach (smart_link_urls_in((string)$js) as $u) { $out[] = $u; }
+        }
+    }
+    return $out;
 }
 
 /**
@@ -486,38 +515,6 @@ function smart_link_abs(string $url, string $baseUrl): string
     return $origin . smart_link_clean_path($dir . $url);
 }
 
-/** 该地址是否属于本站（排除本站自身资源，避免自我引用） */
-function smart_link_is_site(string $url): bool
-{
-    $host = strtolower((string)parse_url($url, PHP_URL_HOST));
-    if ($host === '') { return false; }
-    $h = strtolower((string)parse_url((string)cfg('site.url', ''), PHP_URL_HOST));
-    return $h !== '' && ($host === $h || substr($host, -strlen('.' . $h)) === '.' . $h);
-}
-
-/**
- * 页面里 <script src="…"> 引用的外部脚本地址。
- * 跳过 CDN / 素材站（那些脚本里不会有作品的真实地址，体积也大）与本站自身资源；
- * **不**跳过与来源页同域的脚本——跳转逻辑与页面同目录、同域是最常见的写法。
- * 最多返回 3 个（按出现顺序）。
- */
-function smart_link_script_src_urls(string $html, string $baseUrl): array
-{
-    $out = array();
-    if (!preg_match_all('#<script\b[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']#i', $html, $m)) { return array(); }
-    foreach ($m[1] as $src) {
-        $u = smart_link_abs(str_replace(array('\\/', '&amp;'), array('/', '&'), trim($src)), $baseUrl);
-        if ($u === '' || !preg_match('#^https?://#i', $u)) { continue; }
-        $host = strtolower((string)parse_url($u, PHP_URL_HOST));
-        if ($host === '') { continue; }
-        if (smart_link_host_in($host, smart_link_common_hosts())) { continue; }   // CDN / 素材站
-        if (smart_link_is_site($u)) { continue; }                                // 本站自身
-        $key = smart_link_norm($u);
-        if ($key !== '' && !isset($out[$key])) { $out[$key] = $u; }
-    }
-    return array_slice(array_values($out), 0, 3);
-}
-
 /** 抓取文本资源（外部脚本）。限 256KB、6 秒；失败返回空串 */
 function smart_link_fetch_text(string $url): string
 {
@@ -568,11 +565,7 @@ function smart_link_resolve(string $html, string $baseUrl): string
             foreach (smart_link_urls_in((string)$b['onclick']) as $u) { $raw[] = $u; }
         }
     }
-    if (preg_match_all('#<script\b[^>]*>(.*?)</script>#is', $html, $sm)) {
-        foreach ($sm[1] as $js) {
-            foreach (smart_link_urls_in((string)$js) as $u) { $raw[] = $u; }
-        }
-    }
+    foreach (smart_link_inline_script_urls($html) as $u) { $raw[] = $u; }
     /* 顺带认一下 meta refresh —— 有些跳转页只用它 */
     if (preg_match_all('#<meta[^>]+http-equiv\s*=\s*["\']?\s*refresh[^>]*content\s*=\s*["\']([^"\']+)["\']#i', $html, $mm)) {
         foreach ($mm[1] as $c) {
@@ -588,21 +581,6 @@ function smart_link_resolve(string $html, string $baseUrl): string
         $key = smart_link_norm($u);
         if ($key !== '' && $key !== smart_link_norm($baseUrl) && !isset($found[$key])) {
             $found[$key] = $u;
-        }
-    }
-    /* 兜底：候选可能写在外部脚本里（页面用 <script src="…"> 引入）。跳转页的内联脚本
-       往往很短、甚至为空，真正的去向却在那支外链 JS 中——把非 CDN 的外链脚本抓下来再扫一遍。 */
-    if (empty($found)) {
-        foreach (smart_link_script_src_urls($html, $baseUrl) as $jsUrl) {
-            $js = smart_link_fetch_text($jsUrl);
-            if ($js === '') { continue; }
-            foreach (smart_link_urls_in($js) as $u) {
-                $u = smart_link_abs((string)$u, $jsUrl);
-                if ($u === '' || !smart_link_acceptable($u, $baseUrl)) { continue; }
-                $key = smart_link_norm($u);
-                if ($key !== '' && $key !== smart_link_norm($baseUrl) && !isset($found[$key])) { $found[$key] = $u; }
-            }
-            if (!empty($found)) { break; }        // 找到就不再拉后面的脚本
         }
     }
     if (empty($found)) { return ''; }
