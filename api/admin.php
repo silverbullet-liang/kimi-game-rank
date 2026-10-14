@@ -566,6 +566,18 @@ switch ($action) {
         break;
     }
 
+    /* ---------- 重新识别已上线作品的链接 ----------
+       让存量作品按当前逻辑重走一遍：识别出跳转页的换成真实地址。 */
+    case 'relink': {
+        require_panel();
+        csrf_verify();
+        $r = works_relink_scan(param_int('limit', 8), 7);
+        ok($r, $r['scanned'] > 0
+            ? ('已检查 ' . $r['scanned'] . ' 个，替换 ' . $r['changed'] . ' 个')
+            : '暂无需要重新识别的作品');
+        break;
+    }
+
     /* ---------- 数据库备份 ----------
        备份含全站数据（账号、评论、对话、配置），只给主管理员。
        backup_download 直接吐文件流（不是 JSON），故内部 exit。 */

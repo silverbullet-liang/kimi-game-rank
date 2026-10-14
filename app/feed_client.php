@@ -192,8 +192,7 @@ function kimi_normalize_item(array $item): array
     $author  = isset($m['author']['userBase']) && is_array($m['author']['userBase']) ? $m['author']['userBase'] : array();
     $stat    = isset($m['stat']) && is_array($m['stat']) ? $m['stat'] : array();
 
-    /* 展示用图集 = 正文图片 + 封面候选（正文在前，封面补空位）；
-       评分口径单独记 image_count，只数正文图片，不动已公开的评分标准。 */
+    /* 展示用图集 = 正文图片 + 封面候选（正文在前，封面补空位）。媒体数不参与评分。 */
     $mediaImages = kimi_content_images($content);
     $images = array_values(array_unique(array_merge($mediaImages, kimi_cover_images($m, $content))));
     if (count($images) > 9) { $images = array_slice($images, 0, 9); }
@@ -218,7 +217,6 @@ function kimi_normalize_item(array $item): array
         'comment_num'     => isset($stat['commentNum']) ? (int)$stat['commentNum'] : 0,
         'collect_num'     => isset($stat['collectNum']) ? (int)$stat['collectNum'] : 0,
         'images'          => $images,
-        'image_count'     => count($mediaImages),
         'chat_share_id'   => isset($content['chatShareId']) ? (string)$content['chatShareId'] : '',
         'artifact_share_id'=> isset($content['artifactShareId']) ? (string)$content['artifactShareId'] : '',
         'html_url'        => $htmlUrl,
@@ -366,7 +364,6 @@ function work_upsert(array $item, string $html = '', $autoScore = null): array
         'like_num' => $item['like_num'],
         'comment_num' => $item['comment_num'],
         'collect_num' => $item['collect_num'],
-        'images' => isset($item['image_count']) ? (int)$item['image_count'] : count($item['images']),
         'artifact_share_id' => $item['artifact_share_id'],
         'age_hours'    => 999.0,
     );
@@ -429,6 +426,8 @@ function work_upsert(array $item, string $html = '', $autoScore = null): array
             $item['html_url'] !== '' ? 1 : 0, 1, $now, $now);
 
         if (oid_ready('works')) { $cols .= ', oid'; $vals[] = oid_new('works'); }
+        /* 链接已在本轮识别过：记下时间，避免刚入库就被重识别任务重复抓取 */
+        if (col_ok('works', 'link_checked_at')) { $cols .= ', link_checked_at'; $vals[] = $now; }
         $wid = db_insert(
             'INSERT INTO works (' . $cols . ') VALUES ('
             . implode(',', array_fill(0, count($vals), '?')) . ')',
@@ -450,6 +449,8 @@ function work_upsert(array $item, string $html = '', $autoScore = null): array
         json_encode($item['images'], JSON_UNESCAPED_UNICODE),
         $item['html_url'] !== '' ? 1 : 0, $now,
     );
+    /* 链接已在本轮识别过：记录检查时间（列未就绪则跳过） */
+    if (col_ok('works', 'link_checked_at')) { $sets .= ', link_checked_at=?'; $args[] = $now; }
     if ($auto) {
         /* 评分列只在重算时写入：管理员手动调过的分数不会被自动更新抹掉 */
         $sets .= ', score=?, total_score=?, heat_score=?, rating=?';

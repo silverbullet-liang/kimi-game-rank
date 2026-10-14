@@ -31,6 +31,9 @@ try {
         require_once ROOT . '/tools/fetch_emoji.php';
         $r = fetch_emoji_pack();
         echo json_encode(array('code' => 0, 'msg' => 'ok', 'data' => $r), JSON_UNESCAPED_UNICODE);
+    } elseif ($task === 'relink') {
+        $r = works_relink_scan(20, 7);
+        echo json_encode(array('code' => 0, 'msg' => 'ok', 'data' => $r), JSON_UNESCAPED_UNICODE);
     } elseif ($task === 'cleanup') {
         // 清理过期黑名单与统计缓存
         db_exec('DELETE FROM token_blacklist WHERE expires_at < UTC_TIMESTAMP()');

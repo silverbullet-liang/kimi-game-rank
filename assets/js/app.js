@@ -5567,6 +5567,11 @@ function linkBlock() {
         <button data-v="1">开启</button>
       </div>
       <p class="tiny" id="linkNote"></p>
+      <button class="btn btn-sm" id="relinkBtn" style="margin-top:8px">重新识别已上线作品</button>
+      <p class="tiny muted" id="relinkNote" style="margin-top:6px">
+        对已收录的作品重新检查链接：识别出跳转页的会自动换成真实地址（标题一并纠正）。
+        已按作品宿主直链收录的作品会自动跳过。
+      </p>
     </div>`;
 }
 
@@ -5593,6 +5598,36 @@ function bindLink(container) {
   });
 
   refreshLinkState(container);
+  relinkBind(container);
+}
+
+/* 重新识别已上线作品的链接：循环调用后端，直到没有更多可处理（或达到抓取预算）。 */
+function relinkBind(container) {
+  const btn = container.querySelector('#relinkBtn');
+  const note = container.querySelector('#relinkNote');
+  if (!btn) { return; }
+  const LIMIT = 8;
+  btn.addEventListener('click', async () => {
+    if (btn.disabled) { return; }
+    btn.disabled = true;
+    let scanned = 0, changed = 0, more = false, rounds = 0;
+    try {
+      for (; rounds < 60; rounds++) {
+        const r = await api('admin.php', 'relink', { limit: LIMIT });
+        scanned += r.scanned || 0; changed += r.changed || 0;
+        note.innerHTML = '已检查 <b>' + scanned + '</b> 个，替换 <b>' + changed + '</b> 个…';
+        if ((r.scanned || 0) < LIMIT) { break; }
+        if (rounds === 59) { more = true; }
+      }
+      note.innerHTML = '完成：检查 <b>' + scanned + '</b> 个，替换 <b>' + changed + '</b> 个。'
+        + (more ? ' 仍有待处理，稍后再点一次可继续。' : '');
+      toast('重新识别完成：替换 ' + changed + ' 个');
+    } catch (e) {
+      note.innerHTML = '出错：' + e.message;
+      toast(e.message, 'err');
+    }
+    btn.disabled = false;
+  });
 }
 
 function refreshBlock() {

@@ -32,8 +32,8 @@ return array(
     ),
     'experience' => array(
         'max' => 200,
-        'w_runnable' => 0.50, 'w_interact' => 0.20, 'interact_ref' => 12,
-        'w_media' => 0.15, 'media_ref' => 6, 'w_guide' => 0.15,
+        'w_runnable' => 0.60, 'w_interact' => 0.24, 'interact_ref' => 12,
+        'w_guide' => 0.16,
         'keywords' => array('操作','点击','选择','输入','按键','拖动','关卡','难度','模式'),
         'penalty_no_html' => 0.8,
     ),
@@ -46,10 +46,9 @@ return array(
     ),
     'cost' => array(
         'max' => 200,
-        'w_bytes' => 0.35, 'bytes_ref' => 153600,
-        'w_lines' => 0.25, 'lines_ref' => 600,
-        'w_media' => 0.20, 'img_each' => 0.15, 'media_audio' => 0.20, 'media_video' => 0.20,
-        'w_text' => 0.20, 'text_ref' => 1500,
+        'w_bytes' => 0.44, 'bytes_ref' => 153600,
+        'w_lines' => 0.31, 'lines_ref' => 600,
+        'w_text' => 0.25, 'text_ref' => 1500,
     ),
     'attitude' => array(
         'max' => 200,

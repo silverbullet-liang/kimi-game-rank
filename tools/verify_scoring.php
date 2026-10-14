@@ -1,6 +1,6 @@
 <?php
 /**
- * 评分体系自检（v3.40.0：层级化 MCDA —— AHP×CRITIC、加权几何聚合、贝叶斯口碑、分位数评级）
+ * 评分体系自检（v3.41.0：层级化 MCDA；媒体数不参与评分）
  * 跑法：php tools/verify_scoring.php   （离线，不联网）
  */
 declare(strict_types=1);
@@ -66,9 +66,22 @@ ok('代码量随引用脚本增大', $fb['bytes'] > $fa['bytes'] && $fb['funcs']
 ok('结构特征仍只看页面', $fa['tags_interactive'] === $fb['tags_interactive']);
 
 /* ---------- 态度依据成本 / 体验 artifact / 输出结构 ---------- */
-$base = array('title' => '作品', 'intro' => str_repeat('介绍', 40), 'comment_num' => 3, 'images' => 2, 'artifact_share_id' => 'x');
+$base = array('title' => '作品', 'intro' => str_repeat('介绍', 40), 'comment_num' => 3, 'artifact_share_id' => 'x');
 $sc = compute_scores(extract_features($base, $page, array(), $code));
-ok('态度 = 依据成本推导（> 90）', $sc['attitude'] > 90);
+ok('态度 = 依据成本推导（= 0.60×成本 + 0.40×满分，care/deliver 均满）',
+    abs($sc['attitude'] - (0.6 * $sc['cost'] + 0.4 * 200)) <= 1);
+
+/* ---------- 媒体数不参与评分（v3.41.0） ---------- */
+$plain = array('title' => '作品', 'intro' => str_repeat('介绍', 40), 'comment_num' => 3, 'artifact_share_id' => 'x');
+$withMedia = $plain; $withMedia['images'] = 9;
+$sm = compute_scores(extract_features($withMedia, $page . '<audio></audio><video></video><img><img><img>', array(), $code));
+$sp = compute_scores(extract_features($plain, $page, array(), $code));
+ok('媒体数（images 字段）不影响体验分', $sm['experience'] === $sp['experience']);
+ok('音视频/图片标签不计入交互标签数',
+    extract_features(array('title' => 't'), $page . '<audio></audio><video></video><img>')['tags_interactive']
+    === extract_features(array('title' => 't'), $page)['tags_interactive']);
+ok('媒体数不影响成本分', $sm['cost'] === $sp['cost']);
+ok('媒体数不影响总分', $sm['total'] === $sp['total']);
 ok('compute_scores 输出三支柱', isset($sc['pillars']['quality'], $sc['pillars']['effort'], $sc['pillars']['recognition']));
 $art = compute_scores(extract_features(array('title' => 't', 'artifact_share_id' => 'a'), '', array()));
 ok('体验：有 artifact 即算可运行', $art['experience'] >= 100);

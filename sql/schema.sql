@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS `works` (
   `category`       ENUM('game','tool','literature','fanart') NOT NULL DEFAULT 'game',
   `share_link`     VARCHAR(255) NOT NULL DEFAULT '',
   `html_url`       VARCHAR(255) NOT NULL DEFAULT '' COMMENT '作品 HTML 直链',
+  `link_checked_at` DATETIME     NULL DEFAULT NULL COMMENT '上次重新识别跳转链接的时间',
   `like_num`       INT UNSIGNED NOT NULL DEFAULT 0,
   `comment_num`    INT UNSIGNED NOT NULL DEFAULT 0,
   `collect_num`    INT UNSIGNED NOT NULL DEFAULT 0,

@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 28);
+define('SCHEMA_VERSION', 29);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -105,6 +105,7 @@ function ensure_schema(bool $force = false)
         'works' => array(
             'vote_count' => 'INT UNSIGNED NOT NULL DEFAULT 0',
             'peak_score' => 'INT UNSIGNED NOT NULL DEFAULT 0',
+            'link_checked_at' => 'DATETIME NULL',
         ),
         'user_visits' => array(
             'country'  => "VARCHAR(32) NOT NULL DEFAULT ''",
@@ -1053,6 +1054,21 @@ function run_migrations(bool $force = false)
         }
     }
 
+    /* ---------- v29：作品链接的「上次重识别时间」 ----------
+       识别逻辑升级后要让存量作品重走一遍；记录检查时间用于排队与节流（见 app/relink.php）。 */
+    if ($cur < 29) {
+        try {
+            if (table_exists('works') && !column_exists('works', 'link_checked_at')) {
+                db_exec("ALTER TABLE `works` ADD COLUMN `link_checked_at` DATETIME NULL DEFAULT NULL COMMENT '上次重新识别链接的时间' AFTER `html_url`");
+                table_columns('works', true);
+            }
+            app_log('schema migrated to v29（作品链接重识别时间）');
+            setting_set('schema_version', '29');
+        } catch (Throwable $e) {
+            app_log('migrate v29 failed: ' . $e->getMessage());
+        }
+    }
+
     /* 只有结构确认完整才写版本号、落锁：
        否则锁会把「半成品」永久固定下来，此后所有请求都被短路，再也修不回来。 */
     $ok = true;
@@ -1083,6 +1099,7 @@ function run_migrations(bool $force = false)
     if (table_exists('comments') && !column_exists('comments', 'target_type')) { $ok = false; }
     if (table_exists('ai_usage') && !column_exists('ai_usage', 'provider')) { $ok = false; }
     if (table_exists('banned_ips') && !column_exists('banned_ips', 'geo_lat')) { $ok = false; }
+    if (table_exists('works') && !column_exists('works', 'link_checked_at')) { $ok = false; }
     if ($ok) {
         setting_set('schema_version', (string)SCHEMA_VERSION);
         @file_put_contents(migration_lock_path(), gmdate('c'));
@@ -1102,7 +1119,7 @@ function db_report(): array
         'messages' => array('msg_type', 'media_url', 'is_recalled', 'review_flag'),
         'comments' => array('content_norm', 'is_deleted', 'deleted_by', 'is_blocked', 'review_flag'),
         'feedback' => array('content_norm', 'is_public', 'is_deleted', 'admin_reply', 'replied_at'),
-        'works'    => array('vote_count', 'peak_score'),
+        'works'    => array('vote_count', 'peak_score', 'link_checked_at'),
         'user_visits' => array('country', 'province', 'city'),
         'or_models'      => array('model_id', 'name', 'context_length', 'is_active', 'fetched_at'),
         'or_state'       => array('refresh_date', 'api_used', 'api_limit', 'site_day', 'site_used'),
