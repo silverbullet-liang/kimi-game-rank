@@ -401,7 +401,7 @@ function work_upsert(array $item, string $html = '', $autoScore = null): array
         $careText = trim($item['title'] . "\n" . $item['intro'] . "\n" . $item['body']);
         $work['care'] = $careText !== '' ? jev_care($careText) : null;
     }
-    $scores  = $scoreIt ? compute_scores(extract_features($work, $html, $titles, $code)) : null;
+    $scores  = $scoreIt ? compute_scores(extract_features($work, $html, $titles, $code), corpus_stats()) : null;
     $scoreJson = ($scores === null) ? '' : json_encode(array(
         'creativity' => $scores['creativity'], 'experience' => $scores['experience'],
         'depth' => $scores['depth'], 'cost' => $scores['cost'],

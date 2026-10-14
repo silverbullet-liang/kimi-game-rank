@@ -297,13 +297,16 @@ switch ($action) {
             }
         }
         if ($hasDim) {
-            $total = 0;
-            foreach ($dims as $d) { $total += (int)(isset($score[$d]) ? $score[$d] : 0); }
+            /* 总分按评分引擎的层级聚合算（三支柱加权几何），不再把六维直接相加 */
+            $dims6 = array();
+            foreach ($dims as $d) { $dims6[$d] = (int)(isset($score[$d]) ? $score[$d] : 0); }
+            $total = total_from_dims($dims6);
+            $rating = rating_of($total, corpus_stats());
             $score['total']  = $total;
-            $score['rating'] = rating_of($total);
+            $score['rating'] = $rating;
             $sets[] = 'score = ?';       $args[] = json_encode($score);
             $sets[] = 'total_score = ?'; $args[] = $total;
-            $sets[] = 'rating = ?';      $args[] = rating_of($total);
+            $sets[] = 'rating = ?';      $args[] = $rating;
             $sets[] = 'heat_score = ?';  $args[] = (int)(isset($score['heat']) ? $score['heat'] : 0);
         }
 

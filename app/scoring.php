@@ -1,9 +1,13 @@
 <?php
 /**
- * 六维评分引擎
+ * 评分引擎（v3.40.0 · 层级化 MCDA）
  * ------------------------------------------------------------
- * 与 docs/六维算法设计.md 完全一致；权重取自 config/scoring.php。
- * 设计：extract_features() 只做数据提取；score_*() 为纯函数，便于测试。
+ * 三支柱（作品质量 / 作者投入 / 社区认可）→ 六维。
+ *   · 权重 = AHP 主观权重（config 判断矩阵，CR<0.1）× CRITIC 客观权重（app/corpus.php 由全站语料算）组合；
+ *   · 支柱用**加权几何**聚合 → 任一支柱弱会乘性压制总分（维度互相制约）；
+ *   · 口碑维对互动量做**贝叶斯收缩**（样本少 → 向全站均值靠拢）；
+ *   · 评级默认按全站总分**分位数**（语料不可用时回退固定阈值）。
+ * 设计：extract_features() 只做数据提取；score_*() / aggregate 相关为纯函数，便于测试。
  */
 declare(strict_types=1);
 
@@ -145,16 +149,28 @@ function text_diversity(string $s): float
 /* ============================================================
  * 各维计算
  * ============================================================ */
-function score_heat(array $f, array $w): float
+/**
+ * 口碑：互动量对数压缩 + 贝叶斯收缩。$prior_s 为全站口碑先验（<0 表示用配置默认）。
+ * 贝叶斯收缩 s' = (C·s_prior + n·s) / (C + n)，n 为互动总量 —— 样本少则向全站均值靠拢，
+ * 杜绝「1 个赞封神」。
+ */
+function score_heat(array $f, array $w, float $prior_s = -1.0): float
 {
     $s = $w['w_like']    * lns((float)$f['like'], (float)$w['base_like'])
        + $w['w_comment'] * lns((float)$f['comment'], (float)$w['base_comment'])
        + $w['w_collect'] * lns((float)$f['collect'], (float)$w['base_collect']);
-    $v = $w['max'] * min(1.0, $s);
+    $s = min(1.0, max(0.0, $s));
+
+    if ($prior_s < 0) { $prior_s = (float)$w['prior_s']; }
+    $n = (float)$f['like'] + (float)$f['comment'] + (float)$f['collect'];
+    $C = max(1.0, (float)$w['bayes_c']);
+    $sp = ($C * $prior_s + $n * $s) / ($C + $n);
+
+    $v = $w['max'] * $sp;
     if ($f['age_hours'] < $w['new_hours']) {
         $v *= 1 + $w['new_bonus'] * (1 - $f['age_hours'] / $w['new_hours']);
     }
-    return min((float)$w['max'], $v);
+    return min((float)$w['max'], max(0.0, $v));
 }
 
 function score_creativity(array $f, array $w): float
@@ -220,14 +236,13 @@ function score_cost(array $f, array $w): float
 }
 
 /**
- * 态度（依据成本判定）：以「成本」维的归一分（0–1，由 compute_scores 注入 cost_norm）为基线，
- * 再叠加「交代用心」与「交付完成」。三项都来自真实数据，不再使用任何恒空的信号。
+ * 态度（依据成本判定）：以「成本」维的归一分（由 compute_scores 注入 cost_norm）为基线，
+ * 再叠加「交代用心」与「交付完成」。三项都来自真实数据，不使用任何恒空的信号。
  */
 function score_attitude(array $f, array $w): float
 {
     $base = isset($f['cost_norm']) ? clamp01((float)$f['cost_norm']) : 0.0;
 
-    /* 交代用心：优先用 Jev 判定的用心度（0–1）；缺失则由配文/正文长度分级兜底 */
     if (isset($f['care']) && $f['care'] !== null) {
         $care = clamp01((float)$f['care']);
     } else {
@@ -242,40 +257,148 @@ function score_attitude(array $f, array $w): float
 }
 
 /* ============================================================
- * 汇总
+ * 层级聚合（支柱 → 总分）
  * ============================================================ */
-function compute_scores(array $features): array
+/** 六维 → AHP 主观权重（支柱权重 × 支柱内权重；和为 1） */
+function ahp_dim_weights(): array
 {
     $w = score_weights();
-    $out = array(
+    $ahp = $w['ahp'];
+    $out = array();
+    foreach ($w['pillars'] as $p => $members) {
+        $pw = isset($ahp['pillars'][$p]) ? (float)$ahp['pillars'][$p] : 0.0;
+        $sub = isset($ahp[$p]) && is_array($ahp[$p]) ? $ahp[$p] : array();
+        $sum = 0.0;
+        foreach ($members as $d) { if (isset($sub[$d])) { $sum += (float)$sub[$d]; } }
+        $each = count($members) > 0 ? 1.0 / count($members) : 0.0;
+        foreach ($members as $d) {
+            $sv = ($sum > 0 && isset($sub[$d])) ? ((float)$sub[$d] / $sum) : $each;
+            $out[$d] = $pw * $sv;
+        }
+    }
+    return $out;
+}
+
+/** 主观(AHP) × 客观(CRITIC) 组合维度权重；缺客观则纯 AHP（和为 1） */
+function combined_dim_weights(array $stats = array()): array
+{
+    $w = score_weights();
+    $ahp = ahp_dim_weights();
+    $critic = (isset($stats['critic']) && is_array($stats['critic'])) ? $stats['critic'] : array();
+    if (empty($critic)) { return $ahp; }
+
+    $lam = (float)$w['combine_lambda'];
+    $out = array();
+    foreach ($ahp as $d => $av) {
+        $cv = isset($critic[$d]) ? (float)$critic[$d] : 0.0;
+        $out[$d] = $lam * $av + (1.0 - $lam) * $cv;
+    }
+    $sum = array_sum($out);
+    if ($sum <= 0) { return $ahp; }
+    foreach ($out as $d => $v) { $out[$d] = $v / $sum; }
+    return $out;
+}
+
+/** 支柱归一值（0–1）与支柱权重（来自组合维度权重） */
+function pillar_norms(array $dims, array $wd): array
+{
+    $w = score_weights();
+    $out = array();
+    foreach ($w['pillars'] as $p => $members) {
+        $pw = 0.0; $acc = 0.0;
+        foreach ($members as $d) {
+            $ww = isset($wd[$d]) ? (float)$wd[$d] : 0.0;
+            $pw += $ww;
+            $acc += $ww * (float)(isset($dims[$d]) ? $dims[$d] : 0) / 200.0;
+        }
+        $out[$p] = array('w' => $pw, 'v' => ($pw > 0 ? $acc / $pw : 0.0));
+    }
+    return $out;
+}
+
+/** 支柱 → 总分：加权几何（带下限），$pillars = pillar_norms() 输出 */
+function aggregate_total(array $pillars): int
+{
+    $w = score_weights();
+    $floor = max(0.0, min(1.0, (float)$w['aggregate']['floor']));
+    $max = (float)$w['max_total'];
+    $logsum = 0.0; $wsum = 0.0;
+    foreach ($pillars as $pv) {
+        $alpha = (float)$pv['w'];
+        if ($alpha <= 0) { continue; }
+        $v = $floor + (1.0 - $floor) * max(0.0, min(1.0, (float)$pv['v']));
+        $logsum += $alpha * log($v);
+        $wsum += $alpha;
+    }
+    if ($wsum <= 0) { return 0; }
+    return (int)round($max * exp($logsum / $wsum));
+}
+
+/** 由六维直接算总分（供语料统计 / 阈值计算复用）；$wd 为 null 时用组合权重 */
+function total_from_dims(array $dims6, $wd = null): int
+{
+    if ($wd === null) { $wd = combined_dim_weights(); }
+    return aggregate_total(pillar_norms($dims6, $wd));
+}
+
+/** 评级：默认按全站总分分位数（$stats['thresholds']）；否则回退固定阈值 */
+function rating_of(int $total, array $stats = array()): string
+{
+    $w = score_weights();
+    $r = $w['rating'];
+    $mode = isset($r['mode']) ? (string)$r['mode'] : 'fixed';
+    if ($mode === 'quantile'
+        && isset($stats['thresholds']) && is_array($stats['thresholds']) && !empty($stats['thresholds'])) {
+        foreach ($r['quantile'] as $row) {
+            $g = $row['grade'];
+            if (isset($stats['thresholds'][$g]) && $total >= (int)$stats['thresholds'][$g]) { return (string)$g; }
+        }
+        return 'C';
+    }
+    foreach ($r['fixed'] as $row) {
+        if ($total >= (int)$row['min']) { return (string)$row['grade']; }
+    }
+    return 'C';
+}
+
+/* ============================================================
+ * 汇总
+ * ============================================================ */
+function compute_scores(array $features, array $stats = array()): array
+{
+    $w = score_weights();
+    $prior = isset($stats['prior_s']) ? (float)$stats['prior_s'] : -1.0;
+
+    $dims = array(
         'creativity' => (int)round(score_creativity($features, $w['creativity'])),
         'experience' => (int)round(score_experience($features, $w['experience'])),
         'depth'      => (int)round(score_depth($features, $w['depth'])),
         'cost'       => (int)round(score_cost($features, $w['cost'])),
+        'heat'       => (int)round(score_heat($features, $w['heat'], $prior)),
     );
-    /* 「态度」依据「成本」判定：把成本归一后交给 score_attitude */
-    $features['cost_norm'] = $out['cost'] / (float)max(1, (int)$w['cost']['max']);
-    $out['attitude'] = (int)round(score_attitude($features, $w['attitude']));
-    $out['heat']     = (int)round(score_heat($features, $w['heat']));
-    $out['total']  = $out['creativity'] + $out['experience'] + $out['depth'] + $out['cost'] + $out['attitude'] + $out['heat'];
-    $out['rating'] = rating_of($out['total']);
-    return $out;
-}
+    /* 态度依据成本判定：注入成本归一分再算 */
+    $features['cost_norm'] = $dims['cost'] / 200.0;
+    $dims['attitude'] = (int)round(score_attitude($features, $w['attitude']));
 
-function rating_of(int $total): string
-{
-    $w = score_weights();
-    foreach ($w['ratings'] as $r) {
-        if ($total >= (int)$r['min']) { return (string)$r['grade']; }
-    }
-    return 'C';
+    $wd = combined_dim_weights($stats);
+    $pillars = pillar_norms($dims, $wd);
+    $total = aggregate_total($pillars);
+
+    $out = $dims;
+    $out['total']  = $total;
+    $out['rating'] = rating_of($total, $stats);
+    $out['pillars'] = array(
+        'quality'     => (int)round($pillars['quality']['v'] * 200),
+        'effort'      => (int)round($pillars['effort']['v'] * 200),
+        'recognition' => (int)round($pillars['recognition']['v'] * 200),
+    );
+    return $out;
 }
 
 /**
  * 评分总开关。管理员会按实际情况手动改分，自动重算会把这些改动覆盖掉，
  * 所以「已收录作品的评分是否重算」由这个设置统一决定（面板可切换、可取消）。
- * **默认「只更新信息」（不重算已有作品的评分）**，与站长的手动调分习惯一致；
- * 注意：它只影响已收录作品的更新——新收录的作品一律照常评分。
+ * **默认「只更新信息」（不重算已有作品的评分）**；新收录的作品一律照常评分。
  */
 function score_auto_enabled(): bool
 {

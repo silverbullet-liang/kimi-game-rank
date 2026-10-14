@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '3.39.0');
+define('APP_VERSION', '3.40.0');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);
@@ -59,6 +59,7 @@ require_once APP_ROOT . '/app/monitor.php';
 require_once APP_ROOT . '/app/mon_srv.php';
 require_once APP_ROOT . '/app/crypto.php';
 require_once APP_ROOT . '/app/scoring.php';
+require_once APP_ROOT . '/app/corpus.php';
 require_once APP_ROOT . '/app/auth.php';
 require_once APP_ROOT . '/app/feed_client.php';
 require_once APP_ROOT . '/app/zhipu.php';
