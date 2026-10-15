@@ -58,6 +58,22 @@ try { $__captcha = captcha_client_config(); } catch (Throwable $e) { }
 /* 限时节日皮肤：规则在 app/festival.php，这里下发结果（首屏脚本据此决定皮肤） */
 $__festival = array('now' => '', 'list' => array());
 try { $__festival = festival_client(); } catch (Throwable $e) { }
+
+/* ---------- SEO：按路由生成 meta / 结构化数据 / 服务端渲染内容 ----------
+   纯前端 SPA 的 HTML 默认是空骨架，不执行 JS 的搜索引擎抓不到内容。这里在服务端
+   按当前地址补齐可被收录的 meta 与真实内容；任何异常都回退到站点默认值，绝不影响站点。 */
+$__seo = array(
+    'title'       => cfg('site.name', 'Kimi游戏榜') . ' · 六维综合排行榜',
+    'description' => '收录 Kimi 社区公开作品的六维评分榜单，覆盖游戏、工具、文学与二创。',
+    'canonical'   => rtrim((string)cfg('site.url', ''), '/') . '/',
+    'robots'      => 'index,follow', 'type' => 'website', 'image' => '', 'jsonld' => array(),
+);
+$__seoBody = '';
+try {
+    $__seoRoute = seo_request_route();
+    $__seo     = seo_meta_for($__seoRoute);
+    $__seoBody = seo_body_html($__seoRoute);
+} catch (Throwable $e) { app_log('seo failed: ' . $e->getMessage()); }
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="light" data-accent="blue-purple" data-skin="<?= $SKIN ?>">
@@ -66,12 +82,19 @@ try { $__festival = festival_client(); } catch (Throwable $e) { }
 <link rel="preconnect" href="https://gcore.jsdelivr.net" crossorigin>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#7C3AED">
-<title><?= e(cfg('site.name', 'Kimi游戏榜')) ?> · 六维综合排行榜</title>
-<meta name="description" content="<?= e(cfg('site.name', 'Kimi游戏榜')) ?>：收录 Kimi 社区公开作品的六维评分榜单，覆盖游戏、工具、文学与二创，支持搜索、评论与 AI 问答。">
+<title><?= e($__seo['title']) ?></title>
+<meta name="description" content="<?= e($__seo['description']) ?>">
 <meta name="format-detection" content="telephone=no">
-<meta property="og:type" content="website">
-<meta property="og:title" content="<?= e(cfg('site.name', 'Kimi游戏榜')) ?> · 六维综合排行榜">
-<meta property="og:description" content="Kimi 社区作品六维评分榜单：创意 / 体验 / 深度 / 成本 / 态度 / 热度。">
+<link rel="canonical" href="<?= e($__seo['canonical']) ?>">
+<meta name="robots" content="<?= e($__seo['robots']) ?>">
+<meta property="og:type" content="<?= e($__seo['type']) ?>">
+<meta property="og:title" content="<?= e($__seo['title']) ?>">
+<meta property="og:description" content="<?= e($__seo['description']) ?>">
+<meta property="og:url" content="<?= e($__seo['canonical']) ?>">
+<meta property="og:site_name" content="<?= e(cfg('site.name', 'Kimi游戏榜')) ?>">
+<meta name="twitter:card" content="summary">
+<?php if (!empty($__seo['image'])): ?><meta property="og:image" content="<?= e($__seo['image']) ?>"><?php endif; ?>
+<?php foreach ($__seo['jsonld'] as $__ld): ?><script type="application/ld+json"><?= json_encode($__ld, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?></script><?php endforeach; ?>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%236D3BF5'/%3E%3Cpath d='M7 7h10a4 4 0 0 1 4 4v2a3 3 0 0 1-3 3h-.9a2 2 0 0 1-1.6-.8l-.5-.7a1.5 1.5 0 0 0-2.4 0l-.5.7A2 2 0 0 1 10.4 16H10a3 3 0 0 1-3-3v-2a4 4 0 0 1 4-4zm.5 3.5h-1.5v1.5H4.5v1.5h1.5v1.5h1.5v-1.5H9v-1.5H7.5V10.5zm8 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm2.2 2.6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z' fill='%23fff'/%3E%3C/svg%3E">
 <script>window.__CAPTCHA = <?= json_encode($__captcha, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
 <script>window.__FESTIVAL = <?= json_encode($__festival, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
@@ -299,12 +322,17 @@ try { $__festival = festival_client(); } catch (Throwable $e) { }
     </button>
   </div>
 
-  <!-- 页面容器（首屏骨架，JS 就绪后原子替换） -->
+  <!-- 页面容器：服务端先渲染可被搜索引擎读取的真实内容（含真实链接），
+       JS 就绪后由 SPA 原子替换为交互界面；无 JS 时也能正常浏览。 -->
   <main id="view" class="view">
+<?php if ($__seoBody !== ''): ?>
+<?= $__seoBody ?>
+<?php else: ?>
     <div class="skeleton" style="height:72px"></div>
     <div class="skeleton"></div>
     <div class="skeleton"></div>
     <div class="skeleton"></div>
+<?php endif; ?>
   </main>
 
   <!-- 底部三栏 -->
