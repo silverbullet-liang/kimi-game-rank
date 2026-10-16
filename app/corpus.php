@@ -70,7 +70,8 @@ function corpus_stats_build(): array
     sort($totals);
     $th = array();
     foreach ($W['rating']['quantile'] as $qr) {
-        $idx = (int)floor(((float)$qr['q']) * ($n - 1));
+        $top = isset($qr['top']) ? (float)$qr['top'] : (1.0 - (float)$qr['q']);
+        $idx = (int)floor((1.0 - $top) * ($n - 1));
         $th[$qr['grade']] = (int)$totals[max(0, min($n - 1, $idx))];
     }
 
@@ -79,6 +80,8 @@ function corpus_stats_build(): array
         'critic' => $critic,
         'prior_s' => round(array_sum($sList) / max(1, count($sList)), 4),
         'thresholds' => $th,
+        /* 全站总分升序序列：评级按「累计名次」判定（并列同分同档、每档不超配额） */
+        'totals' => $totals,
     );
 }
 

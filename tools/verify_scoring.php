@@ -50,11 +50,18 @@ ok('口碑：互动多 > 互动少', $many > $few);
 ok('贝叶斯：零互动时向先验收拢（> 0）',
     score_heat(array('like' => 0, 'comment' => 0, 'collect' => 0, 'age_hours' => 720), $wH, 0.5) > 0);
 
-/* ---------- 评级：分位数 / 回退 ---------- */
-$st = array('thresholds' => array('SSS' => 900, 'SS' => 800, 'S' => 700, 'A' => 600, 'B' => 500));
-ok('分位数评级：950 → SSS', rating_of(950, $st) === 'SSS');
-ok('分位数评级：850 → SS', rating_of(850, $st) === 'SS');
-ok('分位数评级：10 → C', rating_of(10, $st) === 'C');
+/* ---------- 评级：按累计名次（并列同档、每档不超配额） ---------- */
+$tot = range(1, 100);                                   // 1..100 升序，n=100
+$st = array('totals' => $tot);
+ok('名次评级：最高分 → SSS（前 2%）', rating_of(100, $st) === 'SSS');
+ok('名次评级：第 91 名 → SS（前 10%）', rating_of(91, $st) === 'SS');
+ok('名次评级：第 51 名（top=0.50）→ A', rating_of(51, $st) === 'A');
+ok('名次评级：最低分 → C', rating_of(1, $st) === 'C');
+ok('名次评级：并列同分同档（4 件同分 → 同一档）', rating_of(100, $st) === rating_of(100, $st));
+/* 每档配额：100 件里 SSS 不超过 2 件 */
+$sss = 0; foreach ($tot as $v) { if (rating_of($v, $st) === 'SSS') { $sss++; } }
+ok('名次评级：SSS 不超过配额（100 件里 ≤2）', $sss <= 2);
+ok('无 totals 回退分数阈值：1200 → SSS', rating_of(1200, array('thresholds' => array('SSS' => 1000))) === 'SSS');
 ok('无 stats 回退固定阈值：1200 → SSS', rating_of(1200) === 'SSS' && rating_of(10) === 'C');
 
 /* ---------- 代码量：并入引用脚本 ---------- */
@@ -68,8 +75,8 @@ ok('结构特征仍只看页面', $fa['tags_interactive'] === $fb['tags_interact
 /* ---------- 态度依据成本 / 体验 artifact / 输出结构 ---------- */
 $base = array('title' => '作品', 'intro' => str_repeat('介绍', 40), 'comment_num' => 3, 'artifact_share_id' => 'x');
 $sc = compute_scores(extract_features($base, $page, array(), $code));
-ok('态度 = 依据成本推导（= 0.60×成本 + 0.40×满分，care/deliver 均满）',
-    abs($sc['attitude'] - (0.6 * $sc['cost'] + 0.4 * 200)) <= 1);
+ok('态度 = 依据成本推导（= 0.35×成本 + 0.65×满分，care/deliver 均满）',
+    abs($sc['attitude'] - (0.35 * $sc['cost'] + 0.65 * 200)) <= 1);
 
 /* ---------- 媒体数不参与评分（v3.41.0） ---------- */
 $plain = array('title' => '作品', 'intro' => str_repeat('介绍', 40), 'comment_num' => 3, 'artifact_share_id' => 'x');
@@ -84,7 +91,7 @@ ok('媒体数不影响成本分', $sm['cost'] === $sp['cost']);
 ok('媒体数不影响总分', $sm['total'] === $sp['total']);
 ok('compute_scores 输出三支柱', isset($sc['pillars']['quality'], $sc['pillars']['effort'], $sc['pillars']['recognition']));
 $art = compute_scores(extract_features(array('title' => 't', 'artifact_share_id' => 'a'), '', array()));
-ok('体验：有 artifact 即算可运行', $art['experience'] >= 100);
+ok('体验：有 artifact 即算可运行（可运行项占 0.40）', $art['experience'] >= 80);
 
 /* ---------- 统计工具与语料构建 ---------- */
 ok('pearson：完全正相关 ≈ 1', abs(pearson(array(1, 2, 3, 4), array(2, 4, 6, 8)) - 1.0) < 1e-9);
@@ -111,6 +118,7 @@ $GLOBALS['FAKE_ROWS'] = $rows;
 $st2 = corpus_stats_build();
 ok('语料统计：算出 6 维 CRITIC 权重', isset($st2['critic']) && count($st2['critic']) === 6);
 ok('语料统计：含分位数阈值', isset($st2['thresholds']['SSS'], $st2['thresholds']['A']));
+ok('语料统计：含总分序列（供名次评级）', isset($st2['totals']) && count($st2['totals']) >= 20);
 ok('语料统计：含口碑先验 prior_s', isset($st2['prior_s']) && $st2['prior_s'] >= 0 && $st2['prior_s'] <= 1);
 ok('语料统计：样本不足则不启用（<20）', corpus_stats_build_stub_small() === array());
 

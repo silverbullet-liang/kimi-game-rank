@@ -15,7 +15,7 @@ return array(
 
     /* 评分体系版本号：**每次改动评分规则就 +1** —— 上线后站点会自动把全部作品按新算法重算
        （见 app/score_recalc.php），无需手动操作。 */
-    'version' => 3,
+    'version' => 4,
 
     /* ---------- 归一化锚点与各维子权重 ---------- */
     'heat' => array(
@@ -30,33 +30,33 @@ return array(
     ),
     'creativity' => array(
         'max' => 200,
-        'w_unique' => 0.35, 'w_title' => 0.15, 'title_min' => 4, 'title_max' => 20,
-        'w_diversity' => 0.30, 'w_artifact' => 0.20, 'artifact_share' => 0.15, 'artifact_html' => 0.10,
+        'w_unique' => 0.20, 'w_title' => 0.10, 'title_min' => 4, 'title_max' => 20,
+        'w_diversity' => 0.40, 'w_artifact' => 0.30, 'artifact_share' => 0.15, 'artifact_html' => 0.10,
         'bell_decay' => 10,
     ),
     'experience' => array(
         'max' => 200,
-        'w_runnable' => 0.60, 'w_interact' => 0.24, 'interact_ref' => 12,
-        'w_guide' => 0.16,
+        'w_runnable' => 0.40, 'w_interact' => 0.40, 'interact_ref' => 12,
+        'w_guide' => 0.20,
         'keywords' => array('操作','点击','选择','输入','按键','拖动','关卡','难度','模式'),
         'penalty_no_html' => 0.8,
     ),
     'depth' => array(
         'max' => 200,
-        'w_text' => 0.30, 'text_ref' => 800,
-        'w_struct' => 0.20, 'struct_ref' => 6,
-        'w_code' => 0.30, 'lines_ref' => 400, 'funcs_ref' => 30,
+        'w_text' => 0.30, 'text_ref' => 1200,
+        'w_struct' => 0.20, 'struct_ref' => 8,
+        'w_code' => 0.30, 'lines_ref' => 800, 'funcs_ref' => 60,
         'w_discuss' => 0.20, 'comment_ref' => 30,
     ),
     'cost' => array(
         'max' => 200,
-        'w_bytes' => 0.44, 'bytes_ref' => 153600,
-        'w_lines' => 0.31, 'lines_ref' => 600,
-        'w_text' => 0.25, 'text_ref' => 1500,
+        'w_bytes' => 0.44, 'bytes_ref' => 307200,
+        'w_lines' => 0.31, 'lines_ref' => 1200,
+        'w_text' => 0.25, 'text_ref' => 3000,
     ),
     'attitude' => array(
         'max' => 200,
-        'w_cost' => 0.60, 'w_care' => 0.25, 'w_deliver' => 0.15,
+        'w_cost' => 0.35, 'w_care' => 0.45, 'w_deliver' => 0.20,
         'intro_full' => 60, 'intro_half' => 20, 'use_jev' => 0,
     ),
 
@@ -86,17 +86,19 @@ return array(
     'combine_lambda' => 0.5,
 
     /* 支柱聚合：加权几何 + 下限（避免某支柱为 0 时整体归零，同时保留"短板压制"） */
-    'aggregate' => array('floor' => 0.20),
+    'aggregate' => array('floor' => 0.10),
 
-    /* 评级：默认按全站总分分位数（语料不可用时回退固定阈值） */
+    /* 评级：按「累计名次百分比」定级 —— 并列同分算同档，且**每档不超过配额**
+       （top = 处于该档的名次占比上限：SSS 前 2%、SS 前 10%、S 前 25%、A 前 50%、B 前 75%、其余 C）。
+       此前按「分数阈值」判定，分数并列严重时 SSS/SS 会远超配额（实测 SSS 4.7%、SS 26.3%）。 */
     'rating' => array(
         'mode' => 'quantile',
         'quantile' => array(
-            array('grade' => 'SSS', 'q' => 0.98),
-            array('grade' => 'SS',  'q' => 0.90),
-            array('grade' => 'S',   'q' => 0.75),
-            array('grade' => 'A',   'q' => 0.50),
-            array('grade' => 'B',   'q' => 0.25),
+            array('grade' => 'SSS', 'top' => 0.02),
+            array('grade' => 'SS',  'top' => 0.10),
+            array('grade' => 'S',   'top' => 0.25),
+            array('grade' => 'A',   'top' => 0.50),
+            array('grade' => 'B',   'top' => 0.75),
         ),
         'fixed' => array(
             array('grade' => 'SSS', 'min' => 1000),

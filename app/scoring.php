@@ -365,12 +365,32 @@ function total_from_dims(array $dims6, $wd = null): int
     return aggregate_total(pillar_norms($dims6, $wd));
 }
 
-/** 评级：默认按全站总分分位数（$stats['thresholds']）；否则回退固定阈值 */
+/**
+ * 评级。优先按**累计名次百分比**（$stats['totals'] 为全站总分升序数组）：
+ * top = 「不低于该分」的作品占比（并列同分算同档），每档不超过配额 —— 这是修「SSS 泛滥」的关键。
+ * 无 totals 时回退分数阈值，再回退固定阈值。
+ */
 function rating_of(int $total, array $stats = array()): string
 {
     $w = score_weights();
     $r = $w['rating'];
     $mode = isset($r['mode']) ? (string)$r['mode'] : 'fixed';
+
+    if ($mode === 'quantile' && isset($stats['totals']) && is_array($stats['totals']) && count($stats['totals']) > 0) {
+        $t = array_values($stats['totals']); $n = count($t);
+        $lo = 0; $hi = $n;
+        while ($lo < $hi) {                       // 二分找第一个 >= total 的位置
+            $mid = ($lo + $hi) >> 1;
+            if ((int)$t[$mid] < $total) { $lo = $mid + 1; } else { $hi = $mid; }
+        }
+        $top = ($n - $lo) / $n;
+        foreach ($r['quantile'] as $row) {
+            $lim = isset($row['top']) ? (float)$row['top'] : (1.0 - (float)$row['q']);
+            if ($top <= $lim) { return (string)$row['grade']; }
+        }
+        return 'C';
+    }
+
     if ($mode === 'quantile'
         && isset($stats['thresholds']) && is_array($stats['thresholds']) && !empty($stats['thresholds'])) {
         foreach ($r['quantile'] as $row) {
