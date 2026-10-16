@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS `works` (
   `share_link`     VARCHAR(255) NOT NULL DEFAULT '',
   `html_url`       VARCHAR(255) NOT NULL DEFAULT '' COMMENT '作品 HTML 直链',
   `link_checked_at` DATETIME     NULL DEFAULT NULL COMMENT '上次重新识别跳转链接的时间',
+  `feat`           TEXT         NULL COMMENT '评分特征快照 JSON（供评分体系变更后离线重算）',
   `like_num`       INT UNSIGNED NOT NULL DEFAULT 0,
   `comment_num`    INT UNSIGNED NOT NULL DEFAULT 0,
   `collect_num`    INT UNSIGNED NOT NULL DEFAULT 0,

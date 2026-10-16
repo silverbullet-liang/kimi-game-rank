@@ -371,6 +371,11 @@ switch ($action) {
     case 'refresh_batch': {
         require_panel();
         csrf_verify();
+        /* 手动「全部更新」默认**重算六维**（$auto=1）：这是管理员的明确动作，
+           而「评分方式」开关只用于约束后台自动同步。需要保留手工调分时传 auto=0。 */
+        $auto = param_int('auto', 1) === 1;
+        /* 批量重算要逐件抓页面与外部脚本，放宽出站额度，避免后段作品抓不到内容被算低分 */
+        $GLOBALS['__net_manual'] = true;
         $saved = setting_get(actor_token_key(), '');
         if ($saved === '') { fail(400, '请先保存社区 cookie/token'); }
         try { $token = aes_decrypt((string)$saved); } catch (Exception $e) { fail(400, '社区凭证已失效，请重新填写'); }
@@ -395,7 +400,7 @@ switch ($action) {
             if (!isset($byId[$wid])) { continue; }  // 名单生成之后被删掉的作品
             try {
                 $item = find_work_by_id($token, $byId[$wid]);
-                $r = work_upsert($item);
+                $r = work_upsert($item, '', $auto);
                 if (!empty($r['link_real'])) { $links++; }
                 $okN++;
             } catch (Throwable $e) {
@@ -409,7 +414,8 @@ switch ($action) {
             'fail'      => $failN,
             'links'     => $links,
             'errors'    => $errors,
-            'scored'    => score_auto_enabled(),
+            'auto'      => $auto,
+            'scored'    => $auto,
         ));
         break;
     }
@@ -529,6 +535,12 @@ switch ($action) {
     /* ---------- 评分方式 ----------
        关闭后，收录与「全部更新」只更新作品信息，不再重算评分——
        管理员按实际情况手动改过的分数不会被覆盖。随时可切换回来。 */
+    /* ---------- 评分体系自动重算：进度（只读） ---------- */
+    case 'score_recalc_status': {
+        ok(score_recalc_status());
+        break;
+    }
+
     case 'score_mode': {
         ok(array('auto' => score_auto_enabled()));
         break;

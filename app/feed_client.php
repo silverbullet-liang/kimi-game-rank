@@ -398,7 +398,8 @@ function work_upsert(array $item, string $html = '', $autoScore = null): array
         $careText = trim($item['title'] . "\n" . $item['intro'] . "\n" . $item['body']);
         $work['care'] = $careText !== '' ? jev_care($careText) : null;
     }
-    $scores  = $scoreIt ? compute_scores(extract_features($work, $html, $titles, $code), corpus_stats()) : null;
+    $features = $scoreIt ? extract_features($work, $html, $titles, $code) : array();
+    $scores   = $scoreIt ? compute_scores($features, corpus_stats()) : null;
     $scoreJson = ($scores === null) ? '' : json_encode(array(
         'creativity' => $scores['creativity'], 'experience' => $scores['experience'],
         'depth' => $scores['depth'], 'cost' => $scores['cost'],
@@ -428,6 +429,8 @@ function work_upsert(array $item, string $html = '', $autoScore = null): array
         if (oid_ready('works')) { $cols .= ', oid'; $vals[] = oid_new('works'); }
         /* 链接已在本轮识别过：记下时间，避免刚入库就被重识别任务重复抓取 */
         if (col_ok('works', 'link_checked_at')) { $cols .= ', link_checked_at'; $vals[] = $now; }
+        /* 存下评分特征快照：以后换评分体系可离线重算（见 app/score_recalc.php） */
+        if ($scoreIt && col_ok('works', 'feat')) { $cols .= ', feat'; $vals[] = json_encode($features, JSON_UNESCAPED_UNICODE); }
         $wid = db_insert(
             'INSERT INTO works (' . $cols . ') VALUES ('
             . implode(',', array_fill(0, count($vals), '?')) . ')',
@@ -451,6 +454,8 @@ function work_upsert(array $item, string $html = '', $autoScore = null): array
     );
     /* 链接已在本轮识别过：记录检查时间（列未就绪则跳过） */
     if (col_ok('works', 'link_checked_at')) { $sets .= ', link_checked_at=?'; $args[] = $now; }
+    /* 同步更新评分特征快照（供以后离线重算） */
+    if ($scoreIt && col_ok('works', 'feat')) { $sets .= ', feat=?'; $args[] = json_encode($features, JSON_UNESCAPED_UNICODE); }
     if ($auto) {
         /* 评分列只在重算时写入：管理员手动调过的分数不会被自动更新抹掉 */
         $sets .= ', score=?, total_score=?, heat_score=?, rating=?';

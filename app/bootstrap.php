@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '3.42.0');
+define('APP_VERSION', '3.43.0');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);
@@ -75,6 +75,7 @@ require_once APP_ROOT . '/app/lobby_ai.php';
 require_once APP_ROOT . '/app/backup.php';
 require_once APP_ROOT . '/app/link_smart.php';
 require_once APP_ROOT . '/app/relink.php';
+require_once APP_ROOT . '/app/score_recalc.php';
 require_once APP_ROOT . '/app/link_guard.php';
 require_once APP_ROOT . '/app/siteinfo.php';
 require_once APP_ROOT . '/app/works_list.php';
@@ -156,6 +157,9 @@ try { if (function_exists('storage_gc')) { storage_gc(); } } catch (Throwable $e
 
 /* ---------- 跳转链接重识别（抽检已上线作品，识别出跳转页的换成真实地址；失败不阻断请求） ---------- */
 try { if (function_exists('works_relink_tick')) { works_relink_tick(); } } catch (Throwable $e) {}
+
+/* ---------- 评分体系自动重算（评分版本变更后自动全量重算；未变更时零开销） ---------- */
+try { if (function_exists('score_recalc_tick_if_due')) { score_recalc_tick_if_due(); } } catch (Throwable $e) {}
 
 /* ---------- 会话（仅用于管理面板二次认证等短状态） ---------- */
 if (session_status() !== PHP_SESSION_ACTIVE && php_sapi_name() !== 'cli') {

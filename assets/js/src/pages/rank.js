@@ -236,7 +236,7 @@ function rankRow(w, rank) {
       <span class="rank-meta">
         <span class="chip">${esc(w.category_name)}</span>
         <span>${esc(w.author)}</span>
-        <span>热度 ${w.heat}</span>
+        <span>口碑 ${w.heat}</span>
       </span>
     </span>
     <span class="rank-score">

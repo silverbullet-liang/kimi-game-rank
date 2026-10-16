@@ -9,8 +9,8 @@ import { navigate } from '../router.js';
 
 const PCATS = [['game', '游戏'], ['tool', '工具'], ['literature', '文学'], ['fanart', '二创']];
 const PDIMS = [
-  { k: 'creativity', n: '创意' }, { k: 'experience', n: '体验' }, { k: 'depth', n: '深度' },
-  { k: 'cost', n: '成本' }, { k: 'attitude', n: '态度' }, { k: 'heat', n: '热度' },
+  { k: 'experience', n: '可玩性' }, { k: 'creativity', n: '创意' }, { k: 'depth', n: '深度' },
+  { k: 'cost', n: '体量' }, { k: 'attitude', n: '用心' }, { k: 'heat', n: '口碑' },
 ];
 const catName = c => (PCATS.find(x => x[0] === c) || [, c])[1];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -832,6 +832,15 @@ function refreshBlock() {
       <h3>一键更新全部作品</h3>
       <p class="tiny muted">按社区最新数据更新全部作品（含 CDN 直链）。按排名从高到低分批抓取，可随时停止。</p>
       <p class="tiny muted" data-link-state style="margin-top:6px"></p>
+      <div class="setting-row" style="border:0;padding:4px 0">
+        <span class="muted tiny">评分</span>
+        <div class="seg seg-mini" id="rfScoreSeg" style="margin-left:8px">
+          <button data-s="1" class="on">按最新算法重算六维</button>
+          <button data-s="0">只更新信息</button>
+        </div>
+      </div>
+      <p class="tiny muted" id="rfScoreNote" style="margin:0 0 8px">重算会按当前算法刷新六维与总分（会覆盖手工调分）。</p>
+      <p class="tiny muted" id="recalcNote" style="margin:0 0 8px"></p>
       <div class="prog" id="refreshProg" hidden><div class="prog-bar"><i style="width:0%"></i></div><span class="tiny" id="refreshText"></span></div>
       <button class="btn btn-sm" id="refreshBtn">开始更新</button>
       <button class="btn-ghost btn-sm" id="refreshStop" hidden>停止</button>
@@ -1550,8 +1559,40 @@ function bindRefresh(container) {
   const bar = prog ? prog.querySelector('i') : null;
   const text = container.querySelector('#refreshText');
 
+  /* 本次是否重算评分：默认「按最新算法重算六维」 */
+  const sSeg = container.querySelector('#rfScoreSeg');
+  const sNote = container.querySelector('#rfScoreNote');
+  let recalc = true;
+  if (sSeg) {
+    sSeg.addEventListener('click', e => {
+      const b = e.target.closest('[data-s]');
+      if (!b || b.classList.contains('on')) { return; }
+      recalc = b.dataset.s === '1';
+      sSeg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.s === (recalc ? '1' : '0')));
+      if (sNote) {
+        sNote.textContent = recalc
+          ? '重算会按当前算法刷新六维与总分（会覆盖手工调分）。'
+          : '本次只刷新标题 / 简介 / 互动数等信息，不改动评分。';
+      }
+    });
+  }
+
   if (!btn) return;
   refreshLinkState(container);      // 更新区显示当前开关状态
+
+  /* 评分体系自动重算进度：换评分体系后由服务端自动全量重算，这里只显示进度 */
+  const rcNote = container.querySelector('#recalcNote');
+  if (rcNote) {
+    api('admin.php', 'score_recalc_status', {}, { silent: true }).then(s => {
+      if (!s) { return; }
+      if (s.needed) {
+        rcNote.innerHTML = '评分体系已更新，正在<b>自动重算全站</b>：' + s.done + ' / ' + s.total
+          + (s.missing > 0 ? '（其中 ' + s.missing + ' 件待联网补齐数据）' : '') + '。无需操作。';
+      } else {
+        rcNote.textContent = '评分体系 v' + s.ver + '：全站已按当前算法重算完成。';
+      }
+    }).catch(() => {});
+  }
 
   let running = false, stopped = false;
 
@@ -1573,7 +1614,7 @@ function bindRefresh(container) {
       const p = await api('admin.php', 'refresh_plan', {}, { timeout: 90000, silent: true });
       plan = p.ids || [];
       total = Number(p.total) || plan.length;
-      scoreOn = p.scored !== false;
+      scoreOn = recalc;
       if (p.capped) { text.textContent = '作品数超过单次上限，本轮先更新前 ' + plan.length + ' 件'; }
     } catch (e) {
       text.textContent = '中断：' + e.message;
@@ -1585,7 +1626,7 @@ function bindRefresh(container) {
     /* 第二步：按名单分批更新，每批 5 件 */
     for (let i = 0; i < plan.length && !stopped; i += 5) {
       let r;
-      try { r = await api('admin.php', 'refresh_batch', { ids: plan.slice(i, i + 5) }, { timeout: 90000, silent: true }); }
+      try { r = await api('admin.php', 'refresh_batch', { ids: plan.slice(i, i + 5), auto: scoreOn ? 1 : 0 }, { timeout: 90000, silent: true }); }
       catch (e) { text.textContent = '中断：' + e.message; stopped = true; break; }
 
       okN += r.ok; failN += r.fail; done += Number(r.processed) || 0;

@@ -113,6 +113,36 @@ function extract_features(array $work, string $html = '', array $titles = array(
     return $f;
 }
 
+/**
+ * 由持久化的特征快照（works.feat）重建特征，并用库内最新字段覆盖随时间变化的项
+ * （互动数、上架时长）——供「评分体系变更后离线重算」使用。无快照返回空数组。
+ */
+function features_from_stored(array $row): array
+{
+    if (empty($row['feat'])) { return array(); }
+    $f = json_decode((string)$row['feat'], true);
+    if (!is_array($f) || empty($f)) { return array(); }
+
+    $defaults = array(
+        'like' => 0, 'comment' => 0, 'collect' => 0, 'age_hours' => 999.0,
+        'has_artifact' => false, 'has_html' => false,
+        'title_len' => 0, 'text_len' => 0, 'intro_len' => 0,
+        'title_unique' => 1.0, 'diversity' => 0.0, 'struct_count' => 0,
+        'guide_ratio' => 0.0, 'bytes' => 0, 'lines' => 0, 'funcs' => 0,
+        'tags_interactive' => 0, 'care' => null,
+    );
+    foreach ($defaults as $k => $v) { if (!array_key_exists($k, $f)) { $f[$k] = $v; } }
+
+    if (isset($row['like_num']))    { $f['like']    = (int)$row['like_num']; }
+    if (isset($row['comment_num'])) { $f['comment'] = (int)$row['comment_num']; }
+    if (isset($row['collect_num'])) { $f['collect'] = (int)$row['collect_num']; }
+    if (isset($row['created_at'])) {
+        $ts = strtotime((string)$row['created_at']);
+        if ($ts !== false) { $f['age_hours'] = max(0.0, (time() - $ts) / 3600.0); }
+    }
+    return $f;
+}
+
 /* ---------- 小工具 ---------- */
 function gram2(string $s): array
 {

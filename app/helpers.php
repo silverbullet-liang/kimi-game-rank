@@ -318,6 +318,12 @@ function net_channel_cool(string $name, int $sec)
  */
 function net_budget_allow(string $name, int $max, int $windowSec): bool
 {
+    /* 管理面板手动批量刷新（整站重算）走更宽的出站额度：重算要逐件抓作品页与其引用的
+       外部脚本，150/小时 的自动额度会让后段作品抓不到内容、分数被算低。手动操作有明确
+       上限（作品数 × 每件少量请求）且由前端分批节流，故单独放宽，不影响自动同步。 */
+    if (!empty($GLOBALS['__net_manual']) && $name === 'work_html') {
+        $max = max($max, (int)cfg('feed.manual_fetch_max_per_hour', 3000));
+    }
     if ($max <= 0 || $windowSec <= 0) { return false; }
     $key = 'budget_' . preg_replace('/[^a-z0-9_]/i', '', $name);
     $f = APP_ROOT . '/storage/cache/' . $key . '.txt';

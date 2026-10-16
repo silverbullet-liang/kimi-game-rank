@@ -12,12 +12,12 @@ const canPost = () => state.role === 'user' || isAdminish();
 const canModerate = () => isAdminish();
 
 const DIMS = [
+  { k: 'experience', name: '可玩性' },
   { k: 'creativity', name: '创意' },
-  { k: 'experience', name: '体验' },
   { k: 'depth', name: '深度' },
-  { k: 'cost', name: '成本' },
-  { k: 'attitude', name: '态度' },
-  { k: 'heat', name: '热度' },
+  { k: 'cost', name: '体量' },
+  { k: 'attitude', name: '用心' },
+  { k: 'heat', name: '口碑' },
 ];
 
 export async function renderDetail(container, ctx) {
