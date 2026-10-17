@@ -535,9 +535,14 @@ switch ($action) {
     /* ---------- 评分方式 ----------
        关闭后，收录与「全部更新」只更新作品信息，不再重算评分——
        管理员按实际情况手动改过的分数不会被覆盖。随时可切换回来。 */
-    /* ---------- 评分体系自动重算：进度（只读） ---------- */
+    /* ---------- 评分体系重算：进度（只读）与手动启动 ---------- */
     case 'score_recalc_status': {
         ok(score_recalc_status());
+        break;
+    }
+
+    case 'score_recalc_start': {
+        ok(score_recalc_start());
         break;
     }
 

@@ -29,6 +29,7 @@ Un site qui rassemble les jeux, outils, œuvres littéraires et créations déri
 | Signalements disciplinaires | Signaler un utilisateur en un clic : plusieurs motifs, durée du bannissement (y compris permanent et en fractions de jour), blocage de la provenance, suppression de ses commentaires / discussions / images. La personne signalée peut toujours se connecter, mais l'interface reste verrouillée sur la page de violation et le backend rejette toutes les autres API |
 | Thèmes de fête | Un thème dédié à chaque commémoration — Fête nationale, Révolution de Xinhai (10/10), Commémoration de la guerre de Corée (25/10) Halloween (31/10, mode sombre forcé) et Chongyang (9e jour du 9e mois lunaire, converti chaque année). Chacun a sa palette et ses décors, actif uniquement le jour dit |
 | Thèmes | Plusieurs thèmes visuels ; les polices sont chargées par le navigateur directement depuis des CDN publiques, sans consommer la bande passante de votre serveur |
+| Notation | Six dimensions regroupées en trois piliers (qualité / implication / reconnaissance) ; les mentions sont attribuées **par quota de classement** — seuls les 2 % premiers obtiennent SSS, les 10 % premiers SS — les notes restent donc significatives à mesure que le site grandit |
 
 ## Pile technique et prérequis
 
@@ -37,7 +38,43 @@ Un site qui rassemble les jeux, outils, œuvres littéraires et créations déri
 - Frontend : sources en modules ES → un seul fichier compilé, **aucun runtime Node requis** (uniquement à la compilation)
 - Aucune dépendance Composer, aucun framework frontend
 
-## Déploiement
+## Déployer avec l'application Android (recommandé)
+
+Chaque version est livrée avec `kimi-game-rank-deploy.apk` (Android 8.0+). Depuis un téléphone, déployez tout le site sur n'importe quel hébergeur PHP + MySQL, sans ordinateur.
+
+**Installation et lancement**
+
+1. Téléchargez l'APK le plus récent depuis [Releases](https://github.com/silverbullet-liang/kimi-game-rank/releases) et installez-le.
+2. Touchez **＋** pour ajouter un site : choisissez une version du code (la liste est lue dans le CHANGELOG de ce dépôt) et renseignez le site et l'hébergeur.
+3. De retour à la liste, choisissez :
+   - **Déploiement automatique** — téléchargement → décompression → nettoyage → archive → envoi (FTP ou tunnel SSH) ;
+   - **Déploiement manuel** — produit seulement l'archive, que vous envoyez vous-même.
+
+**Champs faciles à remplir de travers**
+
+| Champ | Remarques |
+|---|---|
+| Version du code | Lue en direct dans le CHANGELOG du dépôt ; « branche par défaut » = la plus récente |
+| Secret administrateur | Saisissez le **texte en clair** : il est écrit dans la configuration du site. L'application affiche aussi son **sha256** en direct — c'est cette chaîne qui sert de mot de passe au panneau. Conservez les deux |
+| Base utilisateurs / base administrateur | Les deux noms de base fournis par votre panneau d'hébergement, recopiés tels quels |
+| Clés AI | Facultatif, une par ligne ; plusieurs forment un pool |
+| Éléments par page | Facultatif, 1–50 ; vide = valeur par défaut du site |
+| Connexion de données FTP | Passive PASV par défaut ; active PORT seulement si l'hébergeur l'exige |
+| Clé privée SSH | Facultatif ; prioritaire sur un mot de passe. Collez la clé OpenSSH / PEM complète |
+
+**Appairage multi-sites**
+
+« Site pairing » relie tous les sites en maillage complet : chaque site reçoit une paire de clés X25519 (les clés existantes ne sont jamais régénérées) et le nom / domaine / clé publique des autres sites est écrit dans la configuration `peers` de chacun. Deux sites quelconques se synchronisent dans les deux sens ; après l'ajout d'un site, relancez simplement l'appairage.
+
+**Données et confidentialité**
+
+Les configurations des sites (mots de passe des bases, identifiants FTP/SSH, clés privées d'appairage) restent dans le répertoire privé de l'application, sont effacées à la désinstallation et ne sont jamais envoyées ailleurs. L'application ne se connecte que pour lire la liste des versions / télécharger le code (GitHub) et pour envoyer vers l'hébergeur que vous avez indiqué.
+
+**La compiler soi-même**
+
+Pas de Gradle : `bash apk/build.sh` produit `apk/out/kimi-game-rank-deploy.apk`. Gardez toujours le même keystore de signature, sinon une nouvelle version ne pourra pas mettre à jour celle déjà installée. Tous les détails dans [`apk/README.md`](apk/README.md).
+
+## Déploiement manuel (CLI)
 
 ```bash
 git clone https://github.com/silverbullet-liang/kimi-game-rank.git

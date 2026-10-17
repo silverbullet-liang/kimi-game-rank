@@ -118,5 +118,27 @@ $GLOBALS['SET']['score_ver'] = '3';
 $GLOBALS['ROWS'] = array(array('id' => 1, 'community_id' => 'c1', 'feat' => '{"like":1}'));
 ok('版本已应用：tick 不动作', score_recalc_tick(5)['ran'] === false && empty($GLOBALS['SQL']));
 
+/* ---------- 9. 手动启动闸门（v3.44.0：部署后不再自动重算） ---------- */
+reset_env();
+ok('默认未启动（部署后不自动跑）', score_recalc_armed() === false);
+$GLOBALS['ROWS'] = array(array('id' => 3, 'community_id' => 'c3', 'feat' => '{"like":1}',
+    'html_url' => 'https://x/3', 'title' => 't', 'intro' => '', 'like_num' => 0,
+    'comment_num' => 0, 'collect_num' => 0, 'created_at' => '2026-10-01 00:00:00'));
+ok('未启动：bootstrap 不推进', score_recalc_tick_if_due() === array() && empty($GLOBALS['SQL']));
+
+$GLOBALS['SET']['score_recalc_cursor'] = '99';
+$st = score_recalc_start();
+ok('手动启动：armed=1 且游标归零', score_recalc_armed() === true && (string)$GLOBALS['SET']['score_recalc_cursor'] === '0');
+ok('手动启动：状态回传 armed', isset($st['armed']) && $st['armed'] === true);
+$r = score_recalc_tick_if_due();
+ok('启动后：bootstrap 推进一批', $r['ran'] === true && $r['offline'] === 1);
+
+reset_env();
+$GLOBALS['SET']['score_recalc_armed'] = '1';
+$GLOBALS['SET']['score_recalc_cursor'] = '99';
+$GLOBALS['ROWS'] = array();
+$r = score_recalc_tick(5);
+ok('走完：自动解除启动标记', $r['done'] === true && score_recalc_armed() === false);
+
 echo "\n通过 $pass / 失败 $fail\n";
 exit($fail === 0 ? 0 : 1);

@@ -29,6 +29,7 @@ A site that collects games, tools, literary works and fan creations from the com
 | Discipline notices | Admins can report a user in one click (several reasons, ban duration incl. permanent and fractional days, IP ban, purge of their comments / chats / images). A banned user can still sign in, but the UI is locked to the violation notice page and the backend rejects every other API |
 | Festival themes | A dedicated theme for each festival day — National Day, Xinhai Revolution (Oct 10), Korean War Commemoration (Oct 25) Halloween (Oct 31, forced dark) and Chongyang (9th day of the 9th lunar month, converted on the fly). Each has its own palette and decorations, switching itself on and off by date |
 | Skins | Several visual skins; fonts are loaded straight from public CDNs, so they cost your host no traffic |
+| Scoring | Six dimensions grouped into three pillars (quality / effort / recognition); ratings are quota-based by rank — only the top 2% get SSS, the top 10% SS — so grades stay meaningful as the site grows |
 
 ## Tech stack and requirements
 
@@ -37,7 +38,43 @@ A site that collects games, tools, literary works and fan creations from the com
 - Frontend: ES module sources → single-file bundle, **no Node runtime required** (build-time only)
 - No Composer dependencies, no frontend framework
 
-## Deployment
+## Deploy with the Android app (recommended)
+
+Every release ships `kimi-game-rank-deploy.apk` (Android 8.0+). It deploys the whole site to any PHP + MySQL host from a phone — no computer needed.
+
+**Install and run**
+
+1. Download the latest APK from [Releases](https://github.com/silverbullet-liang/kimi-game-rank/releases) and install it.
+2. Tap **＋** to add a site: pick a source version (the list is read from this repo's CHANGELOG) and fill in the site and host details.
+3. Back on the list, choose one:
+   - **Automatic deployment** — download → unpack → trim → pack → upload (FTP or SSH tunnel);
+   - **Manual deployment** — only produces a zip that you upload yourself.
+
+**Form fields that are easy to get wrong**
+
+| Field | Notes |
+|---|---|
+| Source version | Read live from the repo CHANGELOG; "default branch" means the latest |
+| Admin secret | Enter the **plain text**; it is written into the site config. The app also shows its **sha256** live — that hash is the admin login password. Keep both |
+| User DB / admin DB | The two database names from your host panel, copied verbatim |
+| AI keys | Optional, one per line; several form a key pool |
+| Page size | Optional, 1–50; leave blank for the site default |
+| FTP data connection | Passive PASV by default; switch to active PORT only if your host requires it |
+| SSH private key | Optional; takes precedence over a password. Paste the full OpenSSH / PEM key |
+
+**Multi-site pairing**
+
+"Site pairing" wires all sites into a full mesh: each site gets an X25519 key pair (existing ones are never regenerated), and every site's name / domain / public key is written into the others' `peers` config. Any two sites sync both ways; re-run pairing after adding a site.
+
+**Data and privacy**
+
+Site configs (database passwords, FTP/SSH credentials, pairing private keys) stay in the app's private directory, are wiped on uninstall, and are never uploaded anywhere. The app only goes online to read the version list / download the source (GitHub) and to upload to the host you entered.
+
+**Build it yourself**
+
+No Gradle: `bash apk/build.sh` produces `apk/out/kimi-game-rank-deploy.apk`. Keep the same signing keystore forever — otherwise a new build cannot upgrade an installed one. See [`apk/README.md`](apk/README.md) for every detail.
+
+## Manual deployment (CLI)
 
 ```bash
 git clone https://github.com/silverbullet-liang/kimi-game-rank.git

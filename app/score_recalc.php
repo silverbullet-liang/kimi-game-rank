@@ -11,7 +11,8 @@
  *       - 没有快照的存量作品 → 用社区凭证重新拉取一次（顺带存下快照），
  *         拉不到时退回「抓作品页 + 库内字段」尽力重算。
  *   · 游标走完即把 score_ver 置为当前版本，本轮结束。
- * 于是：每次改评分体系，上线后都会**自动全量重算**；第二次起（已有快照）完全不耗出站额度。
+ * 于是：改评分体系后**不会自动重算**——需管理员在控制面板点「开始重算」；
+ * 启动后由 bootstrap 抽样推进至完成（第二次起已有快照，完全不耗出站额度）。
  */
 declare(strict_types=1);
 
@@ -25,6 +26,20 @@ function score_recalc_version(): int
 function score_recalc_needed(): bool
 {
     return (int)setting_get('score_ver', '0') !== score_recalc_version();
+}
+
+/** 是否已被管理员手动启动（未启动时 bootstrap 一律不推进） */
+function score_recalc_armed(): bool
+{
+    return setting_get('score_recalc_armed', '0') === '1';
+}
+
+/** 手动启动重算：清空游标并置为已启动，之后由 bootstrap 抽样推进至完成 */
+function score_recalc_start(): array
+{
+    setting_set('score_recalc_cursor', '0');
+    setting_set('score_recalc_armed', '1');
+    return score_recalc_status();
 }
 
 /** 进度概览（供面板显示） */
@@ -47,6 +62,7 @@ function score_recalc_status(): array
         'done'    => $done,
         'left'    => max(0, $total - $done),
         'missing' => $miss,          // 尚无特征快照（需联网补齐）的作品数，-1 表示列未就绪
+        'armed'   => score_recalc_armed(),   // 是否已由管理员手动启动
     );
 }
 
@@ -131,6 +147,7 @@ function score_recalc_tick(int $batch = 3): array
     if (empty($rows)) {
         setting_set('score_ver', (string)score_recalc_version());
         setting_set('score_recalc_cursor', '0');
+        setting_set('score_recalc_armed', '0');
         $out['done'] = true;
         return $out;
     }
@@ -165,9 +182,10 @@ function score_recalc_tick(int $batch = 3): array
     return $out;
 }
 
-/** 按最小间隔抽样触发（bootstrap 调用；未到版本变更时零开销） */
+/** 按最小间隔抽样推进（仅「已手动启动」时生效；否则零开销） */
 function score_recalc_tick_if_due(): array
 {
+    if (!score_recalc_armed()) { return array(); }   /* 未手动启动 → 一律不推进 */
     if (!function_exists('score_recalc_needed') || !score_recalc_needed()) { return array(); }
     $gap = max(15, (int)cfg('feed.recalc_interval', 60));
     $last = cache_get('score_recalc_tick', 86400);

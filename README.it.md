@@ -29,6 +29,7 @@ Un sito che raccoglie giochi, strumenti, opere letterarie e lavori amatoriali de
 | Segnalazioni disciplinari | Segnala un utente con un clic: più motivi, durata del blocco (anche permanente e in frazioni di giorno), blocco della provenienza, rimozione dei suoi commenti / chat / immagini. Chi è segnalato può ancora accedere, ma l'interfaccia resta bloccata sulla pagina di violazione e il backend rifiuta tutte le altre API |
 | Temi festivi | Un tema dedicato per ogni ricorrenza — Festa nazionale, Rivoluzione Xinhai (10/10), Commemorazione della guerra di Corea (10/25) Halloween (31/10, dark forzato) e Chongyang (9º giorno del 9º mese lunare, convertito di volta in volta). Ognuno con palette e decorazioni proprie, attivo solo nella data |
 | Temi | Diversi temi visivi; i caratteri tipografici sono scaricati dal browser direttamente da CDN pubbliche, senza consumare traffico del tuo server |
+| Punteggio | Sei dimensioni raggruppate in tre pilastri (qualità / impegno / riconoscimento); i voti sono assegnati **per quota di classifica** — solo il 2% migliore ottiene SSS, il 10% SS — così i giudizi restano significativi con la crescita del sito |
 
 ## Stack tecnico e requisiti
 
@@ -37,7 +38,43 @@ Un sito che raccoglie giochi, strumenti, opere letterarie e lavori amatoriali de
 - Frontend: sorgenti in moduli ES → singolo file compilato, **nessun runtime Node necessario** (solo in fase di build)
 - Nessuna dipendenza Composer, nessun framework frontend
 
-## Distribuzione
+## Distribuire con l'app Android (consigliato)
+
+Ogni release include `kimi-game-rank-deploy.apk` (Android 8.0+). Dal telefono puoi distribuire l'intero sito su qualsiasi host PHP + MySQL, senza computer.
+
+**Installazione e avvio**
+
+1. Scarica l'APK più recente da [Releases](https://github.com/silverbullet-liang/kimi-game-rank/releases) e installalo.
+2. Tocca **＋** per aggiungere un sito: scegli una versione del sorgente (l'elenco è letto dal CHANGELOG di questo repository) e inserisci i dati del sito e dell'host.
+3. Torna all'elenco e scegli:
+   - **Distribuzione automatica** — download → estrazione → pulizia → pacchetto → upload (FTP o tunnel SSH);
+   - **Distribuzione manuale** — genera solo lo zip, che carichi tu.
+
+**Campi facili da sbagliare**
+
+| Campo | Note |
+|---|---|
+| Versione del sorgente | Letta in tempo reale dal CHANGELOG del repository; "default branch" = ultima |
+| Segreto amministratore | Inserisci il **testo in chiaro**: viene scritto nella configurazione del sito. L'app mostra anche il suo **sha256**: è quella stringa la password di accesso al pannello. Conserva entrambi |
+| DB utenti / DB amministratore | I due nomi di database del pannello del tuo host, copiati così come sono |
+| Chiavi AI | Facoltative, una per riga; più chiavi formano un pool |
+| Elementi per pagina | Facoltativo, 1–50; vuoto = valore predefinito del sito |
+| Connessione dati FTP | Passiva PASV per impostazione predefinita; attiva PORT solo se l'host lo richiede |
+| Chiave privata SSH | Facoltativa; ha priorità sulla password. Incolla la chiave OpenSSH / PEM completa |
+
+**Abbinamento multi-sito**
+
+"Site pairing" collega tutti i siti in una rete completa: ogni sito riceve una coppia di chiavi X25519 (quelle esistenti non vengono rigenerate) e nome / dominio / chiave pubblica degli altri siti vengono scritti nelle rispettive configurazioni `peers`. Due siti qualsiasi si sincronizzano in entrambe le direzioni; dopo aver aggiunto un sito basta ripetere l'abbinamento.
+
+**Dati e privacy**
+
+Le configurazioni dei siti (password dei database, credenziali FTP/SSH, chiavi private di abbinamento) restano nella directory privata dell'app, vengono cancellate alla disinstallazione e non vengono mai caricate altrove. L'app si collega solo per leggere l'elenco delle versioni / scaricare il sorgente (GitHub) e per caricare sull'host che hai indicato.
+
+**Compilarla da soli**
+
+Niente Gradle: `bash apk/build.sh` produce `apk/out/kimi-game-rank-deploy.apk`. Conserva sempre lo stesso keystore di firma, altrimenti una nuova build non può aggiornare quella installata. Tutti i dettagli in [`apk/README.md`](apk/README.md).
+
+## Distribuzione manuale (CLI)
 
 ```bash
 git clone https://github.com/silverbullet-liang/kimi-game-rank.git

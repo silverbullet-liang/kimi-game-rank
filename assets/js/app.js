@@ -6384,18 +6384,36 @@ function bindRefresh(container) {
   if (!btn) return;
   refreshLinkState(container);      // 更新区显示当前开关状态
 
-  /* 评分体系自动重算进度：换评分体系后由服务端自动全量重算，这里只显示进度 */
+  /* 评分体系重算：部署后不自动执行，由管理员在此手动启动；启动后服务端分批推进 */
   const rcNote = container.querySelector('#recalcNote');
   if (rcNote) {
-    api('admin.php', 'score_recalc_status', {}, { silent: true }).then(s => {
+    const paintRc = (s) => {
       if (!s) { return; }
-      if (s.needed) {
-        rcNote.innerHTML = '评分体系已更新，正在<b>自动重算全站</b>：' + s.done + ' / ' + s.total
-          + (s.missing > 0 ? '（其中 ' + s.missing + ' 件待联网补齐数据）' : '') + '。无需操作。';
-      } else {
+      if (!s.needed) {
         rcNote.textContent = '评分体系 v' + s.ver + '：全站已按当前算法重算完成。';
+        return;
       }
-    }).catch(() => {});
+      if (!s.armed) {
+        rcNote.innerHTML = '评分体系已更新到 v' + s.ver + '，全站尚未重算（共 ' + s.total + ' 件）。'
+          + ' <button class="btn btn-sm" type="button" id="recalcGo">开始重算</button>';
+        const go = rcNote.querySelector('#recalcGo');
+        if (go) {
+          go.addEventListener('click', () => {
+            go.disabled = true;
+            api('admin.php', 'score_recalc_start', {}).then(() => { tick(); })
+              .catch(() => { go.disabled = false; });
+          });
+        }
+        return;
+      }
+      rcNote.textContent = '正在重算全站：' + s.done + ' / ' + s.total
+        + (s.missing > 0 ? '（其中 ' + s.missing + ' 件待联网补齐数据）' : '') + '…';
+      setTimeout(tick, 3000);
+    };
+    const tick = () => {
+      api('admin.php', 'score_recalc_status', {}, { silent: true }).then(paintRc).catch(() => {});
+    };
+    tick();
   }
 
   let running = false, stopped = false;

@@ -26,6 +26,7 @@ OUT="$APK_DIR/out"
 LIBS="$APK_DIR/libs"
 BT="$TOOLS/build-tools"
 PLATFORM="$TOOLS/platform"
+JAR="$PLATFORM/android.jar"   # 必须在 prepare_tools 之前定义（set -u 下提前引用会直接中止）
 DEPS="${APK_DEPS:-$TOOLS/deps}"
 FAST="$APK_DIR/../../skills/chrome-kernel-installer/scripts/parallel_fetch.sh"
 
