@@ -2935,7 +2935,7 @@ async function mountWorld(body) {
     picker.dataset.kind = 'video';
     picker.innerHTML = '<div class="picker-head">发送 B站视频</div>'
       + '<div class="picker-body">'
-      +   '<input class="input" id="wVidUrl" placeholder="粘贴 B站链接或 BV 号（如 BV1eb411L7g3）" style="margin-bottom:8px">'
+      +   '<input class="input" id="wVidUrl" placeholder="粘贴 B站链接或 BV 号（如 BV1AinG6fEUo）" style="margin-bottom:8px">'
       +   '<div class="row-gap"><button class="btn btn-sm" id="wVidGo">解析</button></div>'
       +   '<div class="tiny" id="wVidHint" style="margin-top:8px">支持 B站视频；番剧 / 电影 / 电视剧无法解析</div>'
       +   '<div id="wVidPrev"></div>'
@@ -4154,11 +4154,26 @@ async function renderLogin(container) {
       </div>
       <div id="capBox" style="margin-bottom:12px"></div>
       <button class="btn" id="submitBtn" style="width:100%">${sub === 'register' ? '注册并登录' : '登录'}</button>
-      <div class="tiny" style="text-align:center;margin-top:10px">${sub === 'register' ? '密码登录的账号可浏览榜单并参与投票' : '忘记密码请联系管理员'}</div>`;
+      <div class="tiny" style="text-align:center;margin-top:10px">${sub === 'register' ? '密码登录的账号可浏览榜单并参与投票' : '忘记密码请联系管理员'}</div>
+      <div class="reg-video" id="regVideo">
+        <button class="reg-video-btn" id="regVideoBtn" type="button">
+          <svg viewBox="0 0 24 24" class="ic"><path d="M8 5v14l11-7z"/></svg>
+          <span>先看看这是什么 · 8 分钟宣传片</span>
+        </button>
+        <div class="reg-video-frame" id="regVideoFrame"></div>
+      </div>`;
 
     pane.querySelectorAll('[data-sub]').forEach(b => b.addEventListener('click', () => { sub = b.dataset.sub; paintPassword(pane); }));
     pane.querySelector('#agreeBox').addEventListener('click', () => { agreed = !agreed; pane.querySelector('#agreeBox').classList.toggle('on', agreed); });
     pane.querySelectorAll('[data-doc]').forEach(l => l.addEventListener('click', () => navigate('#/doc/' + encodeURIComponent(l.dataset.doc))));
+    const vBtn = pane.querySelector('#regVideoBtn');
+    const vBox = pane.querySelector('#regVideoFrame');
+    if (vBtn && vBox) {
+      vBtn.addEventListener('click', () => {
+        vBox.innerHTML = '<iframe src="https://player.bilibili.com/player.html?bvid=BV1AinG6fEUo&page=1&high_quality=1&danmaku=1&autoplay=0" scrolling="no" frameborder="no" allowfullscreen="true" referrerpolicy="no-referrer-when-downgrade" title="Kimi 游戏榜宣传视频"></iframe>';
+        vBtn.remove();
+      });
+    }
     pane.querySelector('#eyeBtn').addEventListener('click', () => {
       const p = pane.querySelector('#uPwd');
       p.type = p.type === 'password' ? 'text' : 'password';
@@ -7549,6 +7564,228 @@ function promptText() {
   });
 }
 
+/* ========== pages/submit.js ========== */
+/**
+ * 提交作品页：所有人可用（不要求登录本站）
+ * 字段：名称*、作品 ID*、封面链接（可选）、登录态*（可粘贴或扫码）
+ * 附：快捷搜索已收录作品，避免重复提交
+ */
+
+
+
+const QR_LIB = 'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js';
+
+function sbLoadQR(cb) {
+  if (window.QRCode) { cb(true); return; }
+  const s = document.createElement('script');
+  s.src = QR_LIB;
+  s.onload = () => cb(!!window.QRCode);
+  s.onerror = () => cb(false);
+  document.head.appendChild(s);
+}
+
+async function renderSubmit(container) {
+  /* 游客只能搜索与浏览；提交需要登录 */
+  if (state.role === 'guest') {
+    container.innerHTML = `
+      <div class="card">
+        <div class="card-title">提交作品</div>
+        <p class="muted">登录后才能提交作品。游客可以先搜索榜单，看看想找的作品在不在。</p>
+        <button class="btn" id="sbGoLogin" type="button" style="margin-top:12px">去登录 / 注册</button>
+      </div>
+      <div class="card">
+        <div class="card-title">快捷搜索</div>
+        <div class="field">
+          <input class="input" id="sbSearchGuest" placeholder="作品名称 / 作品 ID / 作者" autocomplete="off">
+        </div>
+        <div id="sbHitsGuest"></div>
+      </div>`;
+    container.querySelector('#sbGoLogin').addEventListener('click', () => navigate('#/login'));
+    const box = container.querySelector('#sbHitsGuest');
+    let t = 0, seq = 0;
+    container.querySelector('#sbSearchGuest').addEventListener('input', (e) => {
+      const q = e.target.value.trim();
+      clearTimeout(t);
+      if (!q) { box.innerHTML = ''; return; }
+      t = setTimeout(async () => {
+        const my = ++seq;
+        try {
+          const d = await api('submit.php', 'search', { q }, { silent: true });
+          if (my !== seq) { return; }
+          const list = (d && d.list) || [];
+          box.innerHTML = list.length
+            ? list.map(it => `<div class="sb-hit" data-id="${esc(it.community_id)}">
+                 ${it.cover ? `<img src="${esc(it.cover)}" alt="" loading="lazy" draggable="false">` : '<span class="sb-noimg"></span>'}
+                 <div class="sb-hit-main"><b>${esc(it.title)}</b>
+                   <span class="tiny muted">${esc(it.author || '')} · ${it.score || 0} 分 ${esc(it.rating || '')}</span></div>
+               </div>`).join('')
+            : '<p class="tiny muted">没有匹配的作品。</p>';
+        } catch (err) { /* 静默 */ }
+      }, 320);
+    });
+    box.addEventListener('click', (e) => {
+      const row = e.target.closest('.sb-hit');
+      if (row) { navigate('#/detail/' + row.dataset.id); }
+    });
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="card">
+      <div class="card-title">提交作品</div>
+      <p class="muted">贴上作品 ID 就能收录。先搜一下，也许它已经在榜上了。</p>
+      <div class="field">
+        <label>快捷搜索</label>
+        <input class="input" id="sbSearch" placeholder="作品名称 / 作品 ID / 作者" autocomplete="off">
+      </div>
+      <div id="sbHits"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">作品信息</div>
+      <div class="field">
+        <label>作品名称 <span class="req">*</span></label>
+        <input class="input" id="sbName" maxlength="120" placeholder="2-120 字">
+      </div>
+      <div class="field">
+        <label>作品 ID <span class="req">*</span></label>
+        <input class="input" id="sbId" maxlength="80" placeholder="分享链接里的那串 ID" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>封面链接</label>
+        <input class="input" id="sbCover" maxlength="500" placeholder="https://...（留空则用作品自带封面）" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>登录态 <span class="req">*</span></label>
+        <textarea class="input" id="sbToken" rows="3" placeholder="粘贴 Kimi accessToken；只用于这次读取，不保存"></textarea>
+        <div class="sb-row">
+          <button class="btn btn-sm btn-ghost" id="sbQr" type="button">扫码登录</button>
+          <span class="tiny muted">扫码或粘贴，二选一</span>
+        </div>
+        <div id="sbQrBox" class="sb-qr" hidden>
+          <div id="sbQrImg" class="sb-qr-img"></div>
+          <div class="tiny muted" id="sbQrTip">用 Kimi App 扫码授权</div>
+        </div>
+      </div>
+      <button class="btn" id="sbSubmit" type="button">提交并收录</button>
+      <div class="tiny muted" id="sbHint" style="margin-top:10px">每个账号每天可提交 1 次。提交后立即抓取并评分，重复作品会被拦下。</div>
+    </div>`;
+
+  const $ = (id) => container.querySelector('#' + id);
+  const hits = $('sbHits');
+  const hint = $('sbHint');
+
+  /* ---------- 快捷搜索 ---------- */
+  let timer = 0, seq = 0;
+  $('sbSearch').addEventListener('input', () => {
+    const q = $('sbSearch').value.trim();
+    clearTimeout(timer);
+    if (!q) { hits.innerHTML = ''; return; }
+    timer = setTimeout(async () => {
+      const my = ++seq;
+      try {
+        const d = await api('submit.php', 'search', { q }, { silent: true });
+        if (my !== seq) { return; }
+        const list = (d && d.list) || [];
+        if (!list.length) { hits.innerHTML = '<p class="tiny muted">榜上还没有匹配的作品，可以直接提交。</p>'; return; }
+        hits.innerHTML = list.map(it => `
+          <div class="sb-hit" data-id="${esc(it.community_id)}" data-title="${esc(it.title)}" data-cover="${esc(it.cover || '')}">
+            ${it.cover ? `<img src="${esc(it.cover)}" alt="" loading="lazy" draggable="false">` : '<span class="sb-noimg"></span>'}
+            <div class="sb-hit-main">
+              <b>${esc(it.title)}</b>
+              <span class="tiny muted">${esc(it.author || '')} · ${esc(it.community_id)} · ${it.score || 0} 分 ${esc(it.rating || '')}</span>
+            </div>
+            <span class="sb-tag">已在榜</span>
+          </div>`).join('');
+      } catch (e) { /* 静默：搜索失败不打断填写 */ }
+    }, 320);
+  });
+
+  hits.addEventListener('click', (e) => {
+    const row = e.target.closest('.sb-hit');
+    if (!row) { return; }
+    navigate('#/detail/' + row.dataset.id);
+  });
+
+  /* ---------- 扫码登录 ---------- */
+  let qrTimer = 0;
+  function stopQR() { if (qrTimer) { clearInterval(qrTimer); qrTimer = 0; } }
+
+  $('sbQr').addEventListener('click', async () => {
+    const box = $('sbQrBox');
+    if (!box.hidden) { box.hidden = true; stopQR(); return; }
+    btnLoading($('sbQr'), true);
+    try {
+      const d = await api('submit.php', 'qr_new', null, { silent: true });
+      btnLoading($('sbQr'), false);
+      if (!d || !d.code) { throw new Error('扫码会话创建失败'); }
+      box.hidden = false;
+      $('sbQrImg').innerHTML = '';
+      $('sbQrTip').textContent = '用 Kimi App 扫码授权';
+      sbLoadQR((ok) => {
+        if (ok) {
+          new window.QRCode($('sbQrImg'), { text: d.content, width: 168, height: 168, correctLevel: window.QRCode.CorrectLevel.M });
+        } else {
+          $('sbQrImg').innerHTML = '<div class="tiny muted" style="word-break:break-all">二维码组件加载失败，可打开：' + esc(d.content) + '</div>';
+        }
+      });
+      let left = 60;
+      qrTimer = setInterval(async () => {
+        left--;
+        if (left <= 0) { stopQR(); $('sbQrTip').textContent = '二维码已过期，请重新生成'; return; }
+        try {
+          const r = await api('submit.php', 'qr_poll', { code: d.code }, { silent: true });
+          if (r && r.status === 'SUCCESS' && r.token) {
+            stopQR();
+            $('sbToken').value = r.token;
+            $('sbQrTip').textContent = '登录态已获取，可以提交了';
+            box.hidden = true;
+            toast('登录成功');
+          } else if (r && r.status === 'SCANNED') {
+            $('sbQrTip').textContent = '已扫码，请在手机上确认';
+          } else if (r && r.status === 'EXPIRED') {
+            stopQR();
+            $('sbQrTip').textContent = '二维码已过期，请重新生成';
+          }
+        } catch (e) { /* 继续轮询 */ }
+      }, 2500);
+    } catch (e) {
+      btnLoading($('sbQr'), false);
+      toast(e.message || '扫码服务不可用，请粘贴登录态', 'bad');
+    }
+  });
+
+  /* ---------- 提交 ---------- */
+  $('sbSubmit').addEventListener('click', async () => {
+    const name = $('sbName').value.trim();
+    const wid = $('sbId').value.trim();
+    const cover = $('sbCover').value.trim();
+    const token = $('sbToken').value.trim();
+
+    if (name.length < 2) { toast('请填写作品名称（至少 2 字）', 'bad'); return; }
+    if (!wid) { toast('请填写作品 ID', 'bad'); return; }
+    if (!token) { toast('请填写登录态或扫码登录', 'bad'); return; }
+
+    const ok = await dialog('确认提交', '将用你提供的登录态读取 <b>' + esc(wid) + '</b> 的内容并入库。登录态不会保存。', '提交');
+    if (!ok) { return; }
+
+    const btn = $('sbSubmit');
+    btnLoading(btn, true);
+    hint.textContent = '正在抓取作品并计算评分，可能需要十几秒…';
+    try {
+      const r = await api('submit.php', 'submit', { name, work_id: wid, cover, token }, { silent: true });
+      hint.textContent = '已收录，正在跳转到作品页…';
+      toast('提交成功');
+      setTimeout(() => navigate('#/detail/' + wid), 600);
+    } catch (e) {
+      hint.textContent = e.message || '提交失败';
+      toast(e.message || '提交失败', 'bad');
+    } finally {
+      btnLoading(btn, false);
+    }
+  });
+}
+
 /* ========== pages/violation.js ========== */
 /**
  * 违纪通报页面
@@ -7721,6 +7958,7 @@ async function renderDiscipline(container, ctx) {
 
 
 
+
 const view = document.getElementById('view');
 
 /* 开源仓库：目录里的「渗透测试」直接跳这里 */
@@ -7750,6 +7988,7 @@ const routes = {
   monitor: renderMonitor,
   doc: renderDoc,
   feedback: renderFeedback,
+  submit: renderSubmit,
   about: renderAbout,
   violation: renderViolation,
   discipline: renderDiscipline,
@@ -7960,6 +8199,7 @@ const drawerScrim = document.getElementById('drawerScrim');
 function icon(path) { return `<svg viewBox="0 0 24 24" class="ic"><path d="${path}"/></svg>`; }
 const I = {
   rank: 'M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3z',
+  play: 'M8 5v14l11-7z',
   search: 'M10 4a6 6 0 1 0 3.7 10.7l4.3 4.3 1.4-1.4-4.3-4.3A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8z',
   vote: 'M12 2l3 6 6.5.9-4.7 4.6 1.1 6.5L12 17l-5.9 3 1.1-6.5L2.5 8.9 9 8z',
   crown: 'M4 8l4 4 4-6 4 6 4-4-1.5 10h-13L4 8z',
@@ -7984,6 +8224,7 @@ function drawerItems() {
   const items = [
     { k: 'total', label: '总排行榜', ic: I.rank, go: '#/rank' },
     { k: 'search', label: '搜索作品', ic: I.search, act: 'search' },
+    { k: 'submit', label: '提交作品', ic: I.list, go: '#/submit' },
     { k: 'vote', label: '投票榜', ic: I.vote, go: '#/rank?board=vote' },
     { k: 'gods', label: '诸神榜', ic: I.crown, go: '#/rank?board=gods' },
     { k: 'cold', label: '冷门榜', ic: I.snow, go: '#/rank?board=cold' },
@@ -8182,6 +8423,17 @@ function renderAbout(container) {
       <div class="card-title">${icon(I.info)}关于本站</div>
       <p class="muted">Kimi游戏榜 —— 面向 Kimi 社区的六维综合评分排行榜，收录社区优质作品，评分由公开算法自动计算。</p>
       <p class="tiny">版本 ${window.__SITE__.ver} · <span class="link" id="changelogLink">查看更新日志</span> · 数据来源：Kimi 社区公开接口</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">${icon(I.play)}宣传视频</div>
+      <div class="video-embed">
+        <iframe src="https://player.bilibili.com/player.html?bvid=BV1AinG6fEUo&page=1&high_quality=1&danmaku=1&autoplay=0"
+                scrolling="no" frameborder="no" allowfullscreen="true"
+                referrerpolicy="no-referrer-when-downgrade" loading="lazy"
+                title="Kimi 游戏榜宣传视频"></iframe>
+      </div>
+      <p class="tiny muted">8 分钟讲清楚评分怎么算、等级怎么划、作品怎么收录 · BV1AinG6fEUo</p>
     </div>
 
     <div class="card">

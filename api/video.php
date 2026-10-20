@@ -57,8 +57,12 @@ if ($action === 'send') {
     $m = bili_miren($bv);
     if ($m === null) { fail(502, '解析失败：仅支持 B 站视频（番剧 / 电影 / 电视剧无法解析）'); }
 
-    /* 内容审核：只审标题 + 简介（连同附言一起过文本审核），不对视频抽帧 */
-    $audit = trim($m['title'] . "\n" . $m['desc'] . "\n" . $text);
+    /* 内容审核：审标题 + 作者 + 附言。
+     * 简介（desc）不入库、不展示，且 UP 主普遍在里面放官网 / 仓库地址，
+     * 拿去送审会被判成「广告引流」——自己的宣传片都发不出去。故排除。
+     * 标题与附言里的 URL 一并剥离后再审，避免同样误判。 */
+    $audit = trim($m['title'] . "\n" . $m['author'] . "\n" . $text);
+    $audit = trim(preg_replace('#https?://\S+#iu', ' ', $audit));
     $verdict = moderate_text(mb_substr($audit, 0, 2000, 'UTF-8'), 'message', (int)$uid);
     if (empty($verdict['ok'])) { moderate_reject($verdict); }
     $flag = (string)(isset($verdict['flag']) ? $verdict['flag'] : '');

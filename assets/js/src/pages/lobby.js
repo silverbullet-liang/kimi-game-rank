@@ -641,7 +641,7 @@ async function mountWorld(body) {
     picker.dataset.kind = 'video';
     picker.innerHTML = '<div class="picker-head">发送 B站视频</div>'
       + '<div class="picker-body">'
-      +   '<input class="input" id="wVidUrl" placeholder="粘贴 B站链接或 BV 号（如 BV1eb411L7g3）" style="margin-bottom:8px">'
+      +   '<input class="input" id="wVidUrl" placeholder="粘贴 B站链接或 BV 号（如 BV1AinG6fEUo）" style="margin-bottom:8px">'
       +   '<div class="row-gap"><button class="btn btn-sm" id="wVidGo">解析</button></div>'
       +   '<div class="tiny" id="wVidHint" style="margin-top:8px">支持 B站视频；番剧 / 电影 / 电视剧无法解析</div>'
       +   '<div id="wVidPrev"></div>'

@@ -62,20 +62,39 @@ function zhipu_pick_key(): string
             return $k;
         }
     }
-    // 全部冷却：取游标位 key 兜底
-    $st['cursor'] = ($cursor + 1) % $n;
+    /* 全部冷却：取最早解冻的那个再试一次。
+       冷却只代表「它最近连续失败」，不代表此刻一定不可用——429 与网络抖动都是瞬时的，
+       固定撞游标位会让一个死 key 长期占着唯一的出口。 */
+    $best = 0; $bestUntil = null;
+    foreach ($keys as $idx => $k) {
+        $h = substr(hash('sha256', (string)$k), 0, 12);
+        $until = isset($cooldown[$h]) ? (int)$cooldown[$h] : 0;
+        if ($bestUntil === null || $until < $bestUntil) { $bestUntil = $until; $best = $idx; }
+    }
+    $st['cursor'] = ($best + 1) % $n;
     zhipu_key_state_save($st);
-    return (string)$keys[$cursor % $n];
+    return (string)$keys[$best];
 }
 
-/** 标记某 key 失败进入冷却 */
-function zhipu_key_fail(string $key)
+/** 失败冷却秒数：区分「key 真失效」与「瞬时抖动」——一次网络波动不该把 key 冻住 */
+function zhipu_cool_seconds(int $code, bool $isNet = false): int
+{
+    if ($isNet) { return 15; }
+    if ($code === 401 || $code === 403) { return 3600; }   /* key 失效：长期跳过 */
+    if ($code === 429) { return 60; }                      /* 限流：等配额恢复 */
+    if ($code >= 500) { return 20; }                       /* 服务端故障：短冷却 */
+    return 20;
+}
+
+/** 标记某 key 失败进入冷却；$sec=0 时按配置默认值 */
+function zhipu_key_fail(string $key, int $sec = 0)
 {
     $cfg = zhipu_config();
     $st = zhipu_key_state();
     if (!isset($st['cooldown']) || !is_array($st['cooldown'])) { $st['cooldown'] = array(); }
     $h = substr(hash('sha256', $key), 0, 12);
-    $st['cooldown'][$h] = time() + (isset($cfg['cooldown']) ? (int)$cfg['cooldown'] : 60);
+    if ($sec <= 0) { $sec = isset($cfg['cooldown']) ? (int)$cfg['cooldown'] : 60; }
+    $st['cooldown'][$h] = time() + max(5, $sec);
     zhipu_key_state_save($st);
 }
 
@@ -105,7 +124,9 @@ function zhipu_chat(array $messages, string $model = '', bool $thinking = false)
 {
     $cfg = zhipu_config();
     $keys = isset($cfg['keys']) ? array_values($cfg['keys']) : array();
-    $tries = max(1, count($keys));
+    /* 重试次数不跟 key 数量绑死：只有 1 个 key 时也要给 3 次机会，
+       否则一次瞬时抖动就直接对外报错 */
+    $tries = min(6, max(3, count($keys) * 2));
     $lastErr = 'AI 服务不可用';
     $noThink = false;      // 模型不支持 thinking → 去掉参数重试一次
 
@@ -119,7 +140,7 @@ function zhipu_chat(array $messages, string $model = '', bool $thinking = false)
             CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),
             CURLOPT_HTTPHEADER     => array('Authorization: Bearer ' . $key, 'Content-Type: application/json'),
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 60,
+            CURLOPT_TIMEOUT        => $i === 0 ? 60 : 30,   /* 重试时缩短，别让用户干等三分钟 */
             CURLOPT_CONNECTTIMEOUT => 6,
         ));
         $resp = curl_exec($ch);
@@ -127,7 +148,7 @@ function zhipu_chat(array $messages, string $model = '', bool $thinking = false)
         $err = curl_error($ch);
         curl_close($ch);
 
-        if ($resp === false) { $lastErr = '网络错误：' . $err; zhipu_key_fail($key); continue; }
+        if ($resp === false) { $lastErr = '网络错误：' . $err; zhipu_key_fail($key, zhipu_cool_seconds(0, true)); continue; }
         if ($code === 200) {
             $j = json_decode((string)$resp, true);
             if (is_array($j) && isset($j['choices'][0]['message']['content'])) {
@@ -139,7 +160,7 @@ function zhipu_chat(array $messages, string $model = '', bool $thinking = false)
                 );
             }
             $lastErr = 'AI 返回格式异常';
-            zhipu_key_fail($key);
+            zhipu_key_fail($key, zhipu_cool_seconds(200));
             continue;
         }
         if ($code === 400 && $thinking && !$noThink) {
@@ -147,7 +168,7 @@ function zhipu_chat(array $messages, string $model = '', bool $thinking = false)
             $noThink = true; $i--; continue;
         }
         $lastErr = 'AI 接口 HTTP ' . $code;
-        zhipu_key_fail($key);
+        zhipu_key_fail($key, zhipu_cool_seconds($code));
     }
     throw new RuntimeException($lastErr);
 }
@@ -159,7 +180,9 @@ function zhipu_chat_stream(array $messages, callable $onDelta, bool $thinking = 
 {
     $cfg = zhipu_config();
     $keys = isset($cfg['keys']) ? array_values($cfg['keys']) : array();
-    $tries = max(1, count($keys));
+    /* 重试次数不跟 key 数量绑死：只有 1 个 key 时也要给 3 次机会，
+       否则一次瞬时抖动就直接对外报错 */
+    $tries = min(6, max(3, count($keys) * 2));
     $lastErr = 'AI 服务不可用';
     $noThink = false;      // 不支持 thinking 的模型：去掉参数重试一次
 
@@ -219,7 +242,7 @@ function zhipu_chat_stream(array $messages, callable $onDelta, bool $thinking = 
             $noThink = true; $i--; continue;
         }
         $lastErr = ($httpCode === 200) ? 'AI 未返回内容' : ('AI 接口 HTTP ' . $httpCode . ($cerr !== '' ? ' / ' . $cerr : ''));
-        zhipu_key_fail($key);
+        zhipu_key_fail($key, zhipu_cool_seconds($httpCode, $httpCode === 0 || $cerr !== ''));
     }
     throw new RuntimeException($lastErr);
 }

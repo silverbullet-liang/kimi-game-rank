@@ -15,6 +15,7 @@ import { renderPanel } from './pages/panel.js';
 import { renderMonitor } from './pages/monitor.js';
 import { renderDoc } from './pages/doc.js';
 import { renderFeedback } from './pages/feedback.js';
+import { renderSubmit } from './pages/submit.js';
 import { renderViolation, renderDiscipline } from './pages/violation.js';
 
 const view = document.getElementById('view');
@@ -46,6 +47,7 @@ const routes = {
   monitor: renderMonitor,
   doc: renderDoc,
   feedback: renderFeedback,
+  submit: renderSubmit,
   about: renderAbout,
   violation: renderViolation,
   discipline: renderDiscipline,
@@ -256,6 +258,7 @@ const drawerScrim = document.getElementById('drawerScrim');
 function icon(path) { return `<svg viewBox="0 0 24 24" class="ic"><path d="${path}"/></svg>`; }
 const I = {
   rank: 'M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3z',
+  play: 'M8 5v14l11-7z',
   search: 'M10 4a6 6 0 1 0 3.7 10.7l4.3 4.3 1.4-1.4-4.3-4.3A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8z',
   vote: 'M12 2l3 6 6.5.9-4.7 4.6 1.1 6.5L12 17l-5.9 3 1.1-6.5L2.5 8.9 9 8z',
   crown: 'M4 8l4 4 4-6 4 6 4-4-1.5 10h-13L4 8z',
@@ -280,6 +283,7 @@ function drawerItems() {
   const items = [
     { k: 'total', label: '总排行榜', ic: I.rank, go: '#/rank' },
     { k: 'search', label: '搜索作品', ic: I.search, act: 'search' },
+    { k: 'submit', label: '提交作品', ic: I.list, go: '#/submit' },
     { k: 'vote', label: '投票榜', ic: I.vote, go: '#/rank?board=vote' },
     { k: 'gods', label: '诸神榜', ic: I.crown, go: '#/rank?board=gods' },
     { k: 'cold', label: '冷门榜', ic: I.snow, go: '#/rank?board=cold' },
@@ -478,6 +482,17 @@ function renderAbout(container) {
       <div class="card-title">${icon(I.info)}关于本站</div>
       <p class="muted">Kimi游戏榜 —— 面向 Kimi 社区的六维综合评分排行榜，收录社区优质作品，评分由公开算法自动计算。</p>
       <p class="tiny">版本 ${window.__SITE__.ver} · <span class="link" id="changelogLink">查看更新日志</span> · 数据来源：Kimi 社区公开接口</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">${icon(I.play)}宣传视频</div>
+      <div class="video-embed">
+        <iframe src="https://player.bilibili.com/player.html?bvid=BV1AinG6fEUo&page=1&high_quality=1&danmaku=1&autoplay=0"
+                scrolling="no" frameborder="no" allowfullscreen="true"
+                referrerpolicy="no-referrer-when-downgrade" loading="lazy"
+                title="Kimi 游戏榜宣传视频"></iframe>
+      </div>
+      <p class="tiny muted">8 分钟讲清楚评分怎么算、等级怎么划、作品怎么收录 · BV1AinG6fEUo</p>
     </div>
 
     <div class="card">

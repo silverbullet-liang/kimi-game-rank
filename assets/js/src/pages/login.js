@@ -74,11 +74,26 @@ export async function renderLogin(container) {
       </div>
       <div id="capBox" style="margin-bottom:12px"></div>
       <button class="btn" id="submitBtn" style="width:100%">${sub === 'register' ? '注册并登录' : '登录'}</button>
-      <div class="tiny" style="text-align:center;margin-top:10px">${sub === 'register' ? '密码登录的账号可浏览榜单并参与投票' : '忘记密码请联系管理员'}</div>`;
+      <div class="tiny" style="text-align:center;margin-top:10px">${sub === 'register' ? '密码登录的账号可浏览榜单并参与投票' : '忘记密码请联系管理员'}</div>
+      <div class="reg-video" id="regVideo">
+        <button class="reg-video-btn" id="regVideoBtn" type="button">
+          <svg viewBox="0 0 24 24" class="ic"><path d="M8 5v14l11-7z"/></svg>
+          <span>先看看这是什么 · 8 分钟宣传片</span>
+        </button>
+        <div class="reg-video-frame" id="regVideoFrame"></div>
+      </div>`;
 
     pane.querySelectorAll('[data-sub]').forEach(b => b.addEventListener('click', () => { sub = b.dataset.sub; paintPassword(pane); }));
     pane.querySelector('#agreeBox').addEventListener('click', () => { agreed = !agreed; pane.querySelector('#agreeBox').classList.toggle('on', agreed); });
     pane.querySelectorAll('[data-doc]').forEach(l => l.addEventListener('click', () => navigate('#/doc/' + encodeURIComponent(l.dataset.doc))));
+    const vBtn = pane.querySelector('#regVideoBtn');
+    const vBox = pane.querySelector('#regVideoFrame');
+    if (vBtn && vBox) {
+      vBtn.addEventListener('click', () => {
+        vBox.innerHTML = '<iframe src="https://player.bilibili.com/player.html?bvid=BV1AinG6fEUo&page=1&high_quality=1&danmaku=1&autoplay=0" scrolling="no" frameborder="no" allowfullscreen="true" referrerpolicy="no-referrer-when-downgrade" title="Kimi 游戏榜宣传视频"></iframe>';
+        vBtn.remove();
+      });
+    }
     pane.querySelector('#eyeBtn').addEventListener('click', () => {
       const p = pane.querySelector('#uPwd');
       p.type = p.type === 'password' ? 'text' : 'password';
