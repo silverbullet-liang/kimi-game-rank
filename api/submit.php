@@ -162,14 +162,14 @@ if ($action === 'submit') {
     if (!rate_limit('sub_ip_' . $ip, 5, 3600)) {
         fail(429, '提交过于频繁，请一小时后再试');
     }
-    /* 一人一天一次：只统计已成功入库的（失败不占配额） */
+    /* 一人一天两次：只统计已成功入库的（失败不占配额） */
     $todayLen = (int)db_val(
         'SELECT COUNT(*) FROM works WHERE added_by = ? AND created_at >= ?',
         array($uid, gmdate('Y-m-d') . ' 00:00:00'),
         0
     );
-    if ($todayLen >= 1) {
-        fail(429, '今天已经提交过一次了，明天再来');
+    if ($todayLen >= 2) {
+        fail(429, '今天已经提交过两次了，明天再来');
     }
 
     $name   = trim(strip_invisible(nfc_normalize(param_str('name', ''))));

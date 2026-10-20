@@ -7637,7 +7637,7 @@ async function renderSubmit(container) {
         <input class="input" id="sbCover" maxlength="500" placeholder="自动带入作品封面，可修改" autocomplete="off">
       </div>
       <button class="btn" id="sbSubmit" type="button">提交并收录</button>
-      <div class="tiny muted" id="sbHint" style="margin-top:10px">每个账号每天可提交 1 次。提交后立即抓取并评分。</div>
+      <div class="tiny muted" id="sbHint" style="margin-top:10px">每个账号每天可提交 2 次。提交后立即抓取并评分。</div>
     </div>`;
 
   const $ = (id) => container.querySelector('#' + id);
