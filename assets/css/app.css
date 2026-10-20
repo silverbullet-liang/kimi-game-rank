@@ -1611,3 +1611,9 @@ html[data-theme="dark"] .mon-app { --mok:#4ade80; --mwarn:#fbbf24; --mbad:#f8717
 .sb-hit-main b { font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .sb-tag { flex:none; font-size:11px; padding:3px 8px; border-radius:999px;
   background:var(--tab-active-bg); color:var(--tab-active-fg); }
+
+/* 提交作品：搜索结果选中态 */
+.sb-hit.picked { background: var(--tab-active-bg); }
+.sb-hit.is-exists { opacity:.6; }
+.sb-hit.is-exists .sb-tag { background: rgba(0,0,0,.06); color: var(--text-3); }
+.input[readonly] { background: var(--border-soft); cursor: default; color: var(--text-2); }

@@ -53,6 +53,58 @@ if ($action === 'search') {
 }
 
 /* ============================================================
+ * Kimi 社区搜索：与控制面板同一套（kimi_search + 归一化）
+ * 作品 ID 只能从这里选，不接受手填
+ * ============================================================ */
+if ($action === 'community_search') {
+    $q = trim(strip_invisible(nfc_normalize(param_str('q', ''))));
+    $token = trim(param_str('token', ''));
+    if ($q === '') { fail(400, '请输入搜索关键词'); }
+    if ($token === '') { fail(400, '请先填写登录态或扫码登录'); }
+    if (!rate_limit('sub_cs_' . ip_hash(client_ip()), 30, 60)) {
+        fail(429, '搜索过于频繁，请稍后再试');
+    }
+    try {
+        $resp = kimi_search($token, $q, trim(param_str('page_token', '')), 10);
+    } catch (Exception $e) {
+        fail(400, $e->getMessage());
+    }
+    $moments = isset($resp['moments']) && is_array($resp['moments']) ? $resp['moments'] : array();
+    $items = array();
+    foreach ($moments as $m) {
+        if (!is_array($m)) { continue; }
+        $it = kimi_normalize_item($m);
+        if ($it['community_id'] === '') { continue; }
+        $title = trim((string)$it['title']);
+        if ($title === '') { $title = trim(mb_substr((string)$it['intro'], 0, 40, 'UTF-8')); }
+        if ($title === '') { $title = '（无标题）'; }
+        $items[] = array(
+            'community_id' => (string)$it['community_id'],
+            'title'        => $title,
+            'author'       => (string)$it['author_name'],
+            'intro'        => mb_substr((string)$it['intro'], 0, 120, 'UTF-8'),
+            'cover'        => !empty($it['images'][0]) ? (string)$it['images'][0] : '',
+            'like_num'     => (int)$it['like_num'],
+            'exists'       => false,
+        );
+    }
+    if ($items) {
+        $ids = array_map(function ($x) { return $x['community_id']; }, $items);
+        $ph = implode(', ', array_fill(0, count($ids), '?'));
+        $rows = db_all('SELECT community_id FROM works WHERE community_id IN (' . $ph . ')', $ids);
+        $have = array();
+        foreach ($rows as $r) { $have[(string)$r['community_id']] = true; }
+        foreach ($items as $k => $x) {
+            $items[$k]['exists'] = isset($have[$x['community_id']]);
+        }
+    }
+    ok(array(
+        'list'       => $items,
+        'page_token' => isset($resp['nextPageToken']) ? (string)$resp['nextPageToken'] : '',
+    ));
+}
+
+/* ============================================================
  * 扫码登录（代理 Kimi 官方 AuthService）
  * ============================================================ */
 function submit_kimi_post(string $path, array $payload): array
