@@ -12,12 +12,12 @@ const canPost = () => state.role === 'user' || isAdminish();
 const canModerate = () => isAdminish();
 
 const DIMS = [
-  { k: 'experience', name: '可玩性' },
-  { k: 'creativity', name: '创意' },
-  { k: 'depth', name: '深度' },
-  { k: 'cost', name: '体量' },
-  { k: 'attitude', name: '用心' },
-  { k: 'heat', name: '口碑' },
+  { k: 'experience', name: t('可玩性') },
+  { k: 'creativity', name: t('创意') },
+  { k: 'depth', name: t('深度') },
+  { k: 'cost', name: t('体量') },
+  { k: 'attitude', name: t('用心') },
+  { k: 'heat', name: t('口碑') },
 ];
 
 export async function renderDetail(container, ctx) {
@@ -70,10 +70,10 @@ export async function renderDetail(container, ctx) {
         <svg viewBox="0 0 24 24" class="ic"><path d="M7 6h10a5 5 0 0 1 5 5v3a4 4 0 0 1-4 4h-1a3 3 0 0 1-2.4-1.2l-.6-.8a2 2 0 0 0-3.2 0l-.6.8A3 3 0 0 1 7.4 18H7a4 4 0 0 1-4-4v-3a5 5 0 0 1 5-5z"/></svg>
         作品详情与介绍
       </div>
-      <p class="muted" style="white-space:pre-wrap">${esc(d.intro || '暂无介绍')}</p>
+      <p class="muted" style="white-space:pre-wrap">${esc(d.intro || t('暂无介绍'))}</p>
       ${d.link ? `<button class="btn-link" id="openLink" data-href="${esc(d.link)}">
         <svg viewBox="0 0 24 24" class="ic" style="width:15px;height:15px;fill:currentColor"><path d="M10.6 13.4a1 1 0 0 1 0-1.4l4.2-4.2a3 3 0 1 1 4.2 4.2l-1.8 1.8-1.4-1.4 1.8-1.8a1 1 0 0 0-1.4-1.4l-4.2 4.2a1 1 0 0 1-1.4 0zm2.8-2.8a1 1 0 0 1 0 1.4l-4.2 4.2a1 1 0 0 0 1.4 1.4l1.8-1.8 1.4 1.4-1.8 1.8a3 3 0 0 1-4.2-4.2l4.2-4.2a1 1 0 0 1 1.4 0z"/></svg>
-        ${d.html_url ? '打开作品（CDN 直链）' : '查看作品分享链接'}
+        ${d.html_url ? '打开作品（CDN 直链）' : t('查看作品分享链接')}
       </button>
       <div class="tiny" style="margin-top:6px;word-break:break-all">${esc(d.link)}</div>` : ''}
       <div class="tiny" style="margin-top:8px">作品 ID：${esc(d.source_id || '')} · 收录于 ${esc(d.added_at || '')}</div>
@@ -86,7 +86,7 @@ export async function renderDetail(container, ctx) {
       </div>
       <div class="tiny" style="margin-top:10px">历史峰值总分 ${d.peak_score} · 更新于 ${esc(d.updated_at)}</div>
       <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
-        <button class="btn ${d.voted ? 'btn-ghost' : ''}" id="voteBtn">${d.voted ? '已点赞' : '点赞作品'}</button>
+        <button class="btn ${d.voted ? 'btn-ghost' : ''}" id="voteBtn">${d.voted ? '已点赞' : t('点赞作品')}</button>
         <span class="tiny">点赞计入「投票榜」，每人每作品限一次</span>
       </div>
     </div>
@@ -125,9 +125,9 @@ export async function renderDetail(container, ctx) {
     if (!canPost()) { toast('登录后才能点赞', 'err'); return; }
     try {
       const r = await api('works.php', 'vote', { id: id });
-      voteBtn.textContent = r.voted ? '已点赞' : '点赞作品';
+      voteBtn.textContent = r.voted ? '已点赞' : t('点赞作品');
       voteBtn.classList.toggle('btn-ghost', r.voted);
-      toast(r.voted ? '已点赞' : '已取消');
+      toast(r.voted ? '已点赞' : t('已取消'));
     } catch (e) { toast(e.message, 'err'); }
   });
 
@@ -135,11 +135,11 @@ export async function renderDetail(container, ctx) {
 }
 
 function gradeOf(v) {
-  if (v >= 190) return '超神品';
-  if (v >= 160) return '优秀';
-  if (v >= 120) return '良好';
-  if (v >= 80) return '及格';
-  return '待提升';
+  if (v >= 190) return t('超神品');
+  if (v >= 160) return t('优秀');
+  if (v >= 120) return t('良好');
+  if (v >= 80) return t('及格');
+  return t('待提升');
 }
 
 /* ============================================================
@@ -247,7 +247,7 @@ async function onCommentClick(ev) {
     const body = node.querySelector('.blocked-body');
     if (body) {
       body.hidden = !body.hidden;
-      rev.textContent = body.hidden ? (rev.dataset.note || '点击查看') : '收起';
+      rev.textContent = body.hidden ? (rev.dataset.note || t('点击查看')) : t('收起');
     }
     return;
   }
@@ -261,7 +261,7 @@ async function onCommentClick(ev) {
 
   if (btn.dataset.act === 'like') {
     if (!canPost()) { toast('登录后才能点赞', 'err'); return; }
-    try { const r = await api('comments.php', 'vote', { id: cid }); btn.textContent = '赞 ' + r.count; } catch (e) { toast(e.message, 'err'); }
+    try { const r = await api('comments.php', 'vote', { id: cid }); btn.textContent = t('赞 ') + r.count; } catch (e) { toast(e.message, 'err'); }
   } else if (btn.dataset.act === 'unflag') {
     try {
       await api('comments.php', 'flag', { id: cid, on: 0 });
@@ -269,13 +269,13 @@ async function onCommentClick(ev) {
       toast('已取消标注');
     } catch (e) { toast(e.message, 'err'); }
   } else if (btn.dataset.act === 'del') {
-    if (await dialog('删除评论', '确认删除这条评论吗？删除后会移入回收站，页面不再显示。', '删除', { danger: true })) {
+    if (await dialog(t('删除评论'), t('确认删除这条评论吗？删除后会移入回收站，页面不再显示。'), t('删除'), { danger: true })) {
       try { await api('comments.php', 'delete', { id: cid }); toast('已移入回收站'); ctx.refresh(true); } catch (e) { toast(e.message, 'err'); }
     }
   } else if (btn.dataset.act === 'block') {
     try {
       const r = await api('comments.php', 'block', { id: cid, on: btn.dataset.on === '1' ? 0 : 1 });
-      toast(r.blocked ? '已屏蔽（折叠显示）' : '已取消屏蔽');
+      toast(r.blocked ? '已屏蔽（折叠显示）' : t('已取消屏蔽'));
       ctx.refresh(true);
     } catch (e) { toast(e.message, 'err'); }
   } else if (btn.dataset.act === 'reply') {
@@ -287,7 +287,7 @@ async function onCommentClick(ev) {
           toast('已回复');
           ctx.refresh(true);
         } catch (e) {
-          if (e && e.code === 422) { commentReject(node, e.message || '内容未通过审核', text, post); }
+          if (e && e.code === 422) { commentReject(node, e.message || t('内容未通过审核'), text, post); }
           else { toast(e.message, 'err'); }
         }
       };
@@ -332,7 +332,7 @@ export async function renderComments(container, workId, targetType) {
         toast('已发表');
       } catch (e) {
         if (e && e.code === 422) {
-          commentReject(form.parentNode, e.message || '内容未通过审核', v,
+          commentReject(form.parentNode, e.message || t('内容未通过审核'), v,
             () => form.querySelector('#cmtSend').click());
         } else { toast(e.message, 'err'); }
       }
@@ -370,7 +370,7 @@ export async function renderComments(container, workId, targetType) {
         if (reps.length > FOLD) {
           const t = document.createElement('button');
           t.className = 'fold-toggle';
-          t.textContent = open ? '收起回复' : '展开全部 ' + reps.length + ' 条回复';
+          t.textContent = open ? '收起回复' : t('展开全部 ') + reps.length + t(' 条回复');
           t.addEventListener('click', () => { open = !open; unfolded[c.id] = open; draw(); });
           wrap.appendChild(t);
         }
@@ -382,7 +382,7 @@ export async function renderComments(container, workId, targetType) {
       const more = document.createElement('button');
       more.className = 'btn-ghost btn-sm';
       more.style.cssText = 'width:100%;margin-top:8px';
-      more.textContent = '查看更多评论（还有 ' + (roots.length - st.shown) + ' 条）';
+      more.textContent = t('查看更多评论（还有 ') + (roots.length - st.shown) + t(' 条）');
       more.addEventListener('click', () => { st.shown = roots.length; paint(); });
       listBox.appendChild(more);
     }
@@ -447,12 +447,12 @@ function commentReject(host, text, content, onPass) {
   const btn = bar.querySelector('[data-review]');
   btn.addEventListener('click', async () => {
     btn.disabled = true;
-    btn.textContent = '重审中…';
+    btn.textContent = t('重审中…');
     try {
       const r = await api('recheck.php', 'run', { content: content }, { timeout: 30000 });
       const v = (r && r.verdict) || 'false';
       if (v === 'false') {
-        bar.querySelector('.rn-text').textContent = 'AI 复核后仍判为违规，未发表';
+        bar.querySelector('.rn-text').textContent = t('AI 复核后仍判为违规，未发表');
         btn.remove();
         return;
       }
@@ -461,8 +461,8 @@ function commentReject(host, text, content, onPass) {
       onPass();
     } catch (err) {
       btn.disabled = false;
-      btn.textContent = 'AI 重审';
-      bar.querySelector('.rn-text').textContent = (err && err.message) ? err.message : '重审失败，请稍后再试';
+      btn.textContent = t('AI 重审');
+      bar.querySelector('.rn-text').textContent = (err && err.message) ? err.message : t('重审失败，请稍后再试');
     }
   });
 }
@@ -474,7 +474,7 @@ function commentNode(c, workId, reload, ttype) {
   /* 折叠的两种来源：管理员屏蔽（c.blocked）与你自己的屏蔽词（isBlocked）。
      已删除的评论服务端不会再下发，因此这里完全没有「已删除」分支。 */
   const folded = !!c.blocked || isBlocked(c.content);
-  const noteText = c.blocked ? '该评论已被折叠，点击查看' : '已按你的屏蔽规则收起，点击查看';
+  const noteText = c.blocked ? '该评论已被折叠，点击查看' : t('已按你的屏蔽规则收起，点击查看');
   box.innerHTML = `
     <span class="av"><img src="${esc(c.avatar)}" alt="" draggable="false"></span>
     <span class="body">
@@ -492,7 +492,7 @@ function commentNode(c, workId, reload, ttype) {
         <button data-act="like">赞 ${c.likes || 0}</button>
         ${canPost() ? `<button data-act="reply" data-user="${esc(c.username)}">回复</button>` : ''}
         ${(c.mine || canModerate()) ? '<button data-act="del">删除</button>' : ''}
-        ${canModerate() ? `<button data-act="block" data-on="${c.blocked ? 1 : 0}">${c.blocked ? '取消屏蔽' : '屏蔽'}</button>` : ''}
+        ${canModerate() ? `<button data-act="block" data-on="${c.blocked ? 1 : 0}">${c.blocked ? '取消屏蔽' : t('屏蔽')}</button>` : ''}
       </span>
     </span>`;
 

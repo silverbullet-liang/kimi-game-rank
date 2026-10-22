@@ -89,10 +89,10 @@ export async function renderSubmit(container) {
     try {
       const d = await api('submit.php', 'qr_new', null, { silent: true });
       btnLoading($('sbQr'), false);
-      if (!d || !d.code) { throw new Error('扫码会话创建失败'); }
+      if (!d || !d.code) { throw new Error(t('扫码会话创建失败')); }
       box.hidden = false;
       $('sbQrImg').innerHTML = '';
-      $('sbQrTip').textContent = '用 Kimi App 扫码授权';
+      $('sbQrTip').textContent = t('用 Kimi App 扫码授权');
       sbLoadQR((ok) => {
         if (ok) {
           new window.QRCode($('sbQrImg'), { text: d.content, width: 168, height: 168, correctLevel: window.QRCode.CorrectLevel.M });
@@ -103,26 +103,26 @@ export async function renderSubmit(container) {
       let left = 60;
       qrTimer = setInterval(async () => {
         left--;
-        if (left <= 0) { stopQR(); $('sbQrTip').textContent = '二维码已过期，请重新生成'; return; }
+        if (left <= 0) { stopQR(); $('sbQrTip').textContent = t('二维码已过期，请重新生成'); return; }
         try {
           const r = await api('submit.php', 'qr_poll', { code: d.code }, { silent: true });
           if (r && r.status === 'SUCCESS' && r.token) {
             stopQR();
             tokenEl.value = r.token;
-            $('sbQrTip').textContent = '已获取登录态';
+            $('sbQrTip').textContent = t('已获取登录态');
             box.hidden = true;
             toast('登录成功');
           } else if (r && r.status === 'SCANNED') {
-            $('sbQrTip').textContent = '已扫码，请在手机上确认';
+            $('sbQrTip').textContent = t('已扫码，请在手机上确认');
           } else if (r && r.status === 'EXPIRED') {
             stopQR();
-            $('sbQrTip').textContent = '二维码已过期，请重新生成';
+            $('sbQrTip').textContent = t('二维码已过期，请重新生成');
           }
         } catch (e) { /* 继续轮询 */ }
       }, 2500);
     } catch (e) {
       btnLoading($('sbQr'), false);
-      toast(e.message || '扫码服务不可用，请粘贴登录态', 'bad');
+      toast(e.message || t('扫码服务不可用，请粘贴登录态'), 'bad');
     }
   });
 
@@ -150,7 +150,7 @@ export async function renderSubmit(container) {
               <b>${esc(it.title)}</b>
               <span class="tiny muted">${esc(it.author || '')} · ${esc(it.community_id)}</span>
             </div>
-            <span class="sb-tag">${it.exists ? '已在榜' : '选择'}</span>
+            <span class="sb-tag">${it.exists ? '已在榜' : t('选择')}</span>
           </div>`).join('');
       } catch (e) {
         if (my === seq) { hits.innerHTML = '<p class="tiny muted">' + esc(e.message || '搜索失败') + '</p>'; }
@@ -164,7 +164,7 @@ export async function renderSubmit(container) {
     $('sbId').value = row.dataset.id;
     $('sbName').value = row.dataset.title || '';
     $('sbCover').value = row.dataset.cover || '';
-    hint.textContent = '已选择：' + row.dataset.title + '。确认后提交。';
+    hint.textContent = t('已选择：') + row.dataset.title + t('。确认后提交。');
     hits.querySelectorAll('.sb-hit').forEach((el) => el.classList.toggle('picked', el === row));
     if (row.classList.contains('is-exists')) {
       toast('该作品已在榜，可直接查看详情', 'bad');
@@ -182,20 +182,20 @@ export async function renderSubmit(container) {
     if (name.length < 2) { toast('请填写作品名称（至少 2 字）', 'bad'); return; }
     if (!token) { toast('请填写登录态或扫码登录', 'bad'); return; }
 
-    const ok = await dialog('确认提交', '将用你提供的登录态读取 <b>' + esc(wid) + '</b> 的内容并入库。登录态不会保存。', '提交');
+    const ok = await dialog(t('确认提交'), '将用你提供的登录态读取 <b>' + esc(wid) + '</b> 的内容并入库。登录态不会保存。', '提交');
     if (!ok) { return; }
 
     const btn = $('sbSubmit');
     btnLoading(btn, true);
-    hint.textContent = '正在抓取作品并计算评分，可能需要十几秒…';
+    hint.textContent = t('正在抓取作品并计算评分，可能需要十几秒…');
     try {
       await api('submit.php', 'submit', { name, work_id: wid, cover, token }, { silent: true });
-      hint.textContent = '已收录，正在跳转到作品页…';
+      hint.textContent = t('已收录，正在跳转到作品页…');
       toast('提交成功');
       setTimeout(() => navigate('#/detail/' + wid), 600);
     } catch (e) {
-      hint.textContent = e.message || '提交失败';
-      toast(e.message || '提交失败', 'bad');
+      hint.textContent = e.message || t('提交失败');
+      toast(e.message || t('提交失败'), 'bad');
     } finally {
       btnLoading(btn, false);
     }

@@ -339,15 +339,15 @@ try {
   <nav class="tabbar glass" id="tabbar">
     <button class="tab" data-tab="rank" data-route="#/rank">
       <svg viewBox="0 0 24 24" class="ic"><path d="M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3zm0 5H4a1 1 0 0 0 0 2h2V8zm14 0h-2v2h2a1 1 0 0 0 0-2z"/></svg>
-      <span>榜单</span>
+      <span data-i18n="榜单">榜单</span>
     </button>
     <button class="tab" data-tab="chat" data-route="#/chat">
       <svg viewBox="0 0 24 24" class="ic"><path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2z"/></svg>
-      <span>对话</span>
+      <span data-i18n="对话">对话</span>
     </button>
     <button class="tab" data-tab="mine" data-route="#/mine">
       <svg viewBox="0 0 24 24" class="ic"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5z"/></svg>
-      <span>我的</span>
+      <span data-i18n="我的">我的</span>
     </button>
   </nav>
 </div>
@@ -377,6 +377,9 @@ try {
 <!-- 轻提示 -->
 <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
 
+<?php $__lang = isset($_COOKIE['kimgr_lang']) ? strtolower((string)$_COOKIE['kimgr_lang']) : '';
+      if (!in_array($__lang, array('zh', 'en', 'ja'), true)) { $__lang = ''; } ?>
+<script>window.__LANG = <?= json_encode($__lang) ?>;</script>
 <script>window.__SITE__ = { name: <?= json_encode((string)cfg('site.name', 'Kimi游戏榜')) ?>, ver: <?= json_encode(APP_VERSION) ?>, timezone: <?= json_encode((string)cfg('site.timezone', 'Asia/Shanghai')) ?> };</script>
 <link rel="preload" as="script" href="assets/js/app.js?v=<?= APP_VERSION ?>">
 <script type="module" src="assets/js/app.js?v=<?= APP_VERSION ?>" onerror="(function(){if(window.__lgRetry)return;window.__lgRetry=1;var s=document.createElement('script');s.type='module';s.src='assets/js/app.js?v=<?= APP_VERSION ?>&r='+Date.now();document.body.appendChild(s);})()"></script>

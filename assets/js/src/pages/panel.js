@@ -7,10 +7,10 @@
 import { api, state, esc, toast, dialog, prompt_, btnLoading, isAdminish, userName, oidTag } from '../core.js';
 import { navigate } from '../router.js';
 
-const PCATS = [['game', '游戏'], ['tool', '工具'], ['literature', '文学'], ['fanart', '二创']];
+const PCATS = [['game', t('游戏')], ['tool', t('工具')], ['literature', t('文学')], ['fanart', t('二创')]];
 const PDIMS = [
-  { k: 'experience', n: '可玩性' }, { k: 'creativity', n: '创意' }, { k: 'depth', n: '深度' },
-  { k: 'cost', n: '体量' }, { k: 'attitude', n: '用心' }, { k: 'heat', n: '口碑' },
+  { k: 'experience', n: t('可玩性') }, { k: 'creativity', n: t('创意') }, { k: 'depth', n: t('深度') },
+  { k: 'cost', n: t('体量') }, { k: 'attitude', n: t('用心') }, { k: 'heat', n: t('口碑') },
 ];
 const catName = c => (PCATS.find(x => x[0] === c) || [, c])[1];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -29,7 +29,7 @@ export async function renderPanel(container) {
     try { ov = await api('dashboard.php', 'overview'); }
     catch (e) { container.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`; return; }
     if (!ov.panel_verified) {
-      const key = await prompt_('控制面板验证', '请输入管理员密钥（64 位十六进制，由密钥原文经 sha256 计算得出）。', '验证');
+      const key = await prompt_(t('控制面板验证'), t('请输入管理员密钥（64 位十六进制，由密钥原文经 sha256 计算得出）。'), t('验证'));
       if (!key) { container.innerHTML = '<div class="empty"><p>已取消验证</p></div>'; return; }
       try { await api('admin.php', 'panel_auth', { key: key }); }
       catch (e) { container.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`; return; }
@@ -203,7 +203,7 @@ async function loadCommentBin(container) {
     if (!d.items.length) { box.innerHTML = '<div class="tiny muted">回收站是空的。</div>'; return; }
     box.innerHTML = '<table class="table"><thead><tr><th>作者</th><th>内容</th><th>所属作品</th><th>删除时间</th><th>操作</th></tr></thead><tbody>'
       + d.items.map(c => `<tr data-cid="${Number(c.id)}">
-        <td>${esc(c.username)} ${oidTag(c.oid)}<br><span class="tiny muted">${c.by_admin ? '管理员删除' : '本人删除'}</span></td>
+        <td>${esc(c.username)} ${oidTag(c.oid)}<br><span class="tiny muted">${c.by_admin ? '管理员删除' : t('本人删除')}</span></td>
         <td style="max-width:340px;word-break:break-word">${esc(c.content).slice(0, 160)}</td>
         <td class="tiny">${esc(c.title)}</td>
         <td class="tiny">${esc(c.time)}</td>
@@ -227,7 +227,7 @@ function bindCommentBin(container) {
   const purge = container.querySelector('#cmBinPurge');
   if (purge) {
     purge.addEventListener('click', async () => {
-      if (!(await dialog('清空回收站',
+      if (!(await dialog(t('清空回收站'),
           '将<b>彻底删除</b>回收站中的全部评论（含其点赞），<b>此操作不可撤销</b>。确认继续？', '清空', { danger: true }))) { return; }
       btnLoading(purge, true);
       try {
@@ -335,7 +335,7 @@ function bindDb(container) {
   });
 
   runBtn.addEventListener('click', async () => {
-    if (!(await dialog('更新数据库', '将按当前程序需要补齐缺失的数据表与列。此操作幂等，不会删除已有数据。确定继续？', '开始更新'))) { return; }
+    if (!(await dialog(t('更新数据库'), t('将按当前程序需要补齐缺失的数据表与列。此操作幂等，不会删除已有数据。确定继续？'), t('开始更新')))) { return; }
     runBtn.disabled = true; checkBtn.disabled = true;
     result.hidden = false;
     result.innerHTML = '<div class="skeleton" style="height:48px"></div>';
@@ -361,7 +361,7 @@ function bindDb(container) {
       }
       html += '<div class="tiny muted" style="margin-top:6px">耗时 ' + d.elapsed + ' 秒</div>';
       result.innerHTML = html;
-      toast(d.left.length ? '更新完成，仍有项目未补齐' : '数据库已是最新');
+      toast(d.left.length ? '更新完成，仍有项目未补齐' : t('数据库已是最新'));
     } catch (e) {
       result.innerHTML = '<div class="tiny" style="color:var(--danger)">' + esc(e.message) + '</div>';
     }
@@ -426,7 +426,7 @@ function bindBackup(container) {
     box.querySelectorAll('[data-del]').forEach(function (b) {
       b.addEventListener('click', async function () {
         const name = b.getAttribute('data-del');
-        if (!(await dialog('删除备份', '将永久删除 ' + name + '，无法恢复。确定继续？', '删除'))) { return; }
+        if (!(await dialog(t('删除备份'), '将永久删除 ' + name + t('，无法恢复。确定继续？'), t('删除')))) { return; }
         b.disabled = true;
         try { await api('admin.php', 'backup_delete', { name: name }); toast('已删除'); load(); }
         catch (e) { toast(e.message, 'err'); b.disabled = false; }
@@ -444,7 +444,7 @@ function bindBackup(container) {
   const download = async (name, btn) => {
     btn.disabled = true;
     const old = btn.textContent;
-    btn.textContent = '准备中…';
+    btn.textContent = t('准备中…');
     try {
       const headers = { 'Accept': 'application/octet-stream' };
       if (state.token) {
@@ -571,20 +571,20 @@ function bindCommunitySearch(container) {
     const cover = it.cover
       ? '<img src="' + esc(it.cover) + '" alt="" loading="lazy" referrerpolicy="no-referrer" draggable="false">'
       : '<span class="cs-noimg"></span>';
-    const meta = [(it.author || '未知作者'), '点赞 ' + (it.like_num || 0), '评论 ' + (it.comment_num || 0)].join(' · ');
+    const meta = [(it.author || t('未知作者')), '点赞 ' + (it.like_num || 0), '评论 ' + (it.comment_num || 0)].join(' · ');
     return '<div class="cs-item">'
       + '<span class="cs-cover">' + cover + '</span>'
       + '<span class="cs-meta"><span class="cs-title">' + esc(it.title) + '</span>'
       + '<span class="tiny muted">' + esc(meta) + '</span></span>'
       + '<button class="btn btn-sm cs-add"' + (it.exists ? ' disabled' : '')
       + ' data-id="' + esc(it.community_id) + '" data-title="' + esc(it.title) + '">'
-      + (it.exists ? '已收录' : '添加') + '</button></div>';
+      + (it.exists ? '已收录' : t('添加')) + '</button></div>';
   };
 
   function paintMore() {
-    if (busy) { more.hidden = false; moreText.textContent = '正在加载…'; return; }
-    if (cursor || pool.length > shown) { more.hidden = false; moreText.textContent = '滚动到此处自动加载'; return; }
-    if (shown > 0) { more.hidden = false; moreText.textContent = '— 没有更多了 —'; return; }
+    if (busy) { more.hidden = false; moreText.textContent = t('正在加载…'); return; }
+    if (cursor || pool.length > shown) { more.hidden = false; moreText.textContent = t('滚动到此处自动加载'); return; }
+    if (shown > 0) { more.hidden = false; moreText.textContent = t('— 没有更多了 —'); return; }
     more.hidden = true;
   }
 
@@ -607,7 +607,7 @@ function bindCommunitySearch(container) {
       append();
     } catch (e) {
       busy = false;
-      moreText.textContent = '加载失败：' + e.message;
+      moreText.textContent = t('加载失败：') + e.message;
     }
   }
 
@@ -648,14 +648,14 @@ function bindCommunitySearch(container) {
     const b = e.target.closest('.cs-add');
     if (!b || b.disabled) { return; }
     const id = b.dataset.id || '';
-    b.disabled = true; b.textContent = '添加中…';
+    b.disabled = true; b.textContent = t('添加中…');
     try {
       const r = await api('admin.php', 'add_work', { mode: 'manual', work_id: id }, { timeout: 60000 });
-      b.textContent = '已收录';
+      b.textContent = t('已收录');
       toast('已收录：' + (b.dataset.title || id) + (r.scored === false ? '（未改动评分）' : ''));
       loadWorks(container, container.querySelector('#wq').value.trim(), state.role === 'subadmin');
     } catch (e2) {
-      b.disabled = false; b.textContent = '添加';
+      b.disabled = false; b.textContent = t('添加');
       toast(e2.message, 'err');
     }
   });
@@ -707,7 +707,7 @@ function bindScore(container) {
     try {
       const d = await api('admin.php', 'score_mode_set', { auto: auto ? 1 : 0 });
       paint(d.auto === true);
-      toast(d.auto === true ? '已恢复自动评分' : '已关闭自动评分，之后不再改动评分');
+      toast(d.auto === true ? '已恢复自动评分' : t('已关闭自动评分，之后不再改动评分'));
     } catch (e2) {
       toast(e2.message, 'err');
       try { paint((await api('admin.php', 'score_mode', {}, { silent: true })).auto === true); } catch (e3) {}
@@ -717,12 +717,12 @@ function bindScore(container) {
 
   api('admin.php', 'score_mode', {}, { silent: true })
     .then(d => paint(d.auto === true))
-    .catch(() => { note.textContent = '读取评分方式失败，刷新页面再试'; });
+    .catch(() => { note.textContent = t('读取评分方式失败，刷新页面再试'); });
 }
 
 /* 智能链接识别：原页面只是个跳转页时，改用其中的真实地址。默认开启。
    一个开关、三处可见——开关区块本身，以及收录区与批量更新区的状态行。 */
-const linkStateText = (on) => '智能链接识别：<b>' + (on ? '已开启' : '已关闭') + '</b>';
+const linkStateText = (on) => '智能链接识别：<b>' + (on ? '已开启' : t('已关闭')) + '</b>';
 
 function paintLinkState(container, on) {
   container.querySelectorAll('[data-link-state]').forEach(function (el) { el.innerHTML = linkStateText(on); });
@@ -785,7 +785,7 @@ function bindLink(container) {
       const d = await api('admin.php', 'link_mode_set', { on: on ? 1 : 0 });
       container.__linkOn = d.on === true;
       paintLinkState(container, container.__linkOn);
-      toast(d.on === true ? '已开启智能链接识别' : '已关闭智能链接识别');
+      toast(d.on === true ? '已开启智能链接识别' : t('已关闭智能链接识别'));
     } catch (e2) {
       toast(e2.message, 'err');
       await refreshLinkState(container, true);
@@ -819,7 +819,7 @@ function relinkBind(container) {
         + (more ? ' 仍有待处理，稍后再点一次可继续。' : '');
       toast('重新识别完成：替换 ' + changed + ' 个');
     } catch (e) {
-      note.innerHTML = '出错：' + e.message;
+      note.innerHTML = t('出错：') + e.message;
       toast(e.message, 'err');
     }
     btn.disabled = false;
@@ -914,15 +914,15 @@ function workListBlock(editable) {
  * ============================================================ */
 function renderOverview(box, ov, root) {
   const items = [
-    ['用户总量', ov.users_total], ['今日新增', ov.users_today],
-    ['在榜作品', ov.works_total], ['总点赞', ov.votes_total],
-    ['评论数', ov.comments_total], ['消息数', ov.messages_total],
-    ['反馈数', ov.feedback_total], ['累计登录', ov.logins_total],
-    ['作品更新', ov.updates_total], ['AI 调用', ov.ai_calls_total],
+    [t('用户总量'), ov.users_total], [t('今日新增'), ov.users_today],
+    [t('在榜作品'), ov.works_total], [t('总点赞'), ov.votes_total],
+    [t('评论数'), ov.comments_total], [t('消息数'), ov.messages_total],
+    [t('反馈数'), ov.feedback_total], [t('累计登录'), ov.logins_total],
+    [t('作品更新'), ov.updates_total], [t('AI 调用'), ov.ai_calls_total],
     ['AI tokens', ov.ai_tokens_total],
-    ['本站模型 tokens', ov.ai_tokens_glm], ['模型网关 tokens', ov.ai_tokens_gateway],
+    [t('本站模型 tokens'), ov.ai_tokens_glm], [t('模型网关 tokens'), ov.ai_tokens_gateway],
   ];
-  if (Number(ov.ai_tokens_legacy || 0) > 0) { items.push(['早期未区分 tokens', ov.ai_tokens_legacy]); }
+  if (Number(ov.ai_tokens_legacy || 0) > 0) { items.push([t('早期未区分 tokens'), ov.ai_tokens_legacy]); }
   box.innerHTML = items.map(x => `<div class="stat-box"><div class="k">${esc(x[0])}</div><div class="v">${Number(x[1] || 0)}</div></div>`).join('');
   const seg = (root || document).querySelector('#rangeSeg');
   if (seg && !seg.dataset.bound) {
@@ -983,7 +983,7 @@ function bindAiRank(container) {
     paintNote(d.split);
     const items = (d && d.items) || [];
     if (!items.length) {
-      box.innerHTML = '<div class="tiny muted">' + (pg > 1 ? '这一页没有记录了。' : '这条通道还没有用量记录。') + '</div>';
+      box.innerHTML = '<div class="tiny muted">' + (pg > 1 ? '这一页没有记录了。' : t('这条通道还没有用量记录。')) + '</div>';
       if (pager && pg > 1) {
         pager.innerHTML = '<button class="btn-ghost btn-sm" data-pg="' + (pg - 1) + '">上一页</button>';
         pager.querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', () => load(Number(b.dataset.pg))));
@@ -1037,10 +1037,10 @@ async function loadStats(range, container) {
     const d = await api('dashboard.php', 'stats', { range: range });
     const series = d.series || [];
     const metrics = [
-      { k: 'signups', n: '注册', c: '#7C3AED' }, { k: 'logins', n: '登录', c: '#007AFF' },
-      { k: 'votes', n: '点赞', c: '#f59e0b' }, { k: 'work_updates', n: '作品更新', c: '#10b981' },
-      { k: 'ai_calls', n: 'AI 调用', c: '#ef4444' }, { k: 'comments', n: '评论', c: '#8b5cf6' },
-      { k: 'messages', n: '消息', c: '#06b6d4' },
+      { k: 'signups', n: t('注册'), c: '#7C3AED' }, { k: 'logins', n: t('登录'), c: '#007AFF' },
+      { k: 'votes', n: t('点赞'), c: '#f59e0b' }, { k: 'work_updates', n: t('作品更新'), c: '#10b981' },
+      { k: 'ai_calls', n: t('AI 调用'), c: '#ef4444' }, { k: 'comments', n: t('评论'), c: '#8b5cf6' },
+      { k: 'messages', n: t('消息'), c: '#06b6d4' },
     ];
     if (legend) { legend.innerHTML = metrics.map(m => `<span><i style="background:${m.c}"></i>${esc(m.n)}</span>`).join(''); }
     area.innerHTML = lineChart(d.labels || [], series, metrics);
@@ -1219,7 +1219,7 @@ async function tokqrStart() {
   document.getElementById('tokQRBox').innerHTML = '<span class="muted tiny">正在获取二维码…</span>';
   tokqrHint('', '正在获取二维码…');
   if (!(await tokqrLib()) || !document.getElementById('tokQRBox')) {
-    tokqrHint('bad', '二维码组件加载失败，可改用「下载 Token 脚本」');
+    tokqrHint('bad', t('二维码组件加载失败，可改用「下载 Token 脚本」'));
     return;
   }
   let code = '';
@@ -1227,18 +1227,18 @@ async function tokqrStart() {
     const d = await tokqrRpc('CreateLoginQRCode', {});
     code = (d && d.code) ? String(d.code) : '';
   } catch (e) {
-    tokqrHint('bad', '获取二维码失败：' + (e.message || '网络错误'));
+    tokqrHint('bad', t('获取二维码失败：') + (e.message || t('网络错误')));
     return;
   }
   if (!code || !document.getElementById('tokQRBox')) {
-    tokqrHint('bad', '服务端未返回登录码，可改用「下载 Token 脚本」');
+    tokqrHint('bad', t('服务端未返回登录码，可改用「下载 Token 脚本」'));
     return;
   }
   tokqrCode = code;
   const url = 'https://www.kimi.com/wechat/mp/auth?id=' + encodeURIComponent(code)
             + '&device_id=' + encodeURIComponent(tokqrWid());
   if (!tokqrPaint(document.getElementById('tokQRBox'), url)) {
-    tokqrHint('bad', '二维码渲染失败，可改用「下载 Token 脚本」');
+    tokqrHint('bad', t('二维码渲染失败，可改用「下载 Token 脚本」'));
     return;
   }
   tokqrHint('', '请用 微信 或 Kimi App 扫码');
@@ -1251,7 +1251,7 @@ async function tokqrStart() {
     const now = Date.now();
     if (tokqrBusy || now - tokqrLast < 900) { return; }        // 防重入 + 去抖
     if (!document.getElementById('tokQRBox') || !tokqrCode) { tokqrStop(); return; }
-    if (now > tokqrUntil) { tokqrHint('bad', '二维码已过期，点「刷新二维码」重试'); tokqrStop(); return; }
+    if (now > tokqrUntil) { tokqrHint('bad', t('二维码已过期，点「刷新二维码」重试')); tokqrStop(); return; }
     tokqrLast = now; tokqrBusy = true;
     try {
       const d = await tokqrRpc('GetLoginQRCodeStatus', { code: tokqrCode });
@@ -1261,20 +1261,20 @@ async function tokqrStart() {
         if (tok) {
           const inp = document.getElementById('tokInput');
           if (inp) { inp.value = tok; }
-          tokqrHint('ok', '已填入输入框，点「仅保存凭证」完成');
+          tokqrHint('ok', t('已填入输入框，点「仅保存凭证」完成'));
           tokqrStop();
           toast('已获取登录态，点「仅保存凭证」保存');
         } else {
-          tokqrHint('bad', '登录成功但未取到令牌，可改用「下载 Token 脚本」');
+          tokqrHint('bad', t('登录成功但未取到令牌，可改用「下载 Token 脚本」'));
           tokqrStop();
         }
         return;
       }
       if (st.indexOf('EXPIRED') > -1) {
-        tokqrHint('bad', '二维码已过期，点「刷新二维码」重试'); tokqrStop(); return;
+        tokqrHint('bad', t('二维码已过期，点「刷新二维码」重试')); tokqrStop(); return;
       }
       const scanned = st.indexOf('SCANNED') > -1;
-      tokqrHint(scanned ? 'wait' : '', scanned ? '已扫码，请在手机上确认' : '请用 微信 或 Kimi App 扫码');
+      tokqrHint(scanned ? 'wait' : '', scanned ? '已扫码，请在手机上确认' : t('请用 微信 或 Kimi App 扫码'));
     } catch (e) {
       tokqrLast = 0;                                           // 网络抖动：保留轮询，下一拍重试
     } finally { tokqrBusy = false; }
@@ -1396,7 +1396,7 @@ function bindAddWork(container) {
       if (!body.work_id) { toast('请填写作品 ID', 'err'); return; }
     }
     const btn = container.querySelector('#addBtn');
-    btnLoading(btn, true); btn.textContent = '处理中…';
+    btnLoading(btn, true); btn.textContent = t('处理中…');
     try {
       const r = await api('admin.php', 'add_work', body, { timeout: 60000 });
       const noScore = r.scored === false ? '（未改动评分）' : '';
@@ -1404,10 +1404,10 @@ function bindAddWork(container) {
       const linkNote = r.link_real ? '（已改用真实地址）' : '';
       toast(addMode === 'auto'
         ? ('同步完成：新增 ' + r.inserted + '，更新 ' + r.updated + syncNote)
-        : ('收录' + (r.status === 'updated' ? '并更新' : '') + '成功' + noScore + linkNote));
+        : (t('收录') + (r.status === 'updated' ? '并更新' : '') + '成功' + noScore + linkNote));
       loadWorks(container, container.querySelector('#wq').value.trim(), state.role === 'subadmin');
     } catch (e) { toast(e.message, 'err'); }
-    finally { btnLoading(btn, false); btn.textContent = '开始'; }
+    finally { btnLoading(btn, false); btn.textContent = t('开始'); }
   });
 
   bindCommunitySearch(container);
@@ -1428,7 +1428,7 @@ function bindReclassify(container) {
   const box  = container.querySelector('#rcPreview');
   if (!pBtn) { return; }
 
-  const catName = c => ({ game: '游戏', tool: '工具', literature: '文学', fanart: '二创' }[c] || c);
+  const catName = c => ({ game: t('游戏'), tool: t('工具'), literature: t('文学'), fanart: t('二创') }[c] || c);
 
   /* ---------- 预览 ---------- */
   pBtn.addEventListener('click', async () => {
@@ -1473,7 +1473,7 @@ function bindReclassify(container) {
   let running = false;
   aBtn.addEventListener('click', async () => {
     if (running) { return; }
-    if (!(await dialog('执行分区变更', '将按预览结果修改作品分区，确定继续？', '执行'))) { return; }
+    if (!(await dialog(t('执行分区变更'), t('将按预览结果修改作品分区，确定继续？'), t('执行')))) { return; }
     running = true; aBtn.disabled = true; pBtn.disabled = true;
     prog.hidden = false;
     let offset = 0, applied = 0;
@@ -1481,7 +1481,7 @@ function bindReclassify(container) {
     while (true) {
       let r;
       try { r = await api('admin.php', 'reclassify_apply', { offset: offset }, { timeout: 90000, silent: true }); }
-      catch (e) { text.textContent = '中断：' + e.message; break; }
+      catch (e) { text.textContent = t('中断：') + e.message; break; }
 
       applied += r.applied;
       const pct = r.total > 0 ? Math.round(r.done / r.total * 100) : 100;
@@ -1521,8 +1521,8 @@ function bindReclassify(container) {
   if (mvBtn) {
     mvBtn.addEventListener('click', async () => {
       if (mvFrom === mvTo) { toast('来源与目标相同', 'err'); return; }
-      const fromLabel = mvFrom === 'all' ? '全部作品' : catName(mvFrom) + '类全部作品';
-      if (!(await dialog('批量迁移分区', '将把「' + fromLabel + '」迁移到「' + catName(mvTo) + '」，确定？', '迁移'))) { return; }
+      const fromLabel = mvFrom === 'all' ? '全部作品' : catName(mvFrom) + t('类全部作品');
+      if (!(await dialog(t('批量迁移分区'), t('将把「') + fromLabel + t('」迁移到「') + catName(mvTo) + t('」，确定？'), t('迁移')))) { return; }
       mvBtn.disabled = true;
       try {
         const r = await api('admin.php', 'move_category', { from: mvFrom, to: mvTo });
@@ -1542,14 +1542,14 @@ function bindRefresh(container) {
   const pruneBtn = container.querySelector('#pruneBtn');
   if (pruneBtn) {
     pruneBtn.addEventListener('click', async () => {
-      if (!(await dialog('清理无效作品',
+      if (!(await dialog(t('清理无效作品'),
         '将把「没有标题」或「既无 CDN 直链也无分享链接」的作品下架（可在作品列表恢复）。确认清理？',
-        '清理', { danger: true }))) { return; }
+        t('清理'), { danger: true }))) { return; }
       btnLoading(pruneBtn, true);
       try {
         const r = await api('admin.php', 'prune_invalid', {});
         const n = Number(r && r.pruned) || 0;
-        toast(n > 0 ? ('已下架 ' + n + ' 件无效作品') : '没有需要清理的作品');
+        toast(n > 0 ? ('已下架 ' + n + ' 件无效作品') : t('没有需要清理的作品'));
       } catch (e) { toast(e.message, 'err'); }
       finally { btnLoading(pruneBtn, false); }
     });
@@ -1572,7 +1572,7 @@ function bindRefresh(container) {
       if (sNote) {
         sNote.textContent = recalc
           ? '重算会按当前算法刷新六维与总分（会覆盖手工调分）。'
-          : '本次只刷新标题 / 简介 / 互动数等信息，不改动评分。';
+          : t('本次只刷新标题 / 简介 / 互动数等信息，不改动评分。');
       }
     });
   }
@@ -1586,11 +1586,11 @@ function bindRefresh(container) {
     const paintRc = (s) => {
       if (!s) { return; }
       if (!s.needed) {
-        rcNote.textContent = '评分体系 v' + s.ver + '：全站已按当前算法重算完成。';
+        rcNote.textContent = t('评分体系 v') + s.ver + t('：全站已按当前算法重算完成。');
         return;
       }
       if (!s.armed) {
-        rcNote.innerHTML = '评分体系已更新到 v' + s.ver + '，全站尚未重算（共 ' + s.total + ' 件）。'
+        rcNote.innerHTML = t('评分体系已更新到 v') + s.ver + '，全站尚未重算（共 ' + s.total + ' 件）。'
           + ' <button class="btn btn-sm" type="button" id="recalcGo">开始重算</button>';
         const go = rcNote.querySelector('#recalcGo');
         if (go) {
@@ -1602,7 +1602,7 @@ function bindRefresh(container) {
         }
         return;
       }
-      rcNote.textContent = '正在重算全站：' + s.done + ' / ' + s.total
+      rcNote.textContent = t('正在重算全站：') + s.done + ' / ' + s.total
         + (s.missing > 0 ? '（其中 ' + s.missing + ' 件待联网补齐数据）' : '') + '…';
       setTimeout(tick, 3000);
     };
@@ -1635,7 +1635,7 @@ function bindRefresh(container) {
       scoreOn = recalc;
       if (p.capped) { text.textContent = '作品数超过单次上限，本轮先更新前 ' + plan.length + ' 件'; }
     } catch (e) {
-      text.textContent = '中断：' + e.message;
+      text.textContent = t('中断：') + e.message;
       running = false; btn.disabled = false; stopBtn.hidden = true;
       return;
     }
@@ -1645,7 +1645,7 @@ function bindRefresh(container) {
     for (let i = 0; i < plan.length && !stopped; i += 5) {
       let r;
       try { r = await api('admin.php', 'refresh_batch', { ids: plan.slice(i, i + 5), auto: scoreOn ? 1 : 0 }, { timeout: 90000, silent: true }); }
-      catch (e) { text.textContent = '中断：' + e.message; stopped = true; break; }
+      catch (e) { text.textContent = t('中断：') + e.message; stopped = true; break; }
 
       okN += r.ok; failN += r.fail; done += Number(r.processed) || 0;
       links += Number(r.links) || 0;
@@ -1658,7 +1658,7 @@ function bindRefresh(container) {
     } else {
       done = Math.max(done, total); paint();
       text.textContent += ' · 完成';
-      toast(scoreOn ? '全部作品已更新' : '全部作品已更新（未改动评分）');
+      toast(scoreOn ? '全部作品已更新' : t('全部作品已更新（未改动评分）'));
     }
     running = false; btn.disabled = false; stopBtn.hidden = true;
     loadWorks(container, container.querySelector('#wq').value.trim(), false);
@@ -1804,10 +1804,10 @@ async function loadWorks(container, q, readOnly, page) {
           <td>${esc(w.title)}<div class="tiny">${esc(w.community_id)} ${oidTag(w.oid)}</div></td>
           <td>${esc(catName(w.category))}</td>
           <td>${Number(w.total_score)}</td>
-          <td>${Number(w.is_hidden) === 1 ? '已下架' : '在榜'}</td>
+          <td>${Number(w.is_hidden) === 1 ? '已下架' : t('在榜')}</td>
           <td>${readOnly ? '<span class="tiny">—</span>' : `
             <button class="btn-ghost btn-sm" data-act="edit">编辑</button>
-            <button class="btn-ghost btn-sm" data-act="toggle">${Number(w.is_hidden) === 1 ? '恢复' : '下架'}</button>
+            <button class="btn-ghost btn-sm" data-act="toggle">${Number(w.is_hidden) === 1 ? '恢复' : t('下架')}</button>
             <button class="btn-ghost btn-sm" data-act="del">删除</button>`}
           </td></tr>`).join('') + '</tbody></table>';
     }
@@ -1835,14 +1835,14 @@ async function loadWorks(container, q, readOnly, page) {
     if (readOnly || !d.items.length) { return; }
     box.querySelectorAll('tr[data-id]').forEach(tr => {
       const id = tr.dataset.id;
-      const hidden = tr.children[3].textContent === '已下架';
+      const hidden = tr.children[3].textContent === t('已下架');
       tr.querySelector('[data-act="edit"]').addEventListener('click', () => openEditor(container, id, () => loadWorks(container, q, false, pg)));
       tr.querySelector('[data-act="toggle"]').addEventListener('click', async () => {
         try { await api('admin.php', 'work_save', { id: id, hidden: hidden ? 0 : 1 }); toast('已更新'); loadWorks(container, q, false, pg); }
         catch (e) { toast(e.message, 'err'); }
       });
       tr.querySelector('[data-act="del"]').addEventListener('click', async () => {
-        if (await dialog('删除作品', '删除后不可恢复，确认？', '删除', { danger: true })) {
+        if (await dialog(t('删除作品'), t('删除后不可恢复，确认？'), t('删除'), { danger: true })) {
           try { await api('admin.php', 'work_delete', { id: id }); toast('已删除'); loadWorks(container, q, false, pg); }
           catch (e) { toast(e.message, 'err'); }
         }
@@ -1882,10 +1882,10 @@ async function loadVisitsTop(container) {
     const empty = located === 0;
     box.innerHTML = `<div class="tiny muted" style="margin-bottom:10px;line-height:1.6">${note}</div>
       ${empty ? '' : `<div class="tp-grid">
-        ${col('国家 / 地区', d.country)}${col('省份', d.province)}${col('城市', d.city)}
+        ${col(t('国家 / 地区'), d.country)}${col(t('省份'), d.province)}${col(t('城市'), d.city)}
       </div>`}`;
   } catch (e) {
-    box.innerHTML = `<div class="tiny muted">${esc(e.message || '加载失败')}</div>`;
+    box.innerHTML = `<div class="tiny muted">${esc(e.message || t('加载失败'))}</div>`;
   }
 }
 
@@ -1934,7 +1934,7 @@ async function loadPeer(container) {
   if (!st) { listEl.innerHTML = '<div class="tiny muted">读取失败</div>'; return; }
   keyEl.textContent = !st.sodium
     ? '主机未启用 sodium 扩展，互通不可用'
-    : (st.my_key_set ? (st.my_pubkey || '推导失败') : '未配置私钥（请在 config 的 peers.private_key 填 64 位十六进制）');
+    : (st.my_key_set ? (st.my_pubkey || t('推导失败')) : '未配置私钥（请在 config 的 peers.private_key 填 64 位十六进制）');
 
   let rows = st.peers || [];
   const drawList = () => {
@@ -1943,7 +1943,7 @@ async function loadPeer(container) {
       <div class="prow" style="padding:8px 0;align-items:center;flex-wrap:wrap;gap:6px">
         <span class="tiny" style="flex:1;min-width:180px">
           <b>${esc(p.name || p.base_url)}</b> · ${esc(p.base_url)}<br>
-          <span class="muted">${p.enabled ? '' : '[已停用] '}${p.last_sync_at ? '上次同步 ' + esc(p.last_sync_at) + ' UTC' : '尚未同步'}${p.last_status ? ' · ' + esc(p.last_status) : ''}</span>
+          <span class="muted">${p.enabled ? '' : '[已停用] '}${p.last_sync_at ? '上次同步 ' + esc(p.last_sync_at) + ' UTC' : t('尚未同步')}${p.last_status ? ' · ' + esc(p.last_status) : ''}</span>
         </span>
         <button class="btn btn-sm" data-a="test" data-id="${p.id}">测试</button>
         <button class="btn btn-sm" data-a="edit" data-id="${p.id}">编辑</button>
@@ -1980,7 +1980,7 @@ async function loadPeer(container) {
         enabled: formEl.querySelector('#pEn').checked ? 1 : 0,
       };
       try { await api('admin.php', 'peer_save', payload); toast('已保存'); formEl.innerHTML = ''; await refresh(); }
-      catch (e) { toast(e.message || '保存失败', 'err'); }
+      catch (e) { toast(e.message || t('保存失败'), 'err'); }
     });
   };
 
@@ -1990,34 +1990,34 @@ async function loadPeer(container) {
     const id = Number(b.dataset.id);
     if (b.dataset.a === 'edit') { openForm(rows.find(r => Number(r.id) === id)); return; }
     if (b.dataset.a === 'del') {
-      if (!(await dialog('删除站点', '将从列表中移除该站点，不影响已同步的数据。确定？', '删除'))) { return; }
+      if (!(await dialog(t('删除站点'), t('将从列表中移除该站点，不影响已同步的数据。确定？'), t('删除')))) { return; }
       try { await api('admin.php', 'peer_del', { id }); toast('已删除'); await refresh(); }
-      catch (e) { toast(e.message || '删除失败', 'err'); }
+      catch (e) { toast(e.message || t('删除失败'), 'err'); }
       return;
     }
     if (b.dataset.a === 'test') {
-      b.disabled = true; b.textContent = '测试中…';
+      b.disabled = true; b.textContent = t('测试中…');
       try { await api('admin.php', 'peer_test', { id }, { timeout: 30000 }); toast('连接正常，密钥校验通过'); }
-      catch (e) { toast(e.message || '连接失败', 'err'); }
-      finally { b.disabled = false; b.textContent = '测试'; }
+      catch (e) { toast(e.message || t('连接失败'), 'err'); }
+      finally { b.disabled = false; b.textContent = t('测试'); }
     }
   });
 
   addBtn.addEventListener('click', () => openForm(null));
 
   syncBtn.addEventListener('click', async () => {
-    if (!(await dialog('一键互通', '将与列表中所有启用站点双向同步数据，期间不要关闭页面。确定继续？', '开始'))) { return; }
-    syncBtn.disabled = true; syncBtn.textContent = '互通中…';
+    if (!(await dialog(t('一键互通'), t('将与列表中所有启用站点双向同步数据，期间不要关闭页面。确定继续？'), t('开始')))) { return; }
+    syncBtn.disabled = true; syncBtn.textContent = t('互通中…');
     try {
       const r = await api('admin.php', 'peer_sync', {}, { timeout: 300000 });
       const list = (r.results || []).map(x => x.ok
         ? x.name + '：拉取 ' + x.pulled + ' / 推送 ' + x.pushed + '（' + x.tables + ' 张表'
           + (Number(x.failed || 0) > 0 ? '，跳过 ' + x.failed + ' 行' : '') + '）'
-        : x.name + '：失败' + (x.msg ? '（' + x.msg + '）' : ''));
+        : x.name + t('：失败') + (x.msg ? '（' + x.msg + '）' : ''));
       toast(list.length ? list.join('；') : '没有启用中的站点');
       await refresh();
-    } catch (e) { toast(e.message || '互通失败', 'err'); }
-    finally { syncBtn.disabled = false; syncBtn.textContent = '一键互通'; }
+    } catch (e) { toast(e.message || t('互通失败'), 'err'); }
+    finally { syncBtn.disabled = false; syncBtn.textContent = t('一键互通'); }
   });
 }
 
@@ -2045,7 +2045,7 @@ async function discEditDialog(row) {
     const scrim = document.getElementById('dialogScrim');
     const box = document.getElementById('dialog');
     box.className = 'dialog glass';
-    const banState = row.banned ? (row.ban_until ? '封停至 ' + esc(row.ban_until) : '永久封停') : '未封停';
+    const banState = row.banned ? (row.ban_until ? '封停至 ' + esc(row.ban_until) : t('永久封停')) : t('未封停');
 
     box.innerHTML = `
       <h3>设置通报 · ${esc(row.username)}</h3>
@@ -2146,7 +2146,7 @@ async function loadDisc(container) {
       + items.map(it => `<tr data-rid="${it.id}">
         <td>${userName(it.username, 'user', it.user_count, it.username_now)}${it.user_alive ? '' : ' <span class="tiny muted">（账号已删）</span>'} ${oidTag(it.oid)}</td>
         <td class="tiny">${esc((it.reasons || []).join('；'))}</td>
-        <td class="tiny">${it.banned ? (it.ban_until ? '至 ' + esc(it.ban_until) : '永久') : '未封停'}${it.ip_banned ? ' · IP' : ''}</td>
+        <td class="tiny">${it.banned ? (it.ban_until ? '至 ' + esc(it.ban_until) : t('永久')) : t('未封停')}${it.ip_banned ? ' · IP' : ''}</td>
         <td class="tiny">${Number(it.user_count || 0)} 次</td>
         <td class="tiny">${esc(it.created)}</td>
         <td><button class="btn-ghost btn-sm" data-act="edit">设置</button>
@@ -2163,7 +2163,7 @@ async function loadDisc(container) {
         catch (e) { toast(e.message, 'err'); }
       });
       tr.querySelector('[data-act="revoke"]').addEventListener('click', async () => {
-        if (!(await dialog('撤销通报', '将删除该通报并解除其账号与 IP 封禁，确认？', '撤销', { danger: true }))) { return; }
+        if (!(await dialog(t('撤销通报'), t('将删除该通报并解除其账号与 IP 封禁，确认？'), t('撤销'), { danger: true }))) { return; }
         try { await api('admin.php', 'disc_delete', { id: row.id }); toast('已撤销'); loadDisc(container); }
         catch (e) { toast(e.message, 'err'); }
       });
@@ -2291,11 +2291,11 @@ async function submitDiscipline(container, ids, names, q, readOnly, pg) {
       extra = '<br><br>已清理：评论 <b>' + Number(r.purged_comments || 0) + '</b> 条 · 对话 <b>'
             + Number(r.purged_messages || 0) + '</b> 条 · 图片 <b>' + Number(r.purged_images || 0) + '</b> 张';
     }
-    await dialog('通报完成',
+    await dialog(t('通报完成'),
       '已通报 <b>' + Number(r.created || 0) + '</b> 个用户。'
       + (r.ips_banned ? '<br>封禁 IP <b>' + Number(r.ips_banned) + '</b> 个。' : '')
       + (r.no_ip ? '<br><span class="tiny">其中 ' + Number(r.no_ip) + ' 个暂无可封的 IP，等其下次访问后再操作即可。</span>' : '')
-      + extra, '知道了');
+      + extra, t('知道了'));
     loadUsers(container, q, readOnly, pg);
   } catch (e) {
     toast(e.message, 'err');
@@ -2310,7 +2310,7 @@ async function loadUsers(container, q, readOnly, page) {
   try {
     const d = await api('admin.php', 'users', { q: q, page: pg });
     if (!d.items.length) {
-      box.innerHTML = '<div class="tiny">' + (pg > 1 ? '这一页没有用户了。' : '暂无用户') + '</div>';
+      box.innerHTML = '<div class="tiny">' + (pg > 1 ? '这一页没有用户了。' : t('暂无用户')) + '</div>';
       if (pager) {
         pager.dataset.page = String(pg);
         pager.innerHTML = pg > 1 ? '<button class="btn-ghost btn-sm" data-pg="' + (pg - 1) + '">上一页</button>' : '';
@@ -2342,14 +2342,14 @@ async function loadUsers(container, q, readOnly, page) {
       const uname = tr.dataset.name || '';
       const delBtn = tr.querySelector('[data-act="del"]');
       if (delBtn) delBtn.addEventListener('click', async () => {
-        if (await dialog('删除用户', '将删除「' + esc(uname) + '」及其全部数据，不可恢复。确认？', '删除', { danger: true })) {
+        if (await dialog(t('删除用户'), t('将删除「') + esc(uname) + t('」及其全部数据，不可恢复。确认？'), t('删除'), { danger: true })) {
           try { await api('admin.php', 'user_delete', { id: tr.dataset.id }); toast('已删除'); loadUsers(container, q, readOnly, pg); }
           catch (e) { toast(e.message, 'err'); }
         }
       });
       const rnBtn = tr.querySelector('[data-act="rename"]');
       if (rnBtn) rnBtn.addEventListener('click', async () => {
-        const nn = await prompt_('给用户改名', '新用户名（2–64 个字符）。改后，该用户的违纪通报会同时显示原名与新名。', '保存', uname);
+        const nn = await prompt_(t('给用户改名'), t('新用户名（2–64 个字符）。改后，该用户的违纪通报会同时显示原名与新名。'), t('保存'), uname);
         if (nn == null) { return; }
         const v = String(nn).trim();
         if (v.length < 2) { toast('用户名至少 2 个字符', 'err'); return; }
@@ -2363,17 +2363,17 @@ async function loadUsers(container, q, readOnly, page) {
       });
       const proBtn = tr.querySelector('[data-act="promote"]');
       if (proBtn) proBtn.addEventListener('click', async () => {
-        if (!(await dialog('设为副管理员',
+        if (!(await dialog(t('设为副管理员'),
             '将「<b>' + esc(uname) + '</b>」升级为副管理员？<br><br>'
             + '· <b>不需要更改密码</b>，其原密码继续可用<br>'
             + '· 评论、对话等数据全部保留<br>'
             + '· UID 换为专属豹子号<br>'
-            + '· 获得作品搜索/上传与回复反馈权限', '确认设立'))) { return; }
+            + t('· 获得作品搜索/上传与回复反馈权限'), t('确认设立')))) { return; }
         btnLoading(proBtn, true);
         try {
           const r = await api('admin.php', 'sub_add', { username: uname, secret: '' });
           toast('已升级为副管理员');
-          await dialog('升级完成',
+          await dialog(t('升级完成'),
             '「<b>' + esc(r.username) + '</b>」现为副管理员：<b>密码保持不变</b>，数据全部保留。<br><br>'
             + '专属 UID（豹子号）：<b>' + esc(r.uid8 || '—') + '</b>', '知道了');
           loadSubs(container);
@@ -2412,7 +2412,7 @@ async function loadSubs(container) {
     const poolNote = bTotal <= 0 ? '' : `<div class="tiny" style="margin-bottom:8px;line-height:1.6;${bLeft > 0 ? 'opacity:.75' : 'color:var(--danger)'}">
         豹子号已用 ${bTotal - bLeft}/${bTotal}${bLeft > 0
           ? `，还剩 ${bLeft} 个`
-          : '，池已用尽：新加的副管理员会自动改用普通 8 位 UID，身份与权限完全不受影响'}
+          : t('，池已用尽：新加的副管理员会自动改用普通 8 位 UID，身份与权限完全不受影响')}
       </div>`;
     box.innerHTML = poolNote + (d.items.length
       ? `<table class="table"><thead><tr><th>用户名</th><th>UID（豹子号）</th><th>设立时间</th><th>操作</th></tr></thead><tbody>` +
@@ -2425,15 +2425,15 @@ async function loadSubs(container) {
       : '<div class="tiny">尚未添加副管理员</div>');
     box.querySelectorAll('tr[data-id]').forEach(tr => {
       tr.querySelector('[data-act="demote"]').addEventListener('click', async () => {
-        if (await dialog('取消副管理员身份',
+        if (await dialog(t('取消副管理员身份'),
             '该账号将变回普通用户：<br>· 评论、对话、反馈等数据<b>全部保留</b><br>· UID 由豹子号换回普通编号<br>· 若该账号是升级而来，仍可用其原密码登录',
-            '取消身份')) {
+            t('取消身份'))) {
           try { await api('admin.php', 'sub_demote', { id: tr.dataset.id }); toast('已取消副管理员身份'); loadSubs(container); loadUsers(container, container.querySelector('#uq').value.trim()); }
           catch (e) { toast(e.message, 'err'); }
         }
       });
       tr.querySelector('[data-act="del"]').addEventListener('click', async () => {
-        if (await dialog('删除副管理员', '将同时删除其账号与全部数据，不可恢复。若只是收回权限，请用「取消身份」。确认？', '删除', { danger: true })) {
+        if (await dialog(t('删除副管理员'), t('将同时删除其账号与全部数据，不可恢复。若只是收回权限，请用「取消身份」。确认？'), t('删除'), { danger: true })) {
           try { await api('admin.php', 'sub_del', { id: tr.dataset.id }); toast('已删除'); loadSubs(container); }
           catch (e) { toast(e.message, 'err'); }
         }
@@ -2460,7 +2460,7 @@ async function loadSubs(container) {
         const hit = (d.items || []).find(u => String(u.username) === v);
         if (!hintEl) { return; }
         if (!hit) {
-          hintEl.textContent = '用户名未被占用 → 将创建新账号（需在右侧填写初始密码）';
+          hintEl.textContent = t('用户名未被占用 → 将创建新账号（需在右侧填写初始密码）');
         } else if (hit.role === 'subadmin') {
           hintEl.innerHTML = '<span style="color:var(--danger)">该账号已是副管理员</span>';
         } else if (hit.role === 'admin') {
@@ -2482,16 +2482,16 @@ async function loadSubs(container) {
       const r = await api('admin.php', 'sub_add', { username: n, secret: k });
       nameEl.value = ''; keyEl.value = ''; if (hintEl) { hintEl.innerHTML = ''; }
       const modeTxt = {
-        promoted:          ['现有用户已升级为副管理员', '账号「<b>' + esc(r.username) + '</b>」已升级：<b>密码保持不变</b>（继续用原密码登录），评论、对话等数据全部保留，UID 已换为豹子号。'],
-        promoted_resetpwd: ['已升级并重置密码', '账号「<b>' + esc(r.username) + '</b>」已升级，登录密码已重置为你刚填写的密码，数据全部保留。'],
-        created:           ['副管理员账号已创建', '账号「<b>' + esc(r.username) + '</b>」已创建，用「用户名 + 初始密码」登录即可。'],
-        repaired:          ['已修复该副管理员', '该账号的凭证此前未同步，已自动修复为副管理员身份。'],
-      }[r.mode] || ['副管理员已设立', '账号「<b>' + esc(r.username) + '</b>」已设立。'];
+        promoted:          [t('现有用户已升级为副管理员'), '账号「<b>' + esc(r.username) + '</b>」已升级：<b>密码保持不变</b>（继续用原密码登录），评论、对话等数据全部保留，UID 已换为豹子号。'],
+        promoted_resetpwd: [t('已升级并重置密码'), '账号「<b>' + esc(r.username) + '</b>」已升级，登录密码已重置为你刚填写的密码，数据全部保留。'],
+        created:           [t('副管理员账号已创建'), '账号「<b>' + esc(r.username) + '</b>」已创建，用「用户名 + 初始密码」登录即可。'],
+        repaired:          [t('已修复该副管理员'), t('该账号的凭证此前未同步，已自动修复为副管理员身份。')],
+      }[r.mode] || [t('副管理员已设立'), '账号「<b>' + esc(r.username) + '</b>」已设立。'];
       toast(modeTxt[0]);
       await dialog(modeTxt[0],
         modeTxt[1] + '<br><br>专属 UID（豹子号）：<b>' + esc(r.uid8 || '—') + '</b>'
         + '<br><span class="tiny">权限：普通用户全部功能 + 作品搜索/上传 + 回复反馈</span>',
-        '知道了');
+        t('知道了'));
       loadSubs(container);
       loadUsers(container, container.querySelector('#uq').value.trim());
     } catch (e) { toast(e.message, 'err'); }

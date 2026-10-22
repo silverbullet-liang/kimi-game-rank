@@ -28,6 +28,117 @@ const UI_PAGE = {
   apiTimeout: 20000,   // 默认请求超时（ms）
 };
 
+/* ========== i18n.js ========== */
+/**
+ * 界面多语言：中 / 英 / 日。
+ *
+ * 设计要点（决定了后续维护成本）：
+ *  · key 直接用中文原文，例如 t('登录')。译文表里没有的 key 原样返回中文，
+ *    所以「漏译」只会退回中文，不会白屏或出现 key。新增文案不必先登记。
+ *  · 语言优先级：用户手动选择（localStorage） > 浏览器首选语言 > 中文。
+ *  · 文档语言跟随界面：中文看中文文档，英文与日文都看英文文档（日文文档暂不提供）。
+ */
+const LANGS = [
+  { k: 'zh', name: '中文' },
+  { k: 'en', name: 'English' },
+  { k: 'ja', name: '日本語' }
+];
+
+const I18N = { lang: 'zh', dict: {}, ready: false };
+
+const KEY = 'lang';
+
+function valid(k) {
+  for (let i = 0; i < LANGS.length; i++) { if (LANGS[i].k === k) { return true; } }
+  return false;
+}
+
+function i18nDetect() {
+  try {
+    const saved = localStorage.getItem(KEY);
+    if (saved && valid(saved)) { return saved; }
+  } catch (e) {}
+  if (window.__LANG && valid(window.__LANG)) { return window.__LANG; }
+  const list = navigator.languages || [navigator.language || ''];
+  for (let i = 0; i < list.length; i++) {
+    const s = String(list[i] || '').toLowerCase();
+    if (s.indexOf('ja') === 0) { return 'ja'; }
+    if (s.indexOf('en') === 0) { return 'en'; }
+    if (s.indexOf('zh') === 0) { return 'zh'; }
+  }
+  return 'zh';
+}
+
+async function i18nInit() {
+  I18N.lang = i18nDetect();
+  document.documentElement.lang = (I18N.lang === 'zh' ? 'zh-CN' : I18N.lang);
+  if (I18N.lang === 'zh') { I18N.ready = true; return; }
+  try {
+    const r = await fetch('assets/i18n/' + I18N.lang + '.json', { cache: 'no-cache' });
+    if (r.ok) { I18N.dict = await r.json(); }
+  } catch (e) { /* 取不到就退回中文 */ }
+  I18N.ready = true;
+}
+
+/** 取译文；缺译原样返回，保证界面永远有内容 */
+function t(s) {
+  if (I18N.lang === 'zh') { return s; }
+  const v = I18N.dict[s];
+  return (v == null || v === '') ? s : v;
+}
+
+/** 文档页应加载哪种语言的文档 */
+function docLangOf(lang) {
+  return (lang || I18N.lang) === 'zh' ? 'zh' : 'en';
+}
+
+function setLang(k) {
+  if (!valid(k) || k === I18N.lang) { return; }
+  try {
+    localStorage.setItem(KEY, k);
+    localStorage.setItem('doclang', docLangOf(k));
+    document.cookie = 'kimgr_lang=' + k + ';path=/;max-age=31536000;samesite=lax';
+  } catch (e) {}
+  location.reload();
+}
+
+/** 把带 data-i18n="中文key" 的静态节点翻译成当前语言（服务端渲染的文案也能换） */
+function applyI18nDom(root) {
+  const box = root || document;
+  const nodes = box.querySelectorAll('[data-i18n]');
+  for (let i = 0; i < nodes.length; i++) {
+    const k = nodes[i].getAttribute('data-i18n');
+    const v = t(k);
+    if (v !== k) { nodes[i].textContent = v; }
+  }
+}
+
+/* 运行时文本翻译：源码里大量 HTML 是模板串（`<span>世界对话</span>`），
+   逐处改造成 ${t()} 会踩到「单引号串里插值」的语法坑，改为渲染后按字典替换文本节点。
+   只做「整段精确匹配」，且跳过用户内容容器，避免把作品标题、昵称、消息内容译掉。 */
+const SKIP_SEL = '.uname,.bubble,.mv-title,.rank-title,.w-title,.doc,.md-body,textarea,input,select,script,style,[data-notrans]';
+
+function applyI18nText(root) {
+  if (I18N.lang === 'zh') { return; }
+  const box = root || document.body;
+  if (!box || !box.querySelectorAll) { return; }
+  const walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT, null);
+  const jobs = [];
+  let node;
+  while ((node = walker.nextNode())) {
+    const raw = node.nodeValue;
+    if (!raw) { continue; }
+    const core = raw.trim();
+    if (core.length < 2 || core.length > 40) { continue; }
+    const hit = I18N.dict[core];
+    if (hit == null || hit === '') { continue; }
+    const el = node.parentElement;
+    if (el && el.closest && el.closest(SKIP_SEL)) { continue; }
+    jobs.push([node, raw.replace(core, hit)]);
+  }
+  for (let i = 0; i < jobs.length; i++) { jobs[i][0].nodeValue = jobs[i][1]; }
+}
+
 /* ========== core.js ========== */
 /**
  * 核心：令牌管理、API 封装、UI 工具、启动引导
@@ -42,7 +153,7 @@ const state = {
   role: 'guest',
   uid: 0,
   uid8: '',          // 8 位可逆 UID
-  username: '游客',
+  username: t('游客'),
   avatar: '',
   settings: {},
   csrf: '',
@@ -107,16 +218,16 @@ function searchAiOn() {
  * 主管理员不受限；点赞不在此列（后端区分新增/取消，取消不应被锁）。
  * ============================================================ */
 const CD_LIMITS = {
-  'lobby.php:send':       { label: '发言',     max: 15, window: 60   },
-  'comments.php:create': { label: '发表评论', max: 20, window: 60   },
-  'ai.php:send_sync':    { label: 'AI 对话',  max: 6,  window: 60   },
-  'feedback.php:create': { label: '提交反馈', max: 5,  window: 600  },
-  'auth.php:register':   { label: '注册',     max: 10, window: 3600 },
+  'lobby.php:send':       { label: t('发言'),     max: 15, window: 60   },
+  'comments.php:create': { label: t('发表评论'), max: 20, window: 60   },
+  'ai.php:send_sync':    { label: t('AI 对话'),  max: 6,  window: 60   },
+  'feedback.php:create': { label: t('提交反馈'), max: 5,  window: 600  },
+  'auth.php:register':   { label: t('注册'),     max: 10, window: 3600 },
 };
 
 /** 读写本机该动作的时间戳队列（只在窗口内的才留） */
 function cdStore(file, action, hits) {
-  const key = 'kimgr_cd_' + (state.uid || 0) + '_' + file + ':' + action;
+  const key = 'kimgr_cd_' + (state.uid || 0) + '_t(' + file + '):' + action;
   try {
     if (hits === undefined) {
       const raw = JSON.parse(localStorage.getItem(key) || '[]');
@@ -136,8 +247,8 @@ function cdCheck(file, action, data) {
   const hits = cdStore(file, action).filter(t => t > now - lim.window);
   if (hits.length < lim.max) { return; }
   const left = Math.max(1, hits[0] + lim.window - now);   // 最早一次滑出窗口即可再试
-  throw new ApiError(429, lim.label + '过于频繁，请在 ' + left + ' 秒后再试（每 '
-    + Math.round(lim.window / 60) + ' 分钟最多 ' + lim.max + ' 次）');
+  throw new ApiError(429, lim.label + t('过于频繁，请在 ') + left + t(' 秒后再试（每 ')
+    + Math.round(lim.window / 60) + t(' 分钟最多 ') + lim.max + t(' 次）'));
 }
 
 function cdMark(file, action) {
@@ -205,7 +316,7 @@ async function api(file, action, data = null, opts = {}) {
         lastErr = e;
         // 仅对「网络层失败」（code=0）重试；HTTP/业务错误立即抛出
         if (!e || e.code !== 0 || opts.retry === false || i === maxTries - 1) { break; }
-        try { console.warn('[api] 第 ' + (i + 1) + ' 次失败，准备重试：' + file + '?' + action, e.message); } catch (err) {}
+        try { console.warn(t('[api] 第 ') + (i + 1) + t(' 次失败，准备重试：') + file + '?' + action, e.message); } catch (err) {}
         await new Promise(r => setTimeout(r, 1200 * (i + 1)));
       }
     }
@@ -247,8 +358,8 @@ async function apiOnce(file, action, data = null, opts = {}) {
     resp = await fetch(url, init);
   } catch (e) {
     clearTimeout(timer);
-    if (e && e.name === 'AbortError') { throw new ApiError(0, '请求超时，请重试'); }
-    throw new ApiError(0, '网络连接不稳定，请重试');   // code=0 标记网络层失败
+    if (e && e.name === 'AbortError') { throw new ApiError(0, t('请求超时，请重试')); }
+    throw new ApiError(0, t('网络连接不稳定，请重试'));   // code=0 标记网络层失败
   }
   clearTimeout(timer);
   if (resp.status === 401) {
@@ -262,27 +373,27 @@ async function apiOnce(file, action, data = null, opts = {}) {
       }
     }
     if (onUnauthorized) { onUnauthorized(); }
-    throw new ApiError(401, '登录态已失效');
+    throw new ApiError(401, t('登录态已失效'));
   }
   let json;
   try { json = await resp.json(); } catch (e) {
     /* 拿到的是网页而不是数据：多半被主机/WAF 拦下（例如文件被拒返回 403 错误页）。
        必须说清是「被拦」而不是笼统的「请求失败」，否则排查时无从下手。 */
     throw new ApiError(resp.status || 502,
-      '服务返回了网页而不是数据（HTTP ' + resp.status + '），可能被主机拦截，请刷新后重试');
+      t('服务返回了网页而不是数据（HTTP ') + resp.status + t('），可能被主机拦截，请刷新后重试'));
   }
   if (!json || json.code === undefined || json.code === null) {
     throw new ApiError(resp.status || 502,
-      '服务响应格式异常（HTTP ' + resp.status + '），请刷新后重试');
+      t('服务响应格式异常（HTTP ') + resp.status + t('），请刷新后重试'));
   }
   if (Number(json.code) !== 0) {
     /* 账号被封停：后端已拒绝本次操作，前台立刻拉起全屏封禁说明 */
     const __bm = String(json.msg || json.error || '');
-    if (Number(json.code) === 403 && __bm.indexOf('封停') >= 0 && typeof window.__forceBan === 'function') {
+    if (Number(json.code) === 403 && __bm.indexOf(t('封停')) >= 0 && typeof window.__forceBan === 'function') {
       try { window.__forceBan(); } catch (e) {}
     }
     throw new ApiError(Number(json.code) || resp.status,
-      json.msg || json.error || ('请求失败（HTTP ' + resp.status + '）'));
+      json.msg || json.error || (t('请求失败（HTTP ') + resp.status + '）'));
   }
   return json.data;
 }
@@ -319,8 +430,8 @@ function btnLoading(btn, on) {
  * 身份徽章（管理员 / 副管理员）
  * ============================================================ */
 const ROLES = {
-  admin:    { label: '管理员',   cls: 'bd-admin' },
-  subadmin: { label: '副管理员', cls: 'bd-sub' },
+  admin:    { label: t('管理员'),   cls: 'bd-admin' },
+  subadmin: { label: t('副管理员'), cls: 'bd-sub' },
 };
 
 /** 是否具备后台身份 */
@@ -400,7 +511,7 @@ function toast(msg, type = '') {
 }
 
 /** 通用对话框，返回 Promise<boolean> */
-function dialog(title, text, confirmLabel = '确定', opts = {}) {
+function dialog(title, text, confirmLabel = t('确定'), opts = {}) {
   return new Promise(resolve => {
     const scrim = document.getElementById('dialogScrim');
     const box = document.getElementById('dialog');
@@ -419,7 +530,7 @@ function dialog(title, text, confirmLabel = '确定', opts = {}) {
 }
 
 /** 输入型对话框（用于管理员密钥等），返回 Promise<string|null> */
-function prompt_(title, text, confirmLabel = '确定', defaultValue = '') {
+function prompt_(title, text, confirmLabel = t('确定'), defaultValue = '') {
   return new Promise(resolve => {
     const scrim = document.getElementById('dialogScrim');
     const box = document.getElementById('dialog');
@@ -494,7 +605,7 @@ async function boot() {
     const d = await api('auth.php', 'guest');
     setToken(d.token);
     state.role = 'guest';
-    state.username = d.username || '游客';
+    state.username = d.username || t('游客');
     state.avatar = '';
     state.uid = 0;
     state.uid8 = '';
@@ -527,7 +638,7 @@ function applyIdentity(d) {
   state.role = d.role || 'guest';
   state.uid = d.uid || 0;
   state.uid8 = d.uid8 || '';
-  state.username = d.username || '游客';
+  state.username = d.username || t('游客');
   state.nameFix = d.name_fix || null;
   state.avatar = d.avatar || '';
   state.settings = d.settings || {};
@@ -608,10 +719,10 @@ const I_CROSS  = '<svg viewBox="0 0 24 24" class="ic"><path d="M6.4 5 5 6.4 10.6
 /** 封禁状态文案：未封停 / 封停中（至某时或永久）/ 已解封 */
 function discStatusText(it) {
   const o = it || {};
-  if (!o.banned) { return '未封停账号'; }
+  if (!o.banned) { return t('未封停账号'); }
   const until = String(o.ban_until || '');
-  if (o.alive) { return until ? ('封停中 · 至 ' + until) : '封停中 · 永久'; }
-  return until ? ('已解封（原定 ' + until + '）') : '已解封';
+  if (o.alive) { return until ? (t('封停中 · 至 ') + until) : t('封停中 · 永久'); }
+  return until ? (t('已解封（原定 ') + until + '）') : t('已解封');
 }
 
 /** 封禁天数文案 */
@@ -619,7 +730,7 @@ function discDaysText(it) {
   const o = it || {};
   if (!o.banned) { return '—'; }
   const d = Number(o.ban_days || 0);
-  return d > 0 ? (d + ' 天') : '永久';
+  return d > 0 ? (d + t(' 天')) : t('永久');
 }
 
 /* ============================================================
@@ -771,7 +882,7 @@ function readBanCacheAsync() {
 function kmText(km) {
   const n = Number(km);
   if (!isFinite(n) || n < 0) { return ''; }
-  return (n < 1 ? '不到 1' : String(Math.round(n))) + ' 公里';
+  return (n < 1 ? '不到 1' : String(Math.round(n))) + t(' 公里');
 }
 
 /**
@@ -780,11 +891,11 @@ function kmText(km) {
  */
 async function banGeoCheck(lockEl) {
   const okGo = await dialog(
-    '校验你的位置',
+    t('校验你的位置'),
     '本站按访问来源地址限制违规者。同一个地址常被很多人共用（学校、公司、公共网络），直接封禁可能误伤到与此事无关的你。\n\n'
     + '授权定位后，会用你的大致位置判断你是否与当事人处在同一片区域：相距较远 → 判定为不同的人、立即恢复访问；'
-    + '无明显差别 → 维持限制。位置仅用于本次判断，不保存坐标明文。',
-    '允许定位并校验'
+    + t('无明显差别 → 维持限制。位置仅用于本次判断，不保存坐标明文。'),
+    t('允许定位并校验')
   );
   if (!okGo) { return; }
   if (!navigator.geolocation) { toast('当前浏览器不支持定位', 'err'); return; }
@@ -803,11 +914,11 @@ async function banGeoCheck(lockEl) {
           /* 此前的接口全部被服务端拒绝，页面数据已不完整，需要重新拉取 —— 这里的整页刷新是必要的 */
           setTimeout(function () { location.reload(); }, 700);
         } else {
-          toast('校验结果：你与当事人处在同一区域' + (r && r.distance >= 0 ? '（相距 ' + kmText(r.distance) + '）' : ''));
+          toast('校验结果：你与当事人处在同一区域' + (r && r.distance >= 0 ? t('（相距 ') + kmText(r.distance) + '）' : ''));
         }
-      } catch (e) { toast((e && e.message) || '校验失败', 'err'); }
+      } catch (e) { toast((e && e.message) || t('校验失败'), 'err'); }
     },
-    function (err) { toast('未能获取定位：' + ((err && err.message) || '已拒绝授权'), 'err'); },
+    function (err) { toast('未能获取定位：' + ((err && err.message) || t('已拒绝授权')), 'err'); },
     { timeout: 8000, maximumAge: 300000 }
   );
 }
@@ -827,10 +938,10 @@ function showBanLock(info) {
       <h2>访问已被限制</h2>
       <p class="banlock-sub">本站已对相关账号与来源地址作出处理。如有异议，请通过站内反馈或联系管理员。</p>
       <dl class="kv">
-        <dt>处理对象</dt><dd>${esc(b.username || '（未知）')}</dd>
+        <dt>处理对象</dt><dd>${esc(b.username || t('（未知）'))}</dd>
         <dt>封禁状态</dt><dd>${esc(discStatusText(b))}</dd>
         <dt>封禁天数</dt><dd>${esc(discDaysText(b))}</dd>
-        <dt>解封时间</dt><dd>${b.alive ? (b.ban_until ? esc(b.ban_until) : '不会自动解封（永久）') : '已结束'}</dd>
+        <dt>解封时间</dt><dd>${b.alive ? (b.ban_until ? esc(b.ban_until) : t('不会自动解封（永久）')) : t('已结束')}</dd>
         ${b.ip_banned ? '<dt>来源地址</dt><dd>已一并封禁</dd>' : ''}
       </dl>
       ${reasons.length ? '<div class="banlock-reasons">' + reasons.map(r => '<span class="disc-chip">' + esc(r) + '</span>').join('') + '</div>' : ''}
@@ -874,7 +985,7 @@ function showDiscPopup(item) {
         <button class="discpop-x" id="discX" aria-label="关闭">${I_CROSS}</button>
       </div>
       <div class="discpop-body">
-        <div class="discpop-who">${esc(it.username || '（未知用户）')} <span class="tiny muted">· ${esc(it.created || '')}</span></div>
+        <div class="discpop-who">${esc(it.username || t('（未知用户）'))} <span class="tiny muted">· ${esc(it.created || '')}</span></div>
         <div class="discpop-status"><span class="disc-chip ${it.alive ? 'on' : (it.banned ? 'off' : '')}">${esc(discStatusText(it))}</span> <span class="tiny muted">封禁 ${esc(discDaysText(it))}</span></div>
         ${it.note ? '<div class="disc-note"><span class="disc-note-k">补充说明</span>' + esc(it.note) + '</div>' : ''}
         ${(it.reasons && it.reasons.length) ? '<ol class="disc-reasons">' + it.reasons.map(r => '<li>' + esc(r) + '</li>').join('') + '</ol>' : ''}
@@ -1370,7 +1481,7 @@ function loadScript(src) {
     const s = document.createElement('script');
     s.src = src;
     s.onload = () => resolve(true);
-    s.onerror = () => reject(new Error('脚本加载失败'));
+    s.onerror = () => reject(new Error(t('脚本加载失败')));
     document.head.appendChild(s);
   });
 }
@@ -1419,8 +1530,8 @@ function mountCaptcha(host, onChange) {
     host.querySelector('#capStd').style.display = 'none';
     const box = host.querySelector('#capPhp');
     box.style.display = 'block';
-    if (!php.script) { hint.textContent = '人机验证暂不可用，请稍后再试'; return; }
-    hint.textContent = '主通道不可用（' + why + '），已切换到备用通道';
+    if (!php.script) { hint.textContent = t('人机验证暂不可用，请稍后再试'); return; }
+    hint.textContent = t('主通道不可用（') + why + t('），已切换到备用通道');
     if (php.css && !document.querySelector('link[data-cap-php]')) {
       const l = document.createElement('link');
       l.rel = 'stylesheet';
@@ -1449,34 +1560,34 @@ function mountCaptcha(host, onChange) {
     loadScript(php.script).then(() => {
       const wait = (n) => {
         if (window.CapPow) {
-          window.CapPow.onDone = (token) => { hint.textContent = '验证通过'; cb(token, 'php'); };
-          window.CapPow.onFail = (msg) => { hint.textContent = '验证失败：' + (msg || '未知'); cb('', ''); };
+          window.CapPow.onDone = (token) => { hint.textContent = t('验证通过'); cb(token, 'php'); };
+          window.CapPow.onFail = (msg) => { hint.textContent = t('验证失败：') + (msg || t('未知')); cb('', ''); };
         } else if (n < 30) { setTimeout(() => wait(n + 1), 300); }
-        else { hint.textContent = '备用通道加载超时，请刷新重试'; }
+        else { hint.textContent = t('备用通道加载超时，请刷新重试'); }
       };
       wait(0);
-    }).catch(() => { hint.textContent = '备用通道加载失败，请刷新重试'; });
+    }).catch(() => { hint.textContent = t('备用通道加载失败，请刷新重试'); });
   }
 
   /* 主通道：官方 cap-widget，脚本加载后自动挂载 */
-  if (!std.script) { switchToPhp('未配置'); return; }
+  if (!std.script) { switchToPhp(t('未配置')); return; }
   const w = document.createElement('cap-widget');
   w.id = 'cap-widget';
   if (std.api) { w.setAttribute('data-cap-api-endpoint', std.api); }
-  w.addEventListener('solve', (e) => { hint.textContent = '验证通过'; cb(e.detail.token, 'standard'); });
-  w.addEventListener('progress', (e) => { hint.textContent = '计算中… ' + Math.round(e.detail.progress) + '%'; });
-  w.addEventListener('error', (e) => { hint.textContent = '验证出错：' + ((e.detail && e.detail.message) || '未知'); });
+  w.addEventListener('solve', (e) => { hint.textContent = t('验证通过'); cb(e.detail.token, 'standard'); });
+  w.addEventListener('progress', (e) => { hint.textContent = t('计算中… ') + Math.round(e.detail.progress) + '%'; });
+  w.addEventListener('error', (e) => { hint.textContent = t('验证出错：') + ((e.detail && e.detail.message) || t('未知')); });
   host.querySelector('#capStd').appendChild(w);
 
   activeChannel = 'standard';
-  loadScript(std.script).catch(() => switchToPhp('脚本加载失败'));
+  loadScript(std.script).catch(() => switchToPhp(t('脚本加载失败')));
   /* 3 秒健康检查：没渲染出来就切备通道 */
   setTimeout(() => {
     if (activeChannel !== 'standard') { return; }
     const inst = host.querySelector('#cap-widget');
     const ok = inst && (inst.shadowRoot || inst.children.length > 0);
-    if (!ok) { switchToPhp('未渲染'); }
-    else if (hint.textContent === '正在加载人机验证…') { hint.textContent = '点击下方按钮完成验证'; }
+    if (!ok) { switchToPhp(t('未渲染')); }
+    else if (hint.textContent === t('正在加载人机验证…')) { hint.textContent = t('点击下方按钮完成验证'); }
   }, 3000);
 }
 
@@ -1490,16 +1601,16 @@ function mountCaptcha(host, onChange) {
 
 
 const CATS = [
-  { k: 'game', name: '游戏榜' },
-  { k: 'tool', name: '工具榜' },
-  { k: 'literature', name: '文学榜' },
-  { k: 'fanart', name: '二创榜' },
+  { k: 'game', name: t('游戏榜') },
+  { k: 'tool', name: t('工具榜') },
+  { k: 'literature', name: t('文学榜') },
+  { k: 'fanart', name: t('二创榜') },
 ];
 const BOARDS = [
-  { k: 'total', name: '总榜' },
-  { k: 'vote', name: '投票榜' },
-  { k: 'gods', name: '诸神榜' },
-  { k: 'cold', name: '冷门榜' },
+  { k: 'total', name: t('总榜') },
+  { k: 'vote', name: t('投票榜') },
+  { k: 'gods', name: t('诸神榜') },
+  { k: 'cold', name: t('冷门榜') },
 ];
 const AI_SUM_FOLD = 240;      // AI 总结折叠阈值（纯文本字数）
 const PAGE_SIZE = 20;  // 每页 20 件（服务端按此值返回）：首屏够快，滚动时自动续拉
@@ -1564,13 +1675,13 @@ async function renderRank(container, ctx) {
     if (moreBtn) {
       moreBtn.hidden = done || totalCount <= 0;
       moreBtn.disabled = loading;
-      moreBtn.textContent = loading ? '加载中…' : '加载更多';
+      moreBtn.textContent = loading ? '加载中…' : t('加载更多');
     }
     if (totalCount <= 0) { foot.textContent = ''; return; }
-    if (loading) { foot.textContent = '加载中…'; return; }
+    if (loading) { foot.textContent = t('加载中…'); return; }
     foot.textContent = done
-      ? ('已显示全部 ' + shownCount + ' 件')
-      : ('已显示 ' + shownCount + ' / 共 ' + totalCount + ' 件 · 下滑自动加载，也可点上方按钮');
+      ? (t('已显示全部 ') + shownCount + t(' 件'))
+      : (t('已显示 ') + shownCount + t(' / 共 ') + totalCount + t(' 件 · 下滑自动加载，也可点上方按钮'));
   }
 
   /* 列表底部是否已进入可视范围（「填满视口」判定）：以视口为准，
@@ -1611,7 +1722,7 @@ async function renderRank(container, ctx) {
       page++;
     } catch (e) {
       if (reset) list.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`;
-      foot.textContent = '加载失败：' + e.message;
+      foot.textContent = t('加载失败：') + e.message;
       errored = true;                     // 暂停自动续拉，可点按钮重试
     } finally {
       loading = false;
@@ -1766,10 +1877,10 @@ async function loadSearchAi(container, q) {
 
   card.classList.add('collapsed');
   toggle.hidden = false;
-  toggle.textContent = '展开全部';
+  toggle.textContent = t('展开全部');
   toggle.addEventListener('click', () => {
     const folded = card.classList.toggle('collapsed');
-    toggle.textContent = folded ? '展开全部' : '收起';
+    toggle.textContent = folded ? '展开全部' : t('收起');
     if (!folded) { card.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
   });
 }
@@ -1789,12 +1900,12 @@ const canPost = () => state.role === 'user' || isAdminish();
 const canModerate = () => isAdminish();
 
 const DIMS = [
-  { k: 'experience', name: '可玩性' },
-  { k: 'creativity', name: '创意' },
-  { k: 'depth', name: '深度' },
-  { k: 'cost', name: '体量' },
-  { k: 'attitude', name: '用心' },
-  { k: 'heat', name: '口碑' },
+  { k: 'experience', name: t('可玩性') },
+  { k: 'creativity', name: t('创意') },
+  { k: 'depth', name: t('深度') },
+  { k: 'cost', name: t('体量') },
+  { k: 'attitude', name: t('用心') },
+  { k: 'heat', name: t('口碑') },
 ];
 
 async function renderDetail(container, ctx) {
@@ -1847,10 +1958,10 @@ async function renderDetail(container, ctx) {
         <svg viewBox="0 0 24 24" class="ic"><path d="M7 6h10a5 5 0 0 1 5 5v3a4 4 0 0 1-4 4h-1a3 3 0 0 1-2.4-1.2l-.6-.8a2 2 0 0 0-3.2 0l-.6.8A3 3 0 0 1 7.4 18H7a4 4 0 0 1-4-4v-3a5 5 0 0 1 5-5z"/></svg>
         作品详情与介绍
       </div>
-      <p class="muted" style="white-space:pre-wrap">${esc(d.intro || '暂无介绍')}</p>
+      <p class="muted" style="white-space:pre-wrap">${esc(d.intro || t('暂无介绍'))}</p>
       ${d.link ? `<button class="btn-link" id="openLink" data-href="${esc(d.link)}">
         <svg viewBox="0 0 24 24" class="ic" style="width:15px;height:15px;fill:currentColor"><path d="M10.6 13.4a1 1 0 0 1 0-1.4l4.2-4.2a3 3 0 1 1 4.2 4.2l-1.8 1.8-1.4-1.4 1.8-1.8a1 1 0 0 0-1.4-1.4l-4.2 4.2a1 1 0 0 1-1.4 0zm2.8-2.8a1 1 0 0 1 0 1.4l-4.2 4.2a1 1 0 0 0 1.4 1.4l1.8-1.8 1.4 1.4-1.8 1.8a3 3 0 0 1-4.2-4.2l4.2-4.2a1 1 0 0 1 1.4 0z"/></svg>
-        ${d.html_url ? '打开作品（CDN 直链）' : '查看作品分享链接'}
+        ${d.html_url ? '打开作品（CDN 直链）' : t('查看作品分享链接')}
       </button>
       <div class="tiny" style="margin-top:6px;word-break:break-all">${esc(d.link)}</div>` : ''}
       <div class="tiny" style="margin-top:8px">作品 ID：${esc(d.source_id || '')} · 收录于 ${esc(d.added_at || '')}</div>
@@ -1863,7 +1974,7 @@ async function renderDetail(container, ctx) {
       </div>
       <div class="tiny" style="margin-top:10px">历史峰值总分 ${d.peak_score} · 更新于 ${esc(d.updated_at)}</div>
       <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
-        <button class="btn ${d.voted ? 'btn-ghost' : ''}" id="voteBtn">${d.voted ? '已点赞' : '点赞作品'}</button>
+        <button class="btn ${d.voted ? 'btn-ghost' : ''}" id="voteBtn">${d.voted ? '已点赞' : t('点赞作品')}</button>
         <span class="tiny">点赞计入「投票榜」，每人每作品限一次</span>
       </div>
     </div>
@@ -1902,9 +2013,9 @@ async function renderDetail(container, ctx) {
     if (!canPost()) { toast('登录后才能点赞', 'err'); return; }
     try {
       const r = await api('works.php', 'vote', { id: id });
-      voteBtn.textContent = r.voted ? '已点赞' : '点赞作品';
+      voteBtn.textContent = r.voted ? '已点赞' : t('点赞作品');
       voteBtn.classList.toggle('btn-ghost', r.voted);
-      toast(r.voted ? '已点赞' : '已取消');
+      toast(r.voted ? '已点赞' : t('已取消'));
     } catch (e) { toast(e.message, 'err'); }
   });
 
@@ -1912,11 +2023,11 @@ async function renderDetail(container, ctx) {
 }
 
 function gradeOf(v) {
-  if (v >= 190) return '超神品';
-  if (v >= 160) return '优秀';
-  if (v >= 120) return '良好';
-  if (v >= 80) return '及格';
-  return '待提升';
+  if (v >= 190) return t('超神品');
+  if (v >= 160) return t('优秀');
+  if (v >= 120) return t('良好');
+  if (v >= 80) return t('及格');
+  return t('待提升');
 }
 
 /* ============================================================
@@ -2024,7 +2135,7 @@ async function onCommentClick(ev) {
     const body = node.querySelector('.blocked-body');
     if (body) {
       body.hidden = !body.hidden;
-      rev.textContent = body.hidden ? (rev.dataset.note || '点击查看') : '收起';
+      rev.textContent = body.hidden ? (rev.dataset.note || t('点击查看')) : t('收起');
     }
     return;
   }
@@ -2038,7 +2149,7 @@ async function onCommentClick(ev) {
 
   if (btn.dataset.act === 'like') {
     if (!canPost()) { toast('登录后才能点赞', 'err'); return; }
-    try { const r = await api('comments.php', 'vote', { id: cid }); btn.textContent = '赞 ' + r.count; } catch (e) { toast(e.message, 'err'); }
+    try { const r = await api('comments.php', 'vote', { id: cid }); btn.textContent = t('赞 ') + r.count; } catch (e) { toast(e.message, 'err'); }
   } else if (btn.dataset.act === 'unflag') {
     try {
       await api('comments.php', 'flag', { id: cid, on: 0 });
@@ -2046,13 +2157,13 @@ async function onCommentClick(ev) {
       toast('已取消标注');
     } catch (e) { toast(e.message, 'err'); }
   } else if (btn.dataset.act === 'del') {
-    if (await dialog('删除评论', '确认删除这条评论吗？删除后会移入回收站，页面不再显示。', '删除', { danger: true })) {
+    if (await dialog(t('删除评论'), t('确认删除这条评论吗？删除后会移入回收站，页面不再显示。'), t('删除'), { danger: true })) {
       try { await api('comments.php', 'delete', { id: cid }); toast('已移入回收站'); ctx.refresh(true); } catch (e) { toast(e.message, 'err'); }
     }
   } else if (btn.dataset.act === 'block') {
     try {
       const r = await api('comments.php', 'block', { id: cid, on: btn.dataset.on === '1' ? 0 : 1 });
-      toast(r.blocked ? '已屏蔽（折叠显示）' : '已取消屏蔽');
+      toast(r.blocked ? '已屏蔽（折叠显示）' : t('已取消屏蔽'));
       ctx.refresh(true);
     } catch (e) { toast(e.message, 'err'); }
   } else if (btn.dataset.act === 'reply') {
@@ -2064,7 +2175,7 @@ async function onCommentClick(ev) {
           toast('已回复');
           ctx.refresh(true);
         } catch (e) {
-          if (e && e.code === 422) { commentReject(node, e.message || '内容未通过审核', text, post); }
+          if (e && e.code === 422) { commentReject(node, e.message || t('内容未通过审核'), text, post); }
           else { toast(e.message, 'err'); }
         }
       };
@@ -2109,7 +2220,7 @@ async function renderComments(container, workId, targetType) {
         toast('已发表');
       } catch (e) {
         if (e && e.code === 422) {
-          commentReject(form.parentNode, e.message || '内容未通过审核', v,
+          commentReject(form.parentNode, e.message || t('内容未通过审核'), v,
             () => form.querySelector('#cmtSend').click());
         } else { toast(e.message, 'err'); }
       }
@@ -2147,7 +2258,7 @@ async function renderComments(container, workId, targetType) {
         if (reps.length > FOLD) {
           const t = document.createElement('button');
           t.className = 'fold-toggle';
-          t.textContent = open ? '收起回复' : '展开全部 ' + reps.length + ' 条回复';
+          t.textContent = open ? '收起回复' : t('展开全部 ') + reps.length + t(' 条回复');
           t.addEventListener('click', () => { open = !open; unfolded[c.id] = open; draw(); });
           wrap.appendChild(t);
         }
@@ -2159,7 +2270,7 @@ async function renderComments(container, workId, targetType) {
       const more = document.createElement('button');
       more.className = 'btn-ghost btn-sm';
       more.style.cssText = 'width:100%;margin-top:8px';
-      more.textContent = '查看更多评论（还有 ' + (roots.length - st.shown) + ' 条）';
+      more.textContent = t('查看更多评论（还有 ') + (roots.length - st.shown) + t(' 条）');
       more.addEventListener('click', () => { st.shown = roots.length; paint(); });
       listBox.appendChild(more);
     }
@@ -2224,12 +2335,12 @@ function commentReject(host, text, content, onPass) {
   const btn = bar.querySelector('[data-review]');
   btn.addEventListener('click', async () => {
     btn.disabled = true;
-    btn.textContent = '重审中…';
+    btn.textContent = t('重审中…');
     try {
       const r = await api('recheck.php', 'run', { content: content }, { timeout: 30000 });
       const v = (r && r.verdict) || 'false';
       if (v === 'false') {
-        bar.querySelector('.rn-text').textContent = 'AI 复核后仍判为违规，未发表';
+        bar.querySelector('.rn-text').textContent = t('AI 复核后仍判为违规，未发表');
         btn.remove();
         return;
       }
@@ -2238,8 +2349,8 @@ function commentReject(host, text, content, onPass) {
       onPass();
     } catch (err) {
       btn.disabled = false;
-      btn.textContent = 'AI 重审';
-      bar.querySelector('.rn-text').textContent = (err && err.message) ? err.message : '重审失败，请稍后再试';
+      btn.textContent = t('AI 重审');
+      bar.querySelector('.rn-text').textContent = (err && err.message) ? err.message : t('重审失败，请稍后再试');
     }
   });
 }
@@ -2251,7 +2362,7 @@ function commentNode(c, workId, reload, ttype) {
   /* 折叠的两种来源：管理员屏蔽（c.blocked）与你自己的屏蔽词（isBlocked）。
      已删除的评论服务端不会再下发，因此这里完全没有「已删除」分支。 */
   const folded = !!c.blocked || isBlocked(c.content);
-  const noteText = c.blocked ? '该评论已被折叠，点击查看' : '已按你的屏蔽规则收起，点击查看';
+  const noteText = c.blocked ? '该评论已被折叠，点击查看' : t('已按你的屏蔽规则收起，点击查看');
   box.innerHTML = `
     <span class="av"><img src="${esc(c.avatar)}" alt="" draggable="false"></span>
     <span class="body">
@@ -2269,7 +2380,7 @@ function commentNode(c, workId, reload, ttype) {
         <button data-act="like">赞 ${c.likes || 0}</button>
         ${canPost() ? `<button data-act="reply" data-user="${esc(c.username)}">回复</button>` : ''}
         ${(c.mine || canModerate()) ? '<button data-act="del">删除</button>' : ''}
-        ${canModerate() ? `<button data-act="block" data-on="${c.blocked ? 1 : 0}">${c.blocked ? '取消屏蔽' : '屏蔽'}</button>` : ''}
+        ${canModerate() ? `<button data-act="block" data-on="${c.blocked ? 1 : 0}">${c.blocked ? '取消屏蔽' : t('屏蔽')}</button>` : ''}
       </span>
     </span>`;
 
@@ -2387,7 +2498,7 @@ function richInline(html) {
   if (EMOJI) {
     h = h.replace(/\[([^\[\]\s]{1,12})\]/g, function (m, name) {
       const f = EMOJI[name];
-      return f ? ('<img class="emoji" src="' + f + '" alt="' + esc(name) + '" draggable="false">') : m;
+      return f ? ('<img class="emoji" src="' + esc(f) + '" alt="' + esc(name) + '" draggable="false">') : m;
     });
   }
   return h.replace(/(https?:\/\/[^\s<>"']+\.(?:png|jpe?g|gif|webp|avif)(?:\?[^\s<>"']*)?)/gi, function (u) {
@@ -2518,7 +2629,7 @@ async function playVideo(card, bv) {
   try {
     const d = await api('video.php', 'url', { bv: bv }, { timeout: 20000 });
     const url = String((d && d.url) || '');
-    if (!url) { throw new Error('视频解析失败'); }
+    if (!url) { throw new Error(t('视频解析失败')); }
     card.classList.remove('mv-loading');
     card.classList.add('mv-on');
     card.innerHTML = '<div class="mv-player"><video class="mv-video" controls playsinline preload="metadata" src="' + esc(url) + '"></video>'
@@ -2563,7 +2674,7 @@ async function mountWorld(body) {
         <button class="icon-btn pk-btn at-txt" id="wAt" aria-label="@ 官方AI" ${canSend ? '' : 'disabled'}>@</button>
         <div class="cnt" id="wCount">0/500</div>
         <textarea class="input" id="wInput" rows="1" maxlength="500"
-          placeholder="${canSend ? '输入消息…' : '游客仅可查看，登录后可发言'}" ${canSend ? '' : 'disabled'}></textarea>
+          placeholder="${canSend ? '输入消息…' : t('游客仅可查看，登录后可发言')}" ${canSend ? '' : 'disabled'}></textarea>
         <button class="btn" id="wSend" aria-label="发送" ${canSend ? '' : 'disabled'}>${W_ICON_SEND}</button>
       </div>
       <div class="identity-tip">
@@ -2591,7 +2702,8 @@ async function mountWorld(body) {
     if (m.recalled) {
       inner = '<span class="recall">该消息已撤回</span>';
     } else if (m.msg_type === 'image' && m.media) {
-      inner = '<img class="msg-img" src="' + imgSrc(m.media) + '" alt="图片消息" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false">';
+      /* src 必须整体转义：media 是用户可控字段，曾有人塞 `" onerror="alert(` 打断脚本 */
+      inner = '<img class="msg-img" src="' + esc(imgSrc(m.media)) + '" alt="图片消息" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false">';
     } else if (m.msg_type === 'video' && m.media) {
       inner = videoCardHtml(m.media, m.video);
     } else if (m.msg_type === 'ai' && m.cards && m.cards.length) {
@@ -2635,7 +2747,7 @@ async function mountWorld(body) {
     const db2 = el.querySelector('[data-del]');
     if (db2) {
       db2.addEventListener('click', async () => {
-        if (!(await dialog('删除这条消息', '删除后这条消息在对话里不再显示（对所有人）。确认？', '删除', { danger: true }))) { return; }
+        if (!(await dialog(t('删除这条消息'), t('删除后这条消息在对话里不再显示（对所有人）。确认？'), t('删除'), { danger: true }))) { return; }
         db2.disabled = true;
         try {
           await api('lobby.php', 'del', { id: m.id });
@@ -2698,7 +2810,7 @@ async function mountWorld(body) {
     p.textContent = msg;
     const b = document.createElement('button');
     b.className = 'btn-ghost btn-sm';
-    b.textContent = '重试';
+    b.textContent = t('重试');
     b.addEventListener('click', onRetry);
     d.appendChild(p); d.appendChild(b);
     stream.appendChild(d);
@@ -2709,13 +2821,13 @@ async function mountWorld(body) {
     try {
       const d = await api('lobby.php', 'list', { limit: 30 });
       stream.innerHTML = '';
-      if (d && d.degraded) { errorNote(d.hint || '对话暂时不可用，请稍后重试', load); return; }
+      if (d && d.degraded) { errorNote(d.hint || t('对话暂时不可用，请稍后重试'), load); return; }
       const items = (d && d.items) || [];
       items.forEach(m => put(m, false));
-      if (!items.length) { stream.appendChild(emptyNote('还没有人发言，来发第一条吧')); }
+      if (!items.length) { stream.appendChild(emptyNote(t('还没有人发言，来发第一条吧'))); }
       stick();
     } catch (e) {
-      errorNote(e.message || '加载失败', load);
+      errorNote(e.message || t('加载失败'), load);
     }
   }
 
@@ -2737,12 +2849,12 @@ async function mountWorld(body) {
     const btn = bar.querySelector('[data-review]');
     if (btn) btn.addEventListener('click', async () => {
       btn.disabled = true;
-      btn.textContent = '重审中…';
+      btn.textContent = t('重审中…');
       try {
         const r = await api('recheck.php', 'run', { content: payload.content }, { timeout: 30000 });
         const v = (r && r.verdict) || 'false';
         if (v === 'false') {
-          bar.querySelector('.rn-text').textContent = 'AI 复核后仍判为违规，未发送';
+          bar.querySelector('.rn-text').textContent = t('AI 复核后仍判为违规，未发送');
           btn.remove();
           return;
         }
@@ -2752,8 +2864,8 @@ async function mountWorld(body) {
         submit(payload.type || 'text', payload);
       } catch (e) {
         btn.disabled = false;
-        btn.textContent = 'AI 重审';
-        bar.querySelector('.rn-text').textContent = (e && e.message) ? e.message : '重审失败，请稍后再试';
+        btn.textContent = t('AI 重审');
+        bar.querySelector('.rn-text').textContent = (e && e.message) ? e.message : t('重审失败，请稍后再试');
       }
     });
   }
@@ -2794,7 +2906,7 @@ async function mountWorld(body) {
       if (type === 'text' && input) { input.value = payload.content || ''; input.dispatchEvent(new Event('input')); }
       if (e && e.code === 422) {
         /* 图片同样给一条明确的通知条，而不是静默失败（用户以为发出去了） */
-        rejectNote(e.message || '内容未通过审核', { type: type, content: payload.content, media: payload.media });
+        rejectNote(e.message || t('内容未通过审核'), { type: type, content: payload.content, media: payload.media });
       } else {
         toast(e.message, 'err');
       }
@@ -2832,15 +2944,15 @@ async function mountWorld(body) {
     const urlIn = picker.querySelector('#wImgUrl');
     picker.querySelector('#wImgLink').addEventListener('click', () => {
       const u = (urlIn.value || '').trim();
-      if (!/^https?:\/\//i.test(u)) { hint.textContent = '请输入以 http(s) 开头的图片链接'; return; }
+      if (!/^https?:\/\//i.test(u)) { hint.textContent = t('请输入以 http(s) 开头的图片链接'); return; }
       pickerSendImage(u);
     });
     picker.querySelector('#wImgUpBtn').addEventListener('click', () => picker.querySelector('#wImgFile').click());
     picker.querySelector('#wImgFile').addEventListener('change', async ev => {
       const f = ev.target.files && ev.target.files[0];
       if (!f) { return; }
-      if (f.size > 2 * 1024 * 1024) { hint.textContent = '图片不能超过 2MB'; return; }
-      hint.textContent = '上传中…';
+      if (f.size > 2 * 1024 * 1024) { hint.textContent = t('图片不能超过 2MB'); return; }
+      hint.textContent = t('上传中…');
       try {
         const fd = new FormData();
         fd.append('file', f);
@@ -2851,9 +2963,9 @@ async function mountWorld(body) {
           credentials: 'same-origin',
         });
         const j = await resp.json();
-        if (!j || j.code !== 0) { throw new Error((j && j.msg) || '上传失败'); }
+        if (!j || j.code !== 0) { throw new Error((j && j.msg) || t('上传失败')); }
         pickerSendImage(j.data.url);
-      } catch (e) { hint.textContent = '上传失败：' + (e.message || '未知错误'); }
+      } catch (e) { hint.textContent = t('上传失败：') + (e.message || t('未知错误')); }
     });
   }
 
@@ -2869,7 +2981,7 @@ async function mountWorld(body) {
   input.addEventListener('focus', () => requestAnimationFrame(stick));
 
   /* ---------- @ 提及（仅世界对话）：输入 @ 弹面板；@ 按钮一键插入 ---------- */
-  const AI_MENTION = '@官方AI ';
+  const AI_MENTION = t('@官方AI ');
   function atInsert() {
     const st = input.selectionStart, en = input.selectionEnd, v = input.value;
     input.value = v.slice(0, st) + AI_MENTION + v.slice(en);
@@ -2887,7 +2999,7 @@ async function mountWorld(body) {
     if (!canSend) { return; }
     const r = atRange();
     const q = r ? input.value.slice(r.start + 1, input.selectionStart) : '';
-    if (!r || '官方AI'.indexOf(q) !== 0) {
+    if (!r || t('官方AI').indexOf(q) !== 0) {
       if (picker.dataset.kind === 'mention') { picker.hidden = true; picker.dataset.kind = ''; }
       return;
     }
@@ -2948,24 +3060,24 @@ async function mountWorld(body) {
 
     const doParse = async () => {
       const val = (urlIn.value || '').trim();
-      if (!val) { hint.textContent = '请输入 B站链接或 BV 号'; return; }
-      hint.textContent = '解析中…';
+      if (!val) { hint.textContent = t('请输入 B站链接或 BV 号'); return; }
+      hint.textContent = t('解析中…');
       prev.innerHTML = '';
       try {
         const d = await api('video.php', 'preview', { input: val }, { timeout: 25000 });
-        hint.textContent = '解析成功，确认后发送（发送时会检查视频标题与简介）';
+        hint.textContent = t('解析成功，确认后发送（发送时会检查视频标题与简介）');
         prev.innerHTML = videoCardHtml(d.bv, { title: d.title, cover: d.cover, dur_f: d.duration_f, author: d.author }).replace(' data-play="1"', '');
         const b = document.createElement('button');
         b.className = 'btn btn-sm';
         b.style.marginTop = '8px';
-        b.textContent = '发送视频';
+        b.textContent = t('发送视频');
         b.addEventListener('click', () => {
           b.disabled = true;
-          hint.textContent = '审核中，请稍候…';
+          hint.textContent = t('审核中，请稍候…');
           pickerSendVideo(d.bv, { title: d.title, cover: d.cover, dur_f: d.duration_f, author: d.author });
         });
         prev.appendChild(b);
-      } catch (e) { hint.textContent = e.message || '解析失败'; }
+      } catch (e) { hint.textContent = e.message || t('解析失败'); }
     };
     picker.querySelector('#wVidGo').addEventListener('click', doParse);
     urlIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doParse(); } });
@@ -2979,21 +3091,21 @@ async function mountWorld(body) {
  * AI 对话（流式输出 + 工具调用卡片 + 非流式降级）
  * ============================================================ */
 const TOOL_META = {
-  search:   { n: '检索站内作品', d: 'M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm6.6 11.2 3.2 3.2-1.4 1.4-3.2-3.2z' },
-  get:      { n: '读取作品详情', d: 'M4 4h16v16H4V4zm2 2v12h12V6H6zm3 2h6v2H9V8zm0 4h6v2H9v-2z' },
-  rank:     { n: '查询榜单排名', d: 'M4 20V10h4v10H4zm6 0V4h4v16h-4zm6 0v-7h4v7h-4z' },
-  comments: { n: '读取评论区',   d: 'M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H9l-4 4V6a1 1 0 0 1 1-1z' },
-  web_open: { n: '联网读取网页', d: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm7 9h-3a15 15 0 0 0-1.2-5.4A8 8 0 0 1 19 11zM12 4c1 1.6 1.7 4.2 1.8 7h-3.6C10.3 8.2 11 5.6 12 4zM5 11a8 8 0 0 1 4.2-5.4A15 15 0 0 0 8 11H5zm0 2h3a15 15 0 0 0 1.2 5.4A8 8 0 0 1 5 13zm7 7c-1-1.6-1.7-4.2-1.8-7h3.6c-.1 2.8-.8 5.4-1.8 7zm2.8-1.6A15 15 0 0 0 16 13h3a8 8 0 0 1-4.2 5.4z' },
-  weather:  { n: '查询天气',     d: 'M6.5 19a4.5 4.5 0 0 1-.7-8.95A5.6 5.6 0 0 1 16.4 9.2 3.9 3.9 0 0 1 16 17H6.5zm-2 2h13v1.6h-13V21z' },
-  time:     { n: '获取当前时间', d: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1.2 4.6v5.1l3.9 2.3-1.1 1.9-5-3V6.6h2.2z' },
-  docs:     { n: '查阅站内文档', d: 'M6 2h7l5 5v15H6V2zm2 2v16h8V8h-3V4H8zm2 6h6v2h-6v-2zm0 4h6v2h-6v-2z' },
-  stats:      { n: '查看站点概览', d: 'M12 3l9 5v3H3V8l9-5zM5 12h2v7H5v-7zm6 0h2v7h-2v-7zm6 0h2v7h-2v-7zM3 20h18v2H3v-2z' },
-  categories: { n: '统计作品分类', d: 'M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z' },
-  announce:   { n: '读取站点公告', d: 'M4 9h3l7-4v14l-7-4H4V9zm12-1a5 5 0 0 1 0 8v-2a3 3 0 0 0 0-4V8z' },
-  calc:       { n: '精确计算',     d: 'M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm2 3v3h8V6H8zm0 5h2v2H8v-2zm3 0h2v2h-2v-2zm3 0h2v2h-2v-2zM8 14h2v2H8v-2zm3 0h2v2h-2v-2zm3 0h2v2h-2v-2z' },
-  random:     { n: '随机推荐作品', d: 'M4 5h4l3 4 3-4h4l-5 7 5 7h-4l-3-4-3 4H4l5-7L4 5z' },
-  lunar:      { n: '查询农历节日', d: 'M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z' },
-  user:       { n: '查询用户资料', d: 'M12 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 10c4 0 7 2 7 4v3H5v-3c0-2 3-4 7-4z' },
+  search:   { n: t('检索站内作品'), d: 'M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm6.6 11.2 3.2 3.2-1.4 1.4-3.2-3.2z' },
+  get:      { n: t('读取作品详情'), d: 'M4 4h16v16H4V4zm2 2v12h12V6H6zm3 2h6v2H9V8zm0 4h6v2H9v-2z' },
+  rank:     { n: t('查询榜单排名'), d: 'M4 20V10h4v10H4zm6 0V4h4v16h-4zm6 0v-7h4v7h-4z' },
+  comments: { n: t('读取评论区'),   d: 'M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H9l-4 4V6a1 1 0 0 1 1-1z' },
+  web_open: { n: t('联网读取网页'), d: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm7 9h-3a15 15 0 0 0-1.2-5.4A8 8 0 0 1 19 11zM12 4c1 1.6 1.7 4.2 1.8 7h-3.6C10.3 8.2 11 5.6 12 4zM5 11a8 8 0 0 1 4.2-5.4A15 15 0 0 0 8 11H5zm0 2h3a15 15 0 0 0 1.2 5.4A8 8 0 0 1 5 13zm7 7c-1-1.6-1.7-4.2-1.8-7h3.6c-.1 2.8-.8 5.4-1.8 7zm2.8-1.6A15 15 0 0 0 16 13h3a8 8 0 0 1-4.2 5.4z' },
+  weather:  { n: t('查询天气'),     d: 'M6.5 19a4.5 4.5 0 0 1-.7-8.95A5.6 5.6 0 0 1 16.4 9.2 3.9 3.9 0 0 1 16 17H6.5zm-2 2h13v1.6h-13V21z' },
+  time:     { n: t('获取当前时间'), d: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1.2 4.6v5.1l3.9 2.3-1.1 1.9-5-3V6.6h2.2z' },
+  docs:     { n: t('查阅站内文档'), d: 'M6 2h7l5 5v15H6V2zm2 2v16h8V8h-3V4H8zm2 6h6v2h-6v-2zm0 4h6v2h-6v-2z' },
+  stats:      { n: t('查看站点概览'), d: 'M12 3l9 5v3H3V8l9-5zM5 12h2v7H5v-7zm6 0h2v7h-2v-7zm6 0h2v7h-2v-7zM3 20h18v2H3v-2z' },
+  categories: { n: t('统计作品分类'), d: 'M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z' },
+  announce:   { n: t('读取站点公告'), d: 'M4 9h3l7-4v14l-7-4H4V9zm12-1a5 5 0 0 1 0 8v-2a3 3 0 0 0 0-4V8z' },
+  calc:       { n: t('精确计算'),     d: 'M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm2 3v3h8V6H8zm0 5h2v2H8v-2zm3 0h2v2h-2v-2zm3 0h2v2h-2v-2zM8 14h2v2H8v-2zm3 0h2v2h-2v-2zm3 0h2v2h-2v-2z' },
+  random:     { n: t('随机推荐作品'), d: 'M4 5h4l3 4 3-4h4l-5 7 5 7h-4l-3-4-3 4H4l5-7L4 5z' },
+  lunar:      { n: t('查询农历节日'), d: 'M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z' },
+  user:       { n: t('查询用户资料'), d: 'M12 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 10c4 0 7 2 7 4v3H5v-3c0-2 3-4 7-4z' },
 };
 
 /** 气泡内容分区：工具卡片区 + 思考区（可多块）+ 正文区 */
@@ -3008,7 +3120,7 @@ function aiParts(target) {
 /** 已完成的工具卡片（静态渲染：世界对话 AI 回复 / 历史还原） */
 function cardsHtml(cards) {
   const rows = (cards || []).map(c => {
-    const meta = TOOL_META[c.action] || { n: c.action || '工具调用', d: TOOL_META.search.d };
+    const meta = TOOL_META[c.action] || { n: c.action || t('工具调用'), d: TOOL_META.search.d };
     const ok = c.ok !== false;
     return '<div class="tool-card ' + (ok ? 'ok' : 'err') + '">'
       + '<svg viewBox="0 0 24 24" class="tc-ic"><path d="' + meta.d + '"/></svg>'
@@ -3044,7 +3156,7 @@ function thinkSettle(el) {
   el.classList.remove('live');
   el.classList.remove('open');
   const st = el.querySelector('.tk-state');
-  if (st) { st.textContent = '已思考'; }
+  if (st) { st.textContent = t('已思考'); }
 }
 /** 正文开始输出 → 收起本轮所有思考块 */
 function closeThinks(target) {
@@ -3054,7 +3166,7 @@ function closeThinks(target) {
 }
 
 function addToolCall(cards, action) {
-  const meta = TOOL_META[action] || { n: action || '工具调用', d: TOOL_META.search.d };
+  const meta = TOOL_META[action] || { n: action || t('工具调用'), d: TOOL_META.search.d };
   const el = document.createElement('div');
   el.className = 'tool-card call';
   el.dataset.action = action || '';
@@ -3071,7 +3183,7 @@ function resolveTool(cards, ev) {
   el.classList.remove('call');
   el.classList.add(ev.ok ? 'ok' : 'err');
   const sub = el.querySelector('.tiny');
-  if (sub) { sub.textContent = (ev.ok ? '已完成 · ' : '失败 · ') + (ev.summary || ''); }
+  if (sub) { sub.textContent = (ev.ok ? '已完成 · ' : t('失败 · ')) + (ev.summary || ''); }
   const dot = el.querySelector('.tc-dot');
   if (dot) { dot.remove(); }
 }
@@ -3194,14 +3306,14 @@ async function mountAi(body) {
     catch (e) { return ''; }
   }
   function labelOf(id) {
-    if (!id) { return defaultModelName || '默认模型'; }
+    if (!id) { return defaultModelName || t('默认模型'); }
     const m = aiModels.find(x => x.id === id);
-    return m ? m.name : (defaultModelName || '默认模型');
+    return m ? m.name : (defaultModelName || t('默认模型'));
   }
   function renderModelBtn() { modelBtnName.textContent = labelOf(selModel); }
   function renderModelPanel() {
-    const rows = [{ id: '', name: defaultModelName || '默认模型', sub: '本站默认 · 按 token 计', ctx: 0 }]
-      .concat(aiModels.map(m => ({ id: m.id, name: m.name, sub: '免费模型 · 按次数计', ctx: m.ctx })));
+    const rows = [{ id: '', name: defaultModelName || t('默认模型'), sub: t('本站默认 · 按 token 计'), ctx: 0 }]
+      .concat(aiModels.map(m => ({ id: m.id, name: m.name, sub: t('免费模型 · 按次数计'), ctx: m.ctx })));
     modelList.innerHTML = rows.map(r =>
       '<button type="button" class="ms-row' + (r.id === selModel ? ' on' : '') + '" data-id="' + esc(r.id) + '">'
       + '<span class="ms-check"></span>'
@@ -3211,11 +3323,11 @@ async function mountAi(body) {
       + '</button>').join('');
   }
   function quotaText(d) {
-    const site = ' · 全站余 ' + d.site.remaining + '/' + d.site.limit;
-    if (d.unlimited) { return '当前身份：' + (state.role === 'subadmin' ? '副管理员' : '管理员') + ' · 无限制' + site; }
-    if (selModel && d.online) { return '今日 你 ' + d.user.used + '/' + d.user.limit + ' 次' + site; }
+    const site = t(' · 全站余 ') + d.site.remaining + '/' + d.site.limit;
+    if (d.unlimited) { return t('当前身份：') + (state.role === 'subadmin' ? '副管理员' : t('管理员')) + t(' · 无限制') + site; }
+    if (selModel && d.online) { return t('今日 你 ') + d.user.used + '/' + d.user.limit + t(' 次') + site; }
     const t = d.token || {};
-    return '今日 ' + (t.today || 0) + '/' + (t.daily_limit || 0) + ' tokens' + site;
+    return t('今日 ') + (t.today || 0) + '/' + (t.daily_limit || 0) + ' tokens' + site;
   }
   function paintQuota() { if (quotaTip && lastState) { quotaTip.textContent = quotaText(lastState); } }
 
@@ -3230,7 +3342,7 @@ async function mountAi(body) {
       renderModelBtn();
       paintQuota();
     } catch (e) {
-      modelBtnName.textContent = defaultModelName || '默认模型';
+      modelBtnName.textContent = defaultModelName || t('默认模型');
       if (quotaTip) { quotaTip.textContent = ''; }
     }
   }
@@ -3324,7 +3436,7 @@ async function mountAi(body) {
       if (!resp.ok || !resp.body) {
         /* 闸门被拒（额度用尽 / 登录态失效 …）：这是「不许发」，不是「通道坏了」。
            必须原样报出原因，并且绝不转非流式重发 —— 否则超额也能照发出去。 */
-        let why = '流式通道不可用';
+        let why = t('流式通道不可用');
         try { const j = await resp.json(); if (j && j.msg) { why = j.msg; } } catch (e2) {}
         const err = new Error(why);
         err.gate = true;
@@ -3421,7 +3533,7 @@ async function mountAi(body) {
         const t = await sendSync(text, target, streamAccepted);
         const p = aiParts(target);
         if (t) { p.text.innerHTML = renderAiRich(t); }
-        else if (!gotAny) { p.text.textContent = '（无内容返回，请稍后重试）'; }
+        else if (!gotAny) { p.text.textContent = t('（无内容返回，请稍后重试）'); }
       } catch (e) {
         const p = aiParts(target);
         if (gotAny) {
@@ -3430,7 +3542,7 @@ async function mountAi(body) {
           const rb = p.text.querySelector('#aiRetry');
           if (rb) rb.addEventListener('click', () => { p.text.textContent = ''; rawText = ''; tailHtml = ''; sendAgain(text, target); });
         } else {
-          p.text.innerHTML = `<span style="color:var(--danger)">${esc(e.message || '发送失败')}</span>`
+          p.text.innerHTML = `<span style="color:var(--danger)">${esc(e.message || t('发送失败'))}</span>`
             + ' <button class="link" id="aiRetry2">重试</button>';
           const rb = p.text.querySelector('#aiRetry2');
           if (rb) rb.addEventListener('click', () => { p.text.textContent = ''; rawText = ''; tailHtml = ''; sendAgain(text, target); });
@@ -3438,7 +3550,7 @@ async function mountAi(body) {
       }
     }
 
-    if (lastUsage && usageNow) { usageNow.textContent = '本次 ' + Number(lastUsage.total_tokens) + ' tokens'; }
+    if (lastUsage && usageNow) { usageNow.textContent = t('本次 ') + Number(lastUsage.total_tokens) + ' tokens'; }
     window.__aiBusy = false;
     toBottom(stream);
   }
@@ -3447,9 +3559,9 @@ async function mountAi(body) {
   async function sendAgain(text, target) {
     try {
       const t = await sendSync(text, target);
-      aiParts(target).text.innerHTML = t ? renderAiRich(t) : '（无内容返回）';
+      aiParts(target).text.innerHTML = t ? renderAiRich(t) : t('（无内容返回）');
     } catch (e) {
-      aiParts(target).text.innerHTML = `<span style="color:var(--danger)">${esc(e.message || '发送失败')}</span>`;
+      aiParts(target).text.innerHTML = `<span style="color:var(--danger)">${esc(e.message || t('发送失败'))}</span>`;
     }
     toBottom(stream);
   }
@@ -3467,7 +3579,7 @@ async function mountAi(body) {
 
   // 清空对话：清空后从服务端重新拉取，确保界面与库一致
   body.querySelector('#clearAi').addEventListener('click', async () => {
-    if (!(await dialog('清空对话', '将删除你与 AI 的全部聊天记录，不可恢复。确认？', '清空', { danger: true }))) { return; }
+    if (!(await dialog(t('清空对话'), t('将删除你与 AI 的全部聊天记录，不可恢复。确认？'), t('清空'), { danger: true }))) { return; }
     try {
       await api('ai.php', 'clear');
       if (usageNow) { usageNow.textContent = ''; }
@@ -3494,7 +3606,7 @@ async function mountAi(body) {
 function aiMsg(side, text, oid, meta) {
   const el = document.createElement('div');
   el.className = 'msg' + (side === 'mine' ? ' mine' : '');
-  const who = side === 'mine' ? esc(state.username) : 'AI 助手';
+  const who = side === 'mine' ? esc(state.username) : t('AI 助手');
   const avatar = side === 'mine'
     ? '<img src="' + esc(state.avatar || '') + '" alt="" draggable="false" style="user-select:none">'
     : '<span class="ai-av"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9z"/></svg></span>';
@@ -3532,6 +3644,7 @@ function aiMsg(side, text, oid, meta) {
 /**
  * 我的页：个人信息 / AI 用量 / IP 与访问记录 / 设置 / 控制面板入口
  */
+
 
 
 
@@ -3590,7 +3703,7 @@ async function renderMine(container) {
         <span class="av">${avatarImg(d.username, d.avatar)}</span>
         <div>
           <div class="name">${userName(d.username, d.role)}</div>
-          <div class="tiny">${isAdmin ? (d.role === 'subadmin' ? '副管理员账号' : '管理员账号') : ('注册于 ' + esc(d.registered_at || ''))}</div>
+          <div class="tiny">${isAdmin ? (d.role === 'subadmin' ? '副管理员账号' : t('管理员账号')) : (t('注册于 ') + esc(d.registered_at || ''))}</div>
         </div>
       </div>
       <div class="uid-row">
@@ -3625,7 +3738,7 @@ async function renderMine(container) {
           <div class="ck-big">连续签到 ${d.checkin.streak} 天</div>
           <div class="tiny">${d.checkin.unlimited ? '管理员额度无上限，签到仅记录连续天数' : '每日签到：当日 AI 额度 +1000 · 每连续满 7 天：本月额度 +100000'}</div>
         </div>
-        <button class="btn" id="checkinBtn"${d.checkin.today ? ' disabled' : ''}>${d.checkin.today ? '已签到' : '签到'}</button>
+        <button class="btn" id="checkinBtn"${d.checkin.today ? ' disabled' : ''}>${d.checkin.today ? '已签到' : t('签到')}</button>
       </div>` : ''}
       ${isAdmin ? '<div id="top3" style="margin-top:12px"></div>' : ''}
     </div>
@@ -3661,6 +3774,11 @@ async function renderMine(container) {
     <div class="card">
       <div class="card-title">外观设置</div>
       <div id="appearance"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">语言</div>
+      <div id="langSet"></div>
     </div>
 
     <div class="card">
@@ -3737,6 +3855,7 @@ async function renderMine(container) {
   });
 
   mountAppearance(container.querySelector('#appearance'));
+  mountLang(container.querySelector('#langSet'));
   mountBlockList(container.querySelector('#blockWrap'), false);
   mountSearchAi(container.querySelector('#searchAiSet'), false);
   loadVisits(container.querySelector('#visitList'));
@@ -3758,15 +3877,28 @@ async function renderMine(container) {
   }
 
   container.querySelector('#logoutBtn').addEventListener('click', async () => {
-    if (await dialog('退出登录', '确认退出当前账号吗？', '退出')) {
+    if (await dialog(t('退出登录'), t('确认退出当前账号吗？'), t('退出'))) {
       try { await api('auth.php', 'logout'); } catch (e) {}
       setToken('');
       /* 就地切到游客态并重绘，不整页刷新 */
-      state.role = 'guest'; state.uid = 0; state.username = '游客';
+      state.role = 'guest'; state.uid = 0; state.username = t('游客');
       state.settings = {}; state.avatar = '';
       toast('已退出');
       navigate('#/rank');
     }
+  });
+}
+
+/* ---------- 语言：中 / 英 / 日；文档跟随（日文看英文文档） ---------- */
+function mountLang(box) {
+  if (!box) { return; }
+  box.innerHTML = '<div class="lang-list">' + LANGS.map(function (l) {
+    return '<button type="button" class="lang-btn' + (l.k === I18N.lang ? ' on' : '')
+      + '" data-lang="' + l.k + '">' + esc(l.name) + '</button>';
+  }).join('') + '</div>'
+    + '<div class="tiny" style="margin-top:8px">文档会跟随界面语言；日文界面下文档显示英文版。</div>';
+  box.querySelectorAll('[data-lang]').forEach(function (b) {
+    b.addEventListener('click', function () { setLang(b.getAttribute('data-lang')); });
   });
 }
 
@@ -3873,8 +4005,8 @@ function mountAppearance(box) {
       <div class="skin-row" id="skinRow">
         ${skinKeys().map(k => `<button class="skin-card ${skin === k ? 'on' : ''}" data-s="${k}">
           <span class="skin-prev p-${k}" aria-hidden="true"></span>
-          <b>${esc(SKINS[k].name)}</b>
-          <span class="tiny">${esc(SKINS[k].desc)}</span>
+          <b>${esc(t(SKINS[k].name))}</b>
+          <span class="tiny">${esc(t(SKINS[k].desc))}</span>
         </button>`).join('')}
       </div>
     </div>
@@ -3922,7 +4054,7 @@ function mountAppearance(box) {
          选中它 = 清除「退出标记」；选其它皮肤 = 记为主动退出，窗口期内不再自动启用。 */
       if (FESTIVAL_KEYS.indexOf(sk) >= 0) {
         try { document.cookie = 'kimgr_skin_optout=; path=/; max-age=0'; } catch (e) {}
-        toast('正在切换到「' + SKINS[sk].name + '」…');
+        toast(t('正在切换到「') + t(SKINS[sk].name) + t('」…'));
         setTimeout(() => location.reload(), 260);
         return;
       }
@@ -3936,7 +4068,7 @@ function mountAppearance(box) {
         try { await api('profile.php', 'settings', { skin: sk }); state.settings.skin = sk; } catch (err) {}
       }
       skinRow.querySelectorAll('.skin-card').forEach(x => x.classList.toggle('on', x === b));
-      toast('正在切换到「' + SKINS[sk].name + '」…');
+      toast(t('正在切换到「') + t(SKINS[sk].name) + t('」…'));
       setTimeout(() => location.reload(), 260);
     });
   }
@@ -3947,7 +4079,7 @@ function mountAppearance(box) {
     setPrefs(Object.assign({}, getPrefs(), { nav_anim: on ? 1 : 0 }));
     setNavAnim(on);
     box.querySelectorAll('#navAnimSeg button').forEach(x => x.classList.toggle('on', x === b));
-    toast(on ? '已开启返回动画' : '已关闭返回动画');
+    toast(on ? '已开启返回动画' : t('已关闭返回动画'));
   });
 
   box.querySelector('#themeSeg').addEventListener('click', async e => {
@@ -4048,7 +4180,7 @@ async function loadVisits(box) {
     d.items.forEach(v => {
       const el = document.createElement('div');
       el.className = 'visit-row';
-      el.innerHTML = `<span>${esc(v.location || '未知地区')} · ${esc(v.ip)}</span><span class="tiny">${esc(v.time)}</span>`;
+      el.innerHTML = `<span>${esc(v.location || t('未知地区'))} · ${esc(v.ip)}</span><span class="tiny">${esc(v.time)}</span>`;
       box.appendChild(el);
     });
   } catch (e) { box.innerHTML = '<div class="tiny">加载失败</div>'; }
@@ -4067,7 +4199,7 @@ async function loadTop3(box) {
 }
 
 function avatarImg(name, url) {
-  if (url) return `<img src="${url}" alt="" draggable="false" style="user-select:none">`;
+  if (url) return `<img src="${esc(url)}" alt="" draggable="false" style="user-select:none">`;
   return `<img src="data:image/svg+xml;utf8,${encodeURIComponent(simpleAvatar(name || 'guest'))}" alt="" draggable="false" style="user-select:none">`;
 }
 
@@ -4137,12 +4269,12 @@ async function renderLogin(container) {
       <div class="field">
         <label>用户名${sub === 'register' ? '（即昵称，全站展示，注册后不可更改）' : ''}</label>
         <input class="input" id="uName" type="text" autocomplete="username"
-               placeholder="${sub === 'register' ? '2-64 位，中文、字母、数字或符号均可' : '请输入用户名'}">
+               placeholder="${sub === 'register' ? '2-64 位，中文、字母、数字或符号均可' : t('请输入用户名')}">
       </div>
       <div class="field">
         <label>密码${sub === 'register' ? '（8-64 位，建议同时包含数字和字母）' : ''}</label>
         <div class="input-wrap">
-          <input class="input" id="uPwd" type="password" autocomplete="${sub === 'register' ? 'new-password' : 'current-password'}" placeholder="${sub === 'register' ? '设置 8-64 位密码' : '请输入密码'}">
+          <input class="input" id="uPwd" type="password" autocomplete="${sub === 'register' ? 'new-password' : 'current-password'}" placeholder="${sub === 'register' ? '设置 8-64 位密码' : t('请输入密码')}">
           <button class="icon-btn eye" id="eyeBtn" type="button" aria-label="显示密码">
             <svg viewBox="0 0 24 24" class="ic"><path d="M12 5c5 0 9 4.5 9 7s-4 7-9 7-9-4.5-9-7 4-7 9-7zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg>
           </button>
@@ -4153,8 +4285,8 @@ async function renderLogin(container) {
         <span>我已阅读并同意<span class="link" data-doc="用户协议">《用户协议》</span>与<span class="link" data-doc="隐私政策">《隐私政策》</span>（本站为个人兴趣分享，请文明互动）</span>
       </div>
       <div id="capBox" style="margin-bottom:12px"></div>
-      <button class="btn" id="submitBtn" style="width:100%">${sub === 'register' ? '注册并登录' : '登录'}</button>
-      <div class="tiny" style="text-align:center;margin-top:10px">${sub === 'register' ? '密码登录的账号可浏览榜单并参与投票' : '忘记密码请联系管理员'}</div>
+      <button class="btn" id="submitBtn" style="width:100%">${sub === 'register' ? '注册并登录' : t('登录')}</button>
+      <div class="tiny" style="text-align:center;margin-top:10px">${sub === 'register' ? '密码登录的账号可浏览榜单并参与投票' : t('忘记密码请联系管理员')}</div>
       <div class="reg-video" id="regVideo">
         <button class="reg-video-btn" id="regVideoBtn" type="button">
           <svg viewBox="0 0 24 24" class="ic"><path d="M8 5v14l11-7z"/></svg>
@@ -4226,7 +4358,7 @@ async function renderLogin(container) {
     setToken(d.token);
     state.role = d.role || (guest ? 'guest' : 'user');
     state.uid = d.uid || 0;
-    state.username = d.username || '游客';
+    state.username = d.username || t('游客');
     // 重新校验以拉取设置与头像
     try {
       const v = await api('auth.php', 'verify');
@@ -4235,7 +4367,7 @@ async function renderLogin(container) {
       state.username = v.username || state.username;
       applyTheme();
     } catch (e) {}
-    toast(guest ? '已进入游客模式' : ('欢迎，' + state.username));
+    toast(guest ? '已进入游客模式' : (t('欢迎，') + state.username));
     if (Number(state.settings.notify) === 1) askNotifyPermission();
     // 登录后回「我的」；游客进入回榜单（路由会重绘页面与抽屉，无需整页刷新）
     navigate(guest ? '#/rank' : '#/mine');
@@ -4256,9 +4388,9 @@ async function renderLogin(container) {
 
 
 const MON_TABS = [
-  ['overview', '总览'], ['js', 'JS 错误'], ['api', '接口'], ['srv', '服务端'],
-  ['perf', '加载性能'], ['resource', '资源'], ['session', '会话追踪'],
-  ['custom', '自定义上报'], ['alerts', '告警'], ['settings', '设置'],
+  ['overview', t('总览')], ['js', t('JS 错误')], ['api', t('接口')], ['srv', t('服务端')],
+  ['perf', t('加载性能')], ['resource', t('资源')], ['session', t('会话追踪')],
+  ['custom', t('自定义上报')], ['alerts', t('告警')], ['settings', t('设置')],
 ];
 const st = { range: '7d', tab: 'overview', sessOnly: 'all' };
 
@@ -4416,8 +4548,8 @@ function monAreaChart(trend, getV, unit) {
 }
 
 function monTrend(trend) {
-  if (!trend || !trend.length) { return monCard('访问趋势（PV）', '<div class="mon-empty">暂无数据</div>'); }
-  return monCard('访问趋势（PV）', monAreaChart(trend, t => t.pv, ''));
+  if (!trend || !trend.length) { return monCard(t('访问趋势（PV）'), '<div class="mon-empty">暂无数据</div>'); }
+  return monCard(t('访问趋势（PV）'), monAreaChart(trend, t => t.pv, ''));
 }
 
 async function monOverview(box) {
@@ -4426,40 +4558,40 @@ async function monOverview(box) {
   const js = Number(k.js || 0), succ = Number(k.api_succ || 100), slowR = Number(k.slow_ratio || 0);
   box.innerHTML = `
     ${monHealth([
-      { label: 'JS 错误', value: js, tone: toneOf(js, 1, 20) },
-      { label: '接口成功率', value: succ + '%', tone: succ < 95 ? 'bad' : (succ < 99 ? 'warn' : '') },
-      { label: '慢接口占比', value: slowR + '%', tone: toneOf(slowR, 5, 15) },
+      { label: t('JS 错误'), value: js, tone: toneOf(js, 1, 20) },
+      { label: t('接口成功率'), value: succ + '%', tone: succ < 95 ? 'bad' : (succ < 99 ? 'warn' : '') },
+      { label: t('慢接口占比'), value: slowR + '%', tone: toneOf(slowR, 5, 15) },
     ])}
-    ${monKpiGroup('流量', [
-      monKpi('访问量 PV', Number(k.pv || 0)),
-      monKpi('访客 UV', Number(k.uv || 0)),
-      monKpi('接口调用', Number(k.api_total || 0)),
+    ${monKpiGroup(t('流量'), [
+      monKpi(t('访问量 PV'), Number(k.pv || 0)),
+      monKpi(t('访客 UV'), Number(k.uv || 0)),
+      monKpi(t('接口调用'), Number(k.api_total || 0)),
     ])}
-    ${monKpiGroup('性能', [
-      monKpi('平均加载', Number(k.load || 0) + ' ms'),
+    ${monKpiGroup(t('性能'), [
+      monKpi(t('平均加载'), Number(k.load || 0) + ' ms'),
       monKpi('Apdex', Number(k.apdex || 0), Number(k.apdex || 1) < 0.85 ? 'warn' : ''),
-      monKpi('慢接口占比', slowR + '%', toneOf(slowR, 5, 15)),
+      monKpi(t('慢接口占比'), slowR + '%', toneOf(slowR, 5, 15)),
     ])}
-    ${monKpiGroup('错误', [
-      monKpi('JS 错误', js, toneOf(js, 1, 20)),
-      monKpi('接口成功率', succ + '%', succ < 95 ? 'bad' : (succ < 99 ? 'warn' : '')),
+    ${monKpiGroup(t('错误'), [
+      monKpi(t('JS 错误'), js, toneOf(js, 1, 20)),
+      monKpi(t('接口成功率'), succ + '%', succ < 95 ? 'bad' : (succ < 99 ? 'warn' : '')),
     ])}
     ${monTrend(d.trend)}
     <div class="mon-cards">
-      ${monListCard('慢页面 TOP5', (d.top_slow_page || []).map(x => [x.name, (x.avg_ms || 0) + ' ms']))}
-      ${monListCard('JS 错误 TOP5', (d.top_error || []).map(x => [x.msg || x.name, x.n + ' 次']))}
-      ${monListCard('慢接口 TOP5', (d.top_slow_api || []).map(x => [x.name, (x.avg_ms || 0) + ' ms']))}
-      ${monListCard('访问量 TOP5', (d.top_pv || []).map(x => [x.name, x.n]))}
-      ${monListCard('浏览器分布', (d.browsers || []).map(x => [x.name, x.n]))}
-      ${monListCard('操作系统分布', (d.systems || []).map(x => [x.name, x.n]))}
-      ${monListCard('网络分布', (d.nets || []).map(x => [x.name, x.n]))}
-      ${monListCard('屏幕分辨率', (d.screens || []).map(x => [x.name, x.n]))}
-      ${monListCard('资源加载失败', (d.res_fail || []).map(x => [x.name, x.n + ' 次']))}
+      ${monListCard(t('慢页面 TOP5'), (d.top_slow_page || []).map(x => [x.name, (x.avg_ms || 0) + ' ms']))}
+      ${monListCard(t('JS 错误 TOP5'), (d.top_error || []).map(x => [x.msg || x.name, x.n + ' 次']))}
+      ${monListCard(t('慢接口 TOP5'), (d.top_slow_api || []).map(x => [x.name, (x.avg_ms || 0) + ' ms']))}
+      ${monListCard(t('访问量 TOP5'), (d.top_pv || []).map(x => [x.name, x.n]))}
+      ${monListCard(t('浏览器分布'), (d.browsers || []).map(x => [x.name, x.n]))}
+      ${monListCard(t('操作系统分布'), (d.systems || []).map(x => [x.name, x.n]))}
+      ${monListCard(t('网络分布'), (d.nets || []).map(x => [x.name, x.n]))}
+      ${monListCard(t('屏幕分辨率'), (d.screens || []).map(x => [x.name, x.n]))}
+      ${monListCard(t('资源加载失败'), (d.res_fail || []).map(x => [x.name, x.n + ' 次']))}
     </div>`;
 }
 
 function monSrvTrend(trend, slowMs) {
-  if (!trend || !trend.length) { return monCard('平均耗时趋势', '<div class="mon-empty">暂无数据</div>'); }
+  if (!trend || !trend.length) { return monCard(t('平均耗时趋势'), '<div class="mon-empty">暂无数据</div>'); }
   return monCard('平均耗时趋势（慢查询阈值 ' + Number(slowMs || 200) + ' ms）',
     monAreaChart(trend, t => t.avg_ms, ' ms'));
 }
@@ -4474,29 +4606,29 @@ async function monSrv(box) {
   box.innerHTML = `
     ${monHealth([
       { label: '5xx', value: n5, tone: toneOf(n5, 1, 5) },
-      { label: '异常', value: errs, tone: toneOf(errs, 1, 10) },
-      { label: '慢请求占比', value: slowR + '%', tone: toneOf(slowR, 5, 15) },
+      { label: t('异常'), value: errs, tone: toneOf(errs, 1, 10) },
+      { label: t('慢请求占比'), value: slowR + '%', tone: toneOf(slowR, 5, 15) },
       { label: 'Apdex', value: apdex, tone: apdex < 0.85 ? 'warn' : '' },
     ])}
-    ${monKpiGroup('流量', [
-      monKpi('请求数', Number(k.n || 0)),
-      monKpi('平均 DB 耗时', Number(k.db_avg || 0) + ' ms'),
-      monKpi('平均查询数', Number(k.db_n || 0)),
+    ${monKpiGroup(t('流量'), [
+      monKpi(t('请求数'), Number(k.n || 0)),
+      monKpi(t('平均 DB 耗时'), Number(k.db_avg || 0) + ' ms'),
+      monKpi(t('平均查询数'), Number(k.db_n || 0)),
     ])}
-    ${monKpiGroup('性能', [
-      monKpi('平均耗时', Number(k.avg || 0) + ' ms'),
-      monKpi('P95 耗时', Number(k.p95 || 0) + ' ms'),
-      monKpi('最慢', Number(k.max || 0) + ' ms'),
+    ${monKpiGroup(t('性能'), [
+      monKpi(t('平均耗时'), Number(k.avg || 0) + ' ms'),
+      monKpi(t('P95 耗时'), Number(k.p95 || 0) + ' ms'),
+      monKpi(t('最慢'), Number(k.max || 0) + ' ms'),
       monKpi('Apdex T=' + apdexT + 'ms', apdex, apdex < 0.85 ? 'warn' : ''),
     ])}
-    ${monKpiGroup('错误', [
-      monKpi('慢请求占比', slowR + '%', toneOf(slowR, 5, 15)),
-      monKpi('慢查询数', slowQ, toneOf(slowQ, 10, 50)),
+    ${monKpiGroup(t('错误'), [
+      monKpi(t('慢请求占比'), slowR + '%', toneOf(slowR, 5, 15)),
+      monKpi(t('慢查询数'), slowQ, toneOf(slowQ, 10, 50)),
       monKpi('5xx', n5, toneOf(n5, 1, 5)),
-      monKpi('异常', errs, toneOf(errs, 1, 10)),
+      monKpi(t('异常'), errs, toneOf(errs, 1, 10)),
     ])}
     ${monSrvTrend(d.trend, d.slow_ms)}
-    ${monCard('按路由（' + routes.length + '）', `<table class="table"><thead><tr>
+    ${monCard(t('按路由（') + routes.length + '）', `<table class="table"><thead><tr>
         <th>路由</th><th>请求</th><th>平均</th><th>最大</th><th>慢</th><th>5xx</th><th>慢查询</th><th>异常</th></tr></thead>
         <tbody>${routes.length ? routes.map(r => `<tr data-route="${esc(r.route)}" class="mon-click">
           <td class="mon-ell" title="${esc(r.route)}">${track.indexOf(r.route) >= 0 ? '<b class="mon-track">' + esc(r.route) + '</b>' : esc(r.route)}</td>
@@ -4508,8 +4640,8 @@ async function monSrv(box) {
           <td class="mon-n">${Number(r.errs) ? '<b class="mon-bad">' + r.errs + '</b>' : '0'}</td></tr>`).join('')
         : '<tr><td class="mon-empty" colspan="8">暂无数据</td></tr>'}</tbody></table>`)}
     <div class="mon-cards">
-      ${monListCard('慢查询 TOP', (d.slow_top || []).map(x => [(x.slow_sql || '').slice(0, 56), x.n + ' 次']))}
-      ${monListCard('异常 TOP', (d.errors || []).map(x => [String(x.route || '') + ' · ' + String(x.err || '').slice(0, 36), x.n + ' 次']))}
+      ${monListCard(t('慢查询 TOP'), (d.slow_top || []).map(x => [(x.slow_sql || '').slice(0, 56), x.n + ' 次']))}
+      ${monListCard(t('异常 TOP'), (d.errors || []).map(x => [String(x.route || '') + ' · ' + String(x.err || '').slice(0, 36), x.n + ' 次']))}
     </div>
     <div id="monSrvDetail"></div>`;
 
@@ -4544,11 +4676,11 @@ async function monSessions(box) {
   let page = 1, loading = false, done = false, total = 0, shown = 0;
 
   box.innerHTML =
-    monCard('筛选', `<div class="mon-seg" id="monSessOnly">
+    monCard(t('筛选'), `<div class="mon-seg" id="monSessOnly">
       <button type="button" data-o="all"${only === 'all' ? ' class="on"' : ''}>全部会话</button>
       <button type="button" data-o="bad"${only === 'bad' ? ' class="on"' : ''}>仅异常</button>
     </div>`) +
-    monCard('会话列表',
+    monCard(t('会话列表'),
       `<div class="mon-scroll"><table class="table"><thead><tr><th>会话</th><th>用户</th><th>版本</th>
         <th>最近活动</th><th>时长</th><th>PV</th><th>JS</th><th>接口</th><th>慢</th><th>失败</th><th>异常</th>
         <th>浏览器</th><th>屏幕</th></tr></thead>
@@ -4599,7 +4731,7 @@ async function monSessions(box) {
       done = !d.has_more;
       page++;
     } catch (e) {
-      foot.textContent = '加载失败：' + e.message;
+      foot.textContent = t('加载失败：') + e.message;
     } finally {
       loading = false; paintFoot();
       /* 内容不足一屏时继续拉，直到填满或到底 —— 保证「滚到底一定能续拉」 */
@@ -4635,7 +4767,7 @@ async function monSessions(box) {
 async function monSessionDetail(box, sid) {
   const el = box.querySelector('#monSessDetail'); if (!el) { return; }
   el.innerHTML = '<div class="mon-sk"></div>';
-  const KIND = { pv: '访问', js: 'JS', api: '接口', resource: '资源', perf: '性能', custom: '自定义', error: '错误' };
+  const KIND = { pv: t('访问'), js: 'JS', api: t('接口'), resource: t('资源'), perf: t('性能'), custom: t('自定义'), error: t('错误') };
   try {
     const d = await api('monitor.php', 'session', { sid: sid, range: st.range });
     const items = d.items || [];
@@ -4676,11 +4808,11 @@ async function monAlerts(box) {
 
 async function monEvents(box, kind) {
   const HEADS = {
-    api: ['接口', '次数', '平均耗时', '慢', '失败'],
-    perf: ['指标', '次数', '平均', '最大'],
-    custom: ['名称', '次数', '平均', '最大'],
-    resource: ['位置', '信息', '次数', '影响 UV', '最近'],
-    js: ['位置', '错误信息', '次数', '影响 UV', '最近'],
+    api: [t('接口'), t('次数'), t('平均耗时'), '慢', '失败'],
+    perf: [t('指标'), t('次数'), t('平均'), t('最大')],
+    custom: [t('名称'), t('次数'), t('平均'), t('最大')],
+    resource: [t('位置'), t('信息'), t('次数'), t('影响 UV'), t('最近')],
+    js: [t('位置'), t('错误信息'), t('次数'), t('影响 UV'), t('最近')],
   };
   const head = HEADS[kind] || HEADS.js;
   const isDetail = (kind !== 'api' && kind !== 'perf' && kind !== 'custom');
@@ -4697,7 +4829,7 @@ async function monEvents(box, kind) {
   box.innerHTML =
     monCard('聚合（TOP ' + groups.length + '）',
       `<div class="mon-scroll"><table class="table"><thead><tr>${head.map(t => '<th>' + t + '</th>').join('')}</tr></thead><tbody>${rows}</tbody></table></div>`) +
-    (isDetail ? monCard('明细',
+    (isDetail ? monCard(t('明细'),
       `<div class="mon-scroll"><table class="table"><thead><tr><th>时间</th><th>位置</th><th>信息</th><th>版本</th><th>浏览器</th></tr></thead>
         <tbody id="monEvtBody"></tbody></table></div><div class="mon-moreline tiny" id="monEvtFoot"></div>`) : '');
 
@@ -4739,7 +4871,7 @@ async function monEvents(box, kind) {
       append(r.items || []);
       done = !r.has_more;
       page++;
-    } catch (e) { foot.textContent = '加载失败：' + e.message; }
+    } catch (e) { foot.textContent = t('加载失败：') + e.message; }
     finally {
       loading = false; paintFoot();
       /* 内容不足一屏时继续拉，直到填满或到底 */
@@ -4762,7 +4894,7 @@ async function monEvents(box, kind) {
 
 async function monSettings(box) {
   const d = await api('monitor.php', 'settings');
-  box.innerHTML = monCard('采集设置', `
+  box.innerHTML = monCard(t('采集设置'), `
       <div class="mon-row"><span>启用采集</span>
         <div class="mon-seg" id="monEnabled">
           <button type="button" data-v="1"${d.enabled === '1' ? ' class="on"' : ''}>开</button>
@@ -4826,10 +4958,10 @@ async function monSettings(box) {
 
 
 
-const PCATS = [['game', '游戏'], ['tool', '工具'], ['literature', '文学'], ['fanart', '二创']];
+const PCATS = [['game', t('游戏')], ['tool', t('工具')], ['literature', t('文学')], ['fanart', t('二创')]];
 const PDIMS = [
-  { k: 'experience', n: '可玩性' }, { k: 'creativity', n: '创意' }, { k: 'depth', n: '深度' },
-  { k: 'cost', n: '体量' }, { k: 'attitude', n: '用心' }, { k: 'heat', n: '口碑' },
+  { k: 'experience', n: t('可玩性') }, { k: 'creativity', n: t('创意') }, { k: 'depth', n: t('深度') },
+  { k: 'cost', n: t('体量') }, { k: 'attitude', n: t('用心') }, { k: 'heat', n: t('口碑') },
 ];
 const catName = c => (PCATS.find(x => x[0] === c) || [, c])[1];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -4848,7 +4980,7 @@ async function renderPanel(container) {
     try { ov = await api('dashboard.php', 'overview'); }
     catch (e) { container.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`; return; }
     if (!ov.panel_verified) {
-      const key = await prompt_('控制面板验证', '请输入管理员密钥（64 位十六进制，由密钥原文经 sha256 计算得出）。', '验证');
+      const key = await prompt_(t('控制面板验证'), t('请输入管理员密钥（64 位十六进制，由密钥原文经 sha256 计算得出）。'), t('验证'));
       if (!key) { container.innerHTML = '<div class="empty"><p>已取消验证</p></div>'; return; }
       try { await api('admin.php', 'panel_auth', { key: key }); }
       catch (e) { container.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`; return; }
@@ -5022,7 +5154,7 @@ async function loadCommentBin(container) {
     if (!d.items.length) { box.innerHTML = '<div class="tiny muted">回收站是空的。</div>'; return; }
     box.innerHTML = '<table class="table"><thead><tr><th>作者</th><th>内容</th><th>所属作品</th><th>删除时间</th><th>操作</th></tr></thead><tbody>'
       + d.items.map(c => `<tr data-cid="${Number(c.id)}">
-        <td>${esc(c.username)} ${oidTag(c.oid)}<br><span class="tiny muted">${c.by_admin ? '管理员删除' : '本人删除'}</span></td>
+        <td>${esc(c.username)} ${oidTag(c.oid)}<br><span class="tiny muted">${c.by_admin ? '管理员删除' : t('本人删除')}</span></td>
         <td style="max-width:340px;word-break:break-word">${esc(c.content).slice(0, 160)}</td>
         <td class="tiny">${esc(c.title)}</td>
         <td class="tiny">${esc(c.time)}</td>
@@ -5046,7 +5178,7 @@ function bindCommentBin(container) {
   const purge = container.querySelector('#cmBinPurge');
   if (purge) {
     purge.addEventListener('click', async () => {
-      if (!(await dialog('清空回收站',
+      if (!(await dialog(t('清空回收站'),
           '将<b>彻底删除</b>回收站中的全部评论（含其点赞），<b>此操作不可撤销</b>。确认继续？', '清空', { danger: true }))) { return; }
       btnLoading(purge, true);
       try {
@@ -5154,7 +5286,7 @@ function bindDb(container) {
   });
 
   runBtn.addEventListener('click', async () => {
-    if (!(await dialog('更新数据库', '将按当前程序需要补齐缺失的数据表与列。此操作幂等，不会删除已有数据。确定继续？', '开始更新'))) { return; }
+    if (!(await dialog(t('更新数据库'), t('将按当前程序需要补齐缺失的数据表与列。此操作幂等，不会删除已有数据。确定继续？'), t('开始更新')))) { return; }
     runBtn.disabled = true; checkBtn.disabled = true;
     result.hidden = false;
     result.innerHTML = '<div class="skeleton" style="height:48px"></div>';
@@ -5180,7 +5312,7 @@ function bindDb(container) {
       }
       html += '<div class="tiny muted" style="margin-top:6px">耗时 ' + d.elapsed + ' 秒</div>';
       result.innerHTML = html;
-      toast(d.left.length ? '更新完成，仍有项目未补齐' : '数据库已是最新');
+      toast(d.left.length ? '更新完成，仍有项目未补齐' : t('数据库已是最新'));
     } catch (e) {
       result.innerHTML = '<div class="tiny" style="color:var(--danger)">' + esc(e.message) + '</div>';
     }
@@ -5245,7 +5377,7 @@ function bindBackup(container) {
     box.querySelectorAll('[data-del]').forEach(function (b) {
       b.addEventListener('click', async function () {
         const name = b.getAttribute('data-del');
-        if (!(await dialog('删除备份', '将永久删除 ' + name + '，无法恢复。确定继续？', '删除'))) { return; }
+        if (!(await dialog(t('删除备份'), '将永久删除 ' + name + t('，无法恢复。确定继续？'), t('删除')))) { return; }
         b.disabled = true;
         try { await api('admin.php', 'backup_delete', { name: name }); toast('已删除'); load(); }
         catch (e) { toast(e.message, 'err'); b.disabled = false; }
@@ -5263,7 +5395,7 @@ function bindBackup(container) {
   const download = async (name, btn) => {
     btn.disabled = true;
     const old = btn.textContent;
-    btn.textContent = '准备中…';
+    btn.textContent = t('准备中…');
     try {
       const headers = { 'Accept': 'application/octet-stream' };
       if (state.token) {
@@ -5390,20 +5522,20 @@ function bindCommunitySearch(container) {
     const cover = it.cover
       ? '<img src="' + esc(it.cover) + '" alt="" loading="lazy" referrerpolicy="no-referrer" draggable="false">'
       : '<span class="cs-noimg"></span>';
-    const meta = [(it.author || '未知作者'), '点赞 ' + (it.like_num || 0), '评论 ' + (it.comment_num || 0)].join(' · ');
+    const meta = [(it.author || t('未知作者')), '点赞 ' + (it.like_num || 0), '评论 ' + (it.comment_num || 0)].join(' · ');
     return '<div class="cs-item">'
       + '<span class="cs-cover">' + cover + '</span>'
       + '<span class="cs-meta"><span class="cs-title">' + esc(it.title) + '</span>'
       + '<span class="tiny muted">' + esc(meta) + '</span></span>'
       + '<button class="btn btn-sm cs-add"' + (it.exists ? ' disabled' : '')
       + ' data-id="' + esc(it.community_id) + '" data-title="' + esc(it.title) + '">'
-      + (it.exists ? '已收录' : '添加') + '</button></div>';
+      + (it.exists ? '已收录' : t('添加')) + '</button></div>';
   };
 
   function paintMore() {
-    if (busy) { more.hidden = false; moreText.textContent = '正在加载…'; return; }
-    if (cursor || pool.length > shown) { more.hidden = false; moreText.textContent = '滚动到此处自动加载'; return; }
-    if (shown > 0) { more.hidden = false; moreText.textContent = '— 没有更多了 —'; return; }
+    if (busy) { more.hidden = false; moreText.textContent = t('正在加载…'); return; }
+    if (cursor || pool.length > shown) { more.hidden = false; moreText.textContent = t('滚动到此处自动加载'); return; }
+    if (shown > 0) { more.hidden = false; moreText.textContent = t('— 没有更多了 —'); return; }
     more.hidden = true;
   }
 
@@ -5426,7 +5558,7 @@ function bindCommunitySearch(container) {
       append();
     } catch (e) {
       busy = false;
-      moreText.textContent = '加载失败：' + e.message;
+      moreText.textContent = t('加载失败：') + e.message;
     }
   }
 
@@ -5467,14 +5599,14 @@ function bindCommunitySearch(container) {
     const b = e.target.closest('.cs-add');
     if (!b || b.disabled) { return; }
     const id = b.dataset.id || '';
-    b.disabled = true; b.textContent = '添加中…';
+    b.disabled = true; b.textContent = t('添加中…');
     try {
       const r = await api('admin.php', 'add_work', { mode: 'manual', work_id: id }, { timeout: 60000 });
-      b.textContent = '已收录';
+      b.textContent = t('已收录');
       toast('已收录：' + (b.dataset.title || id) + (r.scored === false ? '（未改动评分）' : ''));
       loadWorks(container, container.querySelector('#wq').value.trim(), state.role === 'subadmin');
     } catch (e2) {
-      b.disabled = false; b.textContent = '添加';
+      b.disabled = false; b.textContent = t('添加');
       toast(e2.message, 'err');
     }
   });
@@ -5526,7 +5658,7 @@ function bindScore(container) {
     try {
       const d = await api('admin.php', 'score_mode_set', { auto: auto ? 1 : 0 });
       paint(d.auto === true);
-      toast(d.auto === true ? '已恢复自动评分' : '已关闭自动评分，之后不再改动评分');
+      toast(d.auto === true ? '已恢复自动评分' : t('已关闭自动评分，之后不再改动评分'));
     } catch (e2) {
       toast(e2.message, 'err');
       try { paint((await api('admin.php', 'score_mode', {}, { silent: true })).auto === true); } catch (e3) {}
@@ -5536,12 +5668,12 @@ function bindScore(container) {
 
   api('admin.php', 'score_mode', {}, { silent: true })
     .then(d => paint(d.auto === true))
-    .catch(() => { note.textContent = '读取评分方式失败，刷新页面再试'; });
+    .catch(() => { note.textContent = t('读取评分方式失败，刷新页面再试'); });
 }
 
 /* 智能链接识别：原页面只是个跳转页时，改用其中的真实地址。默认开启。
    一个开关、三处可见——开关区块本身，以及收录区与批量更新区的状态行。 */
-const linkStateText = (on) => '智能链接识别：<b>' + (on ? '已开启' : '已关闭') + '</b>';
+const linkStateText = (on) => '智能链接识别：<b>' + (on ? '已开启' : t('已关闭')) + '</b>';
 
 function paintLinkState(container, on) {
   container.querySelectorAll('[data-link-state]').forEach(function (el) { el.innerHTML = linkStateText(on); });
@@ -5604,7 +5736,7 @@ function bindLink(container) {
       const d = await api('admin.php', 'link_mode_set', { on: on ? 1 : 0 });
       container.__linkOn = d.on === true;
       paintLinkState(container, container.__linkOn);
-      toast(d.on === true ? '已开启智能链接识别' : '已关闭智能链接识别');
+      toast(d.on === true ? '已开启智能链接识别' : t('已关闭智能链接识别'));
     } catch (e2) {
       toast(e2.message, 'err');
       await refreshLinkState(container, true);
@@ -5638,7 +5770,7 @@ function relinkBind(container) {
         + (more ? ' 仍有待处理，稍后再点一次可继续。' : '');
       toast('重新识别完成：替换 ' + changed + ' 个');
     } catch (e) {
-      note.innerHTML = '出错：' + e.message;
+      note.innerHTML = t('出错：') + e.message;
       toast(e.message, 'err');
     }
     btn.disabled = false;
@@ -5733,15 +5865,15 @@ function workListBlock(editable) {
  * ============================================================ */
 function renderOverview(box, ov, root) {
   const items = [
-    ['用户总量', ov.users_total], ['今日新增', ov.users_today],
-    ['在榜作品', ov.works_total], ['总点赞', ov.votes_total],
-    ['评论数', ov.comments_total], ['消息数', ov.messages_total],
-    ['反馈数', ov.feedback_total], ['累计登录', ov.logins_total],
-    ['作品更新', ov.updates_total], ['AI 调用', ov.ai_calls_total],
+    [t('用户总量'), ov.users_total], [t('今日新增'), ov.users_today],
+    [t('在榜作品'), ov.works_total], [t('总点赞'), ov.votes_total],
+    [t('评论数'), ov.comments_total], [t('消息数'), ov.messages_total],
+    [t('反馈数'), ov.feedback_total], [t('累计登录'), ov.logins_total],
+    [t('作品更新'), ov.updates_total], [t('AI 调用'), ov.ai_calls_total],
     ['AI tokens', ov.ai_tokens_total],
-    ['本站模型 tokens', ov.ai_tokens_glm], ['模型网关 tokens', ov.ai_tokens_gateway],
+    [t('本站模型 tokens'), ov.ai_tokens_glm], [t('模型网关 tokens'), ov.ai_tokens_gateway],
   ];
-  if (Number(ov.ai_tokens_legacy || 0) > 0) { items.push(['早期未区分 tokens', ov.ai_tokens_legacy]); }
+  if (Number(ov.ai_tokens_legacy || 0) > 0) { items.push([t('早期未区分 tokens'), ov.ai_tokens_legacy]); }
   box.innerHTML = items.map(x => `<div class="stat-box"><div class="k">${esc(x[0])}</div><div class="v">${Number(x[1] || 0)}</div></div>`).join('');
   const seg = (root || document).querySelector('#rangeSeg');
   if (seg && !seg.dataset.bound) {
@@ -5802,7 +5934,7 @@ function bindAiRank(container) {
     paintNote(d.split);
     const items = (d && d.items) || [];
     if (!items.length) {
-      box.innerHTML = '<div class="tiny muted">' + (pg > 1 ? '这一页没有记录了。' : '这条通道还没有用量记录。') + '</div>';
+      box.innerHTML = '<div class="tiny muted">' + (pg > 1 ? '这一页没有记录了。' : t('这条通道还没有用量记录。')) + '</div>';
       if (pager && pg > 1) {
         pager.innerHTML = '<button class="btn-ghost btn-sm" data-pg="' + (pg - 1) + '">上一页</button>';
         pager.querySelectorAll('[data-pg]').forEach(b => b.addEventListener('click', () => load(Number(b.dataset.pg))));
@@ -5856,10 +5988,10 @@ async function loadStats(range, container) {
     const d = await api('dashboard.php', 'stats', { range: range });
     const series = d.series || [];
     const metrics = [
-      { k: 'signups', n: '注册', c: '#7C3AED' }, { k: 'logins', n: '登录', c: '#007AFF' },
-      { k: 'votes', n: '点赞', c: '#f59e0b' }, { k: 'work_updates', n: '作品更新', c: '#10b981' },
-      { k: 'ai_calls', n: 'AI 调用', c: '#ef4444' }, { k: 'comments', n: '评论', c: '#8b5cf6' },
-      { k: 'messages', n: '消息', c: '#06b6d4' },
+      { k: 'signups', n: t('注册'), c: '#7C3AED' }, { k: 'logins', n: t('登录'), c: '#007AFF' },
+      { k: 'votes', n: t('点赞'), c: '#f59e0b' }, { k: 'work_updates', n: t('作品更新'), c: '#10b981' },
+      { k: 'ai_calls', n: t('AI 调用'), c: '#ef4444' }, { k: 'comments', n: t('评论'), c: '#8b5cf6' },
+      { k: 'messages', n: t('消息'), c: '#06b6d4' },
     ];
     if (legend) { legend.innerHTML = metrics.map(m => `<span><i style="background:${m.c}"></i>${esc(m.n)}</span>`).join(''); }
     area.innerHTML = lineChart(d.labels || [], series, metrics);
@@ -6038,7 +6170,7 @@ async function tokqrStart() {
   document.getElementById('tokQRBox').innerHTML = '<span class="muted tiny">正在获取二维码…</span>';
   tokqrHint('', '正在获取二维码…');
   if (!(await tokqrLib()) || !document.getElementById('tokQRBox')) {
-    tokqrHint('bad', '二维码组件加载失败，可改用「下载 Token 脚本」');
+    tokqrHint('bad', t('二维码组件加载失败，可改用「下载 Token 脚本」'));
     return;
   }
   let code = '';
@@ -6046,18 +6178,18 @@ async function tokqrStart() {
     const d = await tokqrRpc('CreateLoginQRCode', {});
     code = (d && d.code) ? String(d.code) : '';
   } catch (e) {
-    tokqrHint('bad', '获取二维码失败：' + (e.message || '网络错误'));
+    tokqrHint('bad', t('获取二维码失败：') + (e.message || t('网络错误')));
     return;
   }
   if (!code || !document.getElementById('tokQRBox')) {
-    tokqrHint('bad', '服务端未返回登录码，可改用「下载 Token 脚本」');
+    tokqrHint('bad', t('服务端未返回登录码，可改用「下载 Token 脚本」'));
     return;
   }
   tokqrCode = code;
   const url = 'https://www.kimi.com/wechat/mp/auth?id=' + encodeURIComponent(code)
             + '&device_id=' + encodeURIComponent(tokqrWid());
   if (!tokqrPaint(document.getElementById('tokQRBox'), url)) {
-    tokqrHint('bad', '二维码渲染失败，可改用「下载 Token 脚本」');
+    tokqrHint('bad', t('二维码渲染失败，可改用「下载 Token 脚本」'));
     return;
   }
   tokqrHint('', '请用 微信 或 Kimi App 扫码');
@@ -6070,7 +6202,7 @@ async function tokqrStart() {
     const now = Date.now();
     if (tokqrBusy || now - tokqrLast < 900) { return; }        // 防重入 + 去抖
     if (!document.getElementById('tokQRBox') || !tokqrCode) { tokqrStop(); return; }
-    if (now > tokqrUntil) { tokqrHint('bad', '二维码已过期，点「刷新二维码」重试'); tokqrStop(); return; }
+    if (now > tokqrUntil) { tokqrHint('bad', t('二维码已过期，点「刷新二维码」重试')); tokqrStop(); return; }
     tokqrLast = now; tokqrBusy = true;
     try {
       const d = await tokqrRpc('GetLoginQRCodeStatus', { code: tokqrCode });
@@ -6080,20 +6212,20 @@ async function tokqrStart() {
         if (tok) {
           const inp = document.getElementById('tokInput');
           if (inp) { inp.value = tok; }
-          tokqrHint('ok', '已填入输入框，点「仅保存凭证」完成');
+          tokqrHint('ok', t('已填入输入框，点「仅保存凭证」完成'));
           tokqrStop();
           toast('已获取登录态，点「仅保存凭证」保存');
         } else {
-          tokqrHint('bad', '登录成功但未取到令牌，可改用「下载 Token 脚本」');
+          tokqrHint('bad', t('登录成功但未取到令牌，可改用「下载 Token 脚本」'));
           tokqrStop();
         }
         return;
       }
       if (st.indexOf('EXPIRED') > -1) {
-        tokqrHint('bad', '二维码已过期，点「刷新二维码」重试'); tokqrStop(); return;
+        tokqrHint('bad', t('二维码已过期，点「刷新二维码」重试')); tokqrStop(); return;
       }
       const scanned = st.indexOf('SCANNED') > -1;
-      tokqrHint(scanned ? 'wait' : '', scanned ? '已扫码，请在手机上确认' : '请用 微信 或 Kimi App 扫码');
+      tokqrHint(scanned ? 'wait' : '', scanned ? '已扫码，请在手机上确认' : t('请用 微信 或 Kimi App 扫码'));
     } catch (e) {
       tokqrLast = 0;                                           // 网络抖动：保留轮询，下一拍重试
     } finally { tokqrBusy = false; }
@@ -6215,7 +6347,7 @@ function bindAddWork(container) {
       if (!body.work_id) { toast('请填写作品 ID', 'err'); return; }
     }
     const btn = container.querySelector('#addBtn');
-    btnLoading(btn, true); btn.textContent = '处理中…';
+    btnLoading(btn, true); btn.textContent = t('处理中…');
     try {
       const r = await api('admin.php', 'add_work', body, { timeout: 60000 });
       const noScore = r.scored === false ? '（未改动评分）' : '';
@@ -6223,10 +6355,10 @@ function bindAddWork(container) {
       const linkNote = r.link_real ? '（已改用真实地址）' : '';
       toast(addMode === 'auto'
         ? ('同步完成：新增 ' + r.inserted + '，更新 ' + r.updated + syncNote)
-        : ('收录' + (r.status === 'updated' ? '并更新' : '') + '成功' + noScore + linkNote));
+        : (t('收录') + (r.status === 'updated' ? '并更新' : '') + '成功' + noScore + linkNote));
       loadWorks(container, container.querySelector('#wq').value.trim(), state.role === 'subadmin');
     } catch (e) { toast(e.message, 'err'); }
-    finally { btnLoading(btn, false); btn.textContent = '开始'; }
+    finally { btnLoading(btn, false); btn.textContent = t('开始'); }
   });
 
   bindCommunitySearch(container);
@@ -6247,7 +6379,7 @@ function bindReclassify(container) {
   const box  = container.querySelector('#rcPreview');
   if (!pBtn) { return; }
 
-  const catName = c => ({ game: '游戏', tool: '工具', literature: '文学', fanart: '二创' }[c] || c);
+  const catName = c => ({ game: t('游戏'), tool: t('工具'), literature: t('文学'), fanart: t('二创') }[c] || c);
 
   /* ---------- 预览 ---------- */
   pBtn.addEventListener('click', async () => {
@@ -6292,7 +6424,7 @@ function bindReclassify(container) {
   let running = false;
   aBtn.addEventListener('click', async () => {
     if (running) { return; }
-    if (!(await dialog('执行分区变更', '将按预览结果修改作品分区，确定继续？', '执行'))) { return; }
+    if (!(await dialog(t('执行分区变更'), t('将按预览结果修改作品分区，确定继续？'), t('执行')))) { return; }
     running = true; aBtn.disabled = true; pBtn.disabled = true;
     prog.hidden = false;
     let offset = 0, applied = 0;
@@ -6300,7 +6432,7 @@ function bindReclassify(container) {
     while (true) {
       let r;
       try { r = await api('admin.php', 'reclassify_apply', { offset: offset }, { timeout: 90000, silent: true }); }
-      catch (e) { text.textContent = '中断：' + e.message; break; }
+      catch (e) { text.textContent = t('中断：') + e.message; break; }
 
       applied += r.applied;
       const pct = r.total > 0 ? Math.round(r.done / r.total * 100) : 100;
@@ -6340,8 +6472,8 @@ function bindReclassify(container) {
   if (mvBtn) {
     mvBtn.addEventListener('click', async () => {
       if (mvFrom === mvTo) { toast('来源与目标相同', 'err'); return; }
-      const fromLabel = mvFrom === 'all' ? '全部作品' : catName(mvFrom) + '类全部作品';
-      if (!(await dialog('批量迁移分区', '将把「' + fromLabel + '」迁移到「' + catName(mvTo) + '」，确定？', '迁移'))) { return; }
+      const fromLabel = mvFrom === 'all' ? '全部作品' : catName(mvFrom) + t('类全部作品');
+      if (!(await dialog(t('批量迁移分区'), t('将把「') + fromLabel + t('」迁移到「') + catName(mvTo) + t('」，确定？'), t('迁移')))) { return; }
       mvBtn.disabled = true;
       try {
         const r = await api('admin.php', 'move_category', { from: mvFrom, to: mvTo });
@@ -6361,14 +6493,14 @@ function bindRefresh(container) {
   const pruneBtn = container.querySelector('#pruneBtn');
   if (pruneBtn) {
     pruneBtn.addEventListener('click', async () => {
-      if (!(await dialog('清理无效作品',
+      if (!(await dialog(t('清理无效作品'),
         '将把「没有标题」或「既无 CDN 直链也无分享链接」的作品下架（可在作品列表恢复）。确认清理？',
-        '清理', { danger: true }))) { return; }
+        t('清理'), { danger: true }))) { return; }
       btnLoading(pruneBtn, true);
       try {
         const r = await api('admin.php', 'prune_invalid', {});
         const n = Number(r && r.pruned) || 0;
-        toast(n > 0 ? ('已下架 ' + n + ' 件无效作品') : '没有需要清理的作品');
+        toast(n > 0 ? ('已下架 ' + n + ' 件无效作品') : t('没有需要清理的作品'));
       } catch (e) { toast(e.message, 'err'); }
       finally { btnLoading(pruneBtn, false); }
     });
@@ -6391,7 +6523,7 @@ function bindRefresh(container) {
       if (sNote) {
         sNote.textContent = recalc
           ? '重算会按当前算法刷新六维与总分（会覆盖手工调分）。'
-          : '本次只刷新标题 / 简介 / 互动数等信息，不改动评分。';
+          : t('本次只刷新标题 / 简介 / 互动数等信息，不改动评分。');
       }
     });
   }
@@ -6405,11 +6537,11 @@ function bindRefresh(container) {
     const paintRc = (s) => {
       if (!s) { return; }
       if (!s.needed) {
-        rcNote.textContent = '评分体系 v' + s.ver + '：全站已按当前算法重算完成。';
+        rcNote.textContent = t('评分体系 v') + s.ver + t('：全站已按当前算法重算完成。');
         return;
       }
       if (!s.armed) {
-        rcNote.innerHTML = '评分体系已更新到 v' + s.ver + '，全站尚未重算（共 ' + s.total + ' 件）。'
+        rcNote.innerHTML = t('评分体系已更新到 v') + s.ver + '，全站尚未重算（共 ' + s.total + ' 件）。'
           + ' <button class="btn btn-sm" type="button" id="recalcGo">开始重算</button>';
         const go = rcNote.querySelector('#recalcGo');
         if (go) {
@@ -6421,7 +6553,7 @@ function bindRefresh(container) {
         }
         return;
       }
-      rcNote.textContent = '正在重算全站：' + s.done + ' / ' + s.total
+      rcNote.textContent = t('正在重算全站：') + s.done + ' / ' + s.total
         + (s.missing > 0 ? '（其中 ' + s.missing + ' 件待联网补齐数据）' : '') + '…';
       setTimeout(tick, 3000);
     };
@@ -6454,7 +6586,7 @@ function bindRefresh(container) {
       scoreOn = recalc;
       if (p.capped) { text.textContent = '作品数超过单次上限，本轮先更新前 ' + plan.length + ' 件'; }
     } catch (e) {
-      text.textContent = '中断：' + e.message;
+      text.textContent = t('中断：') + e.message;
       running = false; btn.disabled = false; stopBtn.hidden = true;
       return;
     }
@@ -6464,7 +6596,7 @@ function bindRefresh(container) {
     for (let i = 0; i < plan.length && !stopped; i += 5) {
       let r;
       try { r = await api('admin.php', 'refresh_batch', { ids: plan.slice(i, i + 5), auto: scoreOn ? 1 : 0 }, { timeout: 90000, silent: true }); }
-      catch (e) { text.textContent = '中断：' + e.message; stopped = true; break; }
+      catch (e) { text.textContent = t('中断：') + e.message; stopped = true; break; }
 
       okN += r.ok; failN += r.fail; done += Number(r.processed) || 0;
       links += Number(r.links) || 0;
@@ -6477,7 +6609,7 @@ function bindRefresh(container) {
     } else {
       done = Math.max(done, total); paint();
       text.textContent += ' · 完成';
-      toast(scoreOn ? '全部作品已更新' : '全部作品已更新（未改动评分）');
+      toast(scoreOn ? '全部作品已更新' : t('全部作品已更新（未改动评分）'));
     }
     running = false; btn.disabled = false; stopBtn.hidden = true;
     loadWorks(container, container.querySelector('#wq').value.trim(), false);
@@ -6623,10 +6755,10 @@ async function loadWorks(container, q, readOnly, page) {
           <td>${esc(w.title)}<div class="tiny">${esc(w.community_id)} ${oidTag(w.oid)}</div></td>
           <td>${esc(catName(w.category))}</td>
           <td>${Number(w.total_score)}</td>
-          <td>${Number(w.is_hidden) === 1 ? '已下架' : '在榜'}</td>
+          <td>${Number(w.is_hidden) === 1 ? '已下架' : t('在榜')}</td>
           <td>${readOnly ? '<span class="tiny">—</span>' : `
             <button class="btn-ghost btn-sm" data-act="edit">编辑</button>
-            <button class="btn-ghost btn-sm" data-act="toggle">${Number(w.is_hidden) === 1 ? '恢复' : '下架'}</button>
+            <button class="btn-ghost btn-sm" data-act="toggle">${Number(w.is_hidden) === 1 ? '恢复' : t('下架')}</button>
             <button class="btn-ghost btn-sm" data-act="del">删除</button>`}
           </td></tr>`).join('') + '</tbody></table>';
     }
@@ -6654,14 +6786,14 @@ async function loadWorks(container, q, readOnly, page) {
     if (readOnly || !d.items.length) { return; }
     box.querySelectorAll('tr[data-id]').forEach(tr => {
       const id = tr.dataset.id;
-      const hidden = tr.children[3].textContent === '已下架';
+      const hidden = tr.children[3].textContent === t('已下架');
       tr.querySelector('[data-act="edit"]').addEventListener('click', () => openEditor(container, id, () => loadWorks(container, q, false, pg)));
       tr.querySelector('[data-act="toggle"]').addEventListener('click', async () => {
         try { await api('admin.php', 'work_save', { id: id, hidden: hidden ? 0 : 1 }); toast('已更新'); loadWorks(container, q, false, pg); }
         catch (e) { toast(e.message, 'err'); }
       });
       tr.querySelector('[data-act="del"]').addEventListener('click', async () => {
-        if (await dialog('删除作品', '删除后不可恢复，确认？', '删除', { danger: true })) {
+        if (await dialog(t('删除作品'), t('删除后不可恢复，确认？'), t('删除'), { danger: true })) {
           try { await api('admin.php', 'work_delete', { id: id }); toast('已删除'); loadWorks(container, q, false, pg); }
           catch (e) { toast(e.message, 'err'); }
         }
@@ -6701,10 +6833,10 @@ async function loadVisitsTop(container) {
     const empty = located === 0;
     box.innerHTML = `<div class="tiny muted" style="margin-bottom:10px;line-height:1.6">${note}</div>
       ${empty ? '' : `<div class="tp-grid">
-        ${col('国家 / 地区', d.country)}${col('省份', d.province)}${col('城市', d.city)}
+        ${col(t('国家 / 地区'), d.country)}${col(t('省份'), d.province)}${col(t('城市'), d.city)}
       </div>`}`;
   } catch (e) {
-    box.innerHTML = `<div class="tiny muted">${esc(e.message || '加载失败')}</div>`;
+    box.innerHTML = `<div class="tiny muted">${esc(e.message || t('加载失败'))}</div>`;
   }
 }
 
@@ -6753,7 +6885,7 @@ async function loadPeer(container) {
   if (!st) { listEl.innerHTML = '<div class="tiny muted">读取失败</div>'; return; }
   keyEl.textContent = !st.sodium
     ? '主机未启用 sodium 扩展，互通不可用'
-    : (st.my_key_set ? (st.my_pubkey || '推导失败') : '未配置私钥（请在 config 的 peers.private_key 填 64 位十六进制）');
+    : (st.my_key_set ? (st.my_pubkey || t('推导失败')) : '未配置私钥（请在 config 的 peers.private_key 填 64 位十六进制）');
 
   let rows = st.peers || [];
   const drawList = () => {
@@ -6762,7 +6894,7 @@ async function loadPeer(container) {
       <div class="prow" style="padding:8px 0;align-items:center;flex-wrap:wrap;gap:6px">
         <span class="tiny" style="flex:1;min-width:180px">
           <b>${esc(p.name || p.base_url)}</b> · ${esc(p.base_url)}<br>
-          <span class="muted">${p.enabled ? '' : '[已停用] '}${p.last_sync_at ? '上次同步 ' + esc(p.last_sync_at) + ' UTC' : '尚未同步'}${p.last_status ? ' · ' + esc(p.last_status) : ''}</span>
+          <span class="muted">${p.enabled ? '' : '[已停用] '}${p.last_sync_at ? '上次同步 ' + esc(p.last_sync_at) + ' UTC' : t('尚未同步')}${p.last_status ? ' · ' + esc(p.last_status) : ''}</span>
         </span>
         <button class="btn btn-sm" data-a="test" data-id="${p.id}">测试</button>
         <button class="btn btn-sm" data-a="edit" data-id="${p.id}">编辑</button>
@@ -6799,7 +6931,7 @@ async function loadPeer(container) {
         enabled: formEl.querySelector('#pEn').checked ? 1 : 0,
       };
       try { await api('admin.php', 'peer_save', payload); toast('已保存'); formEl.innerHTML = ''; await refresh(); }
-      catch (e) { toast(e.message || '保存失败', 'err'); }
+      catch (e) { toast(e.message || t('保存失败'), 'err'); }
     });
   };
 
@@ -6809,34 +6941,34 @@ async function loadPeer(container) {
     const id = Number(b.dataset.id);
     if (b.dataset.a === 'edit') { openForm(rows.find(r => Number(r.id) === id)); return; }
     if (b.dataset.a === 'del') {
-      if (!(await dialog('删除站点', '将从列表中移除该站点，不影响已同步的数据。确定？', '删除'))) { return; }
+      if (!(await dialog(t('删除站点'), t('将从列表中移除该站点，不影响已同步的数据。确定？'), t('删除')))) { return; }
       try { await api('admin.php', 'peer_del', { id }); toast('已删除'); await refresh(); }
-      catch (e) { toast(e.message || '删除失败', 'err'); }
+      catch (e) { toast(e.message || t('删除失败'), 'err'); }
       return;
     }
     if (b.dataset.a === 'test') {
-      b.disabled = true; b.textContent = '测试中…';
+      b.disabled = true; b.textContent = t('测试中…');
       try { await api('admin.php', 'peer_test', { id }, { timeout: 30000 }); toast('连接正常，密钥校验通过'); }
-      catch (e) { toast(e.message || '连接失败', 'err'); }
-      finally { b.disabled = false; b.textContent = '测试'; }
+      catch (e) { toast(e.message || t('连接失败'), 'err'); }
+      finally { b.disabled = false; b.textContent = t('测试'); }
     }
   });
 
   addBtn.addEventListener('click', () => openForm(null));
 
   syncBtn.addEventListener('click', async () => {
-    if (!(await dialog('一键互通', '将与列表中所有启用站点双向同步数据，期间不要关闭页面。确定继续？', '开始'))) { return; }
-    syncBtn.disabled = true; syncBtn.textContent = '互通中…';
+    if (!(await dialog(t('一键互通'), t('将与列表中所有启用站点双向同步数据，期间不要关闭页面。确定继续？'), t('开始')))) { return; }
+    syncBtn.disabled = true; syncBtn.textContent = t('互通中…');
     try {
       const r = await api('admin.php', 'peer_sync', {}, { timeout: 300000 });
       const list = (r.results || []).map(x => x.ok
         ? x.name + '：拉取 ' + x.pulled + ' / 推送 ' + x.pushed + '（' + x.tables + ' 张表'
           + (Number(x.failed || 0) > 0 ? '，跳过 ' + x.failed + ' 行' : '') + '）'
-        : x.name + '：失败' + (x.msg ? '（' + x.msg + '）' : ''));
+        : x.name + t('：失败') + (x.msg ? '（' + x.msg + '）' : ''));
       toast(list.length ? list.join('；') : '没有启用中的站点');
       await refresh();
-    } catch (e) { toast(e.message || '互通失败', 'err'); }
-    finally { syncBtn.disabled = false; syncBtn.textContent = '一键互通'; }
+    } catch (e) { toast(e.message || t('互通失败'), 'err'); }
+    finally { syncBtn.disabled = false; syncBtn.textContent = t('一键互通'); }
   });
 }
 
@@ -6864,7 +6996,7 @@ async function discEditDialog(row) {
     const scrim = document.getElementById('dialogScrim');
     const box = document.getElementById('dialog');
     box.className = 'dialog glass';
-    const banState = row.banned ? (row.ban_until ? '封停至 ' + esc(row.ban_until) : '永久封停') : '未封停';
+    const banState = row.banned ? (row.ban_until ? '封停至 ' + esc(row.ban_until) : t('永久封停')) : t('未封停');
 
     box.innerHTML = `
       <h3>设置通报 · ${esc(row.username)}</h3>
@@ -6965,7 +7097,7 @@ async function loadDisc(container) {
       + items.map(it => `<tr data-rid="${it.id}">
         <td>${userName(it.username, 'user', it.user_count, it.username_now)}${it.user_alive ? '' : ' <span class="tiny muted">（账号已删）</span>'} ${oidTag(it.oid)}</td>
         <td class="tiny">${esc((it.reasons || []).join('；'))}</td>
-        <td class="tiny">${it.banned ? (it.ban_until ? '至 ' + esc(it.ban_until) : '永久') : '未封停'}${it.ip_banned ? ' · IP' : ''}</td>
+        <td class="tiny">${it.banned ? (it.ban_until ? '至 ' + esc(it.ban_until) : t('永久')) : t('未封停')}${it.ip_banned ? ' · IP' : ''}</td>
         <td class="tiny">${Number(it.user_count || 0)} 次</td>
         <td class="tiny">${esc(it.created)}</td>
         <td><button class="btn-ghost btn-sm" data-act="edit">设置</button>
@@ -6982,7 +7114,7 @@ async function loadDisc(container) {
         catch (e) { toast(e.message, 'err'); }
       });
       tr.querySelector('[data-act="revoke"]').addEventListener('click', async () => {
-        if (!(await dialog('撤销通报', '将删除该通报并解除其账号与 IP 封禁，确认？', '撤销', { danger: true }))) { return; }
+        if (!(await dialog(t('撤销通报'), t('将删除该通报并解除其账号与 IP 封禁，确认？'), t('撤销'), { danger: true }))) { return; }
         try { await api('admin.php', 'disc_delete', { id: row.id }); toast('已撤销'); loadDisc(container); }
         catch (e) { toast(e.message, 'err'); }
       });
@@ -7110,11 +7242,11 @@ async function submitDiscipline(container, ids, names, q, readOnly, pg) {
       extra = '<br><br>已清理：评论 <b>' + Number(r.purged_comments || 0) + '</b> 条 · 对话 <b>'
             + Number(r.purged_messages || 0) + '</b> 条 · 图片 <b>' + Number(r.purged_images || 0) + '</b> 张';
     }
-    await dialog('通报完成',
+    await dialog(t('通报完成'),
       '已通报 <b>' + Number(r.created || 0) + '</b> 个用户。'
       + (r.ips_banned ? '<br>封禁 IP <b>' + Number(r.ips_banned) + '</b> 个。' : '')
       + (r.no_ip ? '<br><span class="tiny">其中 ' + Number(r.no_ip) + ' 个暂无可封的 IP，等其下次访问后再操作即可。</span>' : '')
-      + extra, '知道了');
+      + extra, t('知道了'));
     loadUsers(container, q, readOnly, pg);
   } catch (e) {
     toast(e.message, 'err');
@@ -7129,7 +7261,7 @@ async function loadUsers(container, q, readOnly, page) {
   try {
     const d = await api('admin.php', 'users', { q: q, page: pg });
     if (!d.items.length) {
-      box.innerHTML = '<div class="tiny">' + (pg > 1 ? '这一页没有用户了。' : '暂无用户') + '</div>';
+      box.innerHTML = '<div class="tiny">' + (pg > 1 ? '这一页没有用户了。' : t('暂无用户')) + '</div>';
       if (pager) {
         pager.dataset.page = String(pg);
         pager.innerHTML = pg > 1 ? '<button class="btn-ghost btn-sm" data-pg="' + (pg - 1) + '">上一页</button>' : '';
@@ -7161,14 +7293,14 @@ async function loadUsers(container, q, readOnly, page) {
       const uname = tr.dataset.name || '';
       const delBtn = tr.querySelector('[data-act="del"]');
       if (delBtn) delBtn.addEventListener('click', async () => {
-        if (await dialog('删除用户', '将删除「' + esc(uname) + '」及其全部数据，不可恢复。确认？', '删除', { danger: true })) {
+        if (await dialog(t('删除用户'), t('将删除「') + esc(uname) + t('」及其全部数据，不可恢复。确认？'), t('删除'), { danger: true })) {
           try { await api('admin.php', 'user_delete', { id: tr.dataset.id }); toast('已删除'); loadUsers(container, q, readOnly, pg); }
           catch (e) { toast(e.message, 'err'); }
         }
       });
       const rnBtn = tr.querySelector('[data-act="rename"]');
       if (rnBtn) rnBtn.addEventListener('click', async () => {
-        const nn = await prompt_('给用户改名', '新用户名（2–64 个字符）。改后，该用户的违纪通报会同时显示原名与新名。', '保存', uname);
+        const nn = await prompt_(t('给用户改名'), t('新用户名（2–64 个字符）。改后，该用户的违纪通报会同时显示原名与新名。'), t('保存'), uname);
         if (nn == null) { return; }
         const v = String(nn).trim();
         if (v.length < 2) { toast('用户名至少 2 个字符', 'err'); return; }
@@ -7182,17 +7314,17 @@ async function loadUsers(container, q, readOnly, page) {
       });
       const proBtn = tr.querySelector('[data-act="promote"]');
       if (proBtn) proBtn.addEventListener('click', async () => {
-        if (!(await dialog('设为副管理员',
+        if (!(await dialog(t('设为副管理员'),
             '将「<b>' + esc(uname) + '</b>」升级为副管理员？<br><br>'
             + '· <b>不需要更改密码</b>，其原密码继续可用<br>'
             + '· 评论、对话等数据全部保留<br>'
             + '· UID 换为专属豹子号<br>'
-            + '· 获得作品搜索/上传与回复反馈权限', '确认设立'))) { return; }
+            + t('· 获得作品搜索/上传与回复反馈权限'), t('确认设立')))) { return; }
         btnLoading(proBtn, true);
         try {
           const r = await api('admin.php', 'sub_add', { username: uname, secret: '' });
           toast('已升级为副管理员');
-          await dialog('升级完成',
+          await dialog(t('升级完成'),
             '「<b>' + esc(r.username) + '</b>」现为副管理员：<b>密码保持不变</b>，数据全部保留。<br><br>'
             + '专属 UID（豹子号）：<b>' + esc(r.uid8 || '—') + '</b>', '知道了');
           loadSubs(container);
@@ -7231,7 +7363,7 @@ async function loadSubs(container) {
     const poolNote = bTotal <= 0 ? '' : `<div class="tiny" style="margin-bottom:8px;line-height:1.6;${bLeft > 0 ? 'opacity:.75' : 'color:var(--danger)'}">
         豹子号已用 ${bTotal - bLeft}/${bTotal}${bLeft > 0
           ? `，还剩 ${bLeft} 个`
-          : '，池已用尽：新加的副管理员会自动改用普通 8 位 UID，身份与权限完全不受影响'}
+          : t('，池已用尽：新加的副管理员会自动改用普通 8 位 UID，身份与权限完全不受影响')}
       </div>`;
     box.innerHTML = poolNote + (d.items.length
       ? `<table class="table"><thead><tr><th>用户名</th><th>UID（豹子号）</th><th>设立时间</th><th>操作</th></tr></thead><tbody>` +
@@ -7244,15 +7376,15 @@ async function loadSubs(container) {
       : '<div class="tiny">尚未添加副管理员</div>');
     box.querySelectorAll('tr[data-id]').forEach(tr => {
       tr.querySelector('[data-act="demote"]').addEventListener('click', async () => {
-        if (await dialog('取消副管理员身份',
+        if (await dialog(t('取消副管理员身份'),
             '该账号将变回普通用户：<br>· 评论、对话、反馈等数据<b>全部保留</b><br>· UID 由豹子号换回普通编号<br>· 若该账号是升级而来，仍可用其原密码登录',
-            '取消身份')) {
+            t('取消身份'))) {
           try { await api('admin.php', 'sub_demote', { id: tr.dataset.id }); toast('已取消副管理员身份'); loadSubs(container); loadUsers(container, container.querySelector('#uq').value.trim()); }
           catch (e) { toast(e.message, 'err'); }
         }
       });
       tr.querySelector('[data-act="del"]').addEventListener('click', async () => {
-        if (await dialog('删除副管理员', '将同时删除其账号与全部数据，不可恢复。若只是收回权限，请用「取消身份」。确认？', '删除', { danger: true })) {
+        if (await dialog(t('删除副管理员'), t('将同时删除其账号与全部数据，不可恢复。若只是收回权限，请用「取消身份」。确认？'), t('删除'), { danger: true })) {
           try { await api('admin.php', 'sub_del', { id: tr.dataset.id }); toast('已删除'); loadSubs(container); }
           catch (e) { toast(e.message, 'err'); }
         }
@@ -7279,7 +7411,7 @@ async function loadSubs(container) {
         const hit = (d.items || []).find(u => String(u.username) === v);
         if (!hintEl) { return; }
         if (!hit) {
-          hintEl.textContent = '用户名未被占用 → 将创建新账号（需在右侧填写初始密码）';
+          hintEl.textContent = t('用户名未被占用 → 将创建新账号（需在右侧填写初始密码）');
         } else if (hit.role === 'subadmin') {
           hintEl.innerHTML = '<span style="color:var(--danger)">该账号已是副管理员</span>';
         } else if (hit.role === 'admin') {
@@ -7301,16 +7433,16 @@ async function loadSubs(container) {
       const r = await api('admin.php', 'sub_add', { username: n, secret: k });
       nameEl.value = ''; keyEl.value = ''; if (hintEl) { hintEl.innerHTML = ''; }
       const modeTxt = {
-        promoted:          ['现有用户已升级为副管理员', '账号「<b>' + esc(r.username) + '</b>」已升级：<b>密码保持不变</b>（继续用原密码登录），评论、对话等数据全部保留，UID 已换为豹子号。'],
-        promoted_resetpwd: ['已升级并重置密码', '账号「<b>' + esc(r.username) + '</b>」已升级，登录密码已重置为你刚填写的密码，数据全部保留。'],
-        created:           ['副管理员账号已创建', '账号「<b>' + esc(r.username) + '</b>」已创建，用「用户名 + 初始密码」登录即可。'],
-        repaired:          ['已修复该副管理员', '该账号的凭证此前未同步，已自动修复为副管理员身份。'],
-      }[r.mode] || ['副管理员已设立', '账号「<b>' + esc(r.username) + '</b>」已设立。'];
+        promoted:          [t('现有用户已升级为副管理员'), '账号「<b>' + esc(r.username) + '</b>」已升级：<b>密码保持不变</b>（继续用原密码登录），评论、对话等数据全部保留，UID 已换为豹子号。'],
+        promoted_resetpwd: [t('已升级并重置密码'), '账号「<b>' + esc(r.username) + '</b>」已升级，登录密码已重置为你刚填写的密码，数据全部保留。'],
+        created:           [t('副管理员账号已创建'), '账号「<b>' + esc(r.username) + '</b>」已创建，用「用户名 + 初始密码」登录即可。'],
+        repaired:          [t('已修复该副管理员'), t('该账号的凭证此前未同步，已自动修复为副管理员身份。')],
+      }[r.mode] || [t('副管理员已设立'), '账号「<b>' + esc(r.username) + '</b>」已设立。'];
       toast(modeTxt[0]);
       await dialog(modeTxt[0],
         modeTxt[1] + '<br><br>专属 UID（豹子号）：<b>' + esc(r.uid8 || '—') + '</b>'
         + '<br><span class="tiny">权限：普通用户全部功能 + 作品搜索/上传 + 回复反馈</span>',
-        '知道了');
+        t('知道了'));
       loadSubs(container);
       loadUsers(container, container.querySelector('#uq').value.trim());
     } catch (e) { toast(e.message, 'err'); }
@@ -7376,8 +7508,37 @@ function startPanelPolling(container) {
  */
 
 
-const ALLOWED = ['功能说明', 'AI 使用说明', '社区公约', '评分标准', '入榜规则',
-  '用户协议', '隐私政策', '更新日志'];
+
+const ALLOWED = [t('功能说明'), t('AI 使用说明'), t('社区公约'), t('评分标准'), t('入榜规则'),
+  t('用户协议'), t('隐私政策'), t('更新日志')];
+
+/* 文档里的 B站视频：单独一段的 BV 号或视频链接 → 内嵌播放器。
+   mdToHtml 全量转义，所以这里只在渲染结果上做定点替换，替换进 DOM 的只有
+   我们自己拼的 iframe（BV 号已按 [0-9A-Za-z]{10} 白名单过滤）。 */
+function biliEmbed(html) {
+  const player = bv =>
+    '<div class="bili-embed"><iframe src="https://player.bilibili.com/player.html?bvid=' +
+    bv + '&autoplay=0&danmaku=1" scrolling="no" frameborder="0" allowfullscreen loading="lazy"></iframe></div>';
+  return html
+    .replace(/<p>\s*(?:https?:\/\/)?(?:www\.|m\.)?bilibili\.com\/video\/(BV[0-9A-Za-z]{10})[^\s<]*\s*<\/p>/g,
+      (m, bv) => player(bv))
+    .replace(/<p>\s*(BV[0-9A-Za-z]{10})\s*<\/p>/g, (m, bv) => player(bv));
+}
+
+/* 中文文档名 → 英文文件名（assets/docs/en/<slug>.md） */
+const SLUG = {
+  '功能说明': 'features', 'AI 使用说明': 'ai', '社区公约': 'community',
+  '评分标准': 'scoring', '入榜规则': 'admission', '用户协议': 'terms',
+  '隐私政策': 'privacy', '更新日志': 'changelog'
+};
+/* 文档语言跟随界面语言：中文看中文文档，英文与日文都看英文文档 */
+function docLang() {
+  return docLangOf(I18N.lang);
+}
+
+function langBar() {
+  return '<div class="doc-lang"><span>' + (docLang() === 'en' ? 'English' : t('中文')) + '</span></div>';
+}
 
 async function renderDoc(container, ctx) {
   const name = decodeURIComponent((ctx.sub || '').trim()) || '评分标准';
@@ -7387,24 +7548,38 @@ async function renderDoc(container, ctx) {
   }
   container.innerHTML = '<div class="skeleton" style="height:200px"></div>';
   try {
-    const resp = await fetch('assets/docs/' + encodeURIComponent(name) + '.md', { cache: 'no-cache' });
-    if (!resp.ok) throw new Error('文档加载失败');
+    const lang = docLang();
+    const path = (lang === 'en')
+      ? 'assets/docs/en/' + (SLUG[name] || 'features') + '.md'
+      : 'assets/docs/' + encodeURIComponent(name) + '.md';
+    const resp = await fetch(path, { cache: 'no-cache' });
+    if (!resp.ok) throw new Error(lang === 'en' ? 'English version of this document is not available yet' : '文档加载失败');
     const md = await resp.text();
     const box = document.createElement('div');
     box.className = 'card doc';
     let html = mdToHtml(md);
+    html = biliEmbed(html);
+    html = '<div class="doc-head">' + langBar() + '</div>' + html;
 
     /* 更新日志页：顶部标出当前站点版本，便于对照是否已部署到最新 */
-    if (name === '更新日志') {
+    if (name === t('更新日志')) {
       const v = (window.__SITE__ && window.__SITE__.ver) ? String(window.__SITE__.ver) : '';
       const latest = (md.match(/^##\s*v([0-9]+\.[0-9]+\.[0-9]+)/m) || [])[1] || '';
       const same = v !== '' && latest.indexOf(v) >= 0;
-      html = `<div class="doc-ver${same ? ' ok' : ''}">当前站点版本 v${esc(v || '未知')}`
+      html = `<div class="doc-ver${same ? ' ok' : ''}">当前站点版本 v${esc(v || t('未知'))}`
         + (latest && !same ? ` · 日志最新为 v${esc(latest)}（本站可能尚未更新到该版本）` : '')
         + `</div>` + html;
     }
 
     box.innerHTML = html;
+    box.querySelectorAll('[data-lang]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        const want = b.getAttribute('data-lang');
+        if (want === docLang()) { return; }
+        try { localStorage.setItem(LANG_KEY, want); } catch (e) {}
+        renderDoc(container, ctx);
+      });
+    });
     appendDownload(box, name, md);
     container.innerHTML = '';
     container.appendChild(box);
@@ -7428,13 +7603,13 @@ function appendDownload(box, name, md) {
 
   const hint = document.createElement('span');
   hint.className = 'doc-dl-hint';
-  hint.textContent = name + '.md · 与页面内容一致';
+  hint.textContent = name + t('.md · 与页面内容一致');
 
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'btn-ghost btn-sm';
-  btn.setAttribute('aria-label', '下载 ' + name + ' 的原始 md 文件');
-  btn.innerHTML = ICON_DL + '下载原始 md 文件';
+  btn.setAttribute('aria-label', t('下载 ') + name + t(' 的原始 md 文件'));
+  btn.innerHTML = ICON_DL + t('下载原始 md 文件');
   btn.addEventListener('click', () => {
     const url = URL.createObjectURL(new Blob([md], { type: 'text/markdown;charset=utf-8' }));
     const a = document.createElement('a');
@@ -7465,7 +7640,7 @@ async function renderFeedback(container) {
   const isAdmin = isAdminish();
   container.innerHTML = `
     <div class="card">
-      <div class="card-title">${isAdmin ? '回复反馈' : '反映问题'}</div>
+      <div class="card-title">${isAdmin ? '回复反馈' : t('反映问题')}</div>
       ${isAdmin || state.role === 'user' ? `
         <div class="field">
           <textarea class="input" id="fbText" maxlength="1000" placeholder="描述你遇到的问题或建议…"></textarea>
@@ -7481,7 +7656,7 @@ async function renderFeedback(container) {
       ` : '<p class="tiny muted">登录后可提交反馈。</p>'}
     </div>
     <div class="fb-list-head">
-      <span>${isAdmin ? '全部反馈' : '反馈记录'}</span>
+      <span>${isAdmin ? '全部反馈' : t('反馈记录')}</span>
     </div>
     <div id="fbList"></div>`;
 
@@ -7541,7 +7716,7 @@ function fbNode(f, isAdmin, reload) {
   });
   const del = el.querySelector('[data-act="del"]');
   if (del) del.addEventListener('click', async () => {
-    if (await dialog('删除反馈', '确认删除？', '删除', { danger: true })) {
+    if (await dialog(t('删除反馈'), t('确认删除？'), t('删除'), { danger: true })) {
       try { await api('feedback.php', 'delete', { id: f.id }); toast('已删除'); reload(); }
       catch (e) { toast(e.message, 'err'); }
     }
@@ -7656,10 +7831,10 @@ async function renderSubmit(container) {
     try {
       const d = await api('submit.php', 'qr_new', null, { silent: true });
       btnLoading($('sbQr'), false);
-      if (!d || !d.code) { throw new Error('扫码会话创建失败'); }
+      if (!d || !d.code) { throw new Error(t('扫码会话创建失败')); }
       box.hidden = false;
       $('sbQrImg').innerHTML = '';
-      $('sbQrTip').textContent = '用 Kimi App 扫码授权';
+      $('sbQrTip').textContent = t('用 Kimi App 扫码授权');
       sbLoadQR((ok) => {
         if (ok) {
           new window.QRCode($('sbQrImg'), { text: d.content, width: 168, height: 168, correctLevel: window.QRCode.CorrectLevel.M });
@@ -7670,26 +7845,26 @@ async function renderSubmit(container) {
       let left = 60;
       qrTimer = setInterval(async () => {
         left--;
-        if (left <= 0) { stopQR(); $('sbQrTip').textContent = '二维码已过期，请重新生成'; return; }
+        if (left <= 0) { stopQR(); $('sbQrTip').textContent = t('二维码已过期，请重新生成'); return; }
         try {
           const r = await api('submit.php', 'qr_poll', { code: d.code }, { silent: true });
           if (r && r.status === 'SUCCESS' && r.token) {
             stopQR();
             tokenEl.value = r.token;
-            $('sbQrTip').textContent = '已获取登录态';
+            $('sbQrTip').textContent = t('已获取登录态');
             box.hidden = true;
             toast('登录成功');
           } else if (r && r.status === 'SCANNED') {
-            $('sbQrTip').textContent = '已扫码，请在手机上确认';
+            $('sbQrTip').textContent = t('已扫码，请在手机上确认');
           } else if (r && r.status === 'EXPIRED') {
             stopQR();
-            $('sbQrTip').textContent = '二维码已过期，请重新生成';
+            $('sbQrTip').textContent = t('二维码已过期，请重新生成');
           }
         } catch (e) { /* 继续轮询 */ }
       }, 2500);
     } catch (e) {
       btnLoading($('sbQr'), false);
-      toast(e.message || '扫码服务不可用，请粘贴登录态', 'bad');
+      toast(e.message || t('扫码服务不可用，请粘贴登录态'), 'bad');
     }
   });
 
@@ -7717,7 +7892,7 @@ async function renderSubmit(container) {
               <b>${esc(it.title)}</b>
               <span class="tiny muted">${esc(it.author || '')} · ${esc(it.community_id)}</span>
             </div>
-            <span class="sb-tag">${it.exists ? '已在榜' : '选择'}</span>
+            <span class="sb-tag">${it.exists ? '已在榜' : t('选择')}</span>
           </div>`).join('');
       } catch (e) {
         if (my === seq) { hits.innerHTML = '<p class="tiny muted">' + esc(e.message || '搜索失败') + '</p>'; }
@@ -7731,7 +7906,7 @@ async function renderSubmit(container) {
     $('sbId').value = row.dataset.id;
     $('sbName').value = row.dataset.title || '';
     $('sbCover').value = row.dataset.cover || '';
-    hint.textContent = '已选择：' + row.dataset.title + '。确认后提交。';
+    hint.textContent = t('已选择：') + row.dataset.title + t('。确认后提交。');
     hits.querySelectorAll('.sb-hit').forEach((el) => el.classList.toggle('picked', el === row));
     if (row.classList.contains('is-exists')) {
       toast('该作品已在榜，可直接查看详情', 'bad');
@@ -7749,20 +7924,20 @@ async function renderSubmit(container) {
     if (name.length < 2) { toast('请填写作品名称（至少 2 字）', 'bad'); return; }
     if (!token) { toast('请填写登录态或扫码登录', 'bad'); return; }
 
-    const ok = await dialog('确认提交', '将用你提供的登录态读取 <b>' + esc(wid) + '</b> 的内容并入库。登录态不会保存。', '提交');
+    const ok = await dialog(t('确认提交'), '将用你提供的登录态读取 <b>' + esc(wid) + '</b> 的内容并入库。登录态不会保存。', '提交');
     if (!ok) { return; }
 
     const btn = $('sbSubmit');
     btnLoading(btn, true);
-    hint.textContent = '正在抓取作品并计算评分，可能需要十几秒…';
+    hint.textContent = t('正在抓取作品并计算评分，可能需要十几秒…');
     try {
       await api('submit.php', 'submit', { name, work_id: wid, cover, token }, { silent: true });
-      hint.textContent = '已收录，正在跳转到作品页…';
+      hint.textContent = t('已收录，正在跳转到作品页…');
       toast('提交成功');
       setTimeout(() => navigate('#/detail/' + wid), 600);
     } catch (e) {
-      hint.textContent = e.message || '提交失败';
-      toast(e.message || '提交失败', 'bad');
+      hint.textContent = e.message || t('提交失败');
+      toast(e.message || t('提交失败'), 'bad');
     } finally {
       btnLoading(btn, false);
     }
@@ -7794,9 +7969,9 @@ function discChip(it) {
 }
 
 function banText(row) {
-  if (!row.banned) { return '未封停账号'; }
-  if (!row.ban_until) { return '账号已封停 · 永久'; }
-  return '账号已封停 · 至 ' + esc(row.ban_until);
+  if (!row.banned) { return t('未封停账号'); }
+  if (!row.ban_until) { return t('账号已封停 · 永久'); }
+  return t('账号已封停 · 至 ') + esc(row.ban_until);
 }
 
 /** 被封禁时给本人的一张说明卡：封禁原因 / 天数 / 解封时间，一眼看全 */
@@ -7808,8 +7983,8 @@ function banCard(row) {
       <h3 style="margin-top:0">封禁信息</h3>
       <dl class="kv">
         <dt>封禁原因</dt><dd>${reasonListInline(row.reasons)}</dd>
-        <dt>封禁天数</dt><dd>${days > 0 ? days + ' 天' : '永久'}</dd>
-        <dt>解封时间</dt><dd>${until ? esc(until) : '不会自动解封（永久）'}</dd>
+        <dt>封禁天数</dt><dd>${days > 0 ? days + ' 天' : t('永久')}</dd>
+        <dt>解封时间</dt><dd>${until ? esc(until) : t('不会自动解封（永久）')}</dd>
         ${row.ip_banned ? '<dt>来源地址</dt><dd>已一并封禁</dd>' : ''}
         ${Number(row.user_count || 0) > 0 ? '<dt>累计通报</dt><dd>' + Number(row.user_count) + ' 次</dd>' : ''}
       </dl>
@@ -7817,7 +7992,7 @@ function banCard(row) {
 }
 
 function reasonListInline(reasons) {
-  if (!reasons || !reasons.length) { return '未填写'; }
+  if (!reasons || !reasons.length) { return t('未填写'); }
   return esc(reasons.join('；'));
 }
 
@@ -7828,7 +8003,7 @@ async function paintDetail(container, id, mine) {
 
   wrap.innerHTML = `
     <div class="violation-hero">
-      <p class="vh-tag">${mine ? '你的访问已被限制' : '公开通报'}</p>
+      <p class="vh-tag">${mine ? '你的访问已被限制' : t('公开通报')}</p>
       <h2>违纪通报</h2>
       <p class="tiny">因下列原因，本站已对相关账号与来源地址作出处理。</p>
     </div>
@@ -7925,6 +8100,7 @@ async function renderDiscipline(container, ctx) {
 /**
  * 应用入口：启动引导、路由、底栏、抽屉、搜索、通知轮询
  */
+
 
 
 
@@ -8123,11 +8299,12 @@ async function route(navType) {
 
   try {
     await fn(holder, { sub, params });
+    applyI18nText(holder);   // 模板串里的界面文案：渲染后按字典替换文本节点
   } catch (e) {
     if (seq !== routeSeq) { return; }            // 已被更新的导航取代，静默丢弃
     view.innerHTML = `<div class="empty">
       <p>页面加载失败</p>
-      <p class="tiny">${esc(e && e.message ? e.message : '未知错误')}</p>
+      <p class="tiny">${esc(e && e.message ? e.message : t('未知错误'))}</p>
       <button class="btn btn-sm" id="routeRetry" style="margin-top:12px">重新加载</button>
     </div>`;
     const rb = view.querySelector('#routeRetry');
@@ -8205,32 +8382,32 @@ const I = {
 function drawerItems() {
   const isAdmin = state.role === 'admin' || state.role === 'subadmin';
   const items = [
-    { k: 'total', label: '总排行榜', ic: I.rank, go: '#/rank' },
-    { k: 'search', label: '搜索作品', ic: I.search, act: 'search' },
-    { k: 'submit', label: '提交作品', ic: I.list, go: '#/submit' },
-    { k: 'vote', label: '投票榜', ic: I.vote, go: '#/rank?board=vote' },
-    { k: 'gods', label: '诸神榜', ic: I.crown, go: '#/rank?board=gods' },
-    { k: 'cold', label: '冷门榜', ic: I.snow, go: '#/rank?board=cold' },
-    { k: 'feedback', label: isAdmin ? '回复反馈' : '反映问题', ic: I.mail, go: '#/feedback' },
-    { k: 'help', label: '功能说明', ic: I.doc, go: '#/doc/功能说明' },
-    { k: 'aihelp', label: 'AI 使用说明', ic: I.plug, go: '#/doc/AI 使用说明' },
-    { k: 'charter', label: '社区公约', ic: I.users, go: '#/doc/社区公约' },
-    { k: 'discipline', label: '违纪通报', ic: I.shield, go: '#/discipline' },
-    { k: 'score', label: '评分标准', ic: I.rule, go: '#/doc/评分标准' },
-    { k: 'join', label: '入榜规则', ic: I.list, go: '#/doc/入榜规则' },
-    { k: 'terms', label: '用户协议', ic: I.doc, go: '#/doc/用户协议' },
-    { k: 'privacy', label: '隐私政策', ic: I.lock, go: '#/doc/隐私政策' },
-    { k: 'changelog', label: '更新日志', ic: I.doc, go: '#/doc/更新日志' },
-    { k: 'pentest', label: '渗透测试', ic: I.shield, url: REPO_URL },
-    { k: 'admins', label: '管理者名单', ic: I.users, go: '#/about' },
-    { k: 'about', label: '关于', ic: I.info, go: '#/about' },
+    { k: 'total', label: t('总排行榜'), ic: I.rank, go: '#/rank' },
+    { k: 'search', label: t('搜索作品'), ic: I.search, act: 'search' },
+    { k: 'submit', label: t('提交作品'), ic: I.list, go: '#/submit' },
+    { k: 'vote', label: t('投票榜'), ic: I.vote, go: '#/rank?board=vote' },
+    { k: 'gods', label: t('诸神榜'), ic: I.crown, go: '#/rank?board=gods' },
+    { k: 'cold', label: t('冷门榜'), ic: I.snow, go: '#/rank?board=cold' },
+    { k: 'feedback', label: isAdmin ? '回复反馈' : t('反映问题'), ic: I.mail, go: '#/feedback' },
+    { k: 'help', label: t('功能说明'), ic: I.doc, go: '#/doc/功能说明' },
+    { k: 'aihelp', label: t('AI 使用说明'), ic: I.plug, go: '#/doc/AI 使用说明' },
+    { k: 'charter', label: t('社区公约'), ic: I.users, go: '#/doc/社区公约' },
+    { k: 'discipline', label: t('违纪通报'), ic: I.shield, go: '#/discipline' },
+    { k: 'score', label: t('评分标准'), ic: I.rule, go: '#/doc/评分标准' },
+    { k: 'join', label: t('入榜规则'), ic: I.list, go: '#/doc/入榜规则' },
+    { k: 'terms', label: t('用户协议'), ic: I.doc, go: '#/doc/用户协议' },
+    { k: 'privacy', label: t('隐私政策'), ic: I.lock, go: '#/doc/隐私政策' },
+    { k: 'changelog', label: t('更新日志'), ic: I.doc, go: '#/doc/更新日志' },
+    { k: 'pentest', label: t('渗透测试'), ic: I.shield, url: REPO_URL },
+    { k: 'admins', label: t('管理者名单'), ic: I.users, go: '#/about' },
+    { k: 'about', label: t('关于'), ic: I.info, go: '#/about' },
   ];
   if (state.role === 'user' || state.role === 'guest') {
-    items.push({ k: 'auth', label: '用户登录 / 注册', ic: I.login, go: '#/login' });
+    items.push({ k: 'auth', label: t('用户登录 / 注册'), ic: I.login, go: '#/login' });
   } else {
-    items.push({ k: 'panel', label: '控制面板', ic: I.gear, go: '#/panel' });
-    items.push({ k: 'monitor', label: '异常监测', ic: I.shield, go: '#/monitor' });
-    items.push({ k: 'logout', label: '退出登录', ic: I.logout, act: 'logout' });
+    items.push({ k: 'panel', label: t('控制面板'), ic: I.gear, go: '#/panel' });
+    items.push({ k: 'monitor', label: t('异常监测'), ic: I.shield, go: '#/monitor' });
+    items.push({ k: 'logout', label: t('退出登录'), ic: I.logout, act: 'logout' });
   }
   return items;
 }
@@ -8249,11 +8426,11 @@ function renderDrawer() {
       if (it.url) { window.open(it.url, '_blank', 'noopener'); return; }
       if (it.act === 'search') { openSearch(); return; }
       if (it.act === 'logout') {
-        if (await dialog('退出登录', '确认退出当前账号吗？', '退出')) {
+        if (await dialog(t('退出登录'), t('确认退出当前账号吗？'), t('退出'))) {
           try { await api('auth.php', 'logout'); } catch (e) {}
           setToken('');
           /* 就地切到游客态：重绘抽屉并跳转，不再整页刷新 */
-          state.role = 'guest'; state.uid = 0; state.username = '游客';
+          state.role = 'guest'; state.uid = 0; state.username = t('游客');
           state.settings = {}; state.avatar = '';
           toast('已退出');
           renderDrawer();
@@ -8458,7 +8635,7 @@ function renderAbout(container) {
     <div class="card">
       <div class="card-title">${icon(I.users)}管理者名单</div>
       <div id="adminList"><div class="skeleton" style="height:56px"></div></div>
-      <p class="tiny">名单为<b>实时读取</b>；如需反馈问题，请在「${(state.role === 'admin' || state.role === 'subadmin') ? '回复反馈' : '反映问题'}」中提交。</p>
+      <p class="tiny">名单为<b>实时读取</b>；如需反馈问题，请在「${(state.role === 'admin' || state.role === 'subadmin') ? '回复反馈' : t('反映问题')}」中提交。</p>
     </div>`;
 
   const clLink = container.querySelector('#changelogLink');
@@ -8516,10 +8693,10 @@ function maybeNameFix() {
   if (!fix || !fix.suggest || __nameFixShown) { return; }
   if (state.role !== 'user' && state.role !== 'subadmin') { return; }
   __nameFixShown = true;
-  prompt_('请更新你的用户名',
+  prompt_(t('请更新你的用户名'),
     '你现在的用户名是「<b>' + esc(fix.current) + '</b>」，其中含有换行或异常装饰字符，'
     + '不符合当前的用户名规范，可能导致页面显示异常。<br>已为你填好一个建议名，可直接使用或自行修改。',
-    '保存并继续', fix.suggest).then(async function (v) {
+    t('保存并继续'), fix.suggest).then(async function (v) {
     if (v === null) { return; }                    // 稍后再说
     const name = String(v).trim();
     if (!name) { toast('用户名不能为空', 'err'); __nameFixShown = false; return; }
@@ -8579,13 +8756,16 @@ async function main() {
   // 单例守卫：模块被重复加载时只初始化一次（防止双份事件绑定导致的重复提交）
   if (window.__KIMI_BOOTED__) { return; }
   window.__KIMI_BOOTED__ = true;
+
+  await i18nInit();        // 语言：本地选择 > 浏览器首选 > 中文；译文取 assets/i18n/
+  applyI18nDom(document);  // 服务端渲染的静态文案（底部导航等）
   initSystemWatcher();
 
   setUnauthorizedHandler(() => {
     if (state.role === 'guest') { return; }        // 游客已在 core.js 内静默续期，走到这里无需处理
     setToken('');
     state.role = 'guest';
-    state.username = '游客';
+    state.username = t('游客');
     state.uid = 0;
     state.uid8 = '';
     state.settings = {};

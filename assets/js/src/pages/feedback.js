@@ -8,7 +8,7 @@ export async function renderFeedback(container) {
   const isAdmin = isAdminish();
   container.innerHTML = `
     <div class="card">
-      <div class="card-title">${isAdmin ? '回复反馈' : '反映问题'}</div>
+      <div class="card-title">${isAdmin ? '回复反馈' : t('反映问题')}</div>
       ${isAdmin || state.role === 'user' ? `
         <div class="field">
           <textarea class="input" id="fbText" maxlength="1000" placeholder="描述你遇到的问题或建议…"></textarea>
@@ -24,7 +24,7 @@ export async function renderFeedback(container) {
       ` : '<p class="tiny muted">登录后可提交反馈。</p>'}
     </div>
     <div class="fb-list-head">
-      <span>${isAdmin ? '全部反馈' : '反馈记录'}</span>
+      <span>${isAdmin ? '全部反馈' : t('反馈记录')}</span>
     </div>
     <div id="fbList"></div>`;
 
@@ -84,7 +84,7 @@ function fbNode(f, isAdmin, reload) {
   });
   const del = el.querySelector('[data-act="del"]');
   if (del) del.addEventListener('click', async () => {
-    if (await dialog('删除反馈', '确认删除？', '删除', { danger: true })) {
+    if (await dialog(t('删除反馈'), t('确认删除？'), t('删除'), { danger: true })) {
       try { await api('feedback.php', 'delete', { id: f.id }); toast('已删除'); reload(); }
       catch (e) { toast(e.message, 'err'); }
     }

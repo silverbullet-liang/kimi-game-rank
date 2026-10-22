@@ -57,12 +57,12 @@ export async function renderLogin(container) {
       <div class="field">
         <label>用户名${sub === 'register' ? '（即昵称，全站展示，注册后不可更改）' : ''}</label>
         <input class="input" id="uName" type="text" autocomplete="username"
-               placeholder="${sub === 'register' ? '2-64 位，中文、字母、数字或符号均可' : '请输入用户名'}">
+               placeholder="${sub === 'register' ? '2-64 位，中文、字母、数字或符号均可' : t('请输入用户名')}">
       </div>
       <div class="field">
         <label>密码${sub === 'register' ? '（8-64 位，建议同时包含数字和字母）' : ''}</label>
         <div class="input-wrap">
-          <input class="input" id="uPwd" type="password" autocomplete="${sub === 'register' ? 'new-password' : 'current-password'}" placeholder="${sub === 'register' ? '设置 8-64 位密码' : '请输入密码'}">
+          <input class="input" id="uPwd" type="password" autocomplete="${sub === 'register' ? 'new-password' : 'current-password'}" placeholder="${sub === 'register' ? '设置 8-64 位密码' : t('请输入密码')}">
           <button class="icon-btn eye" id="eyeBtn" type="button" aria-label="显示密码">
             <svg viewBox="0 0 24 24" class="ic"><path d="M12 5c5 0 9 4.5 9 7s-4 7-9 7-9-4.5-9-7 4-7 9-7zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg>
           </button>
@@ -73,8 +73,8 @@ export async function renderLogin(container) {
         <span>我已阅读并同意<span class="link" data-doc="用户协议">《用户协议》</span>与<span class="link" data-doc="隐私政策">《隐私政策》</span>（本站为个人兴趣分享，请文明互动）</span>
       </div>
       <div id="capBox" style="margin-bottom:12px"></div>
-      <button class="btn" id="submitBtn" style="width:100%">${sub === 'register' ? '注册并登录' : '登录'}</button>
-      <div class="tiny" style="text-align:center;margin-top:10px">${sub === 'register' ? '密码登录的账号可浏览榜单并参与投票' : '忘记密码请联系管理员'}</div>
+      <button class="btn" id="submitBtn" style="width:100%">${sub === 'register' ? '注册并登录' : t('登录')}</button>
+      <div class="tiny" style="text-align:center;margin-top:10px">${sub === 'register' ? '密码登录的账号可浏览榜单并参与投票' : t('忘记密码请联系管理员')}</div>
       <div class="reg-video" id="regVideo">
         <button class="reg-video-btn" id="regVideoBtn" type="button">
           <svg viewBox="0 0 24 24" class="ic"><path d="M8 5v14l11-7z"/></svg>
@@ -146,7 +146,7 @@ export async function renderLogin(container) {
     setToken(d.token);
     state.role = d.role || (guest ? 'guest' : 'user');
     state.uid = d.uid || 0;
-    state.username = d.username || '游客';
+    state.username = d.username || t('游客');
     // 重新校验以拉取设置与头像
     try {
       const v = await api('auth.php', 'verify');
@@ -155,7 +155,7 @@ export async function renderLogin(container) {
       state.username = v.username || state.username;
       applyTheme();
     } catch (e) {}
-    toast(guest ? '已进入游客模式' : ('欢迎，' + state.username));
+    toast(guest ? '已进入游客模式' : (t('欢迎，') + state.username));
     if (Number(state.settings.notify) === 1) askNotifyPermission();
     // 登录后回「我的」；游客进入回榜单（路由会重绘页面与抽屉，无需整页刷新）
     navigate(guest ? '#/rank' : '#/mine');

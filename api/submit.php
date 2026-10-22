@@ -187,6 +187,10 @@ if ($action === 'submit') {
         if (mb_strlen($cover) > 500 || !preg_match('#^https?://#i', $cover)) {
             fail(400, '封面链接需以 http(s) 开头');
         }
+        /* 会进 <img src>：引号/尖括号/反引号/反斜杠/空白一律拒绝 */
+        if (preg_match("/[\"'<>`\\s]/", $cover) || strpos($cover, '\\') !== false) {
+            fail(400, '封面链接含非法字符');
+        }
     }
     if ($token === '') {
         fail(400, '需要填写登录态，否则无法读取作品内容');

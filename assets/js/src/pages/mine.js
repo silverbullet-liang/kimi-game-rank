@@ -2,6 +2,7 @@
  * 我的页：个人信息 / AI 用量 / IP 与访问记录 / 设置 / 控制面板入口
  */
 import { api, state, esc, toast, dialog, setToken, askNotifyPermission, userName, isAdminish, getPrefs, setPrefs } from '../core.js';
+import { LANGS, I18N, setLang } from '../i18n.js';
 import { navigate } from '../router.js';
 import { saveTheme, ACCENTS, SKINS, hexToHsl, FESTIVAL_KEYS, festivalNow } from '../theme.js';
 import { setNavAnim } from '../transitions.js';
@@ -59,7 +60,7 @@ export async function renderMine(container) {
         <span class="av">${avatarImg(d.username, d.avatar)}</span>
         <div>
           <div class="name">${userName(d.username, d.role)}</div>
-          <div class="tiny">${isAdmin ? (d.role === 'subadmin' ? '副管理员账号' : '管理员账号') : ('注册于 ' + esc(d.registered_at || ''))}</div>
+          <div class="tiny">${isAdmin ? (d.role === 'subadmin' ? '副管理员账号' : t('管理员账号')) : (t('注册于 ') + esc(d.registered_at || ''))}</div>
         </div>
       </div>
       <div class="uid-row">
@@ -94,7 +95,7 @@ export async function renderMine(container) {
           <div class="ck-big">连续签到 ${d.checkin.streak} 天</div>
           <div class="tiny">${d.checkin.unlimited ? '管理员额度无上限，签到仅记录连续天数' : '每日签到：当日 AI 额度 +1000 · 每连续满 7 天：本月额度 +100000'}</div>
         </div>
-        <button class="btn" id="checkinBtn"${d.checkin.today ? ' disabled' : ''}>${d.checkin.today ? '已签到' : '签到'}</button>
+        <button class="btn" id="checkinBtn"${d.checkin.today ? ' disabled' : ''}>${d.checkin.today ? '已签到' : t('签到')}</button>
       </div>` : ''}
       ${isAdmin ? '<div id="top3" style="margin-top:12px"></div>' : ''}
     </div>
@@ -130,6 +131,11 @@ export async function renderMine(container) {
     <div class="card">
       <div class="card-title">外观设置</div>
       <div id="appearance"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">语言</div>
+      <div id="langSet"></div>
     </div>
 
     <div class="card">
@@ -206,6 +212,7 @@ export async function renderMine(container) {
   });
 
   mountAppearance(container.querySelector('#appearance'));
+  mountLang(container.querySelector('#langSet'));
   mountBlockList(container.querySelector('#blockWrap'), false);
   mountSearchAi(container.querySelector('#searchAiSet'), false);
   loadVisits(container.querySelector('#visitList'));
@@ -227,15 +234,28 @@ export async function renderMine(container) {
   }
 
   container.querySelector('#logoutBtn').addEventListener('click', async () => {
-    if (await dialog('退出登录', '确认退出当前账号吗？', '退出')) {
+    if (await dialog(t('退出登录'), t('确认退出当前账号吗？'), t('退出'))) {
       try { await api('auth.php', 'logout'); } catch (e) {}
       setToken('');
       /* 就地切到游客态并重绘，不整页刷新 */
-      state.role = 'guest'; state.uid = 0; state.username = '游客';
+      state.role = 'guest'; state.uid = 0; state.username = t('游客');
       state.settings = {}; state.avatar = '';
       toast('已退出');
       navigate('#/rank');
     }
+  });
+}
+
+/* ---------- 语言：中 / 英 / 日；文档跟随（日文看英文文档） ---------- */
+function mountLang(box) {
+  if (!box) { return; }
+  box.innerHTML = '<div class="lang-list">' + LANGS.map(function (l) {
+    return '<button type="button" class="lang-btn' + (l.k === I18N.lang ? ' on' : '')
+      + '" data-lang="' + l.k + '">' + esc(l.name) + '</button>';
+  }).join('') + '</div>'
+    + '<div class="tiny" style="margin-top:8px">文档会跟随界面语言；日文界面下文档显示英文版。</div>';
+  box.querySelectorAll('[data-lang]').forEach(function (b) {
+    b.addEventListener('click', function () { setLang(b.getAttribute('data-lang')); });
   });
 }
 
@@ -342,8 +362,8 @@ function mountAppearance(box) {
       <div class="skin-row" id="skinRow">
         ${skinKeys().map(k => `<button class="skin-card ${skin === k ? 'on' : ''}" data-s="${k}">
           <span class="skin-prev p-${k}" aria-hidden="true"></span>
-          <b>${esc(SKINS[k].name)}</b>
-          <span class="tiny">${esc(SKINS[k].desc)}</span>
+          <b>${esc(t(SKINS[k].name))}</b>
+          <span class="tiny">${esc(t(SKINS[k].desc))}</span>
         </button>`).join('')}
       </div>
     </div>
@@ -391,7 +411,7 @@ function mountAppearance(box) {
          选中它 = 清除「退出标记」；选其它皮肤 = 记为主动退出，窗口期内不再自动启用。 */
       if (FESTIVAL_KEYS.indexOf(sk) >= 0) {
         try { document.cookie = 'kimgr_skin_optout=; path=/; max-age=0'; } catch (e) {}
-        toast('正在切换到「' + SKINS[sk].name + '」…');
+        toast(t('正在切换到「') + t(SKINS[sk].name) + t('」…'));
         setTimeout(() => location.reload(), 260);
         return;
       }
@@ -405,7 +425,7 @@ function mountAppearance(box) {
         try { await api('profile.php', 'settings', { skin: sk }); state.settings.skin = sk; } catch (err) {}
       }
       skinRow.querySelectorAll('.skin-card').forEach(x => x.classList.toggle('on', x === b));
-      toast('正在切换到「' + SKINS[sk].name + '」…');
+      toast(t('正在切换到「') + t(SKINS[sk].name) + t('」…'));
       setTimeout(() => location.reload(), 260);
     });
   }
@@ -416,7 +436,7 @@ function mountAppearance(box) {
     setPrefs(Object.assign({}, getPrefs(), { nav_anim: on ? 1 : 0 }));
     setNavAnim(on);
     box.querySelectorAll('#navAnimSeg button').forEach(x => x.classList.toggle('on', x === b));
-    toast(on ? '已开启返回动画' : '已关闭返回动画');
+    toast(on ? '已开启返回动画' : t('已关闭返回动画'));
   });
 
   box.querySelector('#themeSeg').addEventListener('click', async e => {
@@ -517,7 +537,7 @@ async function loadVisits(box) {
     d.items.forEach(v => {
       const el = document.createElement('div');
       el.className = 'visit-row';
-      el.innerHTML = `<span>${esc(v.location || '未知地区')} · ${esc(v.ip)}</span><span class="tiny">${esc(v.time)}</span>`;
+      el.innerHTML = `<span>${esc(v.location || t('未知地区'))} · ${esc(v.ip)}</span><span class="tiny">${esc(v.time)}</span>`;
       box.appendChild(el);
     });
   } catch (e) { box.innerHTML = '<div class="tiny">加载失败</div>'; }
@@ -536,7 +556,7 @@ async function loadTop3(box) {
 }
 
 function avatarImg(name, url) {
-  if (url) return `<img src="${url}" alt="" draggable="false" style="user-select:none">`;
+  if (url) return `<img src="${esc(url)}" alt="" draggable="false" style="user-select:none">`;
   return `<img src="data:image/svg+xml;utf8,${encodeURIComponent(simpleAvatar(name || 'guest'))}" alt="" draggable="false" style="user-select:none">`;
 }
 

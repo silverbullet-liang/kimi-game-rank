@@ -7,16 +7,16 @@ import { setHeroSrc } from '../transitions.js';
 import { mdToHtml } from '../md.js';
 
 const CATS = [
-  { k: 'game', name: '游戏榜' },
-  { k: 'tool', name: '工具榜' },
-  { k: 'literature', name: '文学榜' },
-  { k: 'fanart', name: '二创榜' },
+  { k: 'game', name: t('游戏榜') },
+  { k: 'tool', name: t('工具榜') },
+  { k: 'literature', name: t('文学榜') },
+  { k: 'fanart', name: t('二创榜') },
 ];
 const BOARDS = [
-  { k: 'total', name: '总榜' },
-  { k: 'vote', name: '投票榜' },
-  { k: 'gods', name: '诸神榜' },
-  { k: 'cold', name: '冷门榜' },
+  { k: 'total', name: t('总榜') },
+  { k: 'vote', name: t('投票榜') },
+  { k: 'gods', name: t('诸神榜') },
+  { k: 'cold', name: t('冷门榜') },
 ];
 const AI_SUM_FOLD = 240;      // AI 总结折叠阈值（纯文本字数）
 export const PAGE_SIZE = 20;  // 每页 20 件（服务端按此值返回）：首屏够快，滚动时自动续拉
@@ -81,13 +81,13 @@ export async function renderRank(container, ctx) {
     if (moreBtn) {
       moreBtn.hidden = done || totalCount <= 0;
       moreBtn.disabled = loading;
-      moreBtn.textContent = loading ? '加载中…' : '加载更多';
+      moreBtn.textContent = loading ? '加载中…' : t('加载更多');
     }
     if (totalCount <= 0) { foot.textContent = ''; return; }
-    if (loading) { foot.textContent = '加载中…'; return; }
+    if (loading) { foot.textContent = t('加载中…'); return; }
     foot.textContent = done
-      ? ('已显示全部 ' + shownCount + ' 件')
-      : ('已显示 ' + shownCount + ' / 共 ' + totalCount + ' 件 · 下滑自动加载，也可点上方按钮');
+      ? (t('已显示全部 ') + shownCount + t(' 件'))
+      : (t('已显示 ') + shownCount + t(' / 共 ') + totalCount + t(' 件 · 下滑自动加载，也可点上方按钮'));
   }
 
   /* 列表底部是否已进入可视范围（「填满视口」判定）：以视口为准，
@@ -128,7 +128,7 @@ export async function renderRank(container, ctx) {
       page++;
     } catch (e) {
       if (reset) list.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`;
-      foot.textContent = '加载失败：' + e.message;
+      foot.textContent = t('加载失败：') + e.message;
       errored = true;                     // 暂停自动续拉，可点按钮重试
     } finally {
       loading = false;
@@ -283,10 +283,10 @@ async function loadSearchAi(container, q) {
 
   card.classList.add('collapsed');
   toggle.hidden = false;
-  toggle.textContent = '展开全部';
+  toggle.textContent = t('展开全部');
   toggle.addEventListener('click', () => {
     const folded = card.classList.toggle('collapsed');
-    toggle.textContent = folded ? '展开全部' : '收起';
+    toggle.textContent = folded ? '展开全部' : t('收起');
     if (!folded) { card.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
   });
 }

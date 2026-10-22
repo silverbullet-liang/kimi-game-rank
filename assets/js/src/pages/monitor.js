@@ -8,9 +8,9 @@ import { api, esc, isAdminish, toast, btnLoading, state } from '../core.js';
 import { MON_DEFAULT } from '../config.js';
 
 const MON_TABS = [
-  ['overview', '总览'], ['js', 'JS 错误'], ['api', '接口'], ['srv', '服务端'],
-  ['perf', '加载性能'], ['resource', '资源'], ['session', '会话追踪'],
-  ['custom', '自定义上报'], ['alerts', '告警'], ['settings', '设置'],
+  ['overview', t('总览')], ['js', t('JS 错误')], ['api', t('接口')], ['srv', t('服务端')],
+  ['perf', t('加载性能')], ['resource', t('资源')], ['session', t('会话追踪')],
+  ['custom', t('自定义上报')], ['alerts', t('告警')], ['settings', t('设置')],
 ];
 const st = { range: '7d', tab: 'overview', sessOnly: 'all' };
 
@@ -168,8 +168,8 @@ function monAreaChart(trend, getV, unit) {
 }
 
 function monTrend(trend) {
-  if (!trend || !trend.length) { return monCard('访问趋势（PV）', '<div class="mon-empty">暂无数据</div>'); }
-  return monCard('访问趋势（PV）', monAreaChart(trend, t => t.pv, ''));
+  if (!trend || !trend.length) { return monCard(t('访问趋势（PV）'), '<div class="mon-empty">暂无数据</div>'); }
+  return monCard(t('访问趋势（PV）'), monAreaChart(trend, t => t.pv, ''));
 }
 
 async function monOverview(box) {
@@ -178,40 +178,40 @@ async function monOverview(box) {
   const js = Number(k.js || 0), succ = Number(k.api_succ || 100), slowR = Number(k.slow_ratio || 0);
   box.innerHTML = `
     ${monHealth([
-      { label: 'JS 错误', value: js, tone: toneOf(js, 1, 20) },
-      { label: '接口成功率', value: succ + '%', tone: succ < 95 ? 'bad' : (succ < 99 ? 'warn' : '') },
-      { label: '慢接口占比', value: slowR + '%', tone: toneOf(slowR, 5, 15) },
+      { label: t('JS 错误'), value: js, tone: toneOf(js, 1, 20) },
+      { label: t('接口成功率'), value: succ + '%', tone: succ < 95 ? 'bad' : (succ < 99 ? 'warn' : '') },
+      { label: t('慢接口占比'), value: slowR + '%', tone: toneOf(slowR, 5, 15) },
     ])}
-    ${monKpiGroup('流量', [
-      monKpi('访问量 PV', Number(k.pv || 0)),
-      monKpi('访客 UV', Number(k.uv || 0)),
-      monKpi('接口调用', Number(k.api_total || 0)),
+    ${monKpiGroup(t('流量'), [
+      monKpi(t('访问量 PV'), Number(k.pv || 0)),
+      monKpi(t('访客 UV'), Number(k.uv || 0)),
+      monKpi(t('接口调用'), Number(k.api_total || 0)),
     ])}
-    ${monKpiGroup('性能', [
-      monKpi('平均加载', Number(k.load || 0) + ' ms'),
+    ${monKpiGroup(t('性能'), [
+      monKpi(t('平均加载'), Number(k.load || 0) + ' ms'),
       monKpi('Apdex', Number(k.apdex || 0), Number(k.apdex || 1) < 0.85 ? 'warn' : ''),
-      monKpi('慢接口占比', slowR + '%', toneOf(slowR, 5, 15)),
+      monKpi(t('慢接口占比'), slowR + '%', toneOf(slowR, 5, 15)),
     ])}
-    ${monKpiGroup('错误', [
-      monKpi('JS 错误', js, toneOf(js, 1, 20)),
-      monKpi('接口成功率', succ + '%', succ < 95 ? 'bad' : (succ < 99 ? 'warn' : '')),
+    ${monKpiGroup(t('错误'), [
+      monKpi(t('JS 错误'), js, toneOf(js, 1, 20)),
+      monKpi(t('接口成功率'), succ + '%', succ < 95 ? 'bad' : (succ < 99 ? 'warn' : '')),
     ])}
     ${monTrend(d.trend)}
     <div class="mon-cards">
-      ${monListCard('慢页面 TOP5', (d.top_slow_page || []).map(x => [x.name, (x.avg_ms || 0) + ' ms']))}
-      ${monListCard('JS 错误 TOP5', (d.top_error || []).map(x => [x.msg || x.name, x.n + ' 次']))}
-      ${monListCard('慢接口 TOP5', (d.top_slow_api || []).map(x => [x.name, (x.avg_ms || 0) + ' ms']))}
-      ${monListCard('访问量 TOP5', (d.top_pv || []).map(x => [x.name, x.n]))}
-      ${monListCard('浏览器分布', (d.browsers || []).map(x => [x.name, x.n]))}
-      ${monListCard('操作系统分布', (d.systems || []).map(x => [x.name, x.n]))}
-      ${monListCard('网络分布', (d.nets || []).map(x => [x.name, x.n]))}
-      ${monListCard('屏幕分辨率', (d.screens || []).map(x => [x.name, x.n]))}
-      ${monListCard('资源加载失败', (d.res_fail || []).map(x => [x.name, x.n + ' 次']))}
+      ${monListCard(t('慢页面 TOP5'), (d.top_slow_page || []).map(x => [x.name, (x.avg_ms || 0) + ' ms']))}
+      ${monListCard(t('JS 错误 TOP5'), (d.top_error || []).map(x => [x.msg || x.name, x.n + ' 次']))}
+      ${monListCard(t('慢接口 TOP5'), (d.top_slow_api || []).map(x => [x.name, (x.avg_ms || 0) + ' ms']))}
+      ${monListCard(t('访问量 TOP5'), (d.top_pv || []).map(x => [x.name, x.n]))}
+      ${monListCard(t('浏览器分布'), (d.browsers || []).map(x => [x.name, x.n]))}
+      ${monListCard(t('操作系统分布'), (d.systems || []).map(x => [x.name, x.n]))}
+      ${monListCard(t('网络分布'), (d.nets || []).map(x => [x.name, x.n]))}
+      ${monListCard(t('屏幕分辨率'), (d.screens || []).map(x => [x.name, x.n]))}
+      ${monListCard(t('资源加载失败'), (d.res_fail || []).map(x => [x.name, x.n + ' 次']))}
     </div>`;
 }
 
 function monSrvTrend(trend, slowMs) {
-  if (!trend || !trend.length) { return monCard('平均耗时趋势', '<div class="mon-empty">暂无数据</div>'); }
+  if (!trend || !trend.length) { return monCard(t('平均耗时趋势'), '<div class="mon-empty">暂无数据</div>'); }
   return monCard('平均耗时趋势（慢查询阈值 ' + Number(slowMs || 200) + ' ms）',
     monAreaChart(trend, t => t.avg_ms, ' ms'));
 }
@@ -226,29 +226,29 @@ async function monSrv(box) {
   box.innerHTML = `
     ${monHealth([
       { label: '5xx', value: n5, tone: toneOf(n5, 1, 5) },
-      { label: '异常', value: errs, tone: toneOf(errs, 1, 10) },
-      { label: '慢请求占比', value: slowR + '%', tone: toneOf(slowR, 5, 15) },
+      { label: t('异常'), value: errs, tone: toneOf(errs, 1, 10) },
+      { label: t('慢请求占比'), value: slowR + '%', tone: toneOf(slowR, 5, 15) },
       { label: 'Apdex', value: apdex, tone: apdex < 0.85 ? 'warn' : '' },
     ])}
-    ${monKpiGroup('流量', [
-      monKpi('请求数', Number(k.n || 0)),
-      monKpi('平均 DB 耗时', Number(k.db_avg || 0) + ' ms'),
-      monKpi('平均查询数', Number(k.db_n || 0)),
+    ${monKpiGroup(t('流量'), [
+      monKpi(t('请求数'), Number(k.n || 0)),
+      monKpi(t('平均 DB 耗时'), Number(k.db_avg || 0) + ' ms'),
+      monKpi(t('平均查询数'), Number(k.db_n || 0)),
     ])}
-    ${monKpiGroup('性能', [
-      monKpi('平均耗时', Number(k.avg || 0) + ' ms'),
-      monKpi('P95 耗时', Number(k.p95 || 0) + ' ms'),
-      monKpi('最慢', Number(k.max || 0) + ' ms'),
+    ${monKpiGroup(t('性能'), [
+      monKpi(t('平均耗时'), Number(k.avg || 0) + ' ms'),
+      monKpi(t('P95 耗时'), Number(k.p95 || 0) + ' ms'),
+      monKpi(t('最慢'), Number(k.max || 0) + ' ms'),
       monKpi('Apdex T=' + apdexT + 'ms', apdex, apdex < 0.85 ? 'warn' : ''),
     ])}
-    ${monKpiGroup('错误', [
-      monKpi('慢请求占比', slowR + '%', toneOf(slowR, 5, 15)),
-      monKpi('慢查询数', slowQ, toneOf(slowQ, 10, 50)),
+    ${monKpiGroup(t('错误'), [
+      monKpi(t('慢请求占比'), slowR + '%', toneOf(slowR, 5, 15)),
+      monKpi(t('慢查询数'), slowQ, toneOf(slowQ, 10, 50)),
       monKpi('5xx', n5, toneOf(n5, 1, 5)),
-      monKpi('异常', errs, toneOf(errs, 1, 10)),
+      monKpi(t('异常'), errs, toneOf(errs, 1, 10)),
     ])}
     ${monSrvTrend(d.trend, d.slow_ms)}
-    ${monCard('按路由（' + routes.length + '）', `<table class="table"><thead><tr>
+    ${monCard(t('按路由（') + routes.length + '）', `<table class="table"><thead><tr>
         <th>路由</th><th>请求</th><th>平均</th><th>最大</th><th>慢</th><th>5xx</th><th>慢查询</th><th>异常</th></tr></thead>
         <tbody>${routes.length ? routes.map(r => `<tr data-route="${esc(r.route)}" class="mon-click">
           <td class="mon-ell" title="${esc(r.route)}">${track.indexOf(r.route) >= 0 ? '<b class="mon-track">' + esc(r.route) + '</b>' : esc(r.route)}</td>
@@ -260,8 +260,8 @@ async function monSrv(box) {
           <td class="mon-n">${Number(r.errs) ? '<b class="mon-bad">' + r.errs + '</b>' : '0'}</td></tr>`).join('')
         : '<tr><td class="mon-empty" colspan="8">暂无数据</td></tr>'}</tbody></table>`)}
     <div class="mon-cards">
-      ${monListCard('慢查询 TOP', (d.slow_top || []).map(x => [(x.slow_sql || '').slice(0, 56), x.n + ' 次']))}
-      ${monListCard('异常 TOP', (d.errors || []).map(x => [String(x.route || '') + ' · ' + String(x.err || '').slice(0, 36), x.n + ' 次']))}
+      ${monListCard(t('慢查询 TOP'), (d.slow_top || []).map(x => [(x.slow_sql || '').slice(0, 56), x.n + ' 次']))}
+      ${monListCard(t('异常 TOP'), (d.errors || []).map(x => [String(x.route || '') + ' · ' + String(x.err || '').slice(0, 36), x.n + ' 次']))}
     </div>
     <div id="monSrvDetail"></div>`;
 
@@ -296,11 +296,11 @@ async function monSessions(box) {
   let page = 1, loading = false, done = false, total = 0, shown = 0;
 
   box.innerHTML =
-    monCard('筛选', `<div class="mon-seg" id="monSessOnly">
+    monCard(t('筛选'), `<div class="mon-seg" id="monSessOnly">
       <button type="button" data-o="all"${only === 'all' ? ' class="on"' : ''}>全部会话</button>
       <button type="button" data-o="bad"${only === 'bad' ? ' class="on"' : ''}>仅异常</button>
     </div>`) +
-    monCard('会话列表',
+    monCard(t('会话列表'),
       `<div class="mon-scroll"><table class="table"><thead><tr><th>会话</th><th>用户</th><th>版本</th>
         <th>最近活动</th><th>时长</th><th>PV</th><th>JS</th><th>接口</th><th>慢</th><th>失败</th><th>异常</th>
         <th>浏览器</th><th>屏幕</th></tr></thead>
@@ -351,7 +351,7 @@ async function monSessions(box) {
       done = !d.has_more;
       page++;
     } catch (e) {
-      foot.textContent = '加载失败：' + e.message;
+      foot.textContent = t('加载失败：') + e.message;
     } finally {
       loading = false; paintFoot();
       /* 内容不足一屏时继续拉，直到填满或到底 —— 保证「滚到底一定能续拉」 */
@@ -387,7 +387,7 @@ async function monSessions(box) {
 async function monSessionDetail(box, sid) {
   const el = box.querySelector('#monSessDetail'); if (!el) { return; }
   el.innerHTML = '<div class="mon-sk"></div>';
-  const KIND = { pv: '访问', js: 'JS', api: '接口', resource: '资源', perf: '性能', custom: '自定义', error: '错误' };
+  const KIND = { pv: t('访问'), js: 'JS', api: t('接口'), resource: t('资源'), perf: t('性能'), custom: t('自定义'), error: t('错误') };
   try {
     const d = await api('monitor.php', 'session', { sid: sid, range: st.range });
     const items = d.items || [];
@@ -428,11 +428,11 @@ async function monAlerts(box) {
 
 async function monEvents(box, kind) {
   const HEADS = {
-    api: ['接口', '次数', '平均耗时', '慢', '失败'],
-    perf: ['指标', '次数', '平均', '最大'],
-    custom: ['名称', '次数', '平均', '最大'],
-    resource: ['位置', '信息', '次数', '影响 UV', '最近'],
-    js: ['位置', '错误信息', '次数', '影响 UV', '最近'],
+    api: [t('接口'), t('次数'), t('平均耗时'), '慢', '失败'],
+    perf: [t('指标'), t('次数'), t('平均'), t('最大')],
+    custom: [t('名称'), t('次数'), t('平均'), t('最大')],
+    resource: [t('位置'), t('信息'), t('次数'), t('影响 UV'), t('最近')],
+    js: [t('位置'), t('错误信息'), t('次数'), t('影响 UV'), t('最近')],
   };
   const head = HEADS[kind] || HEADS.js;
   const isDetail = (kind !== 'api' && kind !== 'perf' && kind !== 'custom');
@@ -449,7 +449,7 @@ async function monEvents(box, kind) {
   box.innerHTML =
     monCard('聚合（TOP ' + groups.length + '）',
       `<div class="mon-scroll"><table class="table"><thead><tr>${head.map(t => '<th>' + t + '</th>').join('')}</tr></thead><tbody>${rows}</tbody></table></div>`) +
-    (isDetail ? monCard('明细',
+    (isDetail ? monCard(t('明细'),
       `<div class="mon-scroll"><table class="table"><thead><tr><th>时间</th><th>位置</th><th>信息</th><th>版本</th><th>浏览器</th></tr></thead>
         <tbody id="monEvtBody"></tbody></table></div><div class="mon-moreline tiny" id="monEvtFoot"></div>`) : '');
 
@@ -491,7 +491,7 @@ async function monEvents(box, kind) {
       append(r.items || []);
       done = !r.has_more;
       page++;
-    } catch (e) { foot.textContent = '加载失败：' + e.message; }
+    } catch (e) { foot.textContent = t('加载失败：') + e.message; }
     finally {
       loading = false; paintFoot();
       /* 内容不足一屏时继续拉，直到填满或到底 */
@@ -514,7 +514,7 @@ async function monEvents(box, kind) {
 
 async function monSettings(box) {
   const d = await api('monitor.php', 'settings');
-  box.innerHTML = monCard('采集设置', `
+  box.innerHTML = monCard(t('采集设置'), `
       <div class="mon-row"><span>启用采集</span>
         <div class="mon-seg" id="monEnabled">
           <button type="button" data-v="1"${d.enabled === '1' ? ' class="on"' : ''}>开</button>

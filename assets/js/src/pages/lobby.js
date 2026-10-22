@@ -93,7 +93,7 @@ function richInline(html) {
   if (EMOJI) {
     h = h.replace(/\[([^\[\]\s]{1,12})\]/g, function (m, name) {
       const f = EMOJI[name];
-      return f ? ('<img class="emoji" src="' + f + '" alt="' + esc(name) + '" draggable="false">') : m;
+      return f ? ('<img class="emoji" src="' + esc(f) + '" alt="' + esc(name) + '" draggable="false">') : m;
     });
   }
   return h.replace(/(https?:\/\/[^\s<>"']+\.(?:png|jpe?g|gif|webp|avif)(?:\?[^\s<>"']*)?)/gi, function (u) {
@@ -224,7 +224,7 @@ async function playVideo(card, bv) {
   try {
     const d = await api('video.php', 'url', { bv: bv }, { timeout: 20000 });
     const url = String((d && d.url) || '');
-    if (!url) { throw new Error('视频解析失败'); }
+    if (!url) { throw new Error(t('视频解析失败')); }
     card.classList.remove('mv-loading');
     card.classList.add('mv-on');
     card.innerHTML = '<div class="mv-player"><video class="mv-video" controls playsinline preload="metadata" src="' + esc(url) + '"></video>'
@@ -269,7 +269,7 @@ async function mountWorld(body) {
         <button class="icon-btn pk-btn at-txt" id="wAt" aria-label="@ 官方AI" ${canSend ? '' : 'disabled'}>@</button>
         <div class="cnt" id="wCount">0/500</div>
         <textarea class="input" id="wInput" rows="1" maxlength="500"
-          placeholder="${canSend ? '输入消息…' : '游客仅可查看，登录后可发言'}" ${canSend ? '' : 'disabled'}></textarea>
+          placeholder="${canSend ? '输入消息…' : t('游客仅可查看，登录后可发言')}" ${canSend ? '' : 'disabled'}></textarea>
         <button class="btn" id="wSend" aria-label="发送" ${canSend ? '' : 'disabled'}>${W_ICON_SEND}</button>
       </div>
       <div class="identity-tip">
@@ -297,7 +297,8 @@ async function mountWorld(body) {
     if (m.recalled) {
       inner = '<span class="recall">该消息已撤回</span>';
     } else if (m.msg_type === 'image' && m.media) {
-      inner = '<img class="msg-img" src="' + imgSrc(m.media) + '" alt="图片消息" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false">';
+      /* src 必须整体转义：media 是用户可控字段，曾有人塞 `" onerror="alert(` 打断脚本 */
+      inner = '<img class="msg-img" src="' + esc(imgSrc(m.media)) + '" alt="图片消息" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false">';
     } else if (m.msg_type === 'video' && m.media) {
       inner = videoCardHtml(m.media, m.video);
     } else if (m.msg_type === 'ai' && m.cards && m.cards.length) {
@@ -341,7 +342,7 @@ async function mountWorld(body) {
     const db2 = el.querySelector('[data-del]');
     if (db2) {
       db2.addEventListener('click', async () => {
-        if (!(await dialog('删除这条消息', '删除后这条消息在对话里不再显示（对所有人）。确认？', '删除', { danger: true }))) { return; }
+        if (!(await dialog(t('删除这条消息'), t('删除后这条消息在对话里不再显示（对所有人）。确认？'), t('删除'), { danger: true }))) { return; }
         db2.disabled = true;
         try {
           await api('lobby.php', 'del', { id: m.id });
@@ -404,7 +405,7 @@ async function mountWorld(body) {
     p.textContent = msg;
     const b = document.createElement('button');
     b.className = 'btn-ghost btn-sm';
-    b.textContent = '重试';
+    b.textContent = t('重试');
     b.addEventListener('click', onRetry);
     d.appendChild(p); d.appendChild(b);
     stream.appendChild(d);
@@ -415,13 +416,13 @@ async function mountWorld(body) {
     try {
       const d = await api('lobby.php', 'list', { limit: 30 });
       stream.innerHTML = '';
-      if (d && d.degraded) { errorNote(d.hint || '对话暂时不可用，请稍后重试', load); return; }
+      if (d && d.degraded) { errorNote(d.hint || t('对话暂时不可用，请稍后重试'), load); return; }
       const items = (d && d.items) || [];
       items.forEach(m => put(m, false));
-      if (!items.length) { stream.appendChild(emptyNote('还没有人发言，来发第一条吧')); }
+      if (!items.length) { stream.appendChild(emptyNote(t('还没有人发言，来发第一条吧'))); }
       stick();
     } catch (e) {
-      errorNote(e.message || '加载失败', load);
+      errorNote(e.message || t('加载失败'), load);
     }
   }
 
@@ -443,12 +444,12 @@ async function mountWorld(body) {
     const btn = bar.querySelector('[data-review]');
     if (btn) btn.addEventListener('click', async () => {
       btn.disabled = true;
-      btn.textContent = '重审中…';
+      btn.textContent = t('重审中…');
       try {
         const r = await api('recheck.php', 'run', { content: payload.content }, { timeout: 30000 });
         const v = (r && r.verdict) || 'false';
         if (v === 'false') {
-          bar.querySelector('.rn-text').textContent = 'AI 复核后仍判为违规，未发送';
+          bar.querySelector('.rn-text').textContent = t('AI 复核后仍判为违规，未发送');
           btn.remove();
           return;
         }
@@ -458,8 +459,8 @@ async function mountWorld(body) {
         submit(payload.type || 'text', payload);
       } catch (e) {
         btn.disabled = false;
-        btn.textContent = 'AI 重审';
-        bar.querySelector('.rn-text').textContent = (e && e.message) ? e.message : '重审失败，请稍后再试';
+        btn.textContent = t('AI 重审');
+        bar.querySelector('.rn-text').textContent = (e && e.message) ? e.message : t('重审失败，请稍后再试');
       }
     });
   }
@@ -500,7 +501,7 @@ async function mountWorld(body) {
       if (type === 'text' && input) { input.value = payload.content || ''; input.dispatchEvent(new Event('input')); }
       if (e && e.code === 422) {
         /* 图片同样给一条明确的通知条，而不是静默失败（用户以为发出去了） */
-        rejectNote(e.message || '内容未通过审核', { type: type, content: payload.content, media: payload.media });
+        rejectNote(e.message || t('内容未通过审核'), { type: type, content: payload.content, media: payload.media });
       } else {
         toast(e.message, 'err');
       }
@@ -538,15 +539,15 @@ async function mountWorld(body) {
     const urlIn = picker.querySelector('#wImgUrl');
     picker.querySelector('#wImgLink').addEventListener('click', () => {
       const u = (urlIn.value || '').trim();
-      if (!/^https?:\/\//i.test(u)) { hint.textContent = '请输入以 http(s) 开头的图片链接'; return; }
+      if (!/^https?:\/\//i.test(u)) { hint.textContent = t('请输入以 http(s) 开头的图片链接'); return; }
       pickerSendImage(u);
     });
     picker.querySelector('#wImgUpBtn').addEventListener('click', () => picker.querySelector('#wImgFile').click());
     picker.querySelector('#wImgFile').addEventListener('change', async ev => {
       const f = ev.target.files && ev.target.files[0];
       if (!f) { return; }
-      if (f.size > 2 * 1024 * 1024) { hint.textContent = '图片不能超过 2MB'; return; }
-      hint.textContent = '上传中…';
+      if (f.size > 2 * 1024 * 1024) { hint.textContent = t('图片不能超过 2MB'); return; }
+      hint.textContent = t('上传中…');
       try {
         const fd = new FormData();
         fd.append('file', f);
@@ -557,9 +558,9 @@ async function mountWorld(body) {
           credentials: 'same-origin',
         });
         const j = await resp.json();
-        if (!j || j.code !== 0) { throw new Error((j && j.msg) || '上传失败'); }
+        if (!j || j.code !== 0) { throw new Error((j && j.msg) || t('上传失败')); }
         pickerSendImage(j.data.url);
-      } catch (e) { hint.textContent = '上传失败：' + (e.message || '未知错误'); }
+      } catch (e) { hint.textContent = t('上传失败：') + (e.message || t('未知错误')); }
     });
   }
 
@@ -575,7 +576,7 @@ async function mountWorld(body) {
   input.addEventListener('focus', () => requestAnimationFrame(stick));
 
   /* ---------- @ 提及（仅世界对话）：输入 @ 弹面板；@ 按钮一键插入 ---------- */
-  const AI_MENTION = '@官方AI ';
+  const AI_MENTION = t('@官方AI ');
   function atInsert() {
     const st = input.selectionStart, en = input.selectionEnd, v = input.value;
     input.value = v.slice(0, st) + AI_MENTION + v.slice(en);
@@ -593,7 +594,7 @@ async function mountWorld(body) {
     if (!canSend) { return; }
     const r = atRange();
     const q = r ? input.value.slice(r.start + 1, input.selectionStart) : '';
-    if (!r || '官方AI'.indexOf(q) !== 0) {
+    if (!r || t('官方AI').indexOf(q) !== 0) {
       if (picker.dataset.kind === 'mention') { picker.hidden = true; picker.dataset.kind = ''; }
       return;
     }
@@ -654,24 +655,24 @@ async function mountWorld(body) {
 
     const doParse = async () => {
       const val = (urlIn.value || '').trim();
-      if (!val) { hint.textContent = '请输入 B站链接或 BV 号'; return; }
-      hint.textContent = '解析中…';
+      if (!val) { hint.textContent = t('请输入 B站链接或 BV 号'); return; }
+      hint.textContent = t('解析中…');
       prev.innerHTML = '';
       try {
         const d = await api('video.php', 'preview', { input: val }, { timeout: 25000 });
-        hint.textContent = '解析成功，确认后发送（发送时会检查视频标题与简介）';
+        hint.textContent = t('解析成功，确认后发送（发送时会检查视频标题与简介）');
         prev.innerHTML = videoCardHtml(d.bv, { title: d.title, cover: d.cover, dur_f: d.duration_f, author: d.author }).replace(' data-play="1"', '');
         const b = document.createElement('button');
         b.className = 'btn btn-sm';
         b.style.marginTop = '8px';
-        b.textContent = '发送视频';
+        b.textContent = t('发送视频');
         b.addEventListener('click', () => {
           b.disabled = true;
-          hint.textContent = '审核中，请稍候…';
+          hint.textContent = t('审核中，请稍候…');
           pickerSendVideo(d.bv, { title: d.title, cover: d.cover, dur_f: d.duration_f, author: d.author });
         });
         prev.appendChild(b);
-      } catch (e) { hint.textContent = e.message || '解析失败'; }
+      } catch (e) { hint.textContent = e.message || t('解析失败'); }
     };
     picker.querySelector('#wVidGo').addEventListener('click', doParse);
     urlIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doParse(); } });
@@ -685,21 +686,21 @@ async function mountWorld(body) {
  * AI 对话（流式输出 + 工具调用卡片 + 非流式降级）
  * ============================================================ */
 const TOOL_META = {
-  search:   { n: '检索站内作品', d: 'M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm6.6 11.2 3.2 3.2-1.4 1.4-3.2-3.2z' },
-  get:      { n: '读取作品详情', d: 'M4 4h16v16H4V4zm2 2v12h12V6H6zm3 2h6v2H9V8zm0 4h6v2H9v-2z' },
-  rank:     { n: '查询榜单排名', d: 'M4 20V10h4v10H4zm6 0V4h4v16h-4zm6 0v-7h4v7h-4z' },
-  comments: { n: '读取评论区',   d: 'M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H9l-4 4V6a1 1 0 0 1 1-1z' },
-  web_open: { n: '联网读取网页', d: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm7 9h-3a15 15 0 0 0-1.2-5.4A8 8 0 0 1 19 11zM12 4c1 1.6 1.7 4.2 1.8 7h-3.6C10.3 8.2 11 5.6 12 4zM5 11a8 8 0 0 1 4.2-5.4A15 15 0 0 0 8 11H5zm0 2h3a15 15 0 0 0 1.2 5.4A8 8 0 0 1 5 13zm7 7c-1-1.6-1.7-4.2-1.8-7h3.6c-.1 2.8-.8 5.4-1.8 7zm2.8-1.6A15 15 0 0 0 16 13h3a8 8 0 0 1-4.2 5.4z' },
-  weather:  { n: '查询天气',     d: 'M6.5 19a4.5 4.5 0 0 1-.7-8.95A5.6 5.6 0 0 1 16.4 9.2 3.9 3.9 0 0 1 16 17H6.5zm-2 2h13v1.6h-13V21z' },
-  time:     { n: '获取当前时间', d: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1.2 4.6v5.1l3.9 2.3-1.1 1.9-5-3V6.6h2.2z' },
-  docs:     { n: '查阅站内文档', d: 'M6 2h7l5 5v15H6V2zm2 2v16h8V8h-3V4H8zm2 6h6v2h-6v-2zm0 4h6v2h-6v-2z' },
-  stats:      { n: '查看站点概览', d: 'M12 3l9 5v3H3V8l9-5zM5 12h2v7H5v-7zm6 0h2v7h-2v-7zm6 0h2v7h-2v-7zM3 20h18v2H3v-2z' },
-  categories: { n: '统计作品分类', d: 'M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z' },
-  announce:   { n: '读取站点公告', d: 'M4 9h3l7-4v14l-7-4H4V9zm12-1a5 5 0 0 1 0 8v-2a3 3 0 0 0 0-4V8z' },
-  calc:       { n: '精确计算',     d: 'M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm2 3v3h8V6H8zm0 5h2v2H8v-2zm3 0h2v2h-2v-2zm3 0h2v2h-2v-2zM8 14h2v2H8v-2zm3 0h2v2h-2v-2zm3 0h2v2h-2v-2z' },
-  random:     { n: '随机推荐作品', d: 'M4 5h4l3 4 3-4h4l-5 7 5 7h-4l-3-4-3 4H4l5-7L4 5z' },
-  lunar:      { n: '查询农历节日', d: 'M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z' },
-  user:       { n: '查询用户资料', d: 'M12 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 10c4 0 7 2 7 4v3H5v-3c0-2 3-4 7-4z' },
+  search:   { n: t('检索站内作品'), d: 'M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm6.6 11.2 3.2 3.2-1.4 1.4-3.2-3.2z' },
+  get:      { n: t('读取作品详情'), d: 'M4 4h16v16H4V4zm2 2v12h12V6H6zm3 2h6v2H9V8zm0 4h6v2H9v-2z' },
+  rank:     { n: t('查询榜单排名'), d: 'M4 20V10h4v10H4zm6 0V4h4v16h-4zm6 0v-7h4v7h-4z' },
+  comments: { n: t('读取评论区'),   d: 'M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H9l-4 4V6a1 1 0 0 1 1-1z' },
+  web_open: { n: t('联网读取网页'), d: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm7 9h-3a15 15 0 0 0-1.2-5.4A8 8 0 0 1 19 11zM12 4c1 1.6 1.7 4.2 1.8 7h-3.6C10.3 8.2 11 5.6 12 4zM5 11a8 8 0 0 1 4.2-5.4A15 15 0 0 0 8 11H5zm0 2h3a15 15 0 0 0 1.2 5.4A8 8 0 0 1 5 13zm7 7c-1-1.6-1.7-4.2-1.8-7h3.6c-.1 2.8-.8 5.4-1.8 7zm2.8-1.6A15 15 0 0 0 16 13h3a8 8 0 0 1-4.2 5.4z' },
+  weather:  { n: t('查询天气'),     d: 'M6.5 19a4.5 4.5 0 0 1-.7-8.95A5.6 5.6 0 0 1 16.4 9.2 3.9 3.9 0 0 1 16 17H6.5zm-2 2h13v1.6h-13V21z' },
+  time:     { n: t('获取当前时间'), d: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1.2 4.6v5.1l3.9 2.3-1.1 1.9-5-3V6.6h2.2z' },
+  docs:     { n: t('查阅站内文档'), d: 'M6 2h7l5 5v15H6V2zm2 2v16h8V8h-3V4H8zm2 6h6v2h-6v-2zm0 4h6v2h-6v-2z' },
+  stats:      { n: t('查看站点概览'), d: 'M12 3l9 5v3H3V8l9-5zM5 12h2v7H5v-7zm6 0h2v7h-2v-7zm6 0h2v7h-2v-7zM3 20h18v2H3v-2z' },
+  categories: { n: t('统计作品分类'), d: 'M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z' },
+  announce:   { n: t('读取站点公告'), d: 'M4 9h3l7-4v14l-7-4H4V9zm12-1a5 5 0 0 1 0 8v-2a3 3 0 0 0 0-4V8z' },
+  calc:       { n: t('精确计算'),     d: 'M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm2 3v3h8V6H8zm0 5h2v2H8v-2zm3 0h2v2h-2v-2zm3 0h2v2h-2v-2zM8 14h2v2H8v-2zm3 0h2v2h-2v-2zm3 0h2v2h-2v-2z' },
+  random:     { n: t('随机推荐作品'), d: 'M4 5h4l3 4 3-4h4l-5 7 5 7h-4l-3-4-3 4H4l5-7L4 5z' },
+  lunar:      { n: t('查询农历节日'), d: 'M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z' },
+  user:       { n: t('查询用户资料'), d: 'M12 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 10c4 0 7 2 7 4v3H5v-3c0-2 3-4 7-4z' },
 };
 
 /** 气泡内容分区：工具卡片区 + 思考区（可多块）+ 正文区 */
@@ -714,7 +715,7 @@ function aiParts(target) {
 /** 已完成的工具卡片（静态渲染：世界对话 AI 回复 / 历史还原） */
 function cardsHtml(cards) {
   const rows = (cards || []).map(c => {
-    const meta = TOOL_META[c.action] || { n: c.action || '工具调用', d: TOOL_META.search.d };
+    const meta = TOOL_META[c.action] || { n: c.action || t('工具调用'), d: TOOL_META.search.d };
     const ok = c.ok !== false;
     return '<div class="tool-card ' + (ok ? 'ok' : 'err') + '">'
       + '<svg viewBox="0 0 24 24" class="tc-ic"><path d="' + meta.d + '"/></svg>'
@@ -750,7 +751,7 @@ function thinkSettle(el) {
   el.classList.remove('live');
   el.classList.remove('open');
   const st = el.querySelector('.tk-state');
-  if (st) { st.textContent = '已思考'; }
+  if (st) { st.textContent = t('已思考'); }
 }
 /** 正文开始输出 → 收起本轮所有思考块 */
 function closeThinks(target) {
@@ -760,7 +761,7 @@ function closeThinks(target) {
 }
 
 function addToolCall(cards, action) {
-  const meta = TOOL_META[action] || { n: action || '工具调用', d: TOOL_META.search.d };
+  const meta = TOOL_META[action] || { n: action || t('工具调用'), d: TOOL_META.search.d };
   const el = document.createElement('div');
   el.className = 'tool-card call';
   el.dataset.action = action || '';
@@ -777,7 +778,7 @@ function resolveTool(cards, ev) {
   el.classList.remove('call');
   el.classList.add(ev.ok ? 'ok' : 'err');
   const sub = el.querySelector('.tiny');
-  if (sub) { sub.textContent = (ev.ok ? '已完成 · ' : '失败 · ') + (ev.summary || ''); }
+  if (sub) { sub.textContent = (ev.ok ? '已完成 · ' : t('失败 · ')) + (ev.summary || ''); }
   const dot = el.querySelector('.tc-dot');
   if (dot) { dot.remove(); }
 }
@@ -900,14 +901,14 @@ async function mountAi(body) {
     catch (e) { return ''; }
   }
   function labelOf(id) {
-    if (!id) { return defaultModelName || '默认模型'; }
+    if (!id) { return defaultModelName || t('默认模型'); }
     const m = aiModels.find(x => x.id === id);
-    return m ? m.name : (defaultModelName || '默认模型');
+    return m ? m.name : (defaultModelName || t('默认模型'));
   }
   function renderModelBtn() { modelBtnName.textContent = labelOf(selModel); }
   function renderModelPanel() {
-    const rows = [{ id: '', name: defaultModelName || '默认模型', sub: '本站默认 · 按 token 计', ctx: 0 }]
-      .concat(aiModels.map(m => ({ id: m.id, name: m.name, sub: '免费模型 · 按次数计', ctx: m.ctx })));
+    const rows = [{ id: '', name: defaultModelName || t('默认模型'), sub: t('本站默认 · 按 token 计'), ctx: 0 }]
+      .concat(aiModels.map(m => ({ id: m.id, name: m.name, sub: t('免费模型 · 按次数计'), ctx: m.ctx })));
     modelList.innerHTML = rows.map(r =>
       '<button type="button" class="ms-row' + (r.id === selModel ? ' on' : '') + '" data-id="' + esc(r.id) + '">'
       + '<span class="ms-check"></span>'
@@ -917,11 +918,11 @@ async function mountAi(body) {
       + '</button>').join('');
   }
   function quotaText(d) {
-    const site = ' · 全站余 ' + d.site.remaining + '/' + d.site.limit;
-    if (d.unlimited) { return '当前身份：' + (state.role === 'subadmin' ? '副管理员' : '管理员') + ' · 无限制' + site; }
-    if (selModel && d.online) { return '今日 你 ' + d.user.used + '/' + d.user.limit + ' 次' + site; }
+    const site = t(' · 全站余 ') + d.site.remaining + '/' + d.site.limit;
+    if (d.unlimited) { return t('当前身份：') + (state.role === 'subadmin' ? '副管理员' : t('管理员')) + t(' · 无限制') + site; }
+    if (selModel && d.online) { return t('今日 你 ') + d.user.used + '/' + d.user.limit + t(' 次') + site; }
     const t = d.token || {};
-    return '今日 ' + (t.today || 0) + '/' + (t.daily_limit || 0) + ' tokens' + site;
+    return t('今日 ') + (t.today || 0) + '/' + (t.daily_limit || 0) + ' tokens' + site;
   }
   function paintQuota() { if (quotaTip && lastState) { quotaTip.textContent = quotaText(lastState); } }
 
@@ -936,7 +937,7 @@ async function mountAi(body) {
       renderModelBtn();
       paintQuota();
     } catch (e) {
-      modelBtnName.textContent = defaultModelName || '默认模型';
+      modelBtnName.textContent = defaultModelName || t('默认模型');
       if (quotaTip) { quotaTip.textContent = ''; }
     }
   }
@@ -1030,7 +1031,7 @@ async function mountAi(body) {
       if (!resp.ok || !resp.body) {
         /* 闸门被拒（额度用尽 / 登录态失效 …）：这是「不许发」，不是「通道坏了」。
            必须原样报出原因，并且绝不转非流式重发 —— 否则超额也能照发出去。 */
-        let why = '流式通道不可用';
+        let why = t('流式通道不可用');
         try { const j = await resp.json(); if (j && j.msg) { why = j.msg; } } catch (e2) {}
         const err = new Error(why);
         err.gate = true;
@@ -1127,7 +1128,7 @@ async function mountAi(body) {
         const t = await sendSync(text, target, streamAccepted);
         const p = aiParts(target);
         if (t) { p.text.innerHTML = renderAiRich(t); }
-        else if (!gotAny) { p.text.textContent = '（无内容返回，请稍后重试）'; }
+        else if (!gotAny) { p.text.textContent = t('（无内容返回，请稍后重试）'); }
       } catch (e) {
         const p = aiParts(target);
         if (gotAny) {
@@ -1136,7 +1137,7 @@ async function mountAi(body) {
           const rb = p.text.querySelector('#aiRetry');
           if (rb) rb.addEventListener('click', () => { p.text.textContent = ''; rawText = ''; tailHtml = ''; sendAgain(text, target); });
         } else {
-          p.text.innerHTML = `<span style="color:var(--danger)">${esc(e.message || '发送失败')}</span>`
+          p.text.innerHTML = `<span style="color:var(--danger)">${esc(e.message || t('发送失败'))}</span>`
             + ' <button class="link" id="aiRetry2">重试</button>';
           const rb = p.text.querySelector('#aiRetry2');
           if (rb) rb.addEventListener('click', () => { p.text.textContent = ''; rawText = ''; tailHtml = ''; sendAgain(text, target); });
@@ -1144,7 +1145,7 @@ async function mountAi(body) {
       }
     }
 
-    if (lastUsage && usageNow) { usageNow.textContent = '本次 ' + Number(lastUsage.total_tokens) + ' tokens'; }
+    if (lastUsage && usageNow) { usageNow.textContent = t('本次 ') + Number(lastUsage.total_tokens) + ' tokens'; }
     window.__aiBusy = false;
     toBottom(stream);
   }
@@ -1153,9 +1154,9 @@ async function mountAi(body) {
   async function sendAgain(text, target) {
     try {
       const t = await sendSync(text, target);
-      aiParts(target).text.innerHTML = t ? renderAiRich(t) : '（无内容返回）';
+      aiParts(target).text.innerHTML = t ? renderAiRich(t) : t('（无内容返回）');
     } catch (e) {
-      aiParts(target).text.innerHTML = `<span style="color:var(--danger)">${esc(e.message || '发送失败')}</span>`;
+      aiParts(target).text.innerHTML = `<span style="color:var(--danger)">${esc(e.message || t('发送失败'))}</span>`;
     }
     toBottom(stream);
   }
@@ -1173,7 +1174,7 @@ async function mountAi(body) {
 
   // 清空对话：清空后从服务端重新拉取，确保界面与库一致
   body.querySelector('#clearAi').addEventListener('click', async () => {
-    if (!(await dialog('清空对话', '将删除你与 AI 的全部聊天记录，不可恢复。确认？', '清空', { danger: true }))) { return; }
+    if (!(await dialog(t('清空对话'), t('将删除你与 AI 的全部聊天记录，不可恢复。确认？'), t('清空'), { danger: true }))) { return; }
     try {
       await api('ai.php', 'clear');
       if (usageNow) { usageNow.textContent = ''; }
@@ -1200,7 +1201,7 @@ async function mountAi(body) {
 function aiMsg(side, text, oid, meta) {
   const el = document.createElement('div');
   el.className = 'msg' + (side === 'mine' ? ' mine' : '');
-  const who = side === 'mine' ? esc(state.username) : 'AI 助手';
+  const who = side === 'mine' ? esc(state.username) : t('AI 助手');
   const avatar = side === 'mine'
     ? '<img src="' + esc(state.avatar || '') + '" alt="" draggable="false" style="user-select:none">'
     : '<span class="ai-av"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9z"/></svg></span>';

@@ -24,7 +24,7 @@ function loadScript(src) {
     const s = document.createElement('script');
     s.src = src;
     s.onload = () => resolve(true);
-    s.onerror = () => reject(new Error('脚本加载失败'));
+    s.onerror = () => reject(new Error(t('脚本加载失败')));
     document.head.appendChild(s);
   });
 }
@@ -73,8 +73,8 @@ export function mountCaptcha(host, onChange) {
     host.querySelector('#capStd').style.display = 'none';
     const box = host.querySelector('#capPhp');
     box.style.display = 'block';
-    if (!php.script) { hint.textContent = '人机验证暂不可用，请稍后再试'; return; }
-    hint.textContent = '主通道不可用（' + why + '），已切换到备用通道';
+    if (!php.script) { hint.textContent = t('人机验证暂不可用，请稍后再试'); return; }
+    hint.textContent = t('主通道不可用（') + why + t('），已切换到备用通道');
     if (php.css && !document.querySelector('link[data-cap-php]')) {
       const l = document.createElement('link');
       l.rel = 'stylesheet';
@@ -103,33 +103,33 @@ export function mountCaptcha(host, onChange) {
     loadScript(php.script).then(() => {
       const wait = (n) => {
         if (window.CapPow) {
-          window.CapPow.onDone = (token) => { hint.textContent = '验证通过'; cb(token, 'php'); };
-          window.CapPow.onFail = (msg) => { hint.textContent = '验证失败：' + (msg || '未知'); cb('', ''); };
+          window.CapPow.onDone = (token) => { hint.textContent = t('验证通过'); cb(token, 'php'); };
+          window.CapPow.onFail = (msg) => { hint.textContent = t('验证失败：') + (msg || t('未知')); cb('', ''); };
         } else if (n < 30) { setTimeout(() => wait(n + 1), 300); }
-        else { hint.textContent = '备用通道加载超时，请刷新重试'; }
+        else { hint.textContent = t('备用通道加载超时，请刷新重试'); }
       };
       wait(0);
-    }).catch(() => { hint.textContent = '备用通道加载失败，请刷新重试'; });
+    }).catch(() => { hint.textContent = t('备用通道加载失败，请刷新重试'); });
   }
 
   /* 主通道：官方 cap-widget，脚本加载后自动挂载 */
-  if (!std.script) { switchToPhp('未配置'); return; }
+  if (!std.script) { switchToPhp(t('未配置')); return; }
   const w = document.createElement('cap-widget');
   w.id = 'cap-widget';
   if (std.api) { w.setAttribute('data-cap-api-endpoint', std.api); }
-  w.addEventListener('solve', (e) => { hint.textContent = '验证通过'; cb(e.detail.token, 'standard'); });
-  w.addEventListener('progress', (e) => { hint.textContent = '计算中… ' + Math.round(e.detail.progress) + '%'; });
-  w.addEventListener('error', (e) => { hint.textContent = '验证出错：' + ((e.detail && e.detail.message) || '未知'); });
+  w.addEventListener('solve', (e) => { hint.textContent = t('验证通过'); cb(e.detail.token, 'standard'); });
+  w.addEventListener('progress', (e) => { hint.textContent = t('计算中… ') + Math.round(e.detail.progress) + '%'; });
+  w.addEventListener('error', (e) => { hint.textContent = t('验证出错：') + ((e.detail && e.detail.message) || t('未知')); });
   host.querySelector('#capStd').appendChild(w);
 
   activeChannel = 'standard';
-  loadScript(std.script).catch(() => switchToPhp('脚本加载失败'));
+  loadScript(std.script).catch(() => switchToPhp(t('脚本加载失败')));
   /* 3 秒健康检查：没渲染出来就切备通道 */
   setTimeout(() => {
     if (activeChannel !== 'standard') { return; }
     const inst = host.querySelector('#cap-widget');
     const ok = inst && (inst.shadowRoot || inst.children.length > 0);
-    if (!ok) { switchToPhp('未渲染'); }
-    else if (hint.textContent === '正在加载人机验证…') { hint.textContent = '点击下方按钮完成验证'; }
+    if (!ok) { switchToPhp(t('未渲染')); }
+    else if (hint.textContent === t('正在加载人机验证…')) { hint.textContent = t('点击下方按钮完成验证'); }
   }, 3000);
 }

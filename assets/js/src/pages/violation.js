@@ -22,9 +22,9 @@ function discChip(it) {
 }
 
 function banText(row) {
-  if (!row.banned) { return '未封停账号'; }
-  if (!row.ban_until) { return '账号已封停 · 永久'; }
-  return '账号已封停 · 至 ' + esc(row.ban_until);
+  if (!row.banned) { return t('未封停账号'); }
+  if (!row.ban_until) { return t('账号已封停 · 永久'); }
+  return t('账号已封停 · 至 ') + esc(row.ban_until);
 }
 
 /** 被封禁时给本人的一张说明卡：封禁原因 / 天数 / 解封时间，一眼看全 */
@@ -36,8 +36,8 @@ function banCard(row) {
       <h3 style="margin-top:0">封禁信息</h3>
       <dl class="kv">
         <dt>封禁原因</dt><dd>${reasonListInline(row.reasons)}</dd>
-        <dt>封禁天数</dt><dd>${days > 0 ? days + ' 天' : '永久'}</dd>
-        <dt>解封时间</dt><dd>${until ? esc(until) : '不会自动解封（永久）'}</dd>
+        <dt>封禁天数</dt><dd>${days > 0 ? days + ' 天' : t('永久')}</dd>
+        <dt>解封时间</dt><dd>${until ? esc(until) : t('不会自动解封（永久）')}</dd>
         ${row.ip_banned ? '<dt>来源地址</dt><dd>已一并封禁</dd>' : ''}
         ${Number(row.user_count || 0) > 0 ? '<dt>累计通报</dt><dd>' + Number(row.user_count) + ' 次</dd>' : ''}
       </dl>
@@ -45,7 +45,7 @@ function banCard(row) {
 }
 
 function reasonListInline(reasons) {
-  if (!reasons || !reasons.length) { return '未填写'; }
+  if (!reasons || !reasons.length) { return t('未填写'); }
   return esc(reasons.join('；'));
 }
 
@@ -56,7 +56,7 @@ async function paintDetail(container, id, mine) {
 
   wrap.innerHTML = `
     <div class="violation-hero">
-      <p class="vh-tag">${mine ? '你的访问已被限制' : '公开通报'}</p>
+      <p class="vh-tag">${mine ? '你的访问已被限制' : t('公开通报')}</p>
       <h2>违纪通报</h2>
       <p class="tiny">因下列原因，本站已对相关账号与来源地址作出处理。</p>
     </div>

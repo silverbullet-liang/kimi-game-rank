@@ -11,7 +11,7 @@ export const state = {
   role: 'guest',
   uid: 0,
   uid8: '',          // 8 位可逆 UID
-  username: '游客',
+  username: t('游客'),
   avatar: '',
   settings: {},
   csrf: '',
@@ -76,16 +76,16 @@ export function searchAiOn() {
  * 主管理员不受限；点赞不在此列（后端区分新增/取消，取消不应被锁）。
  * ============================================================ */
 const CD_LIMITS = {
-  'lobby.php:send':       { label: '发言',     max: 15, window: 60   },
-  'comments.php:create': { label: '发表评论', max: 20, window: 60   },
-  'ai.php:send_sync':    { label: 'AI 对话',  max: 6,  window: 60   },
-  'feedback.php:create': { label: '提交反馈', max: 5,  window: 600  },
-  'auth.php:register':   { label: '注册',     max: 10, window: 3600 },
+  'lobby.php:send':       { label: t('发言'),     max: 15, window: 60   },
+  'comments.php:create': { label: t('发表评论'), max: 20, window: 60   },
+  'ai.php:send_sync':    { label: t('AI 对话'),  max: 6,  window: 60   },
+  'feedback.php:create': { label: t('提交反馈'), max: 5,  window: 600  },
+  'auth.php:register':   { label: t('注册'),     max: 10, window: 3600 },
 };
 
 /** 读写本机该动作的时间戳队列（只在窗口内的才留） */
 function cdStore(file, action, hits) {
-  const key = 'kimgr_cd_' + (state.uid || 0) + '_' + file + ':' + action;
+  const key = 'kimgr_cd_' + (state.uid || 0) + '_t(' + file + '):' + action;
   try {
     if (hits === undefined) {
       const raw = JSON.parse(localStorage.getItem(key) || '[]');
@@ -105,8 +105,8 @@ function cdCheck(file, action, data) {
   const hits = cdStore(file, action).filter(t => t > now - lim.window);
   if (hits.length < lim.max) { return; }
   const left = Math.max(1, hits[0] + lim.window - now);   // 最早一次滑出窗口即可再试
-  throw new ApiError(429, lim.label + '过于频繁，请在 ' + left + ' 秒后再试（每 '
-    + Math.round(lim.window / 60) + ' 分钟最多 ' + lim.max + ' 次）');
+  throw new ApiError(429, lim.label + t('过于频繁，请在 ') + left + t(' 秒后再试（每 ')
+    + Math.round(lim.window / 60) + t(' 分钟最多 ') + lim.max + t(' 次）'));
 }
 
 function cdMark(file, action) {
@@ -174,7 +174,7 @@ export async function api(file, action, data = null, opts = {}) {
         lastErr = e;
         // 仅对「网络层失败」（code=0）重试；HTTP/业务错误立即抛出
         if (!e || e.code !== 0 || opts.retry === false || i === maxTries - 1) { break; }
-        try { console.warn('[api] 第 ' + (i + 1) + ' 次失败，准备重试：' + file + '?' + action, e.message); } catch (err) {}
+        try { console.warn(t('[api] 第 ') + (i + 1) + t(' 次失败，准备重试：') + file + '?' + action, e.message); } catch (err) {}
         await new Promise(r => setTimeout(r, 1200 * (i + 1)));
       }
     }
@@ -216,8 +216,8 @@ async function apiOnce(file, action, data = null, opts = {}) {
     resp = await fetch(url, init);
   } catch (e) {
     clearTimeout(timer);
-    if (e && e.name === 'AbortError') { throw new ApiError(0, '请求超时，请重试'); }
-    throw new ApiError(0, '网络连接不稳定，请重试');   // code=0 标记网络层失败
+    if (e && e.name === 'AbortError') { throw new ApiError(0, t('请求超时，请重试')); }
+    throw new ApiError(0, t('网络连接不稳定，请重试'));   // code=0 标记网络层失败
   }
   clearTimeout(timer);
   if (resp.status === 401) {
@@ -231,27 +231,27 @@ async function apiOnce(file, action, data = null, opts = {}) {
       }
     }
     if (onUnauthorized) { onUnauthorized(); }
-    throw new ApiError(401, '登录态已失效');
+    throw new ApiError(401, t('登录态已失效'));
   }
   let json;
   try { json = await resp.json(); } catch (e) {
     /* 拿到的是网页而不是数据：多半被主机/WAF 拦下（例如文件被拒返回 403 错误页）。
        必须说清是「被拦」而不是笼统的「请求失败」，否则排查时无从下手。 */
     throw new ApiError(resp.status || 502,
-      '服务返回了网页而不是数据（HTTP ' + resp.status + '），可能被主机拦截，请刷新后重试');
+      t('服务返回了网页而不是数据（HTTP ') + resp.status + t('），可能被主机拦截，请刷新后重试'));
   }
   if (!json || json.code === undefined || json.code === null) {
     throw new ApiError(resp.status || 502,
-      '服务响应格式异常（HTTP ' + resp.status + '），请刷新后重试');
+      t('服务响应格式异常（HTTP ') + resp.status + t('），请刷新后重试'));
   }
   if (Number(json.code) !== 0) {
     /* 账号被封停：后端已拒绝本次操作，前台立刻拉起全屏封禁说明 */
     const __bm = String(json.msg || json.error || '');
-    if (Number(json.code) === 403 && __bm.indexOf('封停') >= 0 && typeof window.__forceBan === 'function') {
+    if (Number(json.code) === 403 && __bm.indexOf(t('封停')) >= 0 && typeof window.__forceBan === 'function') {
       try { window.__forceBan(); } catch (e) {}
     }
     throw new ApiError(Number(json.code) || resp.status,
-      json.msg || json.error || ('请求失败（HTTP ' + resp.status + '）'));
+      json.msg || json.error || (t('请求失败（HTTP ') + resp.status + '）'));
   }
   return json.data;
 }
@@ -288,8 +288,8 @@ export function btnLoading(btn, on) {
  * 身份徽章（管理员 / 副管理员）
  * ============================================================ */
 export const ROLES = {
-  admin:    { label: '管理员',   cls: 'bd-admin' },
-  subadmin: { label: '副管理员', cls: 'bd-sub' },
+  admin:    { label: t('管理员'),   cls: 'bd-admin' },
+  subadmin: { label: t('副管理员'), cls: 'bd-sub' },
 };
 
 /** 是否具备后台身份 */
@@ -369,7 +369,7 @@ export function toast(msg, type = '') {
 }
 
 /** 通用对话框，返回 Promise<boolean> */
-export function dialog(title, text, confirmLabel = '确定', opts = {}) {
+export function dialog(title, text, confirmLabel = t('确定'), opts = {}) {
   return new Promise(resolve => {
     const scrim = document.getElementById('dialogScrim');
     const box = document.getElementById('dialog');
@@ -388,7 +388,7 @@ export function dialog(title, text, confirmLabel = '确定', opts = {}) {
 }
 
 /** 输入型对话框（用于管理员密钥等），返回 Promise<string|null> */
-export function prompt_(title, text, confirmLabel = '确定', defaultValue = '') {
+export function prompt_(title, text, confirmLabel = t('确定'), defaultValue = '') {
   return new Promise(resolve => {
     const scrim = document.getElementById('dialogScrim');
     const box = document.getElementById('dialog');
@@ -463,7 +463,7 @@ export async function boot() {
     const d = await api('auth.php', 'guest');
     setToken(d.token);
     state.role = 'guest';
-    state.username = d.username || '游客';
+    state.username = d.username || t('游客');
     state.avatar = '';
     state.uid = 0;
     state.uid8 = '';
@@ -496,7 +496,7 @@ function applyIdentity(d) {
   state.role = d.role || 'guest';
   state.uid = d.uid || 0;
   state.uid8 = d.uid8 || '';
-  state.username = d.username || '游客';
+  state.username = d.username || t('游客');
   state.nameFix = d.name_fix || null;
   state.avatar = d.avatar || '';
   state.settings = d.settings || {};
@@ -577,10 +577,10 @@ const I_CROSS  = '<svg viewBox="0 0 24 24" class="ic"><path d="M6.4 5 5 6.4 10.6
 /** 封禁状态文案：未封停 / 封停中（至某时或永久）/ 已解封 */
 export function discStatusText(it) {
   const o = it || {};
-  if (!o.banned) { return '未封停账号'; }
+  if (!o.banned) { return t('未封停账号'); }
   const until = String(o.ban_until || '');
-  if (o.alive) { return until ? ('封停中 · 至 ' + until) : '封停中 · 永久'; }
-  return until ? ('已解封（原定 ' + until + '）') : '已解封';
+  if (o.alive) { return until ? (t('封停中 · 至 ') + until) : t('封停中 · 永久'); }
+  return until ? (t('已解封（原定 ') + until + '）') : t('已解封');
 }
 
 /** 封禁天数文案 */
@@ -588,7 +588,7 @@ export function discDaysText(it) {
   const o = it || {};
   if (!o.banned) { return '—'; }
   const d = Number(o.ban_days || 0);
-  return d > 0 ? (d + ' 天') : '永久';
+  return d > 0 ? (d + t(' 天')) : t('永久');
 }
 
 /* ============================================================
@@ -740,7 +740,7 @@ export function readBanCacheAsync() {
 function kmText(km) {
   const n = Number(km);
   if (!isFinite(n) || n < 0) { return ''; }
-  return (n < 1 ? '不到 1' : String(Math.round(n))) + ' 公里';
+  return (n < 1 ? '不到 1' : String(Math.round(n))) + t(' 公里');
 }
 
 /**
@@ -749,11 +749,11 @@ function kmText(km) {
  */
 async function banGeoCheck(lockEl) {
   const okGo = await dialog(
-    '校验你的位置',
+    t('校验你的位置'),
     '本站按访问来源地址限制违规者。同一个地址常被很多人共用（学校、公司、公共网络），直接封禁可能误伤到与此事无关的你。\n\n'
     + '授权定位后，会用你的大致位置判断你是否与当事人处在同一片区域：相距较远 → 判定为不同的人、立即恢复访问；'
-    + '无明显差别 → 维持限制。位置仅用于本次判断，不保存坐标明文。',
-    '允许定位并校验'
+    + t('无明显差别 → 维持限制。位置仅用于本次判断，不保存坐标明文。'),
+    t('允许定位并校验')
   );
   if (!okGo) { return; }
   if (!navigator.geolocation) { toast('当前浏览器不支持定位', 'err'); return; }
@@ -772,11 +772,11 @@ async function banGeoCheck(lockEl) {
           /* 此前的接口全部被服务端拒绝，页面数据已不完整，需要重新拉取 —— 这里的整页刷新是必要的 */
           setTimeout(function () { location.reload(); }, 700);
         } else {
-          toast('校验结果：你与当事人处在同一区域' + (r && r.distance >= 0 ? '（相距 ' + kmText(r.distance) + '）' : ''));
+          toast('校验结果：你与当事人处在同一区域' + (r && r.distance >= 0 ? t('（相距 ') + kmText(r.distance) + '）' : ''));
         }
-      } catch (e) { toast((e && e.message) || '校验失败', 'err'); }
+      } catch (e) { toast((e && e.message) || t('校验失败'), 'err'); }
     },
-    function (err) { toast('未能获取定位：' + ((err && err.message) || '已拒绝授权'), 'err'); },
+    function (err) { toast('未能获取定位：' + ((err && err.message) || t('已拒绝授权')), 'err'); },
     { timeout: 8000, maximumAge: 300000 }
   );
 }
@@ -796,10 +796,10 @@ export function showBanLock(info) {
       <h2>访问已被限制</h2>
       <p class="banlock-sub">本站已对相关账号与来源地址作出处理。如有异议，请通过站内反馈或联系管理员。</p>
       <dl class="kv">
-        <dt>处理对象</dt><dd>${esc(b.username || '（未知）')}</dd>
+        <dt>处理对象</dt><dd>${esc(b.username || t('（未知）'))}</dd>
         <dt>封禁状态</dt><dd>${esc(discStatusText(b))}</dd>
         <dt>封禁天数</dt><dd>${esc(discDaysText(b))}</dd>
-        <dt>解封时间</dt><dd>${b.alive ? (b.ban_until ? esc(b.ban_until) : '不会自动解封（永久）') : '已结束'}</dd>
+        <dt>解封时间</dt><dd>${b.alive ? (b.ban_until ? esc(b.ban_until) : t('不会自动解封（永久）')) : t('已结束')}</dd>
         ${b.ip_banned ? '<dt>来源地址</dt><dd>已一并封禁</dd>' : ''}
       </dl>
       ${reasons.length ? '<div class="banlock-reasons">' + reasons.map(r => '<span class="disc-chip">' + esc(r) + '</span>').join('') + '</div>' : ''}
@@ -843,7 +843,7 @@ export function showDiscPopup(item) {
         <button class="discpop-x" id="discX" aria-label="关闭">${I_CROSS}</button>
       </div>
       <div class="discpop-body">
-        <div class="discpop-who">${esc(it.username || '（未知用户）')} <span class="tiny muted">· ${esc(it.created || '')}</span></div>
+        <div class="discpop-who">${esc(it.username || t('（未知用户）'))} <span class="tiny muted">· ${esc(it.created || '')}</span></div>
         <div class="discpop-status"><span class="disc-chip ${it.alive ? 'on' : (it.banned ? 'off' : '')}">${esc(discStatusText(it))}</span> <span class="tiny muted">封禁 ${esc(discDaysText(it))}</span></div>
         ${it.note ? '<div class="disc-note"><span class="disc-note-k">补充说明</span>' + esc(it.note) + '</div>' : ''}
         ${(it.reasons && it.reasons.length) ? '<ol class="disc-reasons">' + it.reasons.map(r => '<li>' + esc(r) + '</li>').join('') + '</ol>' : ''}

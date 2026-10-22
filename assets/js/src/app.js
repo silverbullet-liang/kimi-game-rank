@@ -1,6 +1,7 @@
 /**
  * 应用入口：启动引导、路由、底栏、抽屉、搜索、通知轮询
  */
+import { i18nInit, t, applyI18nDom, applyI18nText } from './i18n.js';
 import { boot, state, api, toast, dialog, prompt_, setToken, setUnauthorizedHandler, notify, getPrefs, setPrefs, $, on, askNotifyPermission, esc, showBanLock, hideBanLock, maybeDiscPopup, readBanCache, readBanCacheAsync, saveBanCache } from './core.js';
 import { applyTheme, saveTheme, initSystemWatcher, ACCENTS } from './theme.js';
 import { setNavigate } from './router.js';
@@ -199,11 +200,12 @@ async function route(navType) {
 
   try {
     await fn(holder, { sub, params });
+    applyI18nText(holder);   // 模板串里的界面文案：渲染后按字典替换文本节点
   } catch (e) {
     if (seq !== routeSeq) { return; }            // 已被更新的导航取代，静默丢弃
     view.innerHTML = `<div class="empty">
       <p>页面加载失败</p>
-      <p class="tiny">${esc(e && e.message ? e.message : '未知错误')}</p>
+      <p class="tiny">${esc(e && e.message ? e.message : t('未知错误'))}</p>
       <button class="btn btn-sm" id="routeRetry" style="margin-top:12px">重新加载</button>
     </div>`;
     const rb = view.querySelector('#routeRetry');
@@ -281,32 +283,32 @@ const I = {
 function drawerItems() {
   const isAdmin = state.role === 'admin' || state.role === 'subadmin';
   const items = [
-    { k: 'total', label: '总排行榜', ic: I.rank, go: '#/rank' },
-    { k: 'search', label: '搜索作品', ic: I.search, act: 'search' },
-    { k: 'submit', label: '提交作品', ic: I.list, go: '#/submit' },
-    { k: 'vote', label: '投票榜', ic: I.vote, go: '#/rank?board=vote' },
-    { k: 'gods', label: '诸神榜', ic: I.crown, go: '#/rank?board=gods' },
-    { k: 'cold', label: '冷门榜', ic: I.snow, go: '#/rank?board=cold' },
-    { k: 'feedback', label: isAdmin ? '回复反馈' : '反映问题', ic: I.mail, go: '#/feedback' },
-    { k: 'help', label: '功能说明', ic: I.doc, go: '#/doc/功能说明' },
-    { k: 'aihelp', label: 'AI 使用说明', ic: I.plug, go: '#/doc/AI 使用说明' },
-    { k: 'charter', label: '社区公约', ic: I.users, go: '#/doc/社区公约' },
-    { k: 'discipline', label: '违纪通报', ic: I.shield, go: '#/discipline' },
-    { k: 'score', label: '评分标准', ic: I.rule, go: '#/doc/评分标准' },
-    { k: 'join', label: '入榜规则', ic: I.list, go: '#/doc/入榜规则' },
-    { k: 'terms', label: '用户协议', ic: I.doc, go: '#/doc/用户协议' },
-    { k: 'privacy', label: '隐私政策', ic: I.lock, go: '#/doc/隐私政策' },
-    { k: 'changelog', label: '更新日志', ic: I.doc, go: '#/doc/更新日志' },
-    { k: 'pentest', label: '渗透测试', ic: I.shield, url: REPO_URL },
-    { k: 'admins', label: '管理者名单', ic: I.users, go: '#/about' },
-    { k: 'about', label: '关于', ic: I.info, go: '#/about' },
+    { k: 'total', label: t('总排行榜'), ic: I.rank, go: '#/rank' },
+    { k: 'search', label: t('搜索作品'), ic: I.search, act: 'search' },
+    { k: 'submit', label: t('提交作品'), ic: I.list, go: '#/submit' },
+    { k: 'vote', label: t('投票榜'), ic: I.vote, go: '#/rank?board=vote' },
+    { k: 'gods', label: t('诸神榜'), ic: I.crown, go: '#/rank?board=gods' },
+    { k: 'cold', label: t('冷门榜'), ic: I.snow, go: '#/rank?board=cold' },
+    { k: 'feedback', label: isAdmin ? '回复反馈' : t('反映问题'), ic: I.mail, go: '#/feedback' },
+    { k: 'help', label: t('功能说明'), ic: I.doc, go: '#/doc/功能说明' },
+    { k: 'aihelp', label: t('AI 使用说明'), ic: I.plug, go: '#/doc/AI 使用说明' },
+    { k: 'charter', label: t('社区公约'), ic: I.users, go: '#/doc/社区公约' },
+    { k: 'discipline', label: t('违纪通报'), ic: I.shield, go: '#/discipline' },
+    { k: 'score', label: t('评分标准'), ic: I.rule, go: '#/doc/评分标准' },
+    { k: 'join', label: t('入榜规则'), ic: I.list, go: '#/doc/入榜规则' },
+    { k: 'terms', label: t('用户协议'), ic: I.doc, go: '#/doc/用户协议' },
+    { k: 'privacy', label: t('隐私政策'), ic: I.lock, go: '#/doc/隐私政策' },
+    { k: 'changelog', label: t('更新日志'), ic: I.doc, go: '#/doc/更新日志' },
+    { k: 'pentest', label: t('渗透测试'), ic: I.shield, url: REPO_URL },
+    { k: 'admins', label: t('管理者名单'), ic: I.users, go: '#/about' },
+    { k: 'about', label: t('关于'), ic: I.info, go: '#/about' },
   ];
   if (state.role === 'user' || state.role === 'guest') {
-    items.push({ k: 'auth', label: '用户登录 / 注册', ic: I.login, go: '#/login' });
+    items.push({ k: 'auth', label: t('用户登录 / 注册'), ic: I.login, go: '#/login' });
   } else {
-    items.push({ k: 'panel', label: '控制面板', ic: I.gear, go: '#/panel' });
-    items.push({ k: 'monitor', label: '异常监测', ic: I.shield, go: '#/monitor' });
-    items.push({ k: 'logout', label: '退出登录', ic: I.logout, act: 'logout' });
+    items.push({ k: 'panel', label: t('控制面板'), ic: I.gear, go: '#/panel' });
+    items.push({ k: 'monitor', label: t('异常监测'), ic: I.shield, go: '#/monitor' });
+    items.push({ k: 'logout', label: t('退出登录'), ic: I.logout, act: 'logout' });
   }
   return items;
 }
@@ -325,11 +327,11 @@ function renderDrawer() {
       if (it.url) { window.open(it.url, '_blank', 'noopener'); return; }
       if (it.act === 'search') { openSearch(); return; }
       if (it.act === 'logout') {
-        if (await dialog('退出登录', '确认退出当前账号吗？', '退出')) {
+        if (await dialog(t('退出登录'), t('确认退出当前账号吗？'), t('退出'))) {
           try { await api('auth.php', 'logout'); } catch (e) {}
           setToken('');
           /* 就地切到游客态：重绘抽屉并跳转，不再整页刷新 */
-          state.role = 'guest'; state.uid = 0; state.username = '游客';
+          state.role = 'guest'; state.uid = 0; state.username = t('游客');
           state.settings = {}; state.avatar = '';
           toast('已退出');
           renderDrawer();
@@ -534,7 +536,7 @@ function renderAbout(container) {
     <div class="card">
       <div class="card-title">${icon(I.users)}管理者名单</div>
       <div id="adminList"><div class="skeleton" style="height:56px"></div></div>
-      <p class="tiny">名单为<b>实时读取</b>；如需反馈问题，请在「${(state.role === 'admin' || state.role === 'subadmin') ? '回复反馈' : '反映问题'}」中提交。</p>
+      <p class="tiny">名单为<b>实时读取</b>；如需反馈问题，请在「${(state.role === 'admin' || state.role === 'subadmin') ? '回复反馈' : t('反映问题')}」中提交。</p>
     </div>`;
 
   const clLink = container.querySelector('#changelogLink');
@@ -592,10 +594,10 @@ function maybeNameFix() {
   if (!fix || !fix.suggest || __nameFixShown) { return; }
   if (state.role !== 'user' && state.role !== 'subadmin') { return; }
   __nameFixShown = true;
-  prompt_('请更新你的用户名',
+  prompt_(t('请更新你的用户名'),
     '你现在的用户名是「<b>' + esc(fix.current) + '</b>」，其中含有换行或异常装饰字符，'
     + '不符合当前的用户名规范，可能导致页面显示异常。<br>已为你填好一个建议名，可直接使用或自行修改。',
-    '保存并继续', fix.suggest).then(async function (v) {
+    t('保存并继续'), fix.suggest).then(async function (v) {
     if (v === null) { return; }                    // 稍后再说
     const name = String(v).trim();
     if (!name) { toast('用户名不能为空', 'err'); __nameFixShown = false; return; }
@@ -656,6 +658,9 @@ async function main() {
   if (window.__KIMI_BOOTED__) { return; }
   window.__KIMI_BOOTED__ = true;
 
+  await i18nInit();        // 语言：本地选择 > 浏览器首选 > 中文；译文取 assets/i18n/
+  applyI18nDom(document);  // 服务端渲染的静态文案（底部导航等）
+
   setNavigate(navigate);
   initSystemWatcher();
 
@@ -663,7 +668,7 @@ async function main() {
     if (state.role === 'guest') { return; }        // 游客已在 core.js 内静默续期，走到这里无需处理
     setToken('');
     state.role = 'guest';
-    state.username = '游客';
+    state.username = t('游客');
     state.uid = 0;
     state.uid8 = '';
     state.settings = {};

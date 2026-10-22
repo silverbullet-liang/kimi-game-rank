@@ -111,6 +111,15 @@ switch ($action) {
             $media = trim(nfc_normalize(param_str('media')));
             if ($media === '' || mb_strlen($media, 'UTF-8') > 255) { fail(400, '图片地址无效'); }
             if (!preg_match('#^(https?://|api/media\.php\?id=)#i', $media)) { fail(400, '不支持的图片地址'); }
+            /* 这个值最终会进 <img src="...">：引号、尖括号、反引号、反斜杠、空白一律拒绝。
+               曾有人把 `" onerror="alert(` 拼进 media_url，页面内联脚本被截断后整页报
+               「Unexpected end of input」，聊天区直接不可用。 */
+            if (preg_match("/[\"'<>`\\s]/", $media) || strpos($media, '\\') !== false) {
+                fail(400, '图片地址无效');
+            }
+            if (stripos($media, 'http') === 0 && !filter_var($media, FILTER_VALIDATE_URL)) {
+                fail(400, '图片地址无效');
+            }
             /* 外链图片先过链接初筛（与文本同一套判据）。命中按「审核未通过」回报，
                前端会给出一条明确提示，而不是发出一条打不开的空消息。 */
             if (preg_match('#^https?://#i', $media) && function_exists('link_guard_check')) {
