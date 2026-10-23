@@ -1388,9 +1388,9 @@ function bindAddWork(container) {
   idInput.addEventListener('blur', () => setTimeout(() => { sug.hidden = true; }, 160));
 
   container.querySelector('#addBtn').addEventListener('click', async () => {
-    const t = container.querySelector('#tokInput').value.trim();
+    const tokVal = container.querySelector('#tokInput').value.trim();
     const body = { mode: addMode };
-    if (t) body.kimi_token = t;
+    if (tokVal) body.kimi_token = tokVal;
     if (addMode === 'manual') {
       body.work_id = idInput.value.trim();
       if (!body.work_id) { toast('请填写作品 ID', 'err'); return; }

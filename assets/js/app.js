@@ -69,8 +69,25 @@ function i18nDetect() {
   return 'zh';
 }
 
+/* 服务端渲染的骨架文案（顶栏、搜索框、公告）读 cookie；前端语言与它不同步时，
+   本次先用 JS 替换，同时把 cookie 写对，下次请求服务端直接输出同语言。 */
+function syncLangCookie() {
+  try {
+    const m = document.cookie.match(/(?:^|;\s*)kimgr_lang=([a-z]{2})/);
+    const now = m ? m[1] : 'zh';
+    if (now === I18N.lang) { return; }
+    document.cookie = 'kimgr_lang=' + I18N.lang + ';path=/;max-age=31536000;samesite=lax';
+    /* 用户手动选过语言、且与浏览器首选不同 → 服务端按浏览器渲染的内容必须重取一次 */
+    if (sessionStorage.getItem('kimgr_lang_synced') !== I18N.lang) {
+      sessionStorage.setItem('kimgr_lang_synced', I18N.lang);
+      location.reload();
+    }
+  } catch (e) {}
+}
+
 async function i18nInit() {
   I18N.lang = i18nDetect();
+  syncLangCookie();
   document.documentElement.lang = (I18N.lang === 'zh' ? 'zh-CN' : I18N.lang);
   if (I18N.lang === 'zh') { I18N.ready = true; return; }
   try {
@@ -102,6 +119,27 @@ function setLang(k) {
   location.reload();
 }
 
+/* 异步渲染的内容（列表、公告、第三方组件）不经过路由的翻译时机，
+   用 MutationObserver 对新增子树补一次；只监听 childList，翻译本身不会触发它自己。 */
+let __mo = null;
+function watchI18n(root) {
+  if (__mo || I18N.lang === 'zh' || typeof MutationObserver !== 'function') { return; }
+  __mo = new MutationObserver(function (list) {
+    for (let i = 0; i < list.length; i++) {
+      const nodes = list[i].addedNodes;
+      for (let j = 0; j < nodes.length; j++) {
+        const n = nodes[j];
+        if (!n) { continue; }
+        if (n.nodeType === 3) { applyI18nText(n.parentElement); continue; }   // textContent 赋值会换掉文本节点
+        if (n.nodeType !== 1) { continue; }
+        applyI18nText(n);
+        applyI18nDom(n);
+      }
+    }
+  });
+  __mo.observe(root || document.body, { childList: true, subtree: true });
+}
+
 /** 把带 data-i18n="中文key" 的静态节点翻译成当前语言（服务端渲染的文案也能换） */
 function applyI18nDom(root) {
   const box = root || document;
@@ -129,7 +167,7 @@ function applyI18nText(root) {
     const raw = node.nodeValue;
     if (!raw) { continue; }
     const core = raw.trim();
-    if (core.length < 2 || core.length > 40) { continue; }
+    if (core.length < 2 || core.length > 200) { continue; }
     const hit = I18N.dict[core];
     if (hit == null || hit === '') { continue; }
     const el = node.parentElement;
@@ -442,7 +480,7 @@ function isAdminish(role) {
 
 /** 身份徽章（内联 SVG，无表情字符）；普通用户/游客返回空串 */
 function badge(role) {
-  if (role === 'ai') { return '<span class="badge bd-ai" title="官方 AI">AI</span>'; }
+  if (role === 'ai') { return '<span class="badge bd-ai" title="' + t('官方 AI') + '">AI</span>'; }
   const r = ROLES[role];
   if (!r) { return ''; }
   const shield = '<path d="M8 1.35 13.7 3.3v4.45c0 3.1-2.35 5.6-5.7 7-3.35-1.4-5.7-3.9-5.7-7V3.3z" '
@@ -461,17 +499,17 @@ function badge(role) {
 function userName(name, role, reports, nowName) {
   const n = Number(reports || 0);
   const tag = n > 0
-    ? '<span class="badge badge-violation" title="累计被通报 ' + n + ' 次">被通报 ' + n + ' 次</span>'
+    ? '<span class="badge badge-violation" title="' + t('累计被通报 ') + n + t(' 次') + '">' + t('被通报 ') + n + t(' 次') + '</span>'
     : '';
   const alt = (nowName && String(nowName) !== String(name))
-    ? '<span class="tiny muted">（现名：' + esc(nowName) + '）</span>' : '';
+    ? '<span class="tiny muted">' + t('（现名：') + esc(nowName) + t('）') + '</span>' : '';
   return '<span class="uname">' + esc(name) + '</span>' + alt + badge(role) + tag;
 }
 
 /** 全站对象编号标签：#000000000042；无编号返回空串 */
 function oidTag(id) {
   const s = String(id == null ? '' : id).trim();
-  return s ? '<span class="oid" title="对象编号 ' + esc(s) + '">#' + esc(s) + '</span>' : '';
+  return s ? '<span class="oid" title="' + t('对象编号 ') + esc(s) + '">#' + esc(s) + '</span>' : '';
 }
 
 /** 通报里的用户名：改过名就同时给出「原名」与「现名」 */
@@ -673,10 +711,10 @@ function imageViewer(src) {
 
   const scrim = document.createElement('div');
   scrim.className = 'img-viewer';
-  scrim.innerHTML = '<button class="iv-close" type="button" aria-label="关闭">'
+  scrim.innerHTML = '<button class="iv-close" type="button" aria-label="' + t('关闭') + '">'
     + '<svg viewBox="0 0 24 24" class="ic"><path d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z"/></svg>'
     + '</button>'
-    + '<img src="' + esc(src) + '" alt="图片" referrerpolicy="no-referrer" draggable="false">';
+    + '<img src="' + esc(src) + '" alt="' + t('图片') + '" referrerpolicy="no-referrer" draggable="false">';
   document.body.appendChild(scrim);
 
   let closed = false;
@@ -892,13 +930,14 @@ function kmText(km) {
 async function banGeoCheck(lockEl) {
   const okGo = await dialog(
     t('校验你的位置'),
-    '本站按访问来源地址限制违规者。同一个地址常被很多人共用（学校、公司、公共网络），直接封禁可能误伤到与此事无关的你。\n\n'
-    + '授权定位后，会用你的大致位置判断你是否与当事人处在同一片区域：相距较远 → 判定为不同的人、立即恢复访问；'
+    t('本站按访问来源地址限制违规者。同一个地址常被很多人共用（学校、公司、公共网络），直接封禁可能误伤到与此事无关的你。')
+    + '\n\n'
+    + t('授权定位后，会用你的大致位置判断你是否与当事人处在同一片区域：相距较远 → 判定为不同的人、立即恢复访问；')
     + t('无明显差别 → 维持限制。位置仅用于本次判断，不保存坐标明文。'),
     t('允许定位并校验')
   );
   if (!okGo) { return; }
-  if (!navigator.geolocation) { toast('当前浏览器不支持定位', 'err'); return; }
+  if (!navigator.geolocation) { toast(t('当前浏览器不支持定位'), 'err'); return; }
 
   toast('正在获取位置…');
   navigator.geolocation.getCurrentPosition(
@@ -1543,7 +1582,7 @@ function mountCaptcha(host, onChange) {
     box.innerHTML = `
       <div class="cap-wrap">
         <div class="captcha">
-          <div class="cap-ct" id="cap-ct" role="button" tabindex="0" aria-label="点击进行人机验证">
+          <div class="cap-ct" id="cap-ct" role="button" tabindex="0" aria-label="${t('点击进行人机验证')}">
             <div class="cap-cb">
               <div class="cap-check">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="4,12 9,17 20,6"></polyline></svg>
@@ -1948,7 +1987,7 @@ async function renderDetail(container, ctx) {
         作品预览
       </div>
       <div class="shot-grid">
-        ${(d.images && d.images.length ? d.images : [d.cover]).map((u, i) => `<button class="shot" data-i="${i}"><img src="${esc(u)}" alt="预览图 ${i + 1}" ${i === 0 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy" fetchpriority="low"'} decoding="async" referrerpolicy="no-referrer" draggable="false"></button>`).join('')}
+        ${(d.images && d.images.length ? d.images : [d.cover]).map((u, i) => `<button class="shot" data-i="${i}"><img src="${esc(u)}" alt="${t('预览图')} ${i + 1}" ${i === 0 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy" fetchpriority="low"'} decoding="async" referrerpolicy="no-referrer" draggable="false"></button>`).join('')}
       </div>
       <div class="tiny" style="margin-top:8px">点击图片可查看大图</div>
     </div>` : ''}
@@ -2079,14 +2118,14 @@ function openLightbox(images, index) {
   const box = document.createElement('div');
   box.className = 'lightbox';
   box.innerHTML = `
-    <button class="lb-close" aria-label="关闭">
+    <button class="lb-close" aria-label="${t('关闭')}">
       <svg viewBox="0 0 24 24" class="ic"><path d="M6.4 5l5.6 5.6L17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4 6.4 5z"/></svg>
     </button>
     <img class="lb-img" src="" alt="" draggable="false">
     <div class="lb-bar">
-      <button class="lb-prev" aria-label="上一张">上一张</button>
+      <button class="lb-prev" aria-label="${t('上一张')}">上一张</button>
       <span class="lb-idx"></span>
-      <button class="lb-next" aria-label="下一张">下一张</button>
+      <button class="lb-next" aria-label="${t('下一张')}">下一张</button>
     </div>`;
   document.body.appendChild(box);
 
@@ -2202,7 +2241,7 @@ async function renderComments(container, workId, targetType) {
   if (canPost()) {
     form.innerHTML = `
       <div class="field">
-        <textarea class="input" id="cmtText" maxlength="300" placeholder="写下你的看法…"></textarea>
+        <textarea class="input" id="cmtText" maxlength="300" placeholder="${t('写下你的看法…')}"></textarea>
         <div class="tiny" style="text-align:right"><span id="cmtCount">0</span>/300</div>
       </div>
       <button class="btn btn-sm" id="cmtSend">发表评论</button>`;
@@ -2256,11 +2295,11 @@ async function renderComments(container, workId, targetType) {
         (open ? reps : reps.slice(0, FOLD)).forEach(r =>
           wrap.appendChild(commentNode(Object.assign({}, r, { _sub: 1 }), workId, refresh, ttype)));
         if (reps.length > FOLD) {
-          const t = document.createElement('button');
-          t.className = 'fold-toggle';
-          t.textContent = open ? '收起回复' : t('展开全部 ') + reps.length + t(' 条回复');
-          t.addEventListener('click', () => { open = !open; unfolded[c.id] = open; draw(); });
-          wrap.appendChild(t);
+          const foldBtn = document.createElement('button');
+          foldBtn.className = 'fold-toggle';
+          foldBtn.textContent = open ? t('收起回复') : t('展开全部 ') + reps.length + t(' 条回复');
+          foldBtn.addEventListener('click', () => { open = !open; unfolded[c.id] = open; draw(); });
+          wrap.appendChild(foldBtn);
         }
       };
       draw();
@@ -2373,7 +2412,7 @@ function commentNode(c, workId, reload, ttype) {
       <span class="text">${c.reply_to ? `<span class="reply-to">@${esc(c.reply_to)}</span> ` : ''}${folded
         ? `<span class="blocked-note" data-reveal data-note="${esc(noteText)}">${noteText}</span><span class="blocked-body" hidden>${esc(c.content)}</span>`
         : esc(c.content)}</span>
-      ${c.flag === 'middle' ? '<span class="msg-flag" title="系统认为这条内容可能有恶意，但仍予放行">可能有恶意'
+      ${c.flag === 'middle' ? '<span class="msg-flag" title="' + t('系统认为这条内容可能有恶意，但仍予放行') + '">可能有恶意'
         + (canModerate() ? ' · <button class="link" data-act="unflag" style="border:0;background:0;font-size:12px;color:inherit;text-decoration:underline">取消标注</button>' : '')
         + '</span>' : ''}
       <span class="ops">
@@ -2392,7 +2431,7 @@ function promptReply(toName) {
     const scrim = document.getElementById('dialogScrim');
     const box = document.getElementById('dialog');
     box.innerHTML = `<h3>回复${toName ? ' ' + esc(toName) : ''}</h3>
-      <div class="field"><textarea class="input" id="rpText" maxlength="300" placeholder="写下回复…"></textarea></div>
+      <div class="field"><textarea class="input" id="rpText" maxlength="300" placeholder="${t('写下回复…')}"></textarea></div>
       <div class="dialog-actions"><button class="btn-ghost" data-r="0">取消</button><button class="btn" data-r="1">发送</button></div>`;
     scrim.hidden = false;
     const ta = box.querySelector('#rpText'); ta.focus();
@@ -2502,7 +2541,7 @@ function richInline(html) {
     });
   }
   return h.replace(/(https?:\/\/[^\s<>"']+\.(?:png|jpe?g|gif|webp|avif)(?:\?[^\s<>"']*)?)/gi, function (u) {
-    return '<img class="msg-img" src="' + esc(u) + '" alt="图片" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false">';
+    return '<img class="msg-img" src="' + esc(u) + '" alt="' + t('图片') + '" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false">';
   });
 }
 
@@ -2633,8 +2672,8 @@ async function playVideo(card, bv) {
     card.classList.remove('mv-loading');
     card.classList.add('mv-on');
     card.innerHTML = '<div class="mv-player"><video class="mv-video" controls playsinline preload="metadata" src="' + esc(url) + '"></video>'
-      + '<button class="mv-full" type="button" aria-label="全屏播放">' + MV_FULL_ICON + '</button></div>'
-      + '<div class="mv-fallback">播放不了？<a href="https://www.bilibili.com/video/' + esc(bv) + '/" target="_blank" rel="noopener">去 B站观看</a></div>';
+      + '<button class="mv-full" type="button" aria-label="' + t('全屏播放') + '">' + MV_FULL_ICON + '</button></div>'
+      + '<div class="mv-fallback">' + t('播放不了？') + '<a href="https://www.bilibili.com/video/' + esc(bv) + '/" target="_blank" rel="noopener">' + t('去 B站观看') + '</a></div>';
     const vd = card.querySelector('video');
     const fb = card.querySelector('.mv-full');
     fb.addEventListener('click', () => {
@@ -2668,14 +2707,14 @@ async function mountWorld(body) {
       </div>
       <div class="picker" id="wPicker" hidden></div>
       <div class="chat-input">
-        <button class="icon-btn pk-btn" id="wEmoji" aria-label="表情" ${canSend ? '' : 'disabled'}>${W_ICON_SMILE}</button>
-        <button class="icon-btn pk-btn" id="wImage" aria-label="图片" ${canSend ? '' : 'disabled'}>${W_ICON_IMAGE}</button>
-        <button class="icon-btn pk-btn" id="wVideo" aria-label="视频" ${canSend ? '' : 'disabled'}>${W_ICON_VIDEO}</button>
-        <button class="icon-btn pk-btn at-txt" id="wAt" aria-label="@ 官方AI" ${canSend ? '' : 'disabled'}>@</button>
+        <button class="icon-btn pk-btn" id="wEmoji" aria-label="${t('表情')}" ${canSend ? '' : 'disabled'}>${W_ICON_SMILE}</button>
+        <button class="icon-btn pk-btn" id="wImage" aria-label="${t('图片')}" ${canSend ? '' : 'disabled'}>${W_ICON_IMAGE}</button>
+        <button class="icon-btn pk-btn" id="wVideo" aria-label="${t('视频')}" ${canSend ? '' : 'disabled'}>${W_ICON_VIDEO}</button>
+        <button class="icon-btn pk-btn at-txt" id="wAt" aria-label="${t('@ 官方AI')}" ${canSend ? '' : 'disabled'}>@</button>
         <div class="cnt" id="wCount">0/500</div>
         <textarea class="input" id="wInput" rows="1" maxlength="500"
-          placeholder="${canSend ? '输入消息…' : t('游客仅可查看，登录后可发言')}" ${canSend ? '' : 'disabled'}></textarea>
-        <button class="btn" id="wSend" aria-label="发送" ${canSend ? '' : 'disabled'}>${W_ICON_SEND}</button>
+          placeholder="${canSend ? t('输入消息…') : t('游客仅可查看，登录后可发言')}" ${canSend ? '' : 'disabled'}></textarea>
+        <button class="btn" id="wSend" aria-label="${t('发送')}" ${canSend ? '' : 'disabled'}>${W_ICON_SEND}</button>
       </div>
       <div class="identity-tip">
         <span>当前发言身份：${userName(state.username, state.role)}${canSend ? '' : ' · 游客仅可查看'}</span>
@@ -2703,7 +2742,7 @@ async function mountWorld(body) {
       inner = '<span class="recall">该消息已撤回</span>';
     } else if (m.msg_type === 'image' && m.media) {
       /* src 必须整体转义：media 是用户可控字段，曾有人塞 `" onerror="alert(` 打断脚本 */
-      inner = '<img class="msg-img" src="' + esc(imgSrc(m.media)) + '" alt="图片消息" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false">';
+      inner = '<img class="msg-img" src="' + esc(imgSrc(m.media)) + '" alt="' + t('图片消息') + '" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false">';
     } else if (m.msg_type === 'video' && m.media) {
       inner = videoCardHtml(m.media, m.video);
     } else if (m.msg_type === 'ai' && m.cards && m.cards.length) {
@@ -2725,7 +2764,7 @@ async function mountWorld(body) {
       +   (m.msg_type === 'ai' && !(m.cards && m.cards.length) && m.tools && m.tools.length
             ? '<span class="tool-note">参考：' + esc(m.tools.join('、')) + '</span>' : '')
       +   (!m.recalled && m.flag === 'middle'
-            ? '<span class="msg-flag" title="系统认为这条内容可能有恶意，但仍予放行">可能有恶意'
+            ? '<span class="msg-flag" title="' + t('系统认为这条内容可能有恶意，但仍予放行') + '">可能有恶意'
               + (isAdminish() ? ' · <button class="link" data-unflag="1" style="border:0;background:0;font-size:12px;color:inherit;text-decoration:underline">取消标注</button>' : '')
               + '</span>' : '')
       + '</span>';
@@ -2930,7 +2969,7 @@ async function mountWorld(body) {
     picker.dataset.kind = 'image';
     picker.innerHTML = '<div class="picker-head">发送图片</div>'
       + '<div class="picker-body">'
-      +   '<input class="input" id="wImgUrl" placeholder="粘贴图片链接（https://…png / jpg）" style="margin-bottom:8px">'
+      +   '<input class="input" id="wImgUrl" placeholder="' + t('粘贴图片链接（https://…png / jpg）') + '" style="margin-bottom:8px">'
       +   '<div class="row-gap">'
       +     '<button class="btn btn-sm" id="wImgLink">发送链接图片</button>'
       +     '<button class="btn-ghost btn-sm" id="wImgUpBtn">上传本地图片</button>'
@@ -3047,7 +3086,7 @@ async function mountWorld(body) {
     picker.dataset.kind = 'video';
     picker.innerHTML = '<div class="picker-head">发送 B站视频</div>'
       + '<div class="picker-body">'
-      +   '<input class="input" id="wVidUrl" placeholder="粘贴 B站链接或 BV 号（如 BV1AinG6fEUo）" style="margin-bottom:8px">'
+      +   '<input class="input" id="wVidUrl" placeholder="' + t('粘贴 B站链接或 BV 号（如 BV1AinG6fEUo）') + '" style="margin-bottom:8px">'
       +   '<div class="row-gap"><button class="btn btn-sm" id="wVidGo">解析</button></div>'
       +   '<div class="tiny" id="wVidHint" style="margin-top:8px">支持 B站视频；番剧 / 电影 / 电视剧无法解析</div>'
       +   '<div id="wVidPrev"></div>'
@@ -3214,7 +3253,7 @@ async function mountAi(body) {
           <span class="mp-name" id="modelBtnName">模型</span>
           <svg viewBox="0 0 24 24" class="mp-chev"><path d="M7 10l5 5 5-5z"/></svg>
         </button>
-        <button type="button" class="think-toggle" id="thinkBtn" aria-pressed="false" title="开启后 AI 会先推理再回答（本站模型支持）">
+        <button type="button" class="think-toggle" id="thinkBtn" aria-pressed="false" title="${t('开启后 AI 会先推理再回答（本站模型支持）')}">
           <svg viewBox="0 0 24 24" class="tt-ic"><path d="M12 3a7 7 0 0 0-4 12.7V19a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3.3A7 7 0 0 0 12 3zM9 22h6v1H9v-1z"/></svg>
           <span>深度思考</span>
         </button>
@@ -3224,12 +3263,12 @@ async function mountAi(body) {
         <div class="ms-list" id="modelList"></div>
       </div>
       <div class="chat-input">
-        <button class="icon-btn pk-btn" id="emojiBtnAi" aria-label="表情">
+        <button class="icon-btn pk-btn" id="emojiBtnAi" aria-label="${t('表情')}">
           <svg viewBox="0 0 24 24" class="ic"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zM8.5 9.5a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zm7 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zM7.6 14.2a1 1 0 0 1 1.4-.1 4.6 4.6 0 0 0 6 0 1 1 0 0 1 1.3 1.5 6.6 6.6 0 0 1-8.6 0 1 1 0 0 1-.1-1.4z"/></svg>
         </button>
         <div class="cnt" id="aiCount">0/2000</div>
-        <textarea class="input" id="aiInput" rows="1" maxlength="2000" placeholder="向 AI 提问，可问榜单规则与作品信息…"></textarea>
-        <button class="btn" id="aiSend" aria-label="发送">
+        <textarea class="input" id="aiInput" rows="1" maxlength="2000" placeholder="${t('向 AI 提问，可问榜单规则与作品信息…')}"></textarea>
+        <button class="btn" id="aiSend" aria-label="${t('发送')}">
           <svg viewBox="0 0 24 24" class="ic" style="width:18px;height:18px;fill:#fff"><path d="M3 20l18-8L3 4v6l12 2-12 2v6z"/></svg>
         </button>
       </div>
@@ -3951,13 +3990,13 @@ function mountBlockList(box, isGuest) {
   const raw = isGuest ? String(getPrefs().block_words || '') : String((state.settings || {}).block_words || '');
   box.innerHTML = `
     <div class="tiny" style="margin-bottom:8px;line-height:1.6">
-      每行一条规则，命中的评论会自动收起（仅对你生效，不影响他人）。<br>
-      普通词语：忽略大小写包含即命中；正则表达式：用斜杠包裹，例如 <b>/广告|引流|私聊/i</b>。<br>
-      最多 50 条，每条不超过 100 个字符。
+      ${t('每行一条规则，命中的评论会自动收起（仅对你生效，不影响他人）。')}<br>
+      ${t('普通词语：忽略大小写包含即命中；正则表达式：用斜杠包裹，例如 ')}<b>/广告|引流|私聊/i</b>${t('。')}<br>
+      ${t('最多 50 条，每条不超过 100 个字符。')}
     </div>
     <textarea class="input" id="bwText" rows="4" maxlength="2000" placeholder="加微信&#10;/免费|引流|私聊/i"></textarea>
-    <button class="btn" id="bwSave" style="margin-top:10px">保存屏蔽规则</button>
-    <button class="btn-ghost" id="bwClear" style="margin-top:10px;margin-left:8px">清空</button>`;
+    <button class="btn" id="bwSave" style="margin-top:10px">${t('保存屏蔽规则')}</button>
+    <button class="btn-ghost" id="bwClear" style="margin-top:10px;margin-left:8px">${t('清空')}</button>`;
   const ta = box.querySelector('#bwText');
   ta.value = raw;
 
@@ -4011,14 +4050,14 @@ function mountAppearance(box) {
       </div>
     </div>
     <div class="setting-row ${FESTIVAL_KEYS.indexOf(skin) >= 0 ? 'fj-locked' : ''}" style="flex-direction:column;align-items:flex-start;gap:8px">
-      <span>主题色（蓝紫色 / 苹果色 / 自定义）</span>
+      <span>${t('主题色（蓝紫色 / 苹果色 / 自定义）')}</span>
       <div class="swatch-row" id="accentRow">
-        <button class="swatch" data-a="blue-purple" title="蓝紫" style="background:#7C3AED"></button>
-        <button class="swatch" data-a="ios-colorful" title="iOS 彩色" style="background:#007AFF"></button>
-        <button class="swatch" data-a="custom" title="自定义" style="background:conic-gradient(#f43f5e,#f59e0b,#22c55e,#3b82f6,#a855f7,#f43f5e)"></button>
+        <button class="swatch" data-a="blue-purple" title="${t('蓝紫')}" style="background:#7C3AED"></button>
+        <button class="swatch" data-a="ios-colorful" title="${t('iOS 彩色')}" style="background:#007AFF"></button>
+        <button class="swatch" data-a="custom" title="${t('自定义')}" style="background:conic-gradient(#f43f5e,#f59e0b,#22c55e,#3b82f6,#a855f7,#f43f5e)"></button>
       </div>
       <div id="customBox" hidden>
-        <div class="tiny" style="margin:6px 0">自定义颜色（H/S/L 微调）</div>
+        <div class="tiny" style="margin:6px 0">${t('自定义颜色（H/S/L 微调）')}</div>
         <div class="swatch-row" style="gap:12px">
           <div class="slider" data-hsl="h" style="width:150px"><div class="rail"><div class="fill"></div><div class="knob"></div></div></div>
           <div class="slider" data-hsl="s" style="width:150px"><div class="rail"><div class="fill"></div><div class="knob"></div></div></div>
@@ -4038,10 +4077,7 @@ function mountAppearance(box) {
         <button data-n="0" class="${navOn ? '' : 'on'}">关闭</button>
       </div>
     </div>
-    <div class="tiny" style="margin-top:-4px;line-height:1.7">
-      开启后：界面切换有方向感，返回时上一页沿原路径滑回（从哪来回哪去），
-      返回后恢复原来的位置与内容，不重新加载；从左边缘右滑还能跟手预览上一页。
-    </div>`;
+    <div class="tiny" style="margin-top:-4px;line-height:1.7">${t('开启后：界面切换有方向感，返回时上一页沿原路径滑回（从哪来回哪去），返回后恢复原来的位置与内容，不重新加载；从左边缘右滑还能跟手预览上一页。')}</div>`;
 
   const skinRow = box.querySelector('#skinRow');
   if (skinRow) {
@@ -4269,20 +4305,20 @@ async function renderLogin(container) {
       <div class="field">
         <label>用户名${sub === 'register' ? '（即昵称，全站展示，注册后不可更改）' : ''}</label>
         <input class="input" id="uName" type="text" autocomplete="username"
-               placeholder="${sub === 'register' ? '2-64 位，中文、字母、数字或符号均可' : t('请输入用户名')}">
+               placeholder="${sub === 'register' ? t('2-64 位，中文、字母、数字或符号均可') : t('请输入用户名')}">
       </div>
       <div class="field">
         <label>密码${sub === 'register' ? '（8-64 位，建议同时包含数字和字母）' : ''}</label>
         <div class="input-wrap">
-          <input class="input" id="uPwd" type="password" autocomplete="${sub === 'register' ? 'new-password' : 'current-password'}" placeholder="${sub === 'register' ? '设置 8-64 位密码' : t('请输入密码')}">
-          <button class="icon-btn eye" id="eyeBtn" type="button" aria-label="显示密码">
+          <input class="input" id="uPwd" type="password" autocomplete="${sub === 'register' ? 'new-password' : 'current-password'}" placeholder="${sub === 'register' ? t('设置 8-64 位密码') : t('请输入密码')}">
+          <button class="icon-btn eye" id="eyeBtn" type="button" aria-label="${t('显示密码')}">
             <svg viewBox="0 0 24 24" class="ic"><path d="M12 5c5 0 9 4.5 9 7s-4 7-9 7-9-4.5-9-7 4-7 9-7zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg>
           </button>
         </div>
       </div>
       <div class="agree">
         <span class="box ${agreed ? 'on' : ''}" id="agreeBox"><svg viewBox="0 0 24 24" class="ic"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></span>
-        <span>我已阅读并同意<span class="link" data-doc="用户协议">《用户协议》</span>与<span class="link" data-doc="隐私政策">《隐私政策》</span>（本站为个人兴趣分享，请文明互动）</span>
+        <span>我已阅读并同意<span class="link" data-doc="用户协议">《用户协议》</span>${t('与')}<span class="link" data-doc="隐私政策">《隐私政策》</span>（本站为个人兴趣分享，请文明互动）</span>
       </div>
       <div id="capBox" style="margin-bottom:12px"></div>
       <button class="btn" id="submitBtn" style="width:100%">${sub === 'register' ? '注册并登录' : t('登录')}</button>
@@ -4302,7 +4338,7 @@ async function renderLogin(container) {
     const vBox = pane.querySelector('#regVideoFrame');
     if (vBtn && vBox) {
       vBtn.addEventListener('click', () => {
-        vBox.innerHTML = '<iframe src="https://player.bilibili.com/player.html?bvid=BV1AinG6fEUo&page=1&high_quality=1&danmaku=1&autoplay=0" scrolling="no" frameborder="no" allowfullscreen="true" referrerpolicy="no-referrer-when-downgrade" title="Kimi 游戏榜宣传视频"></iframe>';
+        vBox.innerHTML = '<iframe src="https://player.bilibili.com/player.html?bvid=BV1AinG6fEUo&page=1&high_quality=1&danmaku=1&autoplay=0" scrolling="no" frameborder="no" allowfullscreen="true" referrerpolicy="no-referrer-when-downgrade" title="' + t('Kimi 游戏榜宣传视频') + '"></iframe>';
         vBtn.remove();
       });
     }
@@ -6339,9 +6375,9 @@ function bindAddWork(container) {
   idInput.addEventListener('blur', () => setTimeout(() => { sug.hidden = true; }, 160));
 
   container.querySelector('#addBtn').addEventListener('click', async () => {
-    const t = container.querySelector('#tokInput').value.trim();
+    const tokVal = container.querySelector('#tokInput').value.trim();
     const body = { mode: addMode };
-    if (t) body.kimi_token = t;
+    if (tokVal) body.kimi_token = tokVal;
     if (addMode === 'manual') {
       body.work_id = idInput.value.trim();
       if (!body.work_id) { toast('请填写作品 ID', 'err'); return; }
@@ -7603,23 +7639,24 @@ function appendDownload(box, name, md) {
 
   const hint = document.createElement('span');
   hint.className = 'doc-dl-hint';
-  hint.textContent = name + t('.md · 与页面内容一致');
+  const shown = (I18N.lang === 'zh') ? name : (SLUG[name] || 'features');
+  hint.textContent = shown + t('.md · 与页面内容一致');
 
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'btn-ghost btn-sm';
-  btn.setAttribute('aria-label', t('下载 ') + name + t(' 的原始 md 文件'));
+  btn.setAttribute('aria-label', t('下载 ') + shown + t(' 的原始 md 文件'));
   btn.innerHTML = ICON_DL + t('下载原始 md 文件');
   btn.addEventListener('click', () => {
     const url = URL.createObjectURL(new Blob([md], { type: 'text/markdown;charset=utf-8' }));
     const a = document.createElement('a');
     a.href = url;
-    a.download = name + '.md';
+    a.download = shown + '.md';
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
-    toast('已开始下载 ' + name + '.md');
+    toast(t('已开始下载 ') + shown + '.md');
   });
 
   bar.appendChild(hint);
@@ -7643,7 +7680,7 @@ async function renderFeedback(container) {
       <div class="card-title">${isAdmin ? '回复反馈' : t('反映问题')}</div>
       ${isAdmin || state.role === 'user' ? `
         <div class="field">
-          <textarea class="input" id="fbText" maxlength="1000" placeholder="描述你遇到的问题或建议…"></textarea>
+          <textarea class="input" id="fbText" maxlength="1000" placeholder="${t('描述你遇到的问题或建议…')}"></textarea>
         </div>
         <div class="setting-row" style="border:0;padding:4px 0">
           <span class="muted">可见范围</span>
@@ -7729,7 +7766,7 @@ function promptText() {
     const scrim = document.getElementById('dialogScrim');
     const box = document.getElementById('dialog');
     box.innerHTML = `<h3>回复反馈</h3>
-      <div class="field"><textarea class="input" id="fbReply" maxlength="1000" placeholder="输入回复…"></textarea></div>
+      <div class="field"><textarea class="input" id="fbReply" maxlength="1000" placeholder="${t('输入回复…')}"></textarea></div>
       <div class="dialog-actions"><button class="btn-ghost" data-r="0">取消</button><button class="btn" data-r="1">发送</button></div>`;
     scrim.hidden = false;
     const ta = box.querySelector('#fbReply'); ta.focus();
@@ -7748,7 +7785,36 @@ function promptText() {
 
 
 
+
 const QR_LIB = 'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js';
+const KIMI_AUTH = 'https://auth.kimi.com/api/account.gateway.v1.AuthService/';
+
+/* 设备标识：官方扫码链接带 device_id，缺它时手机端可能认不出会话 */
+function qrDeviceId() {
+  let id = '';
+  try { id = localStorage.getItem('kimgr_qrdev') || ''; } catch (e) {}
+  if (!id) {
+    id = 'web' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    try { localStorage.setItem('kimgr_qrdev', id); } catch (e) {}
+  }
+  return id;
+}
+
+/* 备用通道：本站代理受主机出站限制时，浏览器直连官方认证接口（其 CORS 为 *） */
+async function kimiAuth(method, body) {
+  const r = await fetch(KIMI_AUTH + method, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  });
+  if (!r.ok) { throw new Error('HTTP ' + r.status); }
+  return await r.json();
+}
+
+function qrContent(code) {
+  return 'https://www.kimi.com/wechat/mp/auth?id=' + encodeURIComponent(code)
+    + '&device_id=' + encodeURIComponent(qrDeviceId());
+}
 
 function sbLoadQR(cb) {
   if (window.QRCode) { cb(true); return; }
@@ -7776,7 +7842,7 @@ async function renderSubmit(container) {
       <div class="card-title">第一步 · 登录态</div>
       <p class="tiny muted">搜索和读取作品都要用到它。只用于本次操作，不会保存。</p>
       <div class="field">
-        <textarea class="input" id="sbToken" rows="3" placeholder="粘贴 Kimi accessToken"></textarea>
+        <textarea class="input" id="sbToken" rows="3" placeholder="${t('粘贴 Kimi accessToken')}"></textarea>
         <div class="sb-row">
           <button class="btn btn-sm btn-ghost" id="sbQr" type="button">扫码登录</button>
           <span class="tiny muted">扫码或粘贴，二选一</span>
@@ -7792,7 +7858,7 @@ async function renderSubmit(container) {
       <div class="card-title">第二步 · 搜索作品</div>
       <p class="tiny muted">在 Kimi 社区里搜，选中后自动填好下面的表单。</p>
       <div class="field">
-        <input class="input" id="sbSearch" placeholder="作品名称 / 关键词" autocomplete="off">
+        <input class="input" id="sbSearch" placeholder="${t('作品名称 / 关键词')}" autocomplete="off">
       </div>
       <div id="sbHits"></div>
     </div>
@@ -7801,15 +7867,15 @@ async function renderSubmit(container) {
       <div class="card-title">第三步 · 确认信息</div>
       <div class="field">
         <label>作品名称 <span class="req">*</span></label>
-        <input class="input" id="sbName" maxlength="120" placeholder="选中作品后自动填入，可修改">
+        <input class="input" id="sbName" maxlength="120" placeholder="${t('选中作品后自动填入，可修改')}">
       </div>
       <div class="field">
         <label>作品 ID <span class="req">*</span></label>
-        <input class="input" id="sbId" readonly placeholder="由上方搜索结果自动填入">
+        <input class="input" id="sbId" readonly placeholder="${t('由上方搜索结果自动填入')}">
       </div>
       <div class="field">
         <label>封面链接</label>
-        <input class="input" id="sbCover" maxlength="500" placeholder="自动带入作品封面，可修改" autocomplete="off">
+        <input class="input" id="sbCover" maxlength="500" placeholder="${t('自动带入作品封面，可修改')}" autocomplete="off">
       </div>
       <button class="btn" id="sbSubmit" type="button">提交并收录</button>
       <div class="tiny muted" id="sbHint" style="margin-top:10px">每个账号每天可提交 2 次。提交后立即抓取并评分。</div>
@@ -7829,9 +7895,17 @@ async function renderSubmit(container) {
     if (!box.hidden) { box.hidden = true; stopQR(); return; }
     btnLoading($('sbQr'), true);
     try {
-      const d = await api('submit.php', 'qr_new', null, { silent: true });
+      let d = null;
+      try {
+        const r = await api('submit.php', 'qr_new', null, { silent: true });
+        if (r && r.code) { d = { code: r.code, content: qrContent(r.code) }; }   // 统一带 device_id
+      } catch (e) { /* 主机侧取不到 → 浏览器直连 */ }
+      if (!d) {
+        const j = await kimiAuth('CreateLoginQRCode', {});
+        if (!j || !j.code) { throw new Error(t('扫码会话创建失败')); }
+        d = { code: j.code, content: qrContent(j.code) };
+      }
       btnLoading($('sbQr'), false);
-      if (!d || !d.code) { throw new Error(t('扫码会话创建失败')); }
       box.hidden = false;
       $('sbQrImg').innerHTML = '';
       $('sbQrTip').textContent = t('用 Kimi App 扫码授权');
@@ -7847,7 +7921,11 @@ async function renderSubmit(container) {
         left--;
         if (left <= 0) { stopQR(); $('sbQrTip').textContent = t('二维码已过期，请重新生成'); return; }
         try {
-          const r = await api('submit.php', 'qr_poll', { code: d.code }, { silent: true });
+          let r = null;
+          try { r = await api('submit.php', 'qr_poll', { code: d.code }, { silent: true }); }
+          catch (e) { try { r = await kimiAuth('GetLoginQRCodeStatus', { code: d.code }); } catch (e2) { r = null; } }
+          if (!r) { return; }
+          if (r.accessToken && !r.token) { r.token = r.accessToken; }
           if (r && r.status === 'SUCCESS' && r.token) {
             stopQR();
             tokenEl.value = r.token;
@@ -8569,7 +8647,7 @@ function schedulePoll() {
  */
 function adminListHtml(items) {
   if (!items || !items.length) {
-    return '<p class="tiny muted">名单暂时取不到，刷新页面再试。</p>';
+    return '<p class="tiny muted">' + t('名单暂时取不到，刷新页面再试。') + '</p>';
   }
   return items.map(function (a) {
     return '<div class="credit-row"><span class="credit-k">' + esc(a.label) + '</span>'
@@ -8578,64 +8656,65 @@ function adminListHtml(items) {
 }
 
 function renderAbout(container) {
+  const isAdmin = state.role === 'admin' || state.role === 'subadmin';
   container.innerHTML = `
     <div class="card">
-      <div class="card-title">${icon(I.info)}关于本站</div>
-      <p class="muted">Kimi游戏榜 —— 面向 Kimi 社区的六维综合评分排行榜，收录社区优质作品，评分由公开算法自动计算。</p>
-      <p class="tiny">版本 ${window.__SITE__.ver} · <span class="link" id="changelogLink">查看更新日志</span> · 数据来源：Kimi 社区公开接口</p>
+      <div class="card-title">${icon(I.info)}${t('关于本站')}</div>
+      <p class="muted">${t('Kimi游戏榜 —— 面向 Kimi 社区的六维综合评分排行榜，收录社区优质作品，评分由公开算法自动计算。')}</p>
+      <p class="tiny">${t('版本 ')}${window.__SITE__.ver} · <span class="link" id="changelogLink">${t('查看更新日志')}</span> · ${t('数据来源：Kimi 社区公开接口')}</p>
     </div>
 
     <div class="card">
-      <div class="card-title">${icon(I.play)}宣传视频</div>
+      <div class="card-title">${icon(I.play)}${t('宣传视频')}</div>
       <div class="video-embed">
         <iframe src="https://player.bilibili.com/player.html?bvid=BV1AinG6fEUo&page=1&high_quality=1&danmaku=1&autoplay=0"
                 scrolling="no" frameborder="no" allowfullscreen="true"
                 referrerpolicy="no-referrer-when-downgrade" loading="lazy"
-                title="Kimi 游戏榜宣传视频"></iframe>
+                title="${t('Kimi 游戏榜宣传视频')}"></iframe>
       </div>
-      <p class="tiny muted">8 分钟讲清楚评分怎么算、等级怎么划、作品怎么收录 · BV1AinG6fEUo</p>
+      <p class="tiny muted">${t('8 分钟讲清楚评分怎么算、等级怎么划、作品怎么收录')} · BV1AinG6fEUo</p>
     </div>
 
     <div class="card">
-      <div class="card-title">${icon(I.users)}参考与借鉴</div>
-      <div class="credit-row"><span class="credit-k">参考 / 借鉴</span><span class="credit-v">普普通通的人（Kimi 社区游戏排行榜）</span></div>
-      <p class="tiny muted">榜单的形态与选题受社区同好整理的游戏榜单启发；本站的抓取、六维评分算法与全部代码均为自行实现。</p>
+      <div class="card-title">${icon(I.users)}${t('参考与借鉴')}</div>
+      <div class="credit-row"><span class="credit-k">${t('参考 / 借鉴')}</span><span class="credit-v">${t('普普通通的人（Kimi 社区游戏排行榜）')}</span></div>
+      <p class="tiny muted">${t('榜单的形态与选题受社区同好整理的游戏榜单启发；本站的抓取、六维评分算法与全部代码均为自行实现。')}</p>
     </div>
 
     <div class="card">
-      <div class="card-title">${icon(I.rule)}规划和制作</div>
-      <div class="credit-row"><span class="credit-k">规划</span><span class="credit-v">银色子弹-silver、glm-5.3-flash</span></div>
-      <div class="credit-row"><span class="credit-k">制作</span><span class="credit-v">deepseek-v4.1-flash、glm-5.3-flash</span></div>
+      <div class="card-title">${icon(I.rule)}${t('规划和制作')}</div>
+      <div class="credit-row"><span class="credit-k">${t('规划')}</span><span class="credit-v">银色子弹-silver、glm-5.3-flash</span></div>
+      <div class="credit-row"><span class="credit-k">${t('制作')}</span><span class="credit-v">deepseek-v4.1-flash、glm-5.3-flash</span></div>
     </div>
 
     <div class="card">
-      <div class="card-title">${icon(I.users)}鸣谢</div>
-      <p class="muted">谢谢经常给本站反馈问题、提建议的伙伴 —— 你们的每一条反馈，都让这个榜单变好一点点。</p>
-      <div class="credit-row"><span class="credit-k">反馈贡献</span><span class="credit-v">小李v</span></div>
-      <div class="credit-row"><span class="credit-k">反馈贡献</span><span class="credit-v">starclimber</span></div>
+      <div class="card-title">${icon(I.users)}${t('鸣谢')}</div>
+      <p class="muted">${t('谢谢经常给本站反馈问题、提建议的伙伴 —— 你们的每一条反馈，都让这个榜单变好一点点。')}</p>
+      <div class="credit-row"><span class="credit-k">${t('反馈贡献')}</span><span class="credit-v">小李v</span></div>
+      <div class="credit-row"><span class="credit-k">${t('反馈贡献')}</span><span class="credit-v">starclimber</span></div>
     </div>
 
     <div class="card">
-      <div class="card-title">${icon(I.heart)}支持一下</div>
-      <p class="muted">这个榜单是我利用业余时间、靠 AI 一点点写出来的：作品抓取、六维评分、AI 对话与工具调用，烧的都是我自己的额度。它现在完全免费、也不打算收费。</p>
-      <p class="muted">如果它帮到了你，欢迎赞助一点，让服务器和 API 能继续跑下去。</p>
+      <div class="card-title">${icon(I.heart)}${t('支持一下')}</div>
+      <p class="muted">${t('这个榜单是我利用业余时间、靠 AI 一点点写出来的：作品抓取、六维评分、AI 对话与工具调用，烧的都是我自己的额度。它现在完全免费、也不打算收费。')}</p>
+      <p class="muted">${t('如果它帮到了你，欢迎赞助一点，让服务器和 API 能继续跑下去。')}</p>
 
       <div class="donate-box">
-        <div class="donate-head">求助力 · 一起免费领 ima 算力</div>
-        <p class="tiny">邀你一起创建 ima 专属知识伙伴，免费领新人算力福利 —— 你领到的同时，也等于给这个站点续了命。</p>
+        <div class="donate-head">${t('求助力 · 一起免费领 ima 算力')}</div>
+        <p class="tiny">${t('邀你一起创建 ima 专属知识伙伴，免费领新人算力福利 —— 你领到的同时，也等于给这个站点续了命。')}</p>
         <div class="donate-link" id="inviteLink">https://ima.qq.com/copilot-invite-reward-token/assist/V_5sR6nXkLv5CRsf8PTJnQ</div>
         <div class="row-gap">
-          <button class="btn btn-sm" id="copyInvite">复制邀请链接</button>
-          <button class="btn-ghost btn-sm" id="openInvite">打开活动页</button>
+          <button class="btn btn-sm" id="copyInvite">${t('复制邀请链接')}</button>
+          <button class="btn-ghost btn-sm" id="openInvite">${t('打开活动页')}</button>
         </div>
       </div>
-      <p class="tiny">谢谢每一个点开这里的人。</p>
+      <p class="tiny">${t('谢谢每一个点开这里的人。')}</p>
     </div>
 
     <div class="card">
-      <div class="card-title">${icon(I.users)}管理者名单</div>
+      <div class="card-title">${icon(I.users)}${t('管理者名单')}</div>
       <div id="adminList"><div class="skeleton" style="height:56px"></div></div>
-      <p class="tiny">名单为<b>实时读取</b>；如需反馈问题，请在「${(state.role === 'admin' || state.role === 'subadmin') ? '回复反馈' : t('反映问题')}」中提交。</p>
+      <p class="tiny">${t('名单为实时读取；如需反馈问题，请在「')}<b>${isAdmin ? t('回复反馈') : t('反映问题')}</b>${t('」中提交。')}</p>
     </div>`;
 
   const clLink = container.querySelector('#changelogLink');
@@ -8653,8 +8732,8 @@ function renderAbout(container) {
   const copyBtn = container.querySelector('#copyInvite');
   if (copyBtn) {
     copyBtn.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(INVITE); toast('邀请链接已复制，谢谢支持'); }
-      catch (e) { toast('复制失败，请手动长按链接复制', 'err'); }
+      try { await navigator.clipboard.writeText(INVITE); toast(t('邀请链接已复制，谢谢支持')); }
+      catch (e) { toast(t('复制失败，请手动长按链接复制'), 'err'); }
     });
   }
   const openBtn = container.querySelector('#openInvite');
@@ -8759,6 +8838,8 @@ async function main() {
 
   await i18nInit();        // 语言：本地选择 > 浏览器首选 > 中文；译文取 assets/i18n/
   applyI18nDom(document);  // 服务端渲染的静态文案（底部导航等）
+  applyI18nText(document.body); // 首屏已有的文本节点（公告横幅等不在路由容器里）
+  watchI18n(document.body);     // 异步插入的内容（列表、公告、人机验证组件）也要翻译
   initSystemWatcher();
 
   setUnauthorizedHandler(() => {

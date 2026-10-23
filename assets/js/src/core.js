@@ -300,7 +300,7 @@ export function isAdminish(role) {
 
 /** 身份徽章（内联 SVG，无表情字符）；普通用户/游客返回空串 */
 export function badge(role) {
-  if (role === 'ai') { return '<span class="badge bd-ai" title="官方 AI">AI</span>'; }
+  if (role === 'ai') { return '<span class="badge bd-ai" title="' + t('官方 AI') + '">AI</span>'; }
   const r = ROLES[role];
   if (!r) { return ''; }
   const shield = '<path d="M8 1.35 13.7 3.3v4.45c0 3.1-2.35 5.6-5.7 7-3.35-1.4-5.7-3.9-5.7-7V3.3z" '
@@ -319,17 +319,17 @@ export function badge(role) {
 export function userName(name, role, reports, nowName) {
   const n = Number(reports || 0);
   const tag = n > 0
-    ? '<span class="badge badge-violation" title="累计被通报 ' + n + ' 次">被通报 ' + n + ' 次</span>'
+    ? '<span class="badge badge-violation" title="' + t('累计被通报 ') + n + t(' 次') + '">' + t('被通报 ') + n + t(' 次') + '</span>'
     : '';
   const alt = (nowName && String(nowName) !== String(name))
-    ? '<span class="tiny muted">（现名：' + esc(nowName) + '）</span>' : '';
+    ? '<span class="tiny muted">' + t('（现名：') + esc(nowName) + t('）') + '</span>' : '';
   return '<span class="uname">' + esc(name) + '</span>' + alt + badge(role) + tag;
 }
 
 /** 全站对象编号标签：#000000000042；无编号返回空串 */
 export function oidTag(id) {
   const s = String(id == null ? '' : id).trim();
-  return s ? '<span class="oid" title="对象编号 ' + esc(s) + '">#' + esc(s) + '</span>' : '';
+  return s ? '<span class="oid" title="' + t('对象编号 ') + esc(s) + '">#' + esc(s) + '</span>' : '';
 }
 
 /** 通报里的用户名：改过名就同时给出「原名」与「现名」 */
@@ -531,10 +531,10 @@ export function imageViewer(src) {
 
   const scrim = document.createElement('div');
   scrim.className = 'img-viewer';
-  scrim.innerHTML = '<button class="iv-close" type="button" aria-label="关闭">'
+  scrim.innerHTML = '<button class="iv-close" type="button" aria-label="' + t('关闭') + '">'
     + '<svg viewBox="0 0 24 24" class="ic"><path d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z"/></svg>'
     + '</button>'
-    + '<img src="' + esc(src) + '" alt="图片" referrerpolicy="no-referrer" draggable="false">';
+    + '<img src="' + esc(src) + '" alt="' + t('图片') + '" referrerpolicy="no-referrer" draggable="false">';
   document.body.appendChild(scrim);
 
   let closed = false;
@@ -750,13 +750,14 @@ function kmText(km) {
 async function banGeoCheck(lockEl) {
   const okGo = await dialog(
     t('校验你的位置'),
-    '本站按访问来源地址限制违规者。同一个地址常被很多人共用（学校、公司、公共网络），直接封禁可能误伤到与此事无关的你。\n\n'
-    + '授权定位后，会用你的大致位置判断你是否与当事人处在同一片区域：相距较远 → 判定为不同的人、立即恢复访问；'
+    t('本站按访问来源地址限制违规者。同一个地址常被很多人共用（学校、公司、公共网络），直接封禁可能误伤到与此事无关的你。')
+    + '\n\n'
+    + t('授权定位后，会用你的大致位置判断你是否与当事人处在同一片区域：相距较远 → 判定为不同的人、立即恢复访问；')
     + t('无明显差别 → 维持限制。位置仅用于本次判断，不保存坐标明文。'),
     t('允许定位并校验')
   );
   if (!okGo) { return; }
-  if (!navigator.geolocation) { toast('当前浏览器不支持定位', 'err'); return; }
+  if (!navigator.geolocation) { toast(t('当前浏览器不支持定位'), 'err'); return; }
 
   toast('正在获取位置…');
   navigator.geolocation.getCurrentPosition(

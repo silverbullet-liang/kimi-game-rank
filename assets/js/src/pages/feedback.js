@@ -11,7 +11,7 @@ export async function renderFeedback(container) {
       <div class="card-title">${isAdmin ? '回复反馈' : t('反映问题')}</div>
       ${isAdmin || state.role === 'user' ? `
         <div class="field">
-          <textarea class="input" id="fbText" maxlength="1000" placeholder="描述你遇到的问题或建议…"></textarea>
+          <textarea class="input" id="fbText" maxlength="1000" placeholder="${t('描述你遇到的问题或建议…')}"></textarea>
         </div>
         <div class="setting-row" style="border:0;padding:4px 0">
           <span class="muted">可见范围</span>
@@ -97,7 +97,7 @@ function promptText() {
     const scrim = document.getElementById('dialogScrim');
     const box = document.getElementById('dialog');
     box.innerHTML = `<h3>回复反馈</h3>
-      <div class="field"><textarea class="input" id="fbReply" maxlength="1000" placeholder="输入回复…"></textarea></div>
+      <div class="field"><textarea class="input" id="fbReply" maxlength="1000" placeholder="${t('输入回复…')}"></textarea></div>
       <div class="dialog-actions"><button class="btn-ghost" data-r="0">取消</button><button class="btn" data-r="1">发送</button></div>`;
     scrim.hidden = false;
     const ta = box.querySelector('#fbReply'); ta.focus();

@@ -4,9 +4,38 @@
  * 作品 ID 只能由搜索结果带入，不允许手填
  */
 import { api, state, toast, esc, btnLoading, dialog } from '../core.js';
+import { t } from '../i18n.js';
 import { navigate } from '../router.js';
 
 const QR_LIB = 'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js';
+const KIMI_AUTH = 'https://auth.kimi.com/api/account.gateway.v1.AuthService/';
+
+/* 设备标识：官方扫码链接带 device_id，缺它时手机端可能认不出会话 */
+function qrDeviceId() {
+  let id = '';
+  try { id = localStorage.getItem('kimgr_qrdev') || ''; } catch (e) {}
+  if (!id) {
+    id = 'web' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    try { localStorage.setItem('kimgr_qrdev', id); } catch (e) {}
+  }
+  return id;
+}
+
+/* 备用通道：本站代理受主机出站限制时，浏览器直连官方认证接口（其 CORS 为 *） */
+async function kimiAuth(method, body) {
+  const r = await fetch(KIMI_AUTH + method, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  });
+  if (!r.ok) { throw new Error('HTTP ' + r.status); }
+  return await r.json();
+}
+
+function qrContent(code) {
+  return 'https://www.kimi.com/wechat/mp/auth?id=' + encodeURIComponent(code)
+    + '&device_id=' + encodeURIComponent(qrDeviceId());
+}
 
 function sbLoadQR(cb) {
   if (window.QRCode) { cb(true); return; }
@@ -34,7 +63,7 @@ export async function renderSubmit(container) {
       <div class="card-title">第一步 · 登录态</div>
       <p class="tiny muted">搜索和读取作品都要用到它。只用于本次操作，不会保存。</p>
       <div class="field">
-        <textarea class="input" id="sbToken" rows="3" placeholder="粘贴 Kimi accessToken"></textarea>
+        <textarea class="input" id="sbToken" rows="3" placeholder="${t('粘贴 Kimi accessToken')}"></textarea>
         <div class="sb-row">
           <button class="btn btn-sm btn-ghost" id="sbQr" type="button">扫码登录</button>
           <span class="tiny muted">扫码或粘贴，二选一</span>
@@ -50,7 +79,7 @@ export async function renderSubmit(container) {
       <div class="card-title">第二步 · 搜索作品</div>
       <p class="tiny muted">在 Kimi 社区里搜，选中后自动填好下面的表单。</p>
       <div class="field">
-        <input class="input" id="sbSearch" placeholder="作品名称 / 关键词" autocomplete="off">
+        <input class="input" id="sbSearch" placeholder="${t('作品名称 / 关键词')}" autocomplete="off">
       </div>
       <div id="sbHits"></div>
     </div>
@@ -59,15 +88,15 @@ export async function renderSubmit(container) {
       <div class="card-title">第三步 · 确认信息</div>
       <div class="field">
         <label>作品名称 <span class="req">*</span></label>
-        <input class="input" id="sbName" maxlength="120" placeholder="选中作品后自动填入，可修改">
+        <input class="input" id="sbName" maxlength="120" placeholder="${t('选中作品后自动填入，可修改')}">
       </div>
       <div class="field">
         <label>作品 ID <span class="req">*</span></label>
-        <input class="input" id="sbId" readonly placeholder="由上方搜索结果自动填入">
+        <input class="input" id="sbId" readonly placeholder="${t('由上方搜索结果自动填入')}">
       </div>
       <div class="field">
         <label>封面链接</label>
-        <input class="input" id="sbCover" maxlength="500" placeholder="自动带入作品封面，可修改" autocomplete="off">
+        <input class="input" id="sbCover" maxlength="500" placeholder="${t('自动带入作品封面，可修改')}" autocomplete="off">
       </div>
       <button class="btn" id="sbSubmit" type="button">提交并收录</button>
       <div class="tiny muted" id="sbHint" style="margin-top:10px">每个账号每天可提交 2 次。提交后立即抓取并评分。</div>
@@ -87,9 +116,17 @@ export async function renderSubmit(container) {
     if (!box.hidden) { box.hidden = true; stopQR(); return; }
     btnLoading($('sbQr'), true);
     try {
-      const d = await api('submit.php', 'qr_new', null, { silent: true });
+      let d = null;
+      try {
+        const r = await api('submit.php', 'qr_new', null, { silent: true });
+        if (r && r.code) { d = { code: r.code, content: qrContent(r.code) }; }   // 统一带 device_id
+      } catch (e) { /* 主机侧取不到 → 浏览器直连 */ }
+      if (!d) {
+        const j = await kimiAuth('CreateLoginQRCode', {});
+        if (!j || !j.code) { throw new Error(t('扫码会话创建失败')); }
+        d = { code: j.code, content: qrContent(j.code) };
+      }
       btnLoading($('sbQr'), false);
-      if (!d || !d.code) { throw new Error(t('扫码会话创建失败')); }
       box.hidden = false;
       $('sbQrImg').innerHTML = '';
       $('sbQrTip').textContent = t('用 Kimi App 扫码授权');
@@ -105,7 +142,11 @@ export async function renderSubmit(container) {
         left--;
         if (left <= 0) { stopQR(); $('sbQrTip').textContent = t('二维码已过期，请重新生成'); return; }
         try {
-          const r = await api('submit.php', 'qr_poll', { code: d.code }, { silent: true });
+          let r = null;
+          try { r = await api('submit.php', 'qr_poll', { code: d.code }, { silent: true }); }
+          catch (e) { try { r = await kimiAuth('GetLoginQRCodeStatus', { code: d.code }); } catch (e2) { r = null; } }
+          if (!r) { return; }
+          if (r.accessToken && !r.token) { r.token = r.accessToken; }
           if (r && r.status === 'SUCCESS' && r.token) {
             stopQR();
             tokenEl.value = r.token;

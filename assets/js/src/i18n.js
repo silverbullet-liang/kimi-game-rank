@@ -38,8 +38,25 @@ export function i18nDetect() {
   return 'zh';
 }
 
+/* 服务端渲染的骨架文案（顶栏、搜索框、公告）读 cookie；前端语言与它不同步时，
+   本次先用 JS 替换，同时把 cookie 写对，下次请求服务端直接输出同语言。 */
+function syncLangCookie() {
+  try {
+    const m = document.cookie.match(/(?:^|;\s*)kimgr_lang=([a-z]{2})/);
+    const now = m ? m[1] : 'zh';
+    if (now === I18N.lang) { return; }
+    document.cookie = 'kimgr_lang=' + I18N.lang + ';path=/;max-age=31536000;samesite=lax';
+    /* 用户手动选过语言、且与浏览器首选不同 → 服务端按浏览器渲染的内容必须重取一次 */
+    if (sessionStorage.getItem('kimgr_lang_synced') !== I18N.lang) {
+      sessionStorage.setItem('kimgr_lang_synced', I18N.lang);
+      location.reload();
+    }
+  } catch (e) {}
+}
+
 export async function i18nInit() {
   I18N.lang = i18nDetect();
+  syncLangCookie();
   document.documentElement.lang = (I18N.lang === 'zh' ? 'zh-CN' : I18N.lang);
   if (I18N.lang === 'zh') { I18N.ready = true; return; }
   try {
@@ -71,6 +88,27 @@ export function setLang(k) {
   location.reload();
 }
 
+/* 异步渲染的内容（列表、公告、第三方组件）不经过路由的翻译时机，
+   用 MutationObserver 对新增子树补一次；只监听 childList，翻译本身不会触发它自己。 */
+let __mo = null;
+export function watchI18n(root) {
+  if (__mo || I18N.lang === 'zh' || typeof MutationObserver !== 'function') { return; }
+  __mo = new MutationObserver(function (list) {
+    for (let i = 0; i < list.length; i++) {
+      const nodes = list[i].addedNodes;
+      for (let j = 0; j < nodes.length; j++) {
+        const n = nodes[j];
+        if (!n) { continue; }
+        if (n.nodeType === 3) { applyI18nText(n.parentElement); continue; }   // textContent 赋值会换掉文本节点
+        if (n.nodeType !== 1) { continue; }
+        applyI18nText(n);
+        applyI18nDom(n);
+      }
+    }
+  });
+  __mo.observe(root || document.body, { childList: true, subtree: true });
+}
+
 /** 把带 data-i18n="中文key" 的静态节点翻译成当前语言（服务端渲染的文案也能换） */
 export function applyI18nDom(root) {
   const box = root || document;
@@ -98,7 +136,7 @@ export function applyI18nText(root) {
     const raw = node.nodeValue;
     if (!raw) { continue; }
     const core = raw.trim();
-    if (core.length < 2 || core.length > 40) { continue; }
+    if (core.length < 2 || core.length > 200) { continue; }
     const hit = I18N.dict[core];
     if (hit == null || hit === '') { continue; }
     const el = node.parentElement;

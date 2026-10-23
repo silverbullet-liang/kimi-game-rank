@@ -97,7 +97,7 @@ function richInline(html) {
     });
   }
   return h.replace(/(https?:\/\/[^\s<>"']+\.(?:png|jpe?g|gif|webp|avif)(?:\?[^\s<>"']*)?)/gi, function (u) {
-    return '<img class="msg-img" src="' + esc(u) + '" alt="图片" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false">';
+    return '<img class="msg-img" src="' + esc(u) + '" alt="' + t('图片') + '" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false">';
   });
 }
 
@@ -228,8 +228,8 @@ async function playVideo(card, bv) {
     card.classList.remove('mv-loading');
     card.classList.add('mv-on');
     card.innerHTML = '<div class="mv-player"><video class="mv-video" controls playsinline preload="metadata" src="' + esc(url) + '"></video>'
-      + '<button class="mv-full" type="button" aria-label="全屏播放">' + MV_FULL_ICON + '</button></div>'
-      + '<div class="mv-fallback">播放不了？<a href="https://www.bilibili.com/video/' + esc(bv) + '/" target="_blank" rel="noopener">去 B站观看</a></div>';
+      + '<button class="mv-full" type="button" aria-label="' + t('全屏播放') + '">' + MV_FULL_ICON + '</button></div>'
+      + '<div class="mv-fallback">' + t('播放不了？') + '<a href="https://www.bilibili.com/video/' + esc(bv) + '/" target="_blank" rel="noopener">' + t('去 B站观看') + '</a></div>';
     const vd = card.querySelector('video');
     const fb = card.querySelector('.mv-full');
     fb.addEventListener('click', () => {
@@ -263,14 +263,14 @@ async function mountWorld(body) {
       </div>
       <div class="picker" id="wPicker" hidden></div>
       <div class="chat-input">
-        <button class="icon-btn pk-btn" id="wEmoji" aria-label="表情" ${canSend ? '' : 'disabled'}>${W_ICON_SMILE}</button>
-        <button class="icon-btn pk-btn" id="wImage" aria-label="图片" ${canSend ? '' : 'disabled'}>${W_ICON_IMAGE}</button>
-        <button class="icon-btn pk-btn" id="wVideo" aria-label="视频" ${canSend ? '' : 'disabled'}>${W_ICON_VIDEO}</button>
-        <button class="icon-btn pk-btn at-txt" id="wAt" aria-label="@ 官方AI" ${canSend ? '' : 'disabled'}>@</button>
+        <button class="icon-btn pk-btn" id="wEmoji" aria-label="${t('表情')}" ${canSend ? '' : 'disabled'}>${W_ICON_SMILE}</button>
+        <button class="icon-btn pk-btn" id="wImage" aria-label="${t('图片')}" ${canSend ? '' : 'disabled'}>${W_ICON_IMAGE}</button>
+        <button class="icon-btn pk-btn" id="wVideo" aria-label="${t('视频')}" ${canSend ? '' : 'disabled'}>${W_ICON_VIDEO}</button>
+        <button class="icon-btn pk-btn at-txt" id="wAt" aria-label="${t('@ 官方AI')}" ${canSend ? '' : 'disabled'}>@</button>
         <div class="cnt" id="wCount">0/500</div>
         <textarea class="input" id="wInput" rows="1" maxlength="500"
-          placeholder="${canSend ? '输入消息…' : t('游客仅可查看，登录后可发言')}" ${canSend ? '' : 'disabled'}></textarea>
-        <button class="btn" id="wSend" aria-label="发送" ${canSend ? '' : 'disabled'}>${W_ICON_SEND}</button>
+          placeholder="${canSend ? t('输入消息…') : t('游客仅可查看，登录后可发言')}" ${canSend ? '' : 'disabled'}></textarea>
+        <button class="btn" id="wSend" aria-label="${t('发送')}" ${canSend ? '' : 'disabled'}>${W_ICON_SEND}</button>
       </div>
       <div class="identity-tip">
         <span>当前发言身份：${userName(state.username, state.role)}${canSend ? '' : ' · 游客仅可查看'}</span>
@@ -298,7 +298,7 @@ async function mountWorld(body) {
       inner = '<span class="recall">该消息已撤回</span>';
     } else if (m.msg_type === 'image' && m.media) {
       /* src 必须整体转义：media 是用户可控字段，曾有人塞 `" onerror="alert(` 打断脚本 */
-      inner = '<img class="msg-img" src="' + esc(imgSrc(m.media)) + '" alt="图片消息" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false">';
+      inner = '<img class="msg-img" src="' + esc(imgSrc(m.media)) + '" alt="' + t('图片消息') + '" loading="lazy" decoding="async" referrerpolicy="no-referrer" draggable="false">';
     } else if (m.msg_type === 'video' && m.media) {
       inner = videoCardHtml(m.media, m.video);
     } else if (m.msg_type === 'ai' && m.cards && m.cards.length) {
@@ -320,7 +320,7 @@ async function mountWorld(body) {
       +   (m.msg_type === 'ai' && !(m.cards && m.cards.length) && m.tools && m.tools.length
             ? '<span class="tool-note">参考：' + esc(m.tools.join('、')) + '</span>' : '')
       +   (!m.recalled && m.flag === 'middle'
-            ? '<span class="msg-flag" title="系统认为这条内容可能有恶意，但仍予放行">可能有恶意'
+            ? '<span class="msg-flag" title="' + t('系统认为这条内容可能有恶意，但仍予放行') + '">可能有恶意'
               + (isAdminish() ? ' · <button class="link" data-unflag="1" style="border:0;background:0;font-size:12px;color:inherit;text-decoration:underline">取消标注</button>' : '')
               + '</span>' : '')
       + '</span>';
@@ -525,7 +525,7 @@ async function mountWorld(body) {
     picker.dataset.kind = 'image';
     picker.innerHTML = '<div class="picker-head">发送图片</div>'
       + '<div class="picker-body">'
-      +   '<input class="input" id="wImgUrl" placeholder="粘贴图片链接（https://…png / jpg）" style="margin-bottom:8px">'
+      +   '<input class="input" id="wImgUrl" placeholder="' + t('粘贴图片链接（https://…png / jpg）') + '" style="margin-bottom:8px">'
       +   '<div class="row-gap">'
       +     '<button class="btn btn-sm" id="wImgLink">发送链接图片</button>'
       +     '<button class="btn-ghost btn-sm" id="wImgUpBtn">上传本地图片</button>'
@@ -642,7 +642,7 @@ async function mountWorld(body) {
     picker.dataset.kind = 'video';
     picker.innerHTML = '<div class="picker-head">发送 B站视频</div>'
       + '<div class="picker-body">'
-      +   '<input class="input" id="wVidUrl" placeholder="粘贴 B站链接或 BV 号（如 BV1AinG6fEUo）" style="margin-bottom:8px">'
+      +   '<input class="input" id="wVidUrl" placeholder="' + t('粘贴 B站链接或 BV 号（如 BV1AinG6fEUo）') + '" style="margin-bottom:8px">'
       +   '<div class="row-gap"><button class="btn btn-sm" id="wVidGo">解析</button></div>'
       +   '<div class="tiny" id="wVidHint" style="margin-top:8px">支持 B站视频；番剧 / 电影 / 电视剧无法解析</div>'
       +   '<div id="wVidPrev"></div>'
@@ -809,7 +809,7 @@ async function mountAi(body) {
           <span class="mp-name" id="modelBtnName">模型</span>
           <svg viewBox="0 0 24 24" class="mp-chev"><path d="M7 10l5 5 5-5z"/></svg>
         </button>
-        <button type="button" class="think-toggle" id="thinkBtn" aria-pressed="false" title="开启后 AI 会先推理再回答（本站模型支持）">
+        <button type="button" class="think-toggle" id="thinkBtn" aria-pressed="false" title="${t('开启后 AI 会先推理再回答（本站模型支持）')}">
           <svg viewBox="0 0 24 24" class="tt-ic"><path d="M12 3a7 7 0 0 0-4 12.7V19a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3.3A7 7 0 0 0 12 3zM9 22h6v1H9v-1z"/></svg>
           <span>深度思考</span>
         </button>
@@ -819,12 +819,12 @@ async function mountAi(body) {
         <div class="ms-list" id="modelList"></div>
       </div>
       <div class="chat-input">
-        <button class="icon-btn pk-btn" id="emojiBtnAi" aria-label="表情">
+        <button class="icon-btn pk-btn" id="emojiBtnAi" aria-label="${t('表情')}">
           <svg viewBox="0 0 24 24" class="ic"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zM8.5 9.5a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zm7 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zM7.6 14.2a1 1 0 0 1 1.4-.1 4.6 4.6 0 0 0 6 0 1 1 0 0 1 1.3 1.5 6.6 6.6 0 0 1-8.6 0 1 1 0 0 1-.1-1.4z"/></svg>
         </button>
         <div class="cnt" id="aiCount">0/2000</div>
-        <textarea class="input" id="aiInput" rows="1" maxlength="2000" placeholder="向 AI 提问，可问榜单规则与作品信息…"></textarea>
-        <button class="btn" id="aiSend" aria-label="发送">
+        <textarea class="input" id="aiInput" rows="1" maxlength="2000" placeholder="${t('向 AI 提问，可问榜单规则与作品信息…')}"></textarea>
+        <button class="btn" id="aiSend" aria-label="${t('发送')}">
           <svg viewBox="0 0 24 24" class="ic" style="width:18px;height:18px;fill:#fff"><path d="M3 20l18-8L3 4v6l12 2-12 2v6z"/></svg>
         </button>
       </div>

@@ -86,7 +86,7 @@ export function mountCaptcha(host, onChange) {
     box.innerHTML = `
       <div class="cap-wrap">
         <div class="captcha">
-          <div class="cap-ct" id="cap-ct" role="button" tabindex="0" aria-label="点击进行人机验证">
+          <div class="cap-ct" id="cap-ct" role="button" tabindex="0" aria-label="${t('点击进行人机验证')}">
             <div class="cap-cb">
               <div class="cap-check">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="4,12 9,17 20,6"></polyline></svg>

@@ -308,13 +308,13 @@ function mountBlockList(box, isGuest) {
   const raw = isGuest ? String(getPrefs().block_words || '') : String((state.settings || {}).block_words || '');
   box.innerHTML = `
     <div class="tiny" style="margin-bottom:8px;line-height:1.6">
-      每行一条规则，命中的评论会自动收起（仅对你生效，不影响他人）。<br>
-      普通词语：忽略大小写包含即命中；正则表达式：用斜杠包裹，例如 <b>/广告|引流|私聊/i</b>。<br>
-      最多 50 条，每条不超过 100 个字符。
+      ${t('每行一条规则，命中的评论会自动收起（仅对你生效，不影响他人）。')}<br>
+      ${t('普通词语：忽略大小写包含即命中；正则表达式：用斜杠包裹，例如 ')}<b>/广告|引流|私聊/i</b>${t('。')}<br>
+      ${t('最多 50 条，每条不超过 100 个字符。')}
     </div>
     <textarea class="input" id="bwText" rows="4" maxlength="2000" placeholder="加微信&#10;/免费|引流|私聊/i"></textarea>
-    <button class="btn" id="bwSave" style="margin-top:10px">保存屏蔽规则</button>
-    <button class="btn-ghost" id="bwClear" style="margin-top:10px;margin-left:8px">清空</button>`;
+    <button class="btn" id="bwSave" style="margin-top:10px">${t('保存屏蔽规则')}</button>
+    <button class="btn-ghost" id="bwClear" style="margin-top:10px;margin-left:8px">${t('清空')}</button>`;
   const ta = box.querySelector('#bwText');
   ta.value = raw;
 
@@ -368,14 +368,14 @@ function mountAppearance(box) {
       </div>
     </div>
     <div class="setting-row ${FESTIVAL_KEYS.indexOf(skin) >= 0 ? 'fj-locked' : ''}" style="flex-direction:column;align-items:flex-start;gap:8px">
-      <span>主题色（蓝紫色 / 苹果色 / 自定义）</span>
+      <span>${t('主题色（蓝紫色 / 苹果色 / 自定义）')}</span>
       <div class="swatch-row" id="accentRow">
-        <button class="swatch" data-a="blue-purple" title="蓝紫" style="background:#7C3AED"></button>
-        <button class="swatch" data-a="ios-colorful" title="iOS 彩色" style="background:#007AFF"></button>
-        <button class="swatch" data-a="custom" title="自定义" style="background:conic-gradient(#f43f5e,#f59e0b,#22c55e,#3b82f6,#a855f7,#f43f5e)"></button>
+        <button class="swatch" data-a="blue-purple" title="${t('蓝紫')}" style="background:#7C3AED"></button>
+        <button class="swatch" data-a="ios-colorful" title="${t('iOS 彩色')}" style="background:#007AFF"></button>
+        <button class="swatch" data-a="custom" title="${t('自定义')}" style="background:conic-gradient(#f43f5e,#f59e0b,#22c55e,#3b82f6,#a855f7,#f43f5e)"></button>
       </div>
       <div id="customBox" hidden>
-        <div class="tiny" style="margin:6px 0">自定义颜色（H/S/L 微调）</div>
+        <div class="tiny" style="margin:6px 0">${t('自定义颜色（H/S/L 微调）')}</div>
         <div class="swatch-row" style="gap:12px">
           <div class="slider" data-hsl="h" style="width:150px"><div class="rail"><div class="fill"></div><div class="knob"></div></div></div>
           <div class="slider" data-hsl="s" style="width:150px"><div class="rail"><div class="fill"></div><div class="knob"></div></div></div>
@@ -395,10 +395,7 @@ function mountAppearance(box) {
         <button data-n="0" class="${navOn ? '' : 'on'}">关闭</button>
       </div>
     </div>
-    <div class="tiny" style="margin-top:-4px;line-height:1.7">
-      开启后：界面切换有方向感，返回时上一页沿原路径滑回（从哪来回哪去），
-      返回后恢复原来的位置与内容，不重新加载；从左边缘右滑还能跟手预览上一页。
-    </div>`;
+    <div class="tiny" style="margin-top:-4px;line-height:1.7">${t('开启后：界面切换有方向感，返回时上一页沿原路径滑回（从哪来回哪去），返回后恢复原来的位置与内容，不重新加载；从左边缘右滑还能跟手预览上一页。')}</div>`;
 
   const skinRow = box.querySelector('#skinRow');
   if (skinRow) {

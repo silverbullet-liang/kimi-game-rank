@@ -98,23 +98,24 @@ function appendDownload(box, name, md) {
 
   const hint = document.createElement('span');
   hint.className = 'doc-dl-hint';
-  hint.textContent = name + t('.md · 与页面内容一致');
+  const shown = (I18N.lang === 'zh') ? name : (SLUG[name] || 'features');
+  hint.textContent = shown + t('.md · 与页面内容一致');
 
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'btn-ghost btn-sm';
-  btn.setAttribute('aria-label', t('下载 ') + name + t(' 的原始 md 文件'));
+  btn.setAttribute('aria-label', t('下载 ') + shown + t(' 的原始 md 文件'));
   btn.innerHTML = ICON_DL + t('下载原始 md 文件');
   btn.addEventListener('click', () => {
     const url = URL.createObjectURL(new Blob([md], { type: 'text/markdown;charset=utf-8' }));
     const a = document.createElement('a');
     a.href = url;
-    a.download = name + '.md';
+    a.download = shown + '.md';
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
-    toast('已开始下载 ' + name + '.md');
+    toast(t('已开始下载 ') + shown + '.md');
   });
 
   bar.appendChild(hint);

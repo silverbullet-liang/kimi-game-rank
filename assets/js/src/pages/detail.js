@@ -60,7 +60,7 @@ export async function renderDetail(container, ctx) {
         作品预览
       </div>
       <div class="shot-grid">
-        ${(d.images && d.images.length ? d.images : [d.cover]).map((u, i) => `<button class="shot" data-i="${i}"><img src="${esc(u)}" alt="预览图 ${i + 1}" ${i === 0 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy" fetchpriority="low"'} decoding="async" referrerpolicy="no-referrer" draggable="false"></button>`).join('')}
+        ${(d.images && d.images.length ? d.images : [d.cover]).map((u, i) => `<button class="shot" data-i="${i}"><img src="${esc(u)}" alt="${t('预览图')} ${i + 1}" ${i === 0 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy" fetchpriority="low"'} decoding="async" referrerpolicy="no-referrer" draggable="false"></button>`).join('')}
       </div>
       <div class="tiny" style="margin-top:8px">点击图片可查看大图</div>
     </div>` : ''}
@@ -191,14 +191,14 @@ function openLightbox(images, index) {
   const box = document.createElement('div');
   box.className = 'lightbox';
   box.innerHTML = `
-    <button class="lb-close" aria-label="关闭">
+    <button class="lb-close" aria-label="${t('关闭')}">
       <svg viewBox="0 0 24 24" class="ic"><path d="M6.4 5l5.6 5.6L17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4 6.4 5z"/></svg>
     </button>
     <img class="lb-img" src="" alt="" draggable="false">
     <div class="lb-bar">
-      <button class="lb-prev" aria-label="上一张">上一张</button>
+      <button class="lb-prev" aria-label="${t('上一张')}">上一张</button>
       <span class="lb-idx"></span>
-      <button class="lb-next" aria-label="下一张">下一张</button>
+      <button class="lb-next" aria-label="${t('下一张')}">下一张</button>
     </div>`;
   document.body.appendChild(box);
 
@@ -314,7 +314,7 @@ export async function renderComments(container, workId, targetType) {
   if (canPost()) {
     form.innerHTML = `
       <div class="field">
-        <textarea class="input" id="cmtText" maxlength="300" placeholder="写下你的看法…"></textarea>
+        <textarea class="input" id="cmtText" maxlength="300" placeholder="${t('写下你的看法…')}"></textarea>
         <div class="tiny" style="text-align:right"><span id="cmtCount">0</span>/300</div>
       </div>
       <button class="btn btn-sm" id="cmtSend">发表评论</button>`;
@@ -368,11 +368,11 @@ export async function renderComments(container, workId, targetType) {
         (open ? reps : reps.slice(0, FOLD)).forEach(r =>
           wrap.appendChild(commentNode(Object.assign({}, r, { _sub: 1 }), workId, refresh, ttype)));
         if (reps.length > FOLD) {
-          const t = document.createElement('button');
-          t.className = 'fold-toggle';
-          t.textContent = open ? '收起回复' : t('展开全部 ') + reps.length + t(' 条回复');
-          t.addEventListener('click', () => { open = !open; unfolded[c.id] = open; draw(); });
-          wrap.appendChild(t);
+          const foldBtn = document.createElement('button');
+          foldBtn.className = 'fold-toggle';
+          foldBtn.textContent = open ? t('收起回复') : t('展开全部 ') + reps.length + t(' 条回复');
+          foldBtn.addEventListener('click', () => { open = !open; unfolded[c.id] = open; draw(); });
+          wrap.appendChild(foldBtn);
         }
       };
       draw();
@@ -485,7 +485,7 @@ function commentNode(c, workId, reload, ttype) {
       <span class="text">${c.reply_to ? `<span class="reply-to">@${esc(c.reply_to)}</span> ` : ''}${folded
         ? `<span class="blocked-note" data-reveal data-note="${esc(noteText)}">${noteText}</span><span class="blocked-body" hidden>${esc(c.content)}</span>`
         : esc(c.content)}</span>
-      ${c.flag === 'middle' ? '<span class="msg-flag" title="系统认为这条内容可能有恶意，但仍予放行">可能有恶意'
+      ${c.flag === 'middle' ? '<span class="msg-flag" title="' + t('系统认为这条内容可能有恶意，但仍予放行') + '">可能有恶意'
         + (canModerate() ? ' · <button class="link" data-act="unflag" style="border:0;background:0;font-size:12px;color:inherit;text-decoration:underline">取消标注</button>' : '')
         + '</span>' : ''}
       <span class="ops">
@@ -504,7 +504,7 @@ function promptReply(toName) {
     const scrim = document.getElementById('dialogScrim');
     const box = document.getElementById('dialog');
     box.innerHTML = `<h3>回复${toName ? ' ' + esc(toName) : ''}</h3>
-      <div class="field"><textarea class="input" id="rpText" maxlength="300" placeholder="写下回复…"></textarea></div>
+      <div class="field"><textarea class="input" id="rpText" maxlength="300" placeholder="${t('写下回复…')}"></textarea></div>
       <div class="dialog-actions"><button class="btn-ghost" data-r="0">取消</button><button class="btn" data-r="1">发送</button></div>`;
     scrim.hidden = false;
     const ta = box.querySelector('#rpText'); ta.focus();

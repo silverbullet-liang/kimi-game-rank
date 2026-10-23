@@ -112,10 +112,13 @@ function submit_kimi_post(string $path, array $payload): array
     $ch = curl_init('https://auth.kimi.com/api/' . $path);
     curl_setopt_array($ch, array(
         CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => json_encode($payload, JSON_UNESCAPED_UNICODE),
+        /* 顶层必须序列化成对象：空数组会被 json_encode 成 []，上游按 protobuf-JSON 解析报 400 */
+        CURLOPT_POSTFIELDS     => json_encode((object)$payload, JSON_UNESCAPED_UNICODE),
         CURLOPT_HTTPHEADER     => array(
             'Content-Type: application/json',
-            'Accept: application/json, application/connect+json',
+            /* 只声明普通 JSON：带上 application/connect+json 会让上游改走 Connect 协议，
+               把 JSON 当 protobuf 解析，返回 400 unmarshal message */
+            'Accept: application/json',
         ),
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 15,
@@ -135,6 +138,7 @@ if ($action === 'qr_new') {
     $r = submit_kimi_post('account.gateway.v1.AuthService/CreateLoginQRCode', array());
     $qr = isset($r['json']['code']) ? (string)$r['json']['code'] : '';
     if ($r['code'] !== 200 || $qr === '') {
+        app_log('qr_new upstream http=' . $r['code'] . ' body=' . substr((string)json_encode($r['json'], JSON_UNESCAPED_UNICODE), 0, 200));
         fail(502, '扫码服务暂时不可用，请改用粘贴登录态');
     }
     ok(array('code' => $qr, 'content' => 'https://www.kimi.com/wechat/mp/auth?id=' . rawurlencode($qr)));

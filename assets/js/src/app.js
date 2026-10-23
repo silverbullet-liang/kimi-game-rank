@@ -1,7 +1,7 @@
 /**
  * 应用入口：启动引导、路由、底栏、抽屉、搜索、通知轮询
  */
-import { i18nInit, t, applyI18nDom, applyI18nText } from './i18n.js';
+import { i18nInit, t, applyI18nDom, applyI18nText, watchI18n } from './i18n.js';
 import { boot, state, api, toast, dialog, prompt_, setToken, setUnauthorizedHandler, notify, getPrefs, setPrefs, $, on, askNotifyPermission, esc, showBanLock, hideBanLock, maybeDiscPopup, readBanCache, readBanCacheAsync, saveBanCache } from './core.js';
 import { applyTheme, saveTheme, initSystemWatcher, ACCENTS } from './theme.js';
 import { setNavigate } from './router.js';
@@ -470,7 +470,7 @@ function schedulePoll() {
  */
 function adminListHtml(items) {
   if (!items || !items.length) {
-    return '<p class="tiny muted">名单暂时取不到，刷新页面再试。</p>';
+    return '<p class="tiny muted">' + t('名单暂时取不到，刷新页面再试。') + '</p>';
   }
   return items.map(function (a) {
     return '<div class="credit-row"><span class="credit-k">' + esc(a.label) + '</span>'
@@ -479,64 +479,65 @@ function adminListHtml(items) {
 }
 
 function renderAbout(container) {
+  const isAdmin = state.role === 'admin' || state.role === 'subadmin';
   container.innerHTML = `
     <div class="card">
-      <div class="card-title">${icon(I.info)}关于本站</div>
-      <p class="muted">Kimi游戏榜 —— 面向 Kimi 社区的六维综合评分排行榜，收录社区优质作品，评分由公开算法自动计算。</p>
-      <p class="tiny">版本 ${window.__SITE__.ver} · <span class="link" id="changelogLink">查看更新日志</span> · 数据来源：Kimi 社区公开接口</p>
+      <div class="card-title">${icon(I.info)}${t('关于本站')}</div>
+      <p class="muted">${t('Kimi游戏榜 —— 面向 Kimi 社区的六维综合评分排行榜，收录社区优质作品，评分由公开算法自动计算。')}</p>
+      <p class="tiny">${t('版本 ')}${window.__SITE__.ver} · <span class="link" id="changelogLink">${t('查看更新日志')}</span> · ${t('数据来源：Kimi 社区公开接口')}</p>
     </div>
 
     <div class="card">
-      <div class="card-title">${icon(I.play)}宣传视频</div>
+      <div class="card-title">${icon(I.play)}${t('宣传视频')}</div>
       <div class="video-embed">
         <iframe src="https://player.bilibili.com/player.html?bvid=BV1AinG6fEUo&page=1&high_quality=1&danmaku=1&autoplay=0"
                 scrolling="no" frameborder="no" allowfullscreen="true"
                 referrerpolicy="no-referrer-when-downgrade" loading="lazy"
-                title="Kimi 游戏榜宣传视频"></iframe>
+                title="${t('Kimi 游戏榜宣传视频')}"></iframe>
       </div>
-      <p class="tiny muted">8 分钟讲清楚评分怎么算、等级怎么划、作品怎么收录 · BV1AinG6fEUo</p>
+      <p class="tiny muted">${t('8 分钟讲清楚评分怎么算、等级怎么划、作品怎么收录')} · BV1AinG6fEUo</p>
     </div>
 
     <div class="card">
-      <div class="card-title">${icon(I.users)}参考与借鉴</div>
-      <div class="credit-row"><span class="credit-k">参考 / 借鉴</span><span class="credit-v">普普通通的人（Kimi 社区游戏排行榜）</span></div>
-      <p class="tiny muted">榜单的形态与选题受社区同好整理的游戏榜单启发；本站的抓取、六维评分算法与全部代码均为自行实现。</p>
+      <div class="card-title">${icon(I.users)}${t('参考与借鉴')}</div>
+      <div class="credit-row"><span class="credit-k">${t('参考 / 借鉴')}</span><span class="credit-v">${t('普普通通的人（Kimi 社区游戏排行榜）')}</span></div>
+      <p class="tiny muted">${t('榜单的形态与选题受社区同好整理的游戏榜单启发；本站的抓取、六维评分算法与全部代码均为自行实现。')}</p>
     </div>
 
     <div class="card">
-      <div class="card-title">${icon(I.rule)}规划和制作</div>
-      <div class="credit-row"><span class="credit-k">规划</span><span class="credit-v">银色子弹-silver、glm-5.3-flash</span></div>
-      <div class="credit-row"><span class="credit-k">制作</span><span class="credit-v">deepseek-v4.1-flash、glm-5.3-flash</span></div>
+      <div class="card-title">${icon(I.rule)}${t('规划和制作')}</div>
+      <div class="credit-row"><span class="credit-k">${t('规划')}</span><span class="credit-v">银色子弹-silver、glm-5.3-flash</span></div>
+      <div class="credit-row"><span class="credit-k">${t('制作')}</span><span class="credit-v">deepseek-v4.1-flash、glm-5.3-flash</span></div>
     </div>
 
     <div class="card">
-      <div class="card-title">${icon(I.users)}鸣谢</div>
-      <p class="muted">谢谢经常给本站反馈问题、提建议的伙伴 —— 你们的每一条反馈，都让这个榜单变好一点点。</p>
-      <div class="credit-row"><span class="credit-k">反馈贡献</span><span class="credit-v">小李v</span></div>
-      <div class="credit-row"><span class="credit-k">反馈贡献</span><span class="credit-v">starclimber</span></div>
+      <div class="card-title">${icon(I.users)}${t('鸣谢')}</div>
+      <p class="muted">${t('谢谢经常给本站反馈问题、提建议的伙伴 —— 你们的每一条反馈，都让这个榜单变好一点点。')}</p>
+      <div class="credit-row"><span class="credit-k">${t('反馈贡献')}</span><span class="credit-v">小李v</span></div>
+      <div class="credit-row"><span class="credit-k">${t('反馈贡献')}</span><span class="credit-v">starclimber</span></div>
     </div>
 
     <div class="card">
-      <div class="card-title">${icon(I.heart)}支持一下</div>
-      <p class="muted">这个榜单是我利用业余时间、靠 AI 一点点写出来的：作品抓取、六维评分、AI 对话与工具调用，烧的都是我自己的额度。它现在完全免费、也不打算收费。</p>
-      <p class="muted">如果它帮到了你，欢迎赞助一点，让服务器和 API 能继续跑下去。</p>
+      <div class="card-title">${icon(I.heart)}${t('支持一下')}</div>
+      <p class="muted">${t('这个榜单是我利用业余时间、靠 AI 一点点写出来的：作品抓取、六维评分、AI 对话与工具调用，烧的都是我自己的额度。它现在完全免费、也不打算收费。')}</p>
+      <p class="muted">${t('如果它帮到了你，欢迎赞助一点，让服务器和 API 能继续跑下去。')}</p>
 
       <div class="donate-box">
-        <div class="donate-head">求助力 · 一起免费领 ima 算力</div>
-        <p class="tiny">邀你一起创建 ima 专属知识伙伴，免费领新人算力福利 —— 你领到的同时，也等于给这个站点续了命。</p>
+        <div class="donate-head">${t('求助力 · 一起免费领 ima 算力')}</div>
+        <p class="tiny">${t('邀你一起创建 ima 专属知识伙伴，免费领新人算力福利 —— 你领到的同时，也等于给这个站点续了命。')}</p>
         <div class="donate-link" id="inviteLink">https://ima.qq.com/copilot-invite-reward-token/assist/V_5sR6nXkLv5CRsf8PTJnQ</div>
         <div class="row-gap">
-          <button class="btn btn-sm" id="copyInvite">复制邀请链接</button>
-          <button class="btn-ghost btn-sm" id="openInvite">打开活动页</button>
+          <button class="btn btn-sm" id="copyInvite">${t('复制邀请链接')}</button>
+          <button class="btn-ghost btn-sm" id="openInvite">${t('打开活动页')}</button>
         </div>
       </div>
-      <p class="tiny">谢谢每一个点开这里的人。</p>
+      <p class="tiny">${t('谢谢每一个点开这里的人。')}</p>
     </div>
 
     <div class="card">
-      <div class="card-title">${icon(I.users)}管理者名单</div>
+      <div class="card-title">${icon(I.users)}${t('管理者名单')}</div>
       <div id="adminList"><div class="skeleton" style="height:56px"></div></div>
-      <p class="tiny">名单为<b>实时读取</b>；如需反馈问题，请在「${(state.role === 'admin' || state.role === 'subadmin') ? '回复反馈' : t('反映问题')}」中提交。</p>
+      <p class="tiny">${t('名单为实时读取；如需反馈问题，请在「')}<b>${isAdmin ? t('回复反馈') : t('反映问题')}</b>${t('」中提交。')}</p>
     </div>`;
 
   const clLink = container.querySelector('#changelogLink');
@@ -554,8 +555,8 @@ function renderAbout(container) {
   const copyBtn = container.querySelector('#copyInvite');
   if (copyBtn) {
     copyBtn.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(INVITE); toast('邀请链接已复制，谢谢支持'); }
-      catch (e) { toast('复制失败，请手动长按链接复制', 'err'); }
+      try { await navigator.clipboard.writeText(INVITE); toast(t('邀请链接已复制，谢谢支持')); }
+      catch (e) { toast(t('复制失败，请手动长按链接复制'), 'err'); }
     });
   }
   const openBtn = container.querySelector('#openInvite');
@@ -660,6 +661,8 @@ async function main() {
 
   await i18nInit();        // 语言：本地选择 > 浏览器首选 > 中文；译文取 assets/i18n/
   applyI18nDom(document);  // 服务端渲染的静态文案（底部导航等）
+  applyI18nText(document.body); // 首屏已有的文本节点（公告横幅等不在路由容器里）
+  watchI18n(document.body);     // 异步插入的内容（列表、公告、人机验证组件）也要翻译
 
   setNavigate(navigate);
   initSystemWatcher();

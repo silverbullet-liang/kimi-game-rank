@@ -204,6 +204,33 @@ function seo_meta_for(array $route): array
 }
 
 /* ============================================================
+ * 界面语言（与 index.php 注入的 window.__LANG 同源：cookie kimgr_lang）
+ * ============================================================ */
+function seo_lang(): string
+{
+    $l = isset($_COOKIE['kimgr_lang']) ? strtolower((string)$_COOKIE['kimgr_lang']) : '';
+    if (in_array($l, array('zh', 'en', 'ja'), true)) { return $l; }
+    /* 首次访问还没有 cookie：按浏览器首选语言判断，与前端 navigator.languages 的顺序一致 */
+    $al = isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? strtolower((string)$_SERVER['HTTP_ACCEPT_LANGUAGE']) : '';
+    foreach (explode(',', $al) as $part) {
+        $tag = trim(explode(';', $part)[0]);
+        if (strpos($tag, 'ja') === 0) { return 'ja'; }
+        if (strpos($tag, 'en') === 0) { return 'en'; }
+        if (strpos($tag, 'zh') === 0) { return 'zh'; }
+    }
+    return 'zh';
+}
+
+/** 服务端文案三语取值；未提供对应译文时退回中文 */
+function seo_t(string $zh, string $en = '', string $ja = ''): string
+{
+    $l = seo_lang();
+    if ($l === 'en' && $en !== '') { return $en; }
+    if ($l === 'ja' && $ja !== '') { return $ja; }
+    return $zh;
+}
+
+/* ============================================================
  * 服务端渲染内容（放进 #view，无 JS 也能读；含真实链接）
  * ============================================================ */
 function seo_body_html(array $route): string
@@ -220,66 +247,83 @@ function seo_body_rank(): string
 {
     $site = e((string)cfg('site.name', 'Kimi游戏榜'));
     $h  = '<article class="seo-ssr">';
-    $h .= '<h1>' . $site . ' · Kimi 社区作品六维排行榜</h1>';
-    $h .= '<p>收录 Kimi 社区公开作品，按「作品质量 / 作者投入 / 社区认可」三支柱六维综合评分排序。</p>';
+    $h .= '<h1>' . $site . ' · ' . seo_t(
+        'Kimi 社区作品六维排行榜',
+        'Six-dimension leaderboard of Kimi community works',
+        'Kimiコミュニティ作品の六次元ランキング'
+    ) . '</h1>';
+    $h .= '<p>' . seo_t(
+        '收录 Kimi 社区公开作品，按「作品质量 / 作者投入 / 社区认可」三支柱六维综合评分排序。',
+        'Public works from the Kimi community, ordered by a six-dimension score built on three pillars: craft, effort, and community recognition.',
+        'Kimiコミュニティの公開作品を、「作品の質 / 作者の取り組み / コミュニティの評価」の三本柱からなる六次元スコアで並べています。'
+    ) . '</p>';
     $total = 0; $rows = array();
     try {
         $page = works_list_page('all', 'total', '', 1, 30, 0, true);
         $rows = (array)$page['items']; $total = (int)$page['total'];
     } catch (Throwable $e) { }
     if (!empty($rows)) {
-        $h .= '<h2>榜单</h2><ol>';
+        $h .= '<h2>' . seo_t('榜单', 'Ranking', 'ランキング') . '</h2><ol>';
         foreach ($rows as $w) {
             $h .= '<li><a href="' . e(seo_rel('detail', '', array('id' => (int)$w['id']))) . '">'
                 . e((string)$w['title']) . '</a> — ' . e((string)$w['author']) . ' · '
-                . e((string)$w['category_name']) . ' · 总分 ' . (int)$w['total'] . ' · 评级 ' . e((string)$w['rating']) . '</li>';
+                . e((string)$w['category_name']) . ' · ' . seo_t('总分', 'Score', '総合スコア') . ' ' . (int)$w['total']
+                . ' · ' . seo_t('评级', 'Grade', '評価') . ' ' . e((string)$w['rating']) . '</li>';
         }
         $h .= '</ol>';
-        $h .= '<p>共收录 ' . $total . ' 件作品。';
+        $h .= '<p>' . seo_t('共收录 ', 'Works listed: ', '収録作品数：') . $total . seo_t(' 件作品。', '', ' 件。');
     } else {
-        $h .= '<p>榜单加载中。</p>';
+        $h .= '<p>' . seo_t('榜单加载中。', 'Loading the ranking…', 'ランキングを読み込み中…') . '</p>';
     }
-    $h .= '<a href="' . e(seo_rel('doc', '评分标准')) . '">评分标准</a> · '
-        . '<a href="' . e(seo_rel('doc', '入榜规则')) . '">入榜规则</a> · '
-        . '<a href="' . e(seo_rel('doc', '功能说明')) . '">功能说明</a></p>';
+    $h .= '<a href="' . e(seo_rel('doc', '评分标准')) . '">' . seo_doc_title('评分标准') . '</a> · '
+        . '<a href="' . e(seo_rel('doc', '入榜规则')) . '">' . seo_doc_title('入榜规则') . '</a> · '
+        . '<a href="' . e(seo_rel('doc', '功能说明')) . '">' . seo_doc_title('功能说明') . '</a></p>';
     return $h . '</article>';
 }
 
 function seo_body_detail(int $id): string
 {
-    if ($id <= 0) { return '<article class="seo-ssr"><h1>作品不存在</h1><p><a href="' . e(seo_rel('rank')) . '">← 返回榜单</a></p></article>'; }
+    if ($id <= 0) { return '<article class="seo-ssr"><h1>' . seo_t('作品不存在', 'Work not found', '作品が見つかりません') . '</h1><p><a href="' . e(seo_rel('rank')) . '">' . seo_back() . '</a></p></article>'; }
     $r = seo_work_row($id);
     if ($r === null) {
-        return '<article class="seo-ssr"><h1>作品不存在或已下架</h1><p><a href="' . e(seo_rel('rank')) . '">← 返回榜单</a></p></article>';
+        return '<article class="seo-ssr"><h1>' . seo_t('作品不存在或已下架', 'Work not found or taken down', '作品が見つからないか公開終了しました') . '</h1><p><a href="' . e(seo_rel('rank')) . '">' . seo_back() . '</a></p></article>';
     }
     $cats  = works_cats();
     $cat   = (string)$r['category'];
     $intro = trim((string)$r['intro']);
     $h  = '<article class="seo-ssr">';
     $h .= '<h1>' . e((string)$r['title']) . '</h1>';
-    $h .= '<p>作者：' . e((string)$r['author_name']) . ' · 分类：' . e(isset($cats[$cat]) ? $cats[$cat] : '游戏类')
-        . ' · 总分 ' . (int)$r['total_score'] . '/1200 · 评级 ' . e((string)$r['rating']) . '</p>';
-    if ($intro !== '') { $h .= '<h2>作品简介</h2><p>' . nl2br(e(mb_substr($intro, 0, 600, 'UTF-8'))) . '</p>'; }
+    $h .= '<p>' . seo_t('作者：', 'By ', '作者：') . e((string)$r['author_name'])
+        . ' · ' . seo_t('分类：', 'Category: ', 'カテゴリ：') . e(isset($cats[$cat]) ? $cats[$cat] : '游戏类')
+        . ' · ' . seo_t('总分', 'Score', '総合スコア') . ' ' . (int)$r['total_score'] . '/1200'
+        . ' · ' . seo_t('评级', 'Grade', '評価') . ' ' . e((string)$r['rating']) . '</p>';
+    if ($intro !== '') { $h .= '<h2>' . seo_t('作品简介', 'About', '作品紹介') . '</h2><p>' . nl2br(e(mb_substr($intro, 0, 600, 'UTF-8'))) . '</p>'; }
     $sd = json_decode((string)$r['score'], true);
     if (is_array($sd) && !empty($sd)) {
-        $labels = array('experience' => '可玩性', 'creativity' => '创意', 'depth' => '深度',
-                        'cost' => '体量', 'attitude' => '用心', 'heat' => '口碑');
-        $h .= '<h2>六维评分</h2><ul>';
+        $labels = array(
+            'experience' => array('可玩性', 'Playability', 'プレイ性'),
+            'creativity' => array('创意', 'Creativity', '創造性'),
+            'depth'      => array('深度', 'Depth', '深さ'),
+            'cost'       => array('体量', 'Volume', 'ボリューム'),
+            'attitude'   => array('用心', 'Effort', '丁寧さ'),
+            'heat'       => array('口碑', 'Word of mouth', '評判'),
+        );
+        $h .= '<h2>' . seo_t('六维评分', 'Six dimensions', '六次元スコア') . '</h2><ul>';
         foreach ($labels as $k => $lab) {
-            if (isset($sd[$k])) { $h .= '<li>' . $lab . '：' . (int)$sd[$k] . '/200</li>'; }
+            if (isset($sd[$k])) { $h .= '<li>' . seo_t($lab[0], $lab[1], $lab[2]) . '：' . (int)$sd[$k] . '/200</li>'; }
         }
         $h .= '</ul>';
     }
     $link = work_link($r);
-    if ($link !== '') { $h .= '<p><a href="' . e($link) . '" rel="noopener nofollow">打开作品</a></p>'; }
-    $h .= '<p><a href="' . e(seo_rel('rank')) . '">← 返回榜单</a></p></article>';
+    if ($link !== '') { $h .= '<p><a href="' . e($link) . '" rel="noopener nofollow">' . seo_t('打开作品', 'Open the work', '作品を開く') . '</a></p>'; }
+    $h .= '<p><a href="' . e(seo_rel('rank')) . '">' . seo_back() . '</a></p></article>';
     return $h;
 }
 
 function seo_body_doc(string $docName): string
 {
-    $txt = seo_doc_text($docName);
-    $h  = '<article class="seo-ssr"><h1>' . e($docName) . '</h1>';
+    $txt = seo_doc_text($docName, seo_lang());
+    $h  = '<article class="seo-ssr"><h1>' . seo_doc_title($docName) . '</h1>';
     if ($txt !== '') {
         $paras = preg_split('/\n{2,}/u', trim($txt));
         $n = 0;
@@ -290,16 +334,20 @@ function seo_body_doc(string $docName): string
             if (++$n >= 12) { break; }     // 只取前若干段，避免整页塞满
         }
     }
-    $h .= '<p><a href="' . e(seo_rel('rank')) . '">← 返回榜单</a></p></article>';
+    $h .= '<p><a href="' . e(seo_rel('rank')) . '">' . seo_back() . '</a></p></article>';
     return $h;
 }
 
 function seo_body_about(): string
 {
     $site = e((string)cfg('site.name', 'Kimi游戏榜'));
-    return '<article class="seo-ssr"><h1>关于 ' . $site . '</h1>'
-        . '<p>' . $site . ' 收录 Kimi 社区公开作品，按「作品质量 / 作者投入 / 社区认可」三支柱六维综合评分排序。</p>'
-        . '<p><a href="' . e(seo_rel('doc', '评分标准')) . '">评分标准</a> · <a href="' . e(seo_rel('doc', '功能说明')) . '">功能说明</a> · <a href="' . e(seo_rel('rank')) . '">返回榜单</a></p></article>';
+    return '<article class="seo-ssr"><h1>' . seo_t('关于 ', 'About ', '') . $site . '</h1>'
+        . '<p>' . $site . seo_t(
+            ' 收录 Kimi 社区公开作品，按「作品质量 / 作者投入 / 社区认可」三支柱六维综合评分排序。',
+            ' lists public works from the Kimi community, ordered by a six-dimension score built on three pillars: craft, effort, and community recognition.',
+            ' は Kimiコミュニティの公開作品を、「作品の質 / 作者の取り組み / コミュニティの評価」の三本柱からなる六次元スコアで並べています。'
+        ) . '</p>'
+        . '<p><a href="' . e(seo_rel('doc', '评分标准')) . '">' . seo_doc_title('评分标准') . '</a> · <a href="' . e(seo_rel('doc', '功能说明')) . '">' . seo_doc_title('功能说明') . '</a> · <a href="' . e(seo_rel('rank')) . '">' . seo_t('返回榜单', 'Back to the ranking', 'ランキングへ戻る') . '</a></p></article>';
 }
 
 /* ============================================================
@@ -317,6 +365,40 @@ function seo_work_row(int $id)
     return is_array($r) ? $r : null;
 }
 
+/** 中文文档名 → 英文文件 slug */
+function seo_doc_slug(string $docName): string
+{
+    $map = array(
+        '功能说明' => 'features', 'AI 使用说明' => 'ai', '社区公约' => 'community',
+        '评分标准' => 'scoring', '入榜规则' => 'admission', '用户协议' => 'terms',
+        '隐私政策' => 'privacy', '更新日志' => 'changelog',
+    );
+    return isset($map[$docName]) ? $map[$docName] : 'scoring';
+}
+
+/** 文档标题三语 */
+function seo_doc_title(string $docName): string
+{
+    $map = array(
+        '功能说明'    => array('功能说明', 'Feature Guide', '機能説明'),
+        'AI 使用说明' => array('AI 使用说明', 'AI Guide', 'AI ガイド'),
+        '社区公约'    => array('社区公约', 'Community Rules', 'コミュニティ規約'),
+        '评分标准'    => array('评分标准', 'Scoring Standard', '評価基準'),
+        '入榜规则'    => array('入榜规则', 'Ranking Rules', 'ランク入りルール'),
+        '用户协议'    => array('用户协议', 'Terms of Service', '利用規約'),
+        '隐私政策'    => array('隐私政策', 'Privacy Policy', 'プライバシーポリシー'),
+        '更新日志'    => array('更新日志', 'Changelog', '更新履歴'),
+    );
+    $x = isset($map[$docName]) ? $map[$docName] : array($docName, $docName, $docName);
+    return e(seo_t($x[0], $x[1], $x[2]));
+}
+
+/** 「← 返回榜单」 */
+function seo_back(): string
+{
+    return seo_t('← 返回榜单', '← Back to the ranking', '← ランキングへ戻る');
+}
+
 /** 文档名白名单（与前端 pages/doc.js 的 ALLOWED 一致） */
 function seo_doc_names(): array
 {
@@ -330,9 +412,14 @@ function seo_doc_name(string $sub): string
 }
 
 /** 读取并粗略去 Markdown，得到纯文本（供 description 与 SSR 段落） */
-function seo_doc_text(string $docName): string
+function seo_doc_text(string $docName, string $lang = 'zh'): string
 {
-    $path = APP_ROOT . '/assets/docs/' . seo_doc_name($docName) . '.md';
+    /* 英文版与日文界面共用英文文档；中文界面读原文 */
+    $slug = seo_doc_slug(seo_doc_name($docName));
+    $path = ($lang === 'zh')
+        ? APP_ROOT . '/assets/docs/' . seo_doc_name($docName) . '.md'
+        : APP_ROOT . '/assets/docs/en/' . $slug . '.md';
+    if (!is_file($path)) { $path = APP_ROOT . '/assets/docs/' . seo_doc_name($docName) . '.md'; }
     if (!is_file($path)) { return ''; }
     $md = (string)@file_get_contents($path);
     if ($md === '') { return ''; }

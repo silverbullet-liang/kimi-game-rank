@@ -57,20 +57,20 @@ export async function renderLogin(container) {
       <div class="field">
         <label>用户名${sub === 'register' ? '（即昵称，全站展示，注册后不可更改）' : ''}</label>
         <input class="input" id="uName" type="text" autocomplete="username"
-               placeholder="${sub === 'register' ? '2-64 位，中文、字母、数字或符号均可' : t('请输入用户名')}">
+               placeholder="${sub === 'register' ? t('2-64 位，中文、字母、数字或符号均可') : t('请输入用户名')}">
       </div>
       <div class="field">
         <label>密码${sub === 'register' ? '（8-64 位，建议同时包含数字和字母）' : ''}</label>
         <div class="input-wrap">
-          <input class="input" id="uPwd" type="password" autocomplete="${sub === 'register' ? 'new-password' : 'current-password'}" placeholder="${sub === 'register' ? '设置 8-64 位密码' : t('请输入密码')}">
-          <button class="icon-btn eye" id="eyeBtn" type="button" aria-label="显示密码">
+          <input class="input" id="uPwd" type="password" autocomplete="${sub === 'register' ? 'new-password' : 'current-password'}" placeholder="${sub === 'register' ? t('设置 8-64 位密码') : t('请输入密码')}">
+          <button class="icon-btn eye" id="eyeBtn" type="button" aria-label="${t('显示密码')}">
             <svg viewBox="0 0 24 24" class="ic"><path d="M12 5c5 0 9 4.5 9 7s-4 7-9 7-9-4.5-9-7 4-7 9-7zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg>
           </button>
         </div>
       </div>
       <div class="agree">
         <span class="box ${agreed ? 'on' : ''}" id="agreeBox"><svg viewBox="0 0 24 24" class="ic"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></span>
-        <span>我已阅读并同意<span class="link" data-doc="用户协议">《用户协议》</span>与<span class="link" data-doc="隐私政策">《隐私政策》</span>（本站为个人兴趣分享，请文明互动）</span>
+        <span>我已阅读并同意<span class="link" data-doc="用户协议">《用户协议》</span>${t('与')}<span class="link" data-doc="隐私政策">《隐私政策》</span>（本站为个人兴趣分享，请文明互动）</span>
       </div>
       <div id="capBox" style="margin-bottom:12px"></div>
       <button class="btn" id="submitBtn" style="width:100%">${sub === 'register' ? '注册并登录' : t('登录')}</button>
@@ -90,7 +90,7 @@ export async function renderLogin(container) {
     const vBox = pane.querySelector('#regVideoFrame');
     if (vBtn && vBox) {
       vBtn.addEventListener('click', () => {
-        vBox.innerHTML = '<iframe src="https://player.bilibili.com/player.html?bvid=BV1AinG6fEUo&page=1&high_quality=1&danmaku=1&autoplay=0" scrolling="no" frameborder="no" allowfullscreen="true" referrerpolicy="no-referrer-when-downgrade" title="Kimi 游戏榜宣传视频"></iframe>';
+        vBox.innerHTML = '<iframe src="https://player.bilibili.com/player.html?bvid=BV1AinG6fEUo&page=1&high_quality=1&danmaku=1&autoplay=0" scrolling="no" frameborder="no" allowfullscreen="true" referrerpolicy="no-referrer-when-downgrade" title="' + t('Kimi 游戏榜宣传视频') + '"></iframe>';
         vBtn.remove();
       });
     }
