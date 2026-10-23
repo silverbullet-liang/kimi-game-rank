@@ -105,8 +105,8 @@ export async function saveTheme(patch) {
 export function initSystemWatcher() {
   const mq = window.matchMedia('(prefers-color-scheme: dark)');
   const handler = () => {
-    const t = state.settings.theme || getPrefs().theme || 'light';
-    if (t === 'system') applyTheme();
+    const sysMode = state.settings.theme || getPrefs().theme || 'light';
+    if (sysMode === 'system') applyTheme();
   };
   if (mq.addEventListener) mq.addEventListener('change', handler);
   else if (mq.addListener) mq.addListener(handler);

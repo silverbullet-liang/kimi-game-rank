@@ -208,9 +208,9 @@ const state = {
  */
 function installImageFallback() {
   document.addEventListener('error', function (e) {
-    var t = e.target;
-    if (!t || t.tagName !== 'IMG') { return; }
-    t.style.visibility = 'hidden';
+    var img = e.target;
+    if (!img || img.tagName !== 'IMG') { return; }
+    img.style.visibility = 'hidden';
   }, true);
 }
 installImageFallback();
@@ -310,12 +310,12 @@ function blockRules() {
     : String((state.settings || {}).block_words || '');
   const out = [];
   raw.split(/\r?\n/).forEach(line => {
-    const t = line.trim();
-    if (!t || t.length > 100) { return; }
+    const rule = line.trim();
+    if (!rule || rule.length > 100) { return; }
     if (out.length >= 50) { return; }
-    const m = t.match(/^\/(.+)\/([imsu]*)$/);
+    const m = rule.match(/^\/(.+)\/([imsu]*)$/);
     if (m) { try { out.push(new RegExp(m[1], m[2])); } catch (e) {} }
-    else { out.push(t.toLowerCase()); }
+    else { out.push(rule.toLowerCase()); }
   });
   return out;
 }
@@ -594,8 +594,8 @@ function prompt_(title, text, confirmLabel = t('确定'), defaultValue = '') {
  * 1) 取 CSRF → 2) 有 token 则 verify，失败则落游客 → 3) 无 token 申请游客令牌
  * ============================================================ */
 async function boot() {
-  const t = getToken();
-  if (t) { setToken(t); }
+  const bootTok = getToken();
+  if (bootTok) { setToken(bootTok); }
 
   /* 启动载荷：一次请求拿回 csrf、登录态（无令牌则顺带下发游客令牌）、
      站内公告、分类计数，以及（榜单页）首屏第一页。
@@ -1090,14 +1090,14 @@ function mdToHtml(md, inlineExtra) {
   const flushTable = () => {
     if (!tableBuf.length) return;
     const rows = tableBuf.filter(r => !/^\s*\|?[\s:\-|]+\|?\s*$/.test(r));
-    let t = '<table>';
+    let tblHtml = '<table>';
     rows.forEach((r, idx) => {
       const cells = r.replace(/^\||\|$/g, '').split('|').map(c => c.trim());
       const tag = idx === 0 ? 'th' : 'td';
-      t += '<tr>' + cells.map(c => `<${tag}>${inline(c)}</${tag}>`).join('') + '</tr>';
+      tblHtml += '<tr>' + cells.map(c => `<${tag}>${inline(c)}</${tag}>`).join('') + '</tr>';
     });
-    t += '</table>';
-    html += t;
+    tblHtml += '</table>';
+    html += tblHtml;
     tableBuf = []; inTable = false;
   };
 
@@ -1252,8 +1252,8 @@ async function saveTheme(patch) {
 function initSystemWatcher() {
   const mq = window.matchMedia('(prefers-color-scheme: dark)');
   const handler = () => {
-    const t = state.settings.theme || getPrefs().theme || 'light';
-    if (t === 'system') applyTheme();
+    const sysMode = state.settings.theme || getPrefs().theme || 'light';
+    if (sysMode === 'system') applyTheme();
   };
   if (mq.addEventListener) mq.addEventListener('change', handler);
   else if (mq.addListener) mq.addListener(handler);
@@ -1334,20 +1334,20 @@ async function runTransition(dir, update) {
   const done = function () { try { delete root.dataset.navDir; } catch (e) {} };
 
   /* 新签名支持 types（Chrome 125+）；老实现只接受回调 */
-  let t = null;
+  let vt = null;
   try {
-    t = document.startViewTransition({ update: update, types: [dir] });
+    vt = document.startViewTransition({ update: update, types: [dir] });
   } catch (e1) {
-    try { t = document.startViewTransition(update); } catch (e2) { t = null; }
+    try { vt = document.startViewTransition(update); } catch (e2) { vt = null; }
   }
 
-  if (t) {
+  if (vt) {
     /* ready 在「转场被跳过」时会 reject（InvalidStateError: Document hidden 等）。
        我们从不 await 它 —— 不接住就会冒成「未处理的 Promise 错误」；
        而转场被跳过根本不是错误，页面照样完成切换。 */
-    if (t.ready && typeof t.ready.catch === 'function') { t.ready.catch(function () {}); }
-    if (t.finished && typeof t.finished.then === 'function') {
-      await t.finished.catch(function () {});      // 中途被中止同样不该冒泡
+    if (vt.ready && typeof vt.ready.catch === 'function') { vt.ready.catch(function () {}); }
+    if (vt.finished && typeof vt.finished.then === 'function') {
+      await vt.finished.catch(function () {});      // 中途被中止同样不该冒泡
     } else {
       await update();
     }
@@ -1384,19 +1384,19 @@ function enablePredictiveBack(view, opts) {
   view.addEventListener('touchstart', function (e) {
     if (!opts.canBack || !opts.canBack()) { return; }
     if (e.touches.length !== 1) { return; }
-    const t = e.touches[0];
-    if (t.clientX > EDGE) { return; }
+    const touch0 = e.touches[0];
+    if (touch0.clientX > EDGE) { return; }
     tracking = true; decided = false; dx = 0;
-    startX = t.clientX; startY = t.clientY;
+    startX = touch0.clientX; startY = touch0.clientY;
     view.style.transition = 'none';
     view.style.willChange = 'transform';
   }, { passive: true });
 
   view.addEventListener('touchmove', function (e) {
     if (!tracking) { return; }
-    const t = e.touches[0];
-    const mx = t.clientX - startX;
-    const my = t.clientY - startY;
+    const touchMove = e.touches[0];
+    const mx = touchMove.clientX - startX;
+    const my = touchMove.clientY - startY;
 
     /* 先判断意图：纵向滑动为主则放弃（避免与页面滚动打架） */
     if (!decided) {
@@ -3365,8 +3365,8 @@ async function mountAi(body) {
     const site = t(' · 全站余 ') + d.site.remaining + '/' + d.site.limit;
     if (d.unlimited) { return t('当前身份：') + (state.role === 'subadmin' ? '副管理员' : t('管理员')) + t(' · 无限制') + site; }
     if (selModel && d.online) { return t('今日 你 ') + d.user.used + '/' + d.user.limit + t(' 次') + site; }
-    const t = d.token || {};
-    return t('今日 ') + (t.today || 0) + '/' + (t.daily_limit || 0) + ' tokens' + site;
+    const tk = d.token || {};
+    return t('今日 ') + (tk.today || 0) + '/' + (tk.daily_limit || 0) + ' tokens' + site;
   }
   function paintQuota() { if (quotaTip && lastState) { quotaTip.textContent = quotaText(lastState); } }
 
@@ -3569,9 +3569,9 @@ async function mountAi(body) {
     } else if (!stopped && !gotDone) {
       // 未正常收尾（被主机掐断 / 无输出 / 中途断流）→ 非流式补齐完整回答
       try {
-        const t = await sendSync(text, target, streamAccepted);
+        const resSync = await sendSync(text, target, streamAccepted);
         const p = aiParts(target);
-        if (t) { p.text.innerHTML = renderAiRich(t); }
+        if (resSync) { p.text.innerHTML = renderAiRich(resSync); }
         else if (!gotAny) { p.text.textContent = t('（无内容返回，请稍后重试）'); }
       } catch (e) {
         const p = aiParts(target);
@@ -3597,8 +3597,8 @@ async function mountAi(body) {
   /** 重试（复用气泡，仅补一次非流式结果） */
   async function sendAgain(text, target) {
     try {
-      const t = await sendSync(text, target);
-      aiParts(target).text.innerHTML = t ? renderAiRich(t) : t('（无内容返回）');
+      const resAgain = await sendSync(text, target);
+      aiParts(target).text.innerHTML = resAgain ? renderAiRich(resAgain) : t('（无内容返回）');
     } catch (e) {
       aiParts(target).text.innerHTML = `<span style="color:var(--danger)">${esc(e.message || t('发送失败'))}</span>`;
     }
@@ -4517,7 +4517,7 @@ async function monRenderBody(container) {
 
 /** 单个指标卡；tone: '' | 'ok' | 'warn' | 'bad' —— 决定数值配色 */
 function monKpi(label, value, tone) {
-  const t = tone ? ' mk-' + tone : '';
+  const toneCls = tone ? ' mk-' + tone : '';
   return `<div class="mon-kpi${t}"><div class="mk-v">${esc(String(value))}</div><div class="mk-l">${esc(label)}</div></div>`;
 }
 /** 指标分组（带小标题），一眼分清「流量 / 性能 / 错误」 */
@@ -6300,9 +6300,9 @@ function bindCredential(container) {
   const btn = container.querySelector('#saveTokBtn');
   if (btn) {
     btn.addEventListener('click', async () => {
-      const t = container.querySelector('#tokInput').value.trim();
-      if (!t) { toast('请填写 cookie/token', 'err'); return; }
-      try { await api('admin.php', 'token_set', { kimi_token: t }); container.querySelector('#tokInput').value = ''; toast('已加密保存'); }
+      const tokField = container.querySelector('#tokInput').value.trim();
+      if (!tokField) { toast('请填写 cookie/token', 'err'); return; }
+      try { await api('admin.php', 'token_set', { kimi_token: tokField }); container.querySelector('#tokInput').value = ''; toast('已加密保存'); }
       catch (e) { toast(e.message, 'err'); }
     });
   }
@@ -7746,9 +7746,9 @@ function fbNode(f, isAdmin, reload) {
 
   const reply = el.querySelector('[data-act="reply"]');
   if (reply) reply.addEventListener('click', async () => {
-    const t = await promptText();
-    if (!t) return;
-    try { await api('feedback.php', 'reply', { id: f.id, content: t }); toast('已回复'); reload(); }
+    const replyText = await promptText();
+    if (!replyText) return;
+    try { await api('feedback.php', 'reply', { id: f.id, content: replyText }); toast('已回复'); reload(); }
     catch (e) { toast(e.message, 'err'); }
   });
   const del = el.querySelector('[data-act="del"]');
@@ -7858,7 +7858,10 @@ async function renderSubmit(container) {
       <div class="card-title">第二步 · 搜索作品</div>
       <p class="tiny muted">在 Kimi 社区里搜，选中后自动填好下面的表单。</p>
       <div class="field">
-        <input class="input" id="sbSearch" placeholder="${t('作品名称 / 关键词')}" autocomplete="off">
+        <div class="sb-row">
+          <input class="input" id="sbSearch" style="flex:1;min-width:0" placeholder="${t('作品名称 / 关键词')}" autocomplete="off">
+          <button class="btn btn-sm" id="sbSearchGo" type="button">${t('搜索')}</button>
+        </div>
       </div>
       <div id="sbHits"></div>
     </div>
@@ -7926,15 +7929,23 @@ async function renderSubmit(container) {
           catch (e) { try { r = await kimiAuth('GetLoginQRCodeStatus', { code: d.code }); } catch (e2) { r = null; } }
           if (!r) { return; }
           if (r.accessToken && !r.token) { r.token = r.accessToken; }
-          if (r && r.status === 'SUCCESS' && r.token) {
+          /* 官方状态值形如 STATUS_PENDING / STATUS_SUCCESS：去掉前缀再比较 */
+          const st = String(r.status || '').toUpperCase().replace(/^STATUS_/, '');
+          if (st === 'SUCCESS') {
+            const tok = String(r.token || r.accessToken || '').trim();
             stopQR();
-            tokenEl.value = r.token;
-            $('sbQrTip').textContent = t('已获取登录态');
             box.hidden = true;
-            toast('登录成功');
-          } else if (r && r.status === 'SCANNED') {
+            if (tok) {
+              tokenEl.value = tok;
+              tokenEl.dispatchEvent(new Event('input', { bubbles: true }));   // 让页面上的其它校验感知到已填
+              $('sbQrTip').textContent = t('已获取登录态');
+              toast(t('登录成功，登录态已自动填入'));
+            } else {
+              $('sbQrTip').textContent = t('扫码成功，但没取到登录态，请改用粘贴');
+            }
+          } else if (st === 'SCANNED') {
             $('sbQrTip').textContent = t('已扫码，请在手机上确认');
-          } else if (r && r.status === 'EXPIRED') {
+          } else if (st === 'EXPIRED' || st === 'CANCELLED') {
             stopQR();
             $('sbQrTip').textContent = t('二维码已过期，请重新生成');
           }
@@ -7948,11 +7959,9 @@ async function renderSubmit(container) {
 
   /* ---------- Kimi 社区搜索 ---------- */
   let timer = 0, seq = 0;
-  $('sbSearch').addEventListener('input', () => {
-    const q = $('sbSearch').value.trim();
-    clearTimeout(timer);
-    if (!q) { hits.innerHTML = ''; return; }
-    timer = setTimeout(async () => {
+  const runSearch = async () => {
+    {
+      const q = $('sbSearch').value.trim();
       const token = tokenEl.value.trim();
       if (!token) { hits.innerHTML = '<p class="tiny muted">请先在上方填写登录态，然后才能搜索社区。</p>'; return; }
       const my = ++seq;
@@ -7973,10 +7982,19 @@ async function renderSubmit(container) {
             <span class="sb-tag">${it.exists ? '已在榜' : t('选择')}</span>
           </div>`).join('');
       } catch (e) {
-        if (my === seq) { hits.innerHTML = '<p class="tiny muted">' + esc(e.message || '搜索失败') + '</p>'; }
+        if (my === seq) { hits.innerHTML = '<p class="tiny muted">' + esc(e.message || t('搜索失败')) + '</p>'; }
       }
-    }, 380);
+    }
+  };
+  $('sbSearch').addEventListener('input', () => {
+    clearTimeout(timer);
+    if (!$('sbSearch').value.trim()) { hits.innerHTML = ''; return; }
+    timer = setTimeout(runSearch, 380);
   });
+  $('sbSearch').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); clearTimeout(timer); runSearch(); }
+  });
+  $('sbSearchGo').addEventListener('click', () => { clearTimeout(timer); runSearch(); });
 
   hits.addEventListener('click', (e) => {
     const row = e.target.closest('.sb-hit');

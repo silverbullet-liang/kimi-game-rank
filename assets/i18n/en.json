@@ -771,5 +771,7 @@
  "已开始下载 ": "Downloading ",
  "收起回复": "Collapse",
  "2-64 位，中文、字母、数字或符号均可": "2–64 characters: letters, digits, Chinese characters or symbols",
- "设置 8-64 位密码": "Set a password of 8–64 characters"
+ "设置 8-64 位密码": "Set a password of 8–64 characters",
+ "登录成功，登录态已自动填入": "Signed in — the login state has been filled in for you.",
+ "扫码成功，但没取到登录态，请改用粘贴": "Scan succeeded but no login state came back — paste it instead."
 }

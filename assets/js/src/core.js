@@ -28,9 +28,9 @@ export const state = {
  */
 export function installImageFallback() {
   document.addEventListener('error', function (e) {
-    var t = e.target;
-    if (!t || t.tagName !== 'IMG') { return; }
-    t.style.visibility = 'hidden';
+    var img = e.target;
+    if (!img || img.tagName !== 'IMG') { return; }
+    img.style.visibility = 'hidden';
   }, true);
 }
 installImageFallback();
@@ -130,12 +130,12 @@ export function blockRules() {
     : String((state.settings || {}).block_words || '');
   const out = [];
   raw.split(/\r?\n/).forEach(line => {
-    const t = line.trim();
-    if (!t || t.length > 100) { return; }
+    const rule = line.trim();
+    if (!rule || rule.length > 100) { return; }
     if (out.length >= 50) { return; }
-    const m = t.match(/^\/(.+)\/([imsu]*)$/);
+    const m = rule.match(/^\/(.+)\/([imsu]*)$/);
     if (m) { try { out.push(new RegExp(m[1], m[2])); } catch (e) {} }
-    else { out.push(t.toLowerCase()); }
+    else { out.push(rule.toLowerCase()); }
   });
   return out;
 }
@@ -414,8 +414,8 @@ export function prompt_(title, text, confirmLabel = t('确定'), defaultValue = 
  * 1) 取 CSRF → 2) 有 token 则 verify，失败则落游客 → 3) 无 token 申请游客令牌
  * ============================================================ */
 export async function boot() {
-  const t = getToken();
-  if (t) { setToken(t); }
+  const bootTok = getToken();
+  if (bootTok) { setToken(bootTok); }
 
   /* 启动载荷：一次请求拿回 csrf、登录态（无令牌则顺带下发游客令牌）、
      站内公告、分类计数，以及（榜单页）首屏第一页。

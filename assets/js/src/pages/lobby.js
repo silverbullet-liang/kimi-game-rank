@@ -921,8 +921,8 @@ async function mountAi(body) {
     const site = t(' · 全站余 ') + d.site.remaining + '/' + d.site.limit;
     if (d.unlimited) { return t('当前身份：') + (state.role === 'subadmin' ? '副管理员' : t('管理员')) + t(' · 无限制') + site; }
     if (selModel && d.online) { return t('今日 你 ') + d.user.used + '/' + d.user.limit + t(' 次') + site; }
-    const t = d.token || {};
-    return t('今日 ') + (t.today || 0) + '/' + (t.daily_limit || 0) + ' tokens' + site;
+    const tk = d.token || {};
+    return t('今日 ') + (tk.today || 0) + '/' + (tk.daily_limit || 0) + ' tokens' + site;
   }
   function paintQuota() { if (quotaTip && lastState) { quotaTip.textContent = quotaText(lastState); } }
 
@@ -1125,9 +1125,9 @@ async function mountAi(body) {
     } else if (!stopped && !gotDone) {
       // 未正常收尾（被主机掐断 / 无输出 / 中途断流）→ 非流式补齐完整回答
       try {
-        const t = await sendSync(text, target, streamAccepted);
+        const resSync = await sendSync(text, target, streamAccepted);
         const p = aiParts(target);
-        if (t) { p.text.innerHTML = renderAiRich(t); }
+        if (resSync) { p.text.innerHTML = renderAiRich(resSync); }
         else if (!gotAny) { p.text.textContent = t('（无内容返回，请稍后重试）'); }
       } catch (e) {
         const p = aiParts(target);
@@ -1153,8 +1153,8 @@ async function mountAi(body) {
   /** 重试（复用气泡，仅补一次非流式结果） */
   async function sendAgain(text, target) {
     try {
-      const t = await sendSync(text, target);
-      aiParts(target).text.innerHTML = t ? renderAiRich(t) : t('（无内容返回）');
+      const resAgain = await sendSync(text, target);
+      aiParts(target).text.innerHTML = resAgain ? renderAiRich(resAgain) : t('（无内容返回）');
     } catch (e) {
       aiParts(target).text.innerHTML = `<span style="color:var(--danger)">${esc(e.message || t('发送失败'))}</span>`;
     }

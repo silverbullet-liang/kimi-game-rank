@@ -77,9 +77,9 @@ function fbNode(f, isAdmin, reload) {
 
   const reply = el.querySelector('[data-act="reply"]');
   if (reply) reply.addEventListener('click', async () => {
-    const t = await promptText();
-    if (!t) return;
-    try { await api('feedback.php', 'reply', { id: f.id, content: t }); toast('已回复'); reload(); }
+    const replyText = await promptText();
+    if (!replyText) return;
+    try { await api('feedback.php', 'reply', { id: f.id, content: replyText }); toast('已回复'); reload(); }
     catch (e) { toast(e.message, 'err'); }
   });
   const del = el.querySelector('[data-act="del"]');

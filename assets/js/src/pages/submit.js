@@ -79,7 +79,10 @@ export async function renderSubmit(container) {
       <div class="card-title">第二步 · 搜索作品</div>
       <p class="tiny muted">在 Kimi 社区里搜，选中后自动填好下面的表单。</p>
       <div class="field">
-        <input class="input" id="sbSearch" placeholder="${t('作品名称 / 关键词')}" autocomplete="off">
+        <div class="sb-row">
+          <input class="input" id="sbSearch" style="flex:1;min-width:0" placeholder="${t('作品名称 / 关键词')}" autocomplete="off">
+          <button class="btn btn-sm" id="sbSearchGo" type="button">${t('搜索')}</button>
+        </div>
       </div>
       <div id="sbHits"></div>
     </div>
@@ -147,15 +150,23 @@ export async function renderSubmit(container) {
           catch (e) { try { r = await kimiAuth('GetLoginQRCodeStatus', { code: d.code }); } catch (e2) { r = null; } }
           if (!r) { return; }
           if (r.accessToken && !r.token) { r.token = r.accessToken; }
-          if (r && r.status === 'SUCCESS' && r.token) {
+          /* 官方状态值形如 STATUS_PENDING / STATUS_SUCCESS：去掉前缀再比较 */
+          const st = String(r.status || '').toUpperCase().replace(/^STATUS_/, '');
+          if (st === 'SUCCESS') {
+            const tok = String(r.token || r.accessToken || '').trim();
             stopQR();
-            tokenEl.value = r.token;
-            $('sbQrTip').textContent = t('已获取登录态');
             box.hidden = true;
-            toast('登录成功');
-          } else if (r && r.status === 'SCANNED') {
+            if (tok) {
+              tokenEl.value = tok;
+              tokenEl.dispatchEvent(new Event('input', { bubbles: true }));   // 让页面上的其它校验感知到已填
+              $('sbQrTip').textContent = t('已获取登录态');
+              toast(t('登录成功，登录态已自动填入'));
+            } else {
+              $('sbQrTip').textContent = t('扫码成功，但没取到登录态，请改用粘贴');
+            }
+          } else if (st === 'SCANNED') {
             $('sbQrTip').textContent = t('已扫码，请在手机上确认');
-          } else if (r && r.status === 'EXPIRED') {
+          } else if (st === 'EXPIRED' || st === 'CANCELLED') {
             stopQR();
             $('sbQrTip').textContent = t('二维码已过期，请重新生成');
           }
@@ -169,11 +180,9 @@ export async function renderSubmit(container) {
 
   /* ---------- Kimi 社区搜索 ---------- */
   let timer = 0, seq = 0;
-  $('sbSearch').addEventListener('input', () => {
-    const q = $('sbSearch').value.trim();
-    clearTimeout(timer);
-    if (!q) { hits.innerHTML = ''; return; }
-    timer = setTimeout(async () => {
+  const runSearch = async () => {
+    {
+      const q = $('sbSearch').value.trim();
       const token = tokenEl.value.trim();
       if (!token) { hits.innerHTML = '<p class="tiny muted">请先在上方填写登录态，然后才能搜索社区。</p>'; return; }
       const my = ++seq;
@@ -194,10 +203,19 @@ export async function renderSubmit(container) {
             <span class="sb-tag">${it.exists ? '已在榜' : t('选择')}</span>
           </div>`).join('');
       } catch (e) {
-        if (my === seq) { hits.innerHTML = '<p class="tiny muted">' + esc(e.message || '搜索失败') + '</p>'; }
+        if (my === seq) { hits.innerHTML = '<p class="tiny muted">' + esc(e.message || t('搜索失败')) + '</p>'; }
       }
-    }, 380);
+    }
+  };
+  $('sbSearch').addEventListener('input', () => {
+    clearTimeout(timer);
+    if (!$('sbSearch').value.trim()) { hits.innerHTML = ''; return; }
+    timer = setTimeout(runSearch, 380);
   });
+  $('sbSearch').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); clearTimeout(timer); runSearch(); }
+  });
+  $('sbSearchGo').addEventListener('click', () => { clearTimeout(timer); runSearch(); });
 
   hits.addEventListener('click', (e) => {
     const row = e.target.closest('.sb-hit');

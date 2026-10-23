@@ -72,20 +72,20 @@ export async function runTransition(dir, update) {
   const done = function () { try { delete root.dataset.navDir; } catch (e) {} };
 
   /* 新签名支持 types（Chrome 125+）；老实现只接受回调 */
-  let t = null;
+  let vt = null;
   try {
-    t = document.startViewTransition({ update: update, types: [dir] });
+    vt = document.startViewTransition({ update: update, types: [dir] });
   } catch (e1) {
-    try { t = document.startViewTransition(update); } catch (e2) { t = null; }
+    try { vt = document.startViewTransition(update); } catch (e2) { vt = null; }
   }
 
-  if (t) {
+  if (vt) {
     /* ready 在「转场被跳过」时会 reject（InvalidStateError: Document hidden 等）。
        我们从不 await 它 —— 不接住就会冒成「未处理的 Promise 错误」；
        而转场被跳过根本不是错误，页面照样完成切换。 */
-    if (t.ready && typeof t.ready.catch === 'function') { t.ready.catch(function () {}); }
-    if (t.finished && typeof t.finished.then === 'function') {
-      await t.finished.catch(function () {});      // 中途被中止同样不该冒泡
+    if (vt.ready && typeof vt.ready.catch === 'function') { vt.ready.catch(function () {}); }
+    if (vt.finished && typeof vt.finished.then === 'function') {
+      await vt.finished.catch(function () {});      // 中途被中止同样不该冒泡
     } else {
       await update();
     }
@@ -122,19 +122,19 @@ export function enablePredictiveBack(view, opts) {
   view.addEventListener('touchstart', function (e) {
     if (!opts.canBack || !opts.canBack()) { return; }
     if (e.touches.length !== 1) { return; }
-    const t = e.touches[0];
-    if (t.clientX > EDGE) { return; }
+    const touch0 = e.touches[0];
+    if (touch0.clientX > EDGE) { return; }
     tracking = true; decided = false; dx = 0;
-    startX = t.clientX; startY = t.clientY;
+    startX = touch0.clientX; startY = touch0.clientY;
     view.style.transition = 'none';
     view.style.willChange = 'transform';
   }, { passive: true });
 
   view.addEventListener('touchmove', function (e) {
     if (!tracking) { return; }
-    const t = e.touches[0];
-    const mx = t.clientX - startX;
-    const my = t.clientY - startY;
+    const touchMove = e.touches[0];
+    const mx = touchMove.clientX - startX;
+    const my = touchMove.clientY - startY;
 
     /* 先判断意图：纵向滑动为主则放弃（避免与页面滚动打架） */
     if (!decided) {

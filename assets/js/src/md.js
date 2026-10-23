@@ -28,14 +28,14 @@ export function mdToHtml(md, inlineExtra) {
   const flushTable = () => {
     if (!tableBuf.length) return;
     const rows = tableBuf.filter(r => !/^\s*\|?[\s:\-|]+\|?\s*$/.test(r));
-    let t = '<table>';
+    let tblHtml = '<table>';
     rows.forEach((r, idx) => {
       const cells = r.replace(/^\||\|$/g, '').split('|').map(c => c.trim());
       const tag = idx === 0 ? 'th' : 'td';
-      t += '<tr>' + cells.map(c => `<${tag}>${inline(c)}</${tag}>`).join('') + '</tr>';
+      tblHtml += '<tr>' + cells.map(c => `<${tag}>${inline(c)}</${tag}>`).join('') + '</tr>';
     });
-    t += '</table>';
-    html += t;
+    tblHtml += '</table>';
+    html += tblHtml;
     tableBuf = []; inTable = false;
   };
 

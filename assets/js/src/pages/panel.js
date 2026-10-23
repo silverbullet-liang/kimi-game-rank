@@ -1313,9 +1313,9 @@ function bindCredential(container) {
   const btn = container.querySelector('#saveTokBtn');
   if (btn) {
     btn.addEventListener('click', async () => {
-      const t = container.querySelector('#tokInput').value.trim();
-      if (!t) { toast('请填写 cookie/token', 'err'); return; }
-      try { await api('admin.php', 'token_set', { kimi_token: t }); container.querySelector('#tokInput').value = ''; toast('已加密保存'); }
+      const tokField = container.querySelector('#tokInput').value.trim();
+      if (!tokField) { toast('请填写 cookie/token', 'err'); return; }
+      try { await api('admin.php', 'token_set', { kimi_token: tokField }); container.querySelector('#tokInput').value = ''; toast('已加密保存'); }
       catch (e) { toast(e.message, 'err'); }
     });
   }

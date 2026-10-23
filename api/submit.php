@@ -150,8 +150,12 @@ if ($action === 'qr_poll') {
     $r = submit_kimi_post('account.gateway.v1.AuthService/GetLoginQRCodeStatus', array('code' => $qr));
     if ($r['code'] !== 200) { fail(502, '扫码状态查询失败'); }
     $j = $r['json'];
-    $status = isset($j['status']) ? (string)$j['status'] : '';
+    /* 官方返回 STATUS_PENDING / STATUS_SCANNED / STATUS_SUCCESS / STATUS_EXPIRED，
+       统一去掉前缀，前端只比较 PENDING / SCANNED / SUCCESS / EXPIRED */
+    $status = isset($j['status']) ? strtoupper((string)$j['status']) : '';
+    $status = (string)preg_replace('/^STATUS_/', '', $status);
     $token  = isset($j['accessToken']) ? (string)$j['accessToken'] : '';
+    if ($token === '' && isset($j['token'])) { $token = (string)$j['token']; }
     ok(array('status' => $status, 'token' => $status === 'SUCCESS' ? $token : ''));
 }
 

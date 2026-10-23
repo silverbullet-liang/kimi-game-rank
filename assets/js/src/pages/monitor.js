@@ -101,7 +101,7 @@ async function monRenderBody(container) {
 
 /** 单个指标卡；tone: '' | 'ok' | 'warn' | 'bad' —— 决定数值配色 */
 function monKpi(label, value, tone) {
-  const t = tone ? ' mk-' + tone : '';
+  const toneCls = tone ? ' mk-' + tone : '';
   return `<div class="mon-kpi${t}"><div class="mk-v">${esc(String(value))}</div><div class="mk-l">${esc(label)}</div></div>`;
 }
 /** 指标分组（带小标题），一眼分清「流量 / 性能 / 错误」 */
