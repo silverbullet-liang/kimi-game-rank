@@ -1,0 +1,222 @@
+/* ============================================================
+ * 皮肤：5·12 · 静默灰蓝
+ * ------------------------------------------------------------
+ * 当日呈现：北京时间 5/12
+ *   这两个身份是同一天，合成一套主题：前半是**汶川地震纪念日**，
+ *   后半是程序员自嘲的 **512 = 1024 ÷ 2（半天）**。
+ *   比重必须是庄重压过玩笑：整体是默哀的灰蓝与一支烛，
+ *   「半天」只留一条停在 50% 的细线，不加任何庆祝性装饰。
+ *
+ * 设计意图
+ *   · 颜色只取石板灰蓝 + 烛火暖白：冷是底色，暖只有一点，像暗处的一支烛
+ *   · 一支烛：火焰极缓摇曳（4s），光晕软扩散，不做闪烁 —— 闪烁会变成特效
+ *   · 两朵白菊：极低不透明度，只在右下角点一下，不铺满
+ *   · 一条 50% 的线：从左侧铺到屏幕中线就停，旁边一枚 50% 小字，安静地说明"半天"
+ *   · 无飘落、无粒子、无彩带：这一天不适合喜庆动效
+ *   · 装饰层 pointer-events:none；尊重 prefers-reduced-motion
+ * ============================================================ */
+
+html[data-skin="may12"] {
+  --accent: #4A5D6E !important;
+  --accent-2: #A8894E !important;
+  --accent-ink: #F7FAFC !important;
+  --toggle-on: #4A5D6E !important;
+  --slider-fill: #4A5D6E !important;
+
+  --m12-slate: #4A5D6E;
+  --m12-slate-deep: #33424F;
+  --m12-slate-soft: #8FA6B6;
+  --m12-mist: #DCE6EE;
+  --m12-candle: #F3E2C0;
+  --m12-ember: #E8C88A;
+  --m12-ink: #1B2733;
+
+  --bg-1: #F6F8FA;
+  --bg-2: #E6ECF1;
+  --surface: rgba(255, 255, 255, .90);
+  --surface-solid: #FCFDFE;
+  --border: rgba(74, 93, 110, .18);
+  --border-soft: rgba(74, 93, 110, .09);
+  --text: #1B2733;
+  --text-2: #4E6172;
+  --text-3: #8497A6;
+
+  --radius-lg: 16px;
+  --radius-md: 11px;
+  --radius-sm: 8px;
+  --shadow: 0 10px 28px rgba(27, 39, 51, .13);
+  --shadow-sm: 0 3px 12px rgba(27, 39, 51, .08);
+
+  --tab-active-bg: rgba(74, 93, 110, .11);
+  --tab-active-fg: var(--m12-slate);
+  --msg-bg: rgba(255, 255, 255, .96);
+  --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg, #4A5D6E, #8FA6B6);
+  --msg-mine-fg: #F7FAFC;
+  --toast-bg: rgba(27, 39, 51, .95);
+  --toast-fg: #EAF1F6;
+  --toast-err-bg: #9E3A2E;
+}
+
+html[data-skin="may12"][data-theme="dark"] {
+  --bg-1: #0C1218;
+  --bg-2: #121B23;
+  --surface: rgba(20, 30, 39, .84);
+  --surface-solid: #121B23;
+  --border: rgba(143, 166, 182, .22);
+  --border-soft: rgba(143, 166, 182, .11);
+  --text: #DDE7EE;
+  --text-2: #9BAEBD;
+  --text-3: #6E8191;
+
+  --accent: #9DB7CB !important;
+  --accent-2: #D8B87E !important;
+  --accent-ink: #0B1116 !important;
+  --tab-active-bg: rgba(157, 183, 203, .15);
+  --tab-active-fg: #B9CEDD;
+  --msg-bg: rgba(24, 35, 45, .9);
+  --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg, #5C7285, #9DB7CB);
+  --msg-mine-fg: #0B1116;
+  --toast-bg: rgba(221, 231, 238, .95);
+  --toast-fg: #0C1218;
+}
+
+/* ============================================================
+ * 装饰层：一支烛 + 两朵白菊 + 停在 50% 的细线 + 一层薄雾
+ * ============================================================ */
+.fd-m12-candle, .fd-m12-chrys, .fd-m12-half, .fd-m12-mist { display: none; }
+
+html[data-skin="may12"] .festival-deco {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* 烛：暖白光晕 + 烛身 + 火焰（4s 极缓摇曳） */
+html[data-skin="may12"] .fd-m12-candle {
+  display: block;
+  position: absolute;
+  left: 20px;
+  bottom: 78px;
+  width: 12px;
+  height: 46px;
+  border-radius: 3px 3px 2px 2px;
+  background: linear-gradient(180deg, #FBFAF6, #E8E4DA 70%, #D8D2C4);
+  box-shadow: 0 0 26px 10px rgba(243, 226, 192, .45);
+  opacity: .92;
+}
+/* 火焰 */
+html[data-skin="may12"] .fd-m12-candle::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  width: 8px;
+  height: 14px;
+  margin-left: -4px;
+  border-radius: 50% 50% 46% 46% / 62% 62% 38% 38%;
+  background: radial-gradient(ellipse at 50% 72%, #FFF6E2 0 32%, var(--m12-ember) 58%, rgba(232, 200, 138, .18) 100%);
+  box-shadow: 0 0 12px 4px rgba(243, 226, 192, .55);
+  transform-origin: 50% 100%;
+  animation: m12-flame 4s ease-in-out infinite;
+}
+/* 烛芯 */
+html[data-skin="may12"] .fd-m12-candle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  width: 1px;
+  height: 5px;
+  margin-left: -.5px;
+  background: #6B5C43;
+}
+@keyframes m12-flame {
+  0%, 100% { transform: scaleY(1) rotate(-1.5deg); opacity: .92; }
+  50%      { transform: scaleY(1.06) rotate(1.5deg); opacity: 1; }
+}
+
+/* 白菊：两朵，重复锥形渐变做放射花瓣，透明度压得很低 */
+html[data-skin="may12"] .fd-m12-chrys {
+  display: block;
+  position: absolute;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, #CBBF9E 0 14%, rgba(0, 0, 0, 0) 15%),
+    repeating-conic-gradient(from 8deg,
+      rgba(255, 255, 255, .95) 0deg 8deg,
+      rgba(226, 233, 239, .55) 8deg 16deg);
+  box-shadow: 0 4px 14px rgba(27, 39, 51, .12);
+  opacity: .18;
+}
+html[data-skin="may12"] .fd-m12-chrys--1 { right: 26px; bottom: 118px; }
+html[data-skin="may12"] .fd-m12-chrys--2 { right: 78px; bottom: 66px; width: 38px; height: 38px; opacity: .13; }
+
+/* 停在 50% 的线：从左侧铺到屏幕中线，旁边一枚 50% 小字 */
+html[data-skin="may12"] .fd-m12-half {
+  display: block;
+  position: absolute;
+  left: 0;
+  bottom: 40px;
+  width: 50%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(74, 93, 110, .45));
+  opacity: .55;
+}
+html[data-skin="may12"] .fd-m12-half::after {
+  content: "50%";
+  position: absolute;
+  right: 0;
+  top: -14px;
+  font: 600 10px/1 ui-monospace, Menlo, monospace;
+  letter-spacing: .6px;
+  color: var(--text-3);
+  opacity: .8;
+}
+
+/* 薄雾：顶部一层极淡的冷光，压住"太干净"的感觉 */
+html[data-skin="may12"] .fd-m12-mist {
+  display: block;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 34vh;
+  background: linear-gradient(180deg, rgba(220, 230, 238, .34), transparent);
+  opacity: .7;
+}
+
+html[data-skin="may12"] .fj-locked { position: relative; }
+html[data-skin="may12"] .fj-locked::after {
+  content: "5·12 期间固定为「石板灰蓝」";
+  position: absolute;
+  inset: -4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent);
+  border-radius: 12px;
+  filter: none;
+}
+
+@media (max-width: 560px) {
+  html[data-skin="may12"] .fd-m12-chrys--2 { display: none; }
+  html[data-skin="may12"] .fd-m12-half { width: 44%; }
+  html[data-skin="may12"] .fd-m12-mist { height: 26vh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin="may12"] .fd-m12-candle::before { animation: none; opacity: .95; }
+}

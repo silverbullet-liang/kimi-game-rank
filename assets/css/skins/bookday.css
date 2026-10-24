@@ -1,0 +1,68 @@
+/* 皮肤：读书日 · 台灯下的光锥
+ * 呈现：4/23。母题=一盏台灯打下的三角光锥 + 光里的书页。
+ * 光锥用 clip-path 切三角，边缘加一点模糊；书页用细密横线表示行。 */
+html[data-skin="bookday"] {
+  --accent: #B4802E !important; --accent-2: #4A4033 !important; --accent-ink: #FFFBF2 !important;
+  --toggle-on: #B4802E !important; --slider-fill: #B4802E !important;
+  --bd-lamp: #E0B15A; --bd-lamp-soft: #F5DFAE; --bd-ink: #33291B; --bd-paper: #FBF7EF;
+  --bg-1: #FCF9F2; --bg-2: #F1E7D5; --surface: rgba(255,253,248,.91); --surface-solid: #FEFBF4;
+  --border: rgba(180,128,46,.17); --border-soft: rgba(180,128,46,.08);
+  --text: #33291B; --text-2: #6A5942; --text-3: #9B876B;
+  --radius-lg: 10px; --radius-md: 8px; --radius-sm: 5px;
+  --shadow: 0 9px 24px rgba(51,41,27,.14); --shadow-sm: 0 3px 10px rgba(51,41,27,.09);
+  --tab-active-bg: rgba(180,128,46,.12); --tab-active-fg: #94661F;
+  --msg-bg: rgba(255,253,248,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#B4802E,#4A4033); --msg-mine-fg: #FFFBF2;
+  --toast-bg: rgba(51,41,27,.95); --toast-fg: #FAF1E0; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="bookday"][data-theme="dark"] {
+  --bg-1: #14100A; --bg-2: #1E180F; --surface: rgba(35,29,19,.84); --surface-solid: #1E180F;
+  --border: rgba(245,223,174,.18); --border-soft: rgba(245,223,174,.09);
+  --text: #F0E7D6; --text-2: #C0AF93; --text-3: #8E7F68;
+  --accent: #E0B15A !important; --accent-2: #C0AF93 !important; --accent-ink: #14100A !important;
+  --tab-active-bg: rgba(224,177,90,.15); --tab-active-fg: #EBC47E;
+  --msg-bg: rgba(39,32,21,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#8E6422,#6A5A45); --msg-mine-fg: #FFFBF2;
+  --toast-bg: rgba(240,231,214,.95); --toast-fg: #14100A;
+}
+.fd-bd-cone, .fd-bd-page, .fd-bd-lamp { display: none; }
+html[data-skin="bookday"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 灯罩：一个梯形，压在右上 */
+html[data-skin="bookday"] .fd-bd-lamp {
+  display: block; position: absolute; right: 46px; top: 44px; width: 46px; height: 26px;
+  background: linear-gradient(180deg, rgba(224,177,90,.65), rgba(224,177,90,.28));
+  clip-path: polygon(18% 0, 82% 0, 100% 100%, 0 100%);
+  opacity: .85;
+}
+/* 光锥：从灯罩向下打出的三角，越往下越淡 */
+html[data-skin="bookday"] .fd-bd-cone {
+  display: block; position: absolute; right: -18px; top: 66px; width: 190px; height: 300px;
+  background: linear-gradient(180deg, rgba(224,177,90,.30), rgba(224,177,90,.06) 62%, transparent);
+  clip-path: polygon(36% 0, 64% 0, 100% 100%, 0 100%);
+  filter: blur(2px);
+  opacity: .9;
+}
+/* 书页：光锥里的一页，用细横线表示行 */
+html[data-skin="bookday"] .fd-bd-page {
+  display: block; position: absolute; right: 40px; bottom: 54px; width: 96px; height: 118px;
+  background:
+    repeating-linear-gradient(0deg, rgba(107,90,66,.28) 0 1px, transparent 1px 9px),
+    linear-gradient(160deg, #FFFDF6, #F2EAD8);
+  border: 1px solid rgba(180,128,46,.22);
+  border-radius: 2px 6px 6px 2px;
+  box-shadow: -3px 4px 14px rgba(51,41,27,.14);
+  transform: rotate(-5deg);
+  opacity: .92;
+}
+html[data-skin="bookday"] .fj-locked { position: relative; }
+html[data-skin="bookday"] .fj-locked::after {
+  content: "读书日期间固定为「暖黄 · 纸白」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 8px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="bookday"] .fd-bd-cone { width: 140px; height: 230px; right: -24px; }
+  html[data-skin="bookday"] .fd-bd-page { width: 74px; height: 92px; right: 22px; bottom: 62px; }
+  html[data-skin="bookday"] .fd-bd-lamp { right: 26px; width: 38px; height: 22px; }
+}

@@ -1629,6 +1629,13 @@ html[data-theme="dark"] .mon-app { --mok:#4ade80; --mwarn:#fbbf24; --mbad:#f8717
 .doc-lang button+button{border-left:1px solid var(--line)}
 .doc-lang button.on{color:var(--fg);background:color-mix(in srgb,var(--accent) 18%,transparent)}
 
+/* 节日装饰层兜底：容器默认不占位；带文字内容的装饰（1024 的二进制串与 </>）也必须默认隐藏。
+   只加载当前节日那一份皮肤，别家皮肤的规则不存在，这些文字就会漏成裸文本。
+   各皮肤自己的显示规则都带 html[data-skin="…"] 前缀（特异性更高），不会被这里覆盖。
+   其余装饰都是无文字的空元素，未生效时宽高为 0，无需在此处理。 */
+.festival-deco { display: none; pointer-events: none; }
+.fd-pd-rain, .fd-pd-angle { display: none; }
+
 /* 语言选择 */
 .lang-list{display:flex;gap:8px;flex-wrap:wrap}
 .lang-btn{appearance:none;border:1px solid var(--line);background:0;color:var(--muted);font-size:14px;padding:9px 18px;cursor:pointer}

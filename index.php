@@ -268,6 +268,48 @@ try {
   <span class="fd-cy-petal fd-cy-petal--2"></span>
   <span class="fd-cy-petal fd-cy-petal--3"></span>
   <span class="fd-cy-petal fd-cy-petal--4"></span>
+  <!-- 5·12：一支烛 + 两朵白菊 + 停在 50% 的线 + 顶部薄雾 -->
+  <span class="fd-m12-mist"></span>
+  <span class="fd-m12-candle"></span>
+  <span class="fd-m12-chrys fd-m12-chrys--1"></span>
+  <span class="fd-m12-chrys fd-m12-chrys--2"></span>
+  <span class="fd-m12-half"></span>
+  <!-- 1024 程序员节：代码雨 + 光标 + 角标 + 扫描线 -->
+  <span class="fd-pd-rain fd-pd-rain--1">01001010 01100101 01101101</span>
+  <span class="fd-pd-rain fd-pd-rain--2">11010110 00101101 10110100</span>
+  <span class="fd-pd-rain fd-pd-rain--3">01101101 10010011 01011010</span>
+  <span class="fd-pd-caret"></span>
+  <span class="fd-pd-angle">&lt;/&gt;</span>
+  <span class="fd-pd-scan"></span>
+  <!-- 春节：两盏灯笼 + 窗花 + 金色碎屑 -->
+  <span class="fd-sf-lantern fd-sf-lantern--l"><i></i></span>
+  <span class="fd-sf-lantern fd-sf-lantern--r"><i></i></span>
+  <span class="fd-sf-window"></span>
+  <span class="fd-sf-flake fd-sf-flake--1"></span>
+  <span class="fd-sf-flake fd-sf-flake--2"></span>
+  <span class="fd-sf-flake fd-sf-flake--3"></span>
+  <span class="fd-sf-flake fd-sf-flake--4"></span>
+  <!-- 记者节：报头双线 + 两侧栏线 + 朱批圈 + 钢笔尖 -->
+  <span class="fd-jn-rule fd-jn-rule--1"></span>
+  <span class="fd-jn-rule fd-jn-rule--2"></span>
+  <span class="fd-jn-rule fd-jn-rule--3"></span>
+  <span class="fd-jn-rule fd-jn-rule--4"></span>
+  <span class="fd-jn-mark"></span>
+  <span class="fd-jn-nib"></span>
+  <!-- 寒衣节：低垂的月 + 叠好的寒衣 + 霜粒 -->
+  <span class="fd-hy-moon"></span>
+  <span class="fd-hy-robe"></span>
+  <span class="fd-hy-frost fd-hy-frost--1"></span>
+  <span class="fd-hy-frost fd-hy-frost--2"></span>
+  <span class="fd-hy-frost fd-hy-frost--3"></span>
+  <span class="fd-hy-frost fd-hy-frost--4"></span>
+  <span class="fd-hy-frost fd-hy-frost--5"></span>
+  <span class="fd-hy-frost fd-hy-frost--6"></span>
+  <!-- 感恩节：底部暖光 + 南瓜 + 两片旋落枫叶 -->
+  <span class="fd-tg-glow"></span>
+  <span class="fd-tg-pumpkin"></span>
+  <span class="fd-tg-leaf fd-tg-leaf--1"></span>
+  <span class="fd-tg-leaf fd-tg-leaf--2"></span>
   <!-- 万圣夜：月亮 + 蝙蝠 + 南瓜灯 + 地面雾 -->
   <span class="fd-hw-moon"></span>
   <span class="fd-hw-bat fd-hw-bat--1"></span>
@@ -276,6 +318,156 @@ try {
   <span class="fd-hw-pumpkin"><i></i></span>
   <span class="fd-hw-fog fd-hw-fog--1"></span>
   <span class="fd-hw-fog fd-hw-fog--2"></span>
+  <!-- 警察节：警徽 + 两条警戒带 -->
+  <span class="fd-pl-badge"></span>
+  <span class="fd-pl-tape fd-pl-tape--1"></span>
+  <span class="fd-pl-tape fd-pl-tape--2"></span>
+  <!-- 腊八：一碗粥 + 七粒米 + 一缕热气 -->
+  <span class="fd-lb-bowl"></span>
+  <span class="fd-lb-grain--1"></span>
+  <span class="fd-lb-grain--2"></span>
+  <span class="fd-lb-grain--3"></span>
+  <span class="fd-lb-grain--4"></span>
+  <span class="fd-lb-grain--5"></span>
+  <span class="fd-lb-grain--6"></span>
+  <span class="fd-lb-grain--7"></span>
+  <span class="fd-lb-steam"></span>
+  <!-- 尾牙：一盏灯 + 一角桌布 + 一双筷 -->
+  <span class="fd-wy-lamp"></span>
+  <span class="fd-wy-cloth"></span>
+  <span class="fd-wy-chopsticks"></span>
+  <!-- 北方小年：一扇剪纸窗 + 一颗糖瓜 -->
+  <span class="fd-xn-window"></span>
+  <span class="fd-xn-tang"></span>
+  <!-- 南方小年：一把扫帚 + 四点扬尘 -->
+  <span class="fd-xs-broom"></span>
+  <span class="fd-xs-dust--1"></span>
+  <span class="fd-xs-dust--2"></span>
+  <span class="fd-xs-dust--3"></span>
+  <span class="fd-xs-dust--4"></span>
+  <!-- 除夕：一枚表盘 + 指针 + 一张福字 + 三点火星 -->
+  <span class="fd-cx-dial"></span>
+  <span class="fd-cx-hand"></span>
+  <span class="fd-cx-fu"></span>
+  <span class="fd-cx-spark--1"></span>
+  <span class="fd-cx-spark--2"></span>
+  <span class="fd-cx-spark--3"></span>
+  <!-- 元旦：地平线 + 刻度 + 一线晨光 -->
+  <span class="fd-ny-line"></span>
+  <span class="fd-ny-tick"></span>
+  <span class="fd-ny-glow"></span>
+  <!-- 情人节：一支玫瑰与茎 -->
+  <span class="fd-va-stem"></span>
+  <span class="fd-va-rose"></span>
+  <!-- 元宵：一碗汤圆 + 三盏悬灯 -->
+  <span class="fd-yx-bowl"></span>
+  <span class="fd-yx-lantern--1"></span>
+  <span class="fd-yx-lantern--2"></span>
+  <span class="fd-yx-lantern--3"></span>
+  <!-- 愚人节：一个倒写的问号与一道虚线 -->
+  <span class="fd-af-q"></span>
+  <span class="fd-af-line"></span>
+  <!-- 清明：一株垂柳 + 细雨 -->
+  <span class="fd-qm-willow"></span>
+  <span class="fd-qm-rain"></span>
+  <!-- 上巳：一只曲水杯 + 三道水波 -->
+  <span class="fd-ss-cup"></span>
+  <span class="fd-ss-wave--1"></span>
+  <span class="fd-ss-wave--2"></span>
+  <span class="fd-ss-wave--3"></span>
+  <!-- 地球日：一枚地球 + 高光 + 一条纬带 -->
+  <span class="fd-ed-globe"></span>
+  <span class="fd-ed-highlight"></span>
+  <span class="fd-ed-band"></span>
+  <!-- 世界读书日：一盏阅读灯 + 一页纸 + 一角书封 -->
+  <span class="fd-bd-lamp"></span>
+  <span class="fd-bd-page"></span>
+  <span class="fd-bd-cone"></span>
+  <!-- 劳动节：一柄锤与一把扳手 -->
+  <span class="fd-lb2-hammer"></span>
+  <span class="fd-lb2-wrench"></span>
+  <!-- 青年节：一架纸飞机与尾迹 -->
+  <span class="fd-yo-plane"></span>
+  <span class="fd-yo-trail"></span>
+  <!-- 微笑日：一条笑弧 + 两点 -->
+  <span class="fd-sm-arc"></span>
+  <span class="fd-sm-dot--1"></span>
+  <span class="fd-sm-dot--2"></span>
+  <!-- 母亲节：三瓣康乃馨与茎 -->
+  <span class="fd-mo-stem"></span>
+  <span class="fd-mo-flower"></span>
+  <!-- 博物馆日：一方展柜与一只陶罐 -->
+  <span class="fd-mu-glass"></span>
+  <span class="fd-mu-vase"></span>
+  <!-- 儿童节：三块积木 + 一架纸飞机 -->
+  <span class="fd-ch-block--1"></span>
+  <span class="fd-ch-block--2"></span>
+  <span class="fd-ch-block--3"></span>
+  <span class="fd-ch-plane"></span>
+  <!-- 环境日：一片叶脉 -->
+  <span class="fd-ev-leaf"></span>
+  <!-- 端午：一枚棱锥粽 + 绳 + 三道水纹 -->
+  <span class="fd-dw-zong"></span>
+  <span class="fd-dw-rope"></span>
+  <span class="fd-dw-wave--1"></span>
+  <span class="fd-dw-wave--2"></span>
+  <span class="fd-dw-wave--3"></span>
+  <!-- 父亲节：一件旧外套 -->
+  <span class="fd-fa-coat"></span>
+  <!-- 奥林匹克日：五枚细线圆环 -->
+  <span class="fd-ol-ring--1"></span>
+  <span class="fd-ol-ring--2"></span>
+  <span class="fd-ol-ring--3"></span>
+  <span class="fd-ol-ring--4"></span>
+  <span class="fd-ol-ring--5"></span>
+  <!-- 禁毒日：一段断开的锁链 -->
+  <span class="fd-ad-link--1"></span>
+  <span class="fd-ad-link--2"></span>
+  <span class="fd-ad-link--3"></span>
+  <span class="fd-ad-link--4"></span>
+  <!-- 建党节：一枚五角星 + 一道竖带 -->
+  <span class="fd-pt-star"></span>
+  <span class="fd-pt-band"></span>
+  <!-- 七七事变：一段带缺口的城墙 -->
+  <span class="fd-j7-wall"></span>
+  <span class="fd-j7-gap"></span>
+  <!-- 建军节：织物网格 + 一枚红星 -->
+  <span class="fd-ar-weave"></span>
+  <span class="fd-ar-star"></span>
+  <!-- 七夕：一条星河 + 两岸的星 -->
+  <span class="fd-qx-river"></span>
+  <span class="fd-qx-star--1"></span>
+  <span class="fd-qx-star--2"></span>
+  <!-- 日本投降日：半降的旗 -->
+  <span class="fd-sr-pole"></span>
+  <span class="fd-sr-flag"></span>
+  <span class="fd-sr-banner"></span>
+  <!-- 中元节：一盏河灯 + 光晕 + 三道涟漪 -->
+  <span class="fd-zy-lamp"></span>
+  <span class="fd-zy-glow"></span>
+  <span class="fd-zy-ripple--1"></span>
+  <span class="fd-zy-ripple--2"></span>
+  <span class="fd-zy-ripple--3"></span>
+  <!-- 医师节：一条脉搏线 -->
+  <span class="fd-dr-pulse"></span>
+  <!-- 抗战胜利日：地平线与曙光 -->
+  <span class="fd-vc-dawn"></span>
+  <span class="fd-vc-line"></span>
+  <!-- 教师节：一枚粉笔 + 三点粉笔灰 -->
+  <span class="fd-tc-chalk"></span>
+  <span class="fd-tc-dust--1"></span>
+  <span class="fd-tc-dust--2"></span>
+  <span class="fd-tc-dust--3"></span>
+  <!-- 中秋：满月 + 月晕 + 一片薄云 -->
+  <span class="fd-ma-halo"></span>
+  <span class="fd-ma-moon"></span>
+  <span class="fd-ma-cloud"></span>
+  <!-- 九一八：日历格与一道裂痕 -->
+  <span class="fd-n9-grid"></span>
+  <span class="fd-n9-crack"></span>
+  <!-- 烈士纪念日：一面纪念墙与一枚小星 -->
+  <span class="fd-mr-wall"></span>
+  <span class="fd-mr-star"></span>
 </div>
 
 <!-- 全局加载条（API 请求自动显隐） -->

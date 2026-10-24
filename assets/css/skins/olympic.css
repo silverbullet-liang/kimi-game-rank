@@ -1,0 +1,54 @@
+/* 皮肤：奥林匹克日 · 五枚细线圆环
+ * 呈现：6/23。母题=五环，但只用细线（1.5px），交叠处不做实色覆盖 ——
+ * 那点透明反而更像"联结"。全站唯一以白色为主场的皮肤。 */
+html[data-skin="olympic"] {
+  --accent: #2B6CA3 !important; --accent-2: #C9392F !important; --accent-ink: #FBFDFF !important;
+  --toggle-on: #2B6CA3 !important; --slider-fill: #2B6CA3 !important;
+  --ol-blue: #2B6CA3; --ol-red: #C9392F; --ol-green: #2F8A55; --ol-yellow: #D9A32E; --ol-black: #33383D;
+  --bg-1: #FBFCFE; --bg-2: #EDF1F6; --surface: rgba(255,255,255,.93); --surface-solid: #FDFEFF;
+  --border: rgba(43,108,163,.15); --border-soft: rgba(43,108,163,.07);
+  --text: #1A2229; --text-2: #465360; --text-3: #7C8A97;
+  --radius-lg: 18px; --radius-md: 12px; --radius-sm: 8px;
+  --shadow: 0 9px 24px rgba(26,34,41,.10); --shadow-sm: 0 3px 10px rgba(26,34,41,.06);
+  --tab-active-bg: rgba(43,108,163,.10); --tab-active-fg: var(--ol-blue);
+  --msg-bg: rgba(255,255,255,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#2B6CA3,#C9392F); --msg-mine-fg: #FBFDFF;
+  --toast-bg: rgba(26,34,41,.95); --toast-fg: #EDF2F7; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="olympic"][data-theme="dark"] {
+  --bg-1: #0B1015; --bg-2: #111820; --surface: rgba(17,24,32,.84); --surface-solid: #111820;
+  --border: rgba(217,163,46,.18); --border-soft: rgba(217,163,46,.09);
+  --text: #DEE6EE; --text-2: #A0AEBB; --text-3: #71808C;
+  --accent: #6FA6D9 !important; --accent-2: #E0705F !important; --accent-ink: #0B1015 !important;
+  --tab-active-bg: rgba(111,166,217,.15); --tab-active-fg: #8CBAE5;
+  --msg-bg: rgba(21,30,39,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#2B6CA3,#B03A31); --msg-mine-fg: #FBFDFF;
+  --toast-bg: rgba(222,230,238,.95); --toast-fg: #0B1015;
+}
+.fd-ol-ring { display: none; }
+html[data-skin="olympic"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 五环：上三下二，各 34px，1.5px 细线，低饱和 */
+html[data-skin="olympic"] .fd-ol-ring {
+  display: block; position: absolute; width: 34px; height: 34px; border-radius: 50%;
+  border: 1.5px solid currentColor; opacity: .55;
+}
+html[data-skin="olympic"] .fd-ol-ring--1 { right: 132px; top: 56px; color: var(--ol-blue); }
+html[data-skin="olympic"] .fd-ol-ring--2 { right: 100px; top: 56px; color: var(--ol-black); }
+html[data-skin="olympic"] .fd-ol-ring--3 { right: 68px;  top: 56px; color: var(--ol-red); }
+html[data-skin="olympic"] .fd-ol-ring--4 { right: 116px; top: 74px; color: var(--ol-yellow); }
+html[data-skin="olympic"] .fd-ol-ring--5 { right: 84px;  top: 74px; color: var(--ol-green); }
+html[data-skin="olympic"] .fj-locked { position: relative; }
+html[data-skin="olympic"] .fj-locked::after {
+  content: "奥林匹克日期间固定为「五环细线」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 12px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="olympic"] .fd-ol-ring { width: 24px; height: 24px; }
+  html[data-skin="olympic"] .fd-ol-ring--1 { right: 96px; top: 50px; }
+  html[data-skin="olympic"] .fd-ol-ring--2 { right: 74px; top: 50px; }
+  html[data-skin="olympic"] .fd-ol-ring--3 { right: 52px; top: 50px; }
+  html[data-skin="olympic"] .fd-ol-ring--4 { right: 85px; top: 62px; }
+  html[data-skin="olympic"] .fd-ol-ring--5 { right: 63px; top: 62px; }
+}

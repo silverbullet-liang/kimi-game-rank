@@ -1,0 +1,63 @@
+/* 皮肤：劳动节 · 扳手与锤
+ * 呈现：5/1。母题=两件工具的剪影并置（扳手开口 + 锤头），砖红压铁灰。
+ * 剪影只用两三种几何拼：开口环、斜柄、矩形头 —— 不做写实插画。 */
+html[data-skin="labor"] {
+  --accent: #A64B2A !important; --accent-2: #4A4A4A !important; --accent-ink: #FFF7F2 !important;
+  --toggle-on: #A64B2A !important; --slider-fill: #A64B2A !important;
+  --lb2-brick: #A64B2A; --lb2-iron: #4A4A4A; --lb2-sand: #E8DCCB; --lb2-ink: #2A211C;
+  --bg-1: #F9F4EE; --bg-2: #EDE2D4; --surface: rgba(255,252,248,.91); --surface-solid: #FDFAF5;
+  --border: rgba(166,75,42,.17); --border-soft: rgba(166,75,42,.08);
+  --text: #2A211C; --text-2: #5C4C42; --text-3: #8E7C71;
+  --radius-lg: 8px; --radius-md: 6px; --radius-sm: 4px;
+  --shadow: 0 8px 22px rgba(42,33,28,.14); --shadow-sm: 0 3px 9px rgba(42,33,28,.09);
+  --tab-active-bg: rgba(166,75,42,.11); --tab-active-fg: var(--lb2-brick);
+  --msg-bg: rgba(255,252,248,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#A64B2A,#4A4A4A); --msg-mine-fg: #FFF7F2;
+  --toast-bg: rgba(42,33,28,.95); --toast-fg: #F8EEE4; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="labor"][data-theme="dark"] {
+  --bg-1: #120F0D; --bg-2: #1C1714; --surface: rgba(32,27,23,.84); --surface-solid: #1C1714;
+  --border: rgba(232,220,203,.18); --border-soft: rgba(232,220,203,.09);
+  --text: #EDE4DA; --text-2: #BCAB9C; --text-3: #8B7969;
+  --accent: #D5744F !important; --accent-2: #A8A29C !important; --accent-ink: #120F0D !important;
+  --tab-active-bg: rgba(213,116,79,.15); --tab-active-fg: #DF8C6B;
+  --msg-bg: rgba(36,30,26,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#8E3D20,#5C5C5C); --msg-mine-fg: #FFF7F2;
+  --toast-bg: rgba(237,228,218,.95); --toast-fg: #120F0D;
+}
+.fd-lb2-wrench, .fd-lb2-hammer { display: none; }
+html[data-skin="labor"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 扳手：一根斜柄 + 头部一个开口环（用两层渐变挖出缺口） */
+html[data-skin="labor"] .fd-lb2-wrench {
+  display: block; position: absolute; right: 34px; bottom: 58px; width: 14px; height: 96px;
+  background: linear-gradient(180deg, rgba(74,74,74,.55), rgba(74,74,74,.30));
+  border-radius: 3px; transform: rotate(18deg);
+}
+html[data-skin="labor"] .fd-lb2-wrench::before {
+  content: ""; position: absolute; left: 50%; top: -18px; width: 30px; height: 30px;
+  margin-left: -15px; border-radius: 50%;
+  border: 6px solid rgba(74,74,74,.50);
+  border-right-color: transparent;
+  transform: rotate(45deg);
+}
+/* 锤：一个矩形头 + 一根柄，横过来放 */
+html[data-skin="labor"] .fd-lb2-hammer {
+  display: block; position: absolute; right: 96px; bottom: 74px; width: 44px; height: 12px;
+  background: rgba(166,75,42,.45);
+  border-radius: 2px; transform: rotate(-12deg);
+}
+html[data-skin="labor"] .fd-lb2-hammer::after {
+  content: ""; position: absolute; right: -34px; top: 4px; width: 36px; height: 5px;
+  background: rgba(74,74,74,.42); border-radius: 2px;
+}
+html[data-skin="labor"] .fj-locked { position: relative; }
+html[data-skin="labor"] .fj-locked::after {
+  content: "劳动节期间固定为「砖红 · 铁灰」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 6px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="labor"] .fd-lb2-wrench { right: 16px; height: 74px; }
+  html[data-skin="labor"] .fd-lb2-hammer { right: 62px; bottom: 84px; width: 34px; height: 10px; }
+}

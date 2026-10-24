@@ -1,0 +1,53 @@
+/* 皮肤：环境日 · 一片叶的中脉
+ * 呈现：6/5。母题=叶脉：一条中脉 + 两侧斜出的侧脉，用 mask 裁出叶形。
+ * 只画一片叶，且只画脉 —— 比画一整棵树更克制，也更像"观察"。 */
+html[data-skin="environment"] {
+  --accent: #3F8A5A !important; --accent-2: #8AA86B !important; --accent-ink: #F4FBF6 !important;
+  --toggle-on: #3F8A5A !important; --slider-fill: #3F8A5A !important;
+  --ev-green: #3F8A5A; --ev-moss: #8AA86B; --ev-mint: #E7F1E9; --ev-ink: #17261C;
+  --bg-1: #F3F9F4; --bg-2: #E2EEE4; --surface: rgba(255,255,255,.91); --surface-solid: #FBFDFB;
+  --border: rgba(63,138,90,.17); --border-soft: rgba(63,138,90,.08);
+  --text: #17261C; --text-2: #3F5C48; --text-3: #75917C;
+  --radius-lg: 20px; --radius-md: 13px; --radius-sm: 9px;
+  --shadow: 0 9px 24px rgba(23,38,28,.12); --shadow-sm: 0 3px 10px rgba(23,38,28,.07);
+  --tab-active-bg: rgba(63,138,90,.11); --tab-active-fg: var(--ev-green);
+  --msg-bg: rgba(255,255,255,.96); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#3F8A5A,#8AA86B); --msg-mine-fg: #F4FBF6;
+  --toast-bg: rgba(23,38,28,.95); --toast-fg: #EAF4EC; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="environment"][data-theme="dark"] {
+  --bg-1: #0A130D; --bg-2: #101C14; --surface: rgba(17,30,22,.84); --surface-solid: #101C14;
+  --border: rgba(138,168,107,.18); --border-soft: rgba(138,168,107,.09);
+  --text: #DDEBE0; --text-2: #A0B7A6; --text-3: #718875;
+  --accent: #8AA86B !important; --accent-2: #5FAA7A !important; --accent-ink: #0A130D !important;
+  --tab-active-bg: rgba(138,168,107,.15); --tab-active-fg: #A3BE88;
+  --msg-bg: rgba(20,35,26,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#2F6E48,#8AA86B); --msg-mine-fg: #0A130D;
+  --toast-bg: rgba(221,235,224,.95); --toast-fg: #0A130D;
+}
+.fd-ev-leaf { display: none; }
+html[data-skin="environment"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 叶：整体用 mask 裁成叶形，内部只有脉 */
+html[data-skin="environment"] .fd-ev-leaf {
+  display: block; position: absolute; right: 26px; top: 52px; width: 130px; height: 190px;
+  background:
+    /* 中脉 */
+    linear-gradient(90deg, transparent 49%, rgba(63,138,90,.55) 49% 51%, transparent 51%),
+    /* 侧脉：两组斜线 */
+    repeating-linear-gradient(38deg, rgba(63,138,90,.32) 0 1px, transparent 1px 22px),
+    repeating-linear-gradient(-38deg, rgba(63,138,90,.32) 0 1px, transparent 1px 22px);
+  -webkit-mask: radial-gradient(ellipse 50% 100% at 50% 50%, #000 52%, transparent 70%);
+  mask: radial-gradient(ellipse 50% 100% at 50% 50%, #000 52%, transparent 70%);
+  transform: rotate(12deg);
+  opacity: .75;
+}
+html[data-skin="environment"] .fj-locked { position: relative; }
+html[data-skin="environment"] .fj-locked::after {
+  content: "环境日期间固定为「青绿 · 苔绿」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 13px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="environment"] .fd-ev-leaf { width: 96px; height: 140px; right: 10px; top: 46px; }
+}

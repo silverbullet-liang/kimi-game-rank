@@ -1,0 +1,77 @@
+/* 皮肤：腊八 · 八粒谷物与一碗粥
+ * 呈现：农历腊月初八。母题=一碗热粥（半圆碗 + 米黄雾气）+ 八粒散落的谷物。
+ * 八粒是有讲究的：腊八粥第八样谷物的位置故意留空，让画面透气。 */
+html[data-skin="laba"] {
+  --accent: #8B5A2B !important; --accent-2: #C98A2E !important; --accent-ink: #FFF9EC !important;
+  --toggle-on: #8B5A2B !important; --slider-fill: #8B5A2B !important;
+  --lb-brown: #8B5A2B; --lb-amber: #C98A2E; --lb-millet: #E8C88A; --lb-cream: #FBF3E4;
+  --bg-1: #FCF6EA; --bg-2: #F2E6CF; --surface: rgba(255,252,244,.91); --surface-solid: #FEFAF0;
+  --border: rgba(139,90,43,.18); --border-soft: rgba(139,90,43,.09);
+  --text: #3A2617; --text-2: #6E5237; --text-3: #9C8465;
+  --radius-lg: 18px; --radius-md: 12px; --radius-sm: 9px;
+  --shadow: 0 10px 28px rgba(139,90,43,.15); --shadow-sm: 0 4px 13px rgba(139,90,43,.09);
+  --tab-active-bg: rgba(139,90,43,.11); --tab-active-fg: var(--lb-brown);
+  --msg-bg: rgba(255,252,244,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#8B5A2B,#C98A2E); --msg-mine-fg: #FFF9EC;
+  --toast-bg: rgba(58,38,23,.95); --toast-fg: #FBF0DC; --toast-err-bg: #A33A28;
+}
+html[data-skin="laba"][data-theme="dark"] {
+  --bg-1: #17110A; --bg-2: #22190F; --surface: rgba(38,29,18,.84); --surface-solid: #22190F;
+  --border: rgba(232,200,138,.20); --border-soft: rgba(232,200,138,.10);
+  --text: #F2E5D2; --text-2: #C6AC8B; --text-3: #967E62;
+  --accent: #E8C88A !important; --accent-2: #C98A2E !important; --accent-ink: #17110A !important;
+  --tab-active-bg: rgba(232,200,138,.15); --tab-active-fg: #EBD3A4;
+  --msg-bg: rgba(42,32,20,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#A8702F,#E8C88A); --msg-mine-fg: #17110A;
+  --toast-bg: rgba(242,229,210,.95); --toast-fg: #17110A;
+}
+.fd-lb-bowl, .fd-lb-steam, .fd-lb-grain { display: none; }
+html[data-skin="laba"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 碗：半圆 + 一条口沿 */
+html[data-skin="laba"] .fd-lb-bowl {
+  display: block; position: absolute; right: 30px; bottom: 60px; width: 92px; height: 46px;
+  border: 2px solid rgba(139,90,43,.40); border-top: 0;
+  border-radius: 0 0 46px 46px;
+  background: linear-gradient(180deg, rgba(232,200,138,.28), rgba(232,200,138,.10));
+}
+html[data-skin="laba"] .fd-lb-bowl::before {
+  content: ""; position: absolute; left: -3px; right: -3px; top: -3px; height: 4px;
+  border-radius: 3px; background: rgba(139,90,43,.45);
+}
+/* 热气：两缕，很慢 */
+html[data-skin="laba"] .fd-lb-steam {
+  display: block; position: absolute; right: 58px; bottom: 112px; width: 34px; height: 40px;
+  background:
+    radial-gradient(ellipse 4px 12px at 28% 72%, rgba(200,170,120,.55), transparent 70%),
+    radial-gradient(ellipse 4px 12px at 68% 40%, rgba(200,170,120,.40), transparent 70%);
+  filter: blur(.6px); animation: lb-steam 7s ease-in-out infinite;
+}
+@keyframes lb-steam {
+  0%,100% { opacity: .35; transform: translateY(4px) scaleY(.92); }
+  50%     { opacity: .75; transform: translateY(-3px) scaleY(1.06); }
+}
+/* 八粒谷物：散在碗左侧，大小与色相各不相同 */
+html[data-skin="laba"] .fd-lb-grain {
+  display: block; position: absolute; border-radius: 50% 40% 55% 45%; opacity: .55;
+  background: linear-gradient(140deg, var(--lb-millet), var(--lb-amber));
+}
+html[data-skin="laba"] .fd-lb-grain--1 { right: 140px; bottom: 66px; width: 7px; height: 6px; }
+html[data-skin="laba"] .fd-lb-grain--2 { right: 154px; bottom: 80px; width: 5px; height: 5px; background: linear-gradient(140deg,#C4552F,#8B3A22); }
+html[data-skin="laba"] .fd-lb-grain--3 { right: 132px; bottom: 92px; width: 6px; height: 5px; background: linear-gradient(140deg,#D9C08A,#B49A5E); }
+html[data-skin="laba"] .fd-lb-grain--4 { right: 122px; bottom: 74px; width: 4px; height: 4px; }
+html[data-skin="laba"] .fd-lb-grain--5 { right: 166px; bottom: 66px; width: 5px; height: 4px; background: linear-gradient(140deg,#A8452C,#7A2F1C); }
+html[data-skin="laba"] .fd-lb-grain--6 { right: 146px; bottom: 100px; width: 4px; height: 4px; }
+html[data-skin="laba"] .fd-lb-grain--7 { right: 178px; bottom: 84px; width: 6px; height: 5px; background: linear-gradient(140deg,#E0C89A,#BFA872); }
+html[data-skin="laba"] .fj-locked { position: relative; }
+html[data-skin="laba"] .fj-locked::after {
+  content: "腊八期间固定为「米黄 · 褐」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 12px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="laba"] .fd-lb-bowl { width: 70px; height: 36px; right: 16px; bottom: 70px; }
+  html[data-skin="laba"] .fd-lb-steam { right: 34px; bottom: 110px; }
+  html[data-skin="laba"] .fd-lb-grain--5, html[data-skin="laba"] .fd-lb-grain--7 { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { html[data-skin="laba"] .fd-lb-steam { animation: none; opacity: .55; } }

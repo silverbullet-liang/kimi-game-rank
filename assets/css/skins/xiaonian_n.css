@@ -1,0 +1,67 @@
+/* 皮肤：北方小年 · 糖瓜与剪纸窗格
+ * 呈现：农历腊月廿三。母题=糖瓜的琥珀光泽 + 四方连续的剪纸窗格。
+ * 窗格用 repeating-linear-gradient 叠出"米字格"，只占右上角一小块，不铺满全屏。 */
+html[data-skin="xiaonian_n"] {
+  --accent: #C98A2E !important; --accent-2: #A8322A !important; --accent-ink: #FFFBF0 !important;
+  --toggle-on: #C98A2E !important; --slider-fill: #C98A2E !important;
+  --xn-amber: #C98A2E; --xn-amber-light: #EFC169; --xn-red: #A8322A; --xn-paper: #FBF3E4;
+  --bg-1: #FDF7EC; --bg-2: #F4E7D2; --surface: rgba(255,253,247,.91); --surface-solid: #FEFBF3;
+  --border: rgba(201,138,46,.20); --border-soft: rgba(201,138,46,.10);
+  --text: #35260F; --text-2: #6E5432; --text-3: #9C8259;
+  --radius-lg: 16px; --radius-md: 11px; --radius-sm: 8px;
+  --shadow: 0 10px 26px rgba(201,138,46,.16); --shadow-sm: 0 3px 11px rgba(201,138,46,.10);
+  --tab-active-bg: rgba(201,138,46,.13); --tab-active-fg: #A06E1E;
+  --msg-bg: rgba(255,253,247,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#C98A2E,#A8322A); --msg-mine-fg: #FFFBF0;
+  --toast-bg: rgba(53,38,15,.95); --toast-fg: #FBF2DF; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="xiaonian_n"][data-theme="dark"] {
+  --bg-1: #17120A; --bg-2: #211A0F; --surface: rgba(37,29,17,.84); --surface-solid: #211A0F;
+  --border: rgba(239,193,105,.20); --border-soft: rgba(239,193,105,.10);
+  --text: #F5E9D5; --text-2: #CBB08A; --text-3: #9A8361;
+  --accent: #EFC169 !important; --accent-2: #D9695E !important; --accent-ink: #17120A !important;
+  --tab-active-bg: rgba(239,193,105,.15); --tab-active-fg: #F0CD88;
+  --msg-bg: rgba(41,32,19,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#B8781F,#D9695E); --msg-mine-fg: #17120A;
+  --toast-bg: rgba(245,233,213,.95); --toast-fg: #17120A;
+}
+.fd-xn-window, .fd-xn-tang { display: none; }
+html[data-skin="xiaonian_n"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 剪纸窗格：米字格 + 外框，只占右上角 */
+html[data-skin="xiaonian_n"] .fd-xn-window {
+  display: block; position: absolute; right: -10px; top: 54px; width: 132px; height: 132px;
+  border: 1px solid rgba(168,50,42,.28);
+  background:
+    repeating-linear-gradient(90deg, rgba(168,50,42,.20) 0 1px, transparent 1px 22px),
+    repeating-linear-gradient(0deg, rgba(168,50,42,.20) 0 1px, transparent 1px 22px),
+    radial-gradient(circle at 50% 50%, rgba(201,138,46,.16), transparent 62%);
+  opacity: .55;
+}
+html[data-skin="xiaonian_n"] .fd-xn-window::after {
+  content: ""; position: absolute; inset: 16px; border: 1px solid rgba(168,50,42,.18);
+}
+/* 糖瓜：扁椭圆 + 一道高光，摆在窗格下方 */
+html[data-skin="xiaonian_n"] .fd-xn-tang {
+  display: block; position: absolute; right: 62px; bottom: 78px; width: 46px; height: 28px;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 34% 28%, rgba(255,246,220,.85), transparent 46%),
+    linear-gradient(150deg, var(--xn-amber-light), var(--xn-amber) 62%, #9A6216);
+  box-shadow: 0 6px 16px rgba(154,98,22,.28);
+  opacity: .9;
+}
+html[data-skin="xiaonian_n"] .fd-xn-tang::after {
+  content: ""; position: absolute; left: 50%; top: 6px; width: 2px; height: 10px;
+  margin-left: -1px; border-radius: 1px; background: rgba(255,255,255,.35);
+}
+html[data-skin="xiaonian_n"] .fj-locked { position: relative; }
+html[data-skin="xiaonian_n"] .fj-locked::after {
+  content: "小年期间固定为「琥珀 · 纸白」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 12px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="xiaonian_n"] .fd-xn-window { width: 96px; height: 96px; top: 50px; }
+  html[data-skin="xiaonian_n"] .fd-xn-tang { right: 34px; bottom: 86px; width: 36px; height: 22px; }
+}

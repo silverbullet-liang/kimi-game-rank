@@ -1,0 +1,67 @@
+/* 皮肤：烈士纪念日 · 一面无字的墙
+ * 呈现：9/30。母题=一面成排竖线的纪念墙（每一条是一块铭牌）+ 墙上一枚极小的五角星。
+ * 全站最暗的一套：取消所有圆角与阴影层次，让界面本身变得"安静"。 */
+html[data-skin="martyr"] {
+  --accent: #3C4A4A !important; --accent-2: #A8A190 !important; --accent-ink: #F4F6F6 !important;
+  --toggle-on: #3C4A4A !important; --slider-fill: #3C4A4A !important;
+  --mr-slate: #3C4A4A; --mr-slate-deep: #232D2D; --mr-stone: #A8A190; --mr-paper: #F4F6F6;
+  --bg-1: #F5F6F6; --bg-2: #E6E9E9; --surface: rgba(255,255,255,.90); --surface-solid: #FAFBFB;
+  --border: rgba(60,74,74,.16); --border-soft: rgba(60,74,74,.08);
+  --text: #1E2626; --text-2: #485858; --text-3: #7E8D8D;
+  --radius-lg: 2px; --radius-md: 2px; --radius-sm: 1px;
+  --shadow: 0 3px 12px rgba(30,38,38,.09); --shadow-sm: 0 1px 5px rgba(30,38,38,.06);
+  --tab-active-bg: rgba(60,74,74,.10); --tab-active-fg: var(--mr-slate);
+  --msg-bg: rgba(255,255,255,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#3C4A4A,#6E7C7C); --msg-mine-fg: #F4F6F6;
+  --toast-bg: rgba(30,38,38,.95); --toast-fg: #EFF3F3; --toast-err-bg: #8E3A2E;
+}
+html[data-skin="martyr"][data-theme="dark"] {
+  --bg-1: #0C1111; --bg-2: #121A1A; --surface: rgba(19,26,26,.86); --surface-solid: #121A1A;
+  --border: rgba(168,161,144,.16); --border-soft: rgba(168,161,144,.07);
+  --text: #DDE4E4; --text-2: #A5B2B2; --text-3: #778383;
+  --accent: #9AA8A8 !important; --accent-2: #A8A190 !important; --accent-ink: #0C1111 !important;
+  --tab-active-bg: rgba(154,168,168,.14); --tab-active-fg: #B0BEBE;
+  --msg-bg: rgba(22,30,30,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#2E3C3C,#8C8778); --msg-mine-fg: #0C1111;
+  --toast-bg: rgba(221,228,228,.95); --toast-fg: #0C1111;
+}
+.fd-mr-wall, .fd-mr-star { display: none; }
+html[data-skin="martyr"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 墙：等距的细竖线，成三行错位排布，底部渐隐 */
+html[data-skin="martyr"] .fd-mr-wall {
+  display: block; position: absolute; left: 0; right: 0; bottom: 0; height: 22vh;
+  background:
+    repeating-linear-gradient(90deg, rgba(60,74,74,.22) 0 1px, transparent 1px 19px),
+    repeating-linear-gradient(90deg, rgba(60,74,74,.13) 0 1px, transparent 1px 19px);
+  background-size: 100% 46%, 100% 30%;
+  background-position: 0 0, 9px 100%;
+  background-repeat: repeat-x, repeat-x;
+  -webkit-mask: linear-gradient(0deg, #000 0%, #000 42%, transparent 88%);
+  mask: linear-gradient(0deg, #000 0%, #000 42%, transparent 88%);
+  opacity: .75;
+}
+/* 星：墙上方一枚很小的星，不发光 */
+html[data-skin="martyr"] .fd-mr-star {
+  display: block; position: absolute; right: 46px; bottom: calc(22vh + 10px); width: 0; height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 14px solid rgba(168,161,144,.85);
+}
+html[data-skin="martyr"] .fd-mr-star::after {
+  content: ""; position: absolute; left: -8px; top: 4.5px; width: 0; height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 14px solid rgba(168,161,144,.55);
+  transform: rotate(180deg);
+}
+html[data-skin="martyr"] .fj-locked { position: relative; }
+html[data-skin="martyr"] .fj-locked::after {
+  content: "烈士纪念日期间固定为「青灰 · 石色」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62% / 0.62, transparent); border-radius: 2px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="martyr"] .fd-mr-wall { height: 18vh; background-size: 100% 40%, 100% 26%; }
+  html[data-skin="martyr"] .fd-mr-star { right: 26px; bottom: calc(18vh + 8px); }
+}

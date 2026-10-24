@@ -1,0 +1,67 @@
+/* 皮肤：儿童节 · 三块积木与纸飞机
+ * 呈现：6/1。母题=三块歪歪扭扭叠着的积木 + 一架纸飞机。
+ * 色彩是糖果色，但每个色都降了一档饱和 —— 明亮不等于刺眼。 */
+html[data-skin="children"] {
+  --accent: #E07A5F !important; --accent-2: #5B8FB9 !important; --accent-ink: #FFFCF7 !important;
+  --toggle-on: #E07A5F !important; --slider-fill: #E07A5F !important;
+  --ch-red: #E07A5F; --ch-blue: #5B8FB9; --ch-yellow: #EFC44B; --ch-green: #7FB069; --ch-cream: #FFFCF5;
+  --bg-1: #FFFCF5; --bg-2: #FBEFDD; --surface: rgba(255,253,248,.92); --surface-solid: #FFFDF9;
+  --border: rgba(224,122,95,.16); --border-soft: rgba(224,122,95,.08);
+  --text: #322720; --text-2: #61503F; --text-3: #95806E;
+  --radius-lg: 22px; --radius-md: 14px; --radius-sm: 10px;
+  --shadow: 0 10px 26px rgba(50,39,32,.13); --shadow-sm: 0 4px 12px rgba(50,39,32,.08);
+  --tab-active-bg: rgba(224,122,95,.11); --tab-active-fg: var(--ch-red);
+  --msg-bg: rgba(255,253,248,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#E07A5F,#5B8FB9); --msg-mine-fg: #FFFCF7;
+  --toast-bg: rgba(50,39,32,.95); --toast-fg: #FCF2E6; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="children"][data-theme="dark"] {
+  --bg-1: #16120E; --bg-2: #201A13; --surface: rgba(36,29,22,.84); --surface-solid: #201A13;
+  --border: rgba(239,196,75,.18); --border-soft: rgba(239,196,75,.09);
+  --text: #F4EADC; --text-2: #C2AE99; --text-3: #917E6C;
+  --accent: #EFC44B !important; --accent-2: #7FB069 !important; --accent-ink: #16120E !important;
+  --tab-active-bg: rgba(239,196,75,.15); --tab-active-fg: #F2D375;
+  --msg-bg: rgba(41,33,25,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#C4624A,#4A7BA0); --msg-mine-fg: #FFFCF7;
+  --toast-bg: rgba(244,234,220,.95); --toast-fg: #16120E;
+}
+.fd-ch-block, .fd-ch-plane { display: none; }
+html[data-skin="children"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 三块积木：错位叠放，各自微转，带圆角与轻阴影 */
+html[data-skin="children"] .fd-ch-block {
+  display: block; position: absolute; border-radius: 5px;
+  box-shadow: 0 5px 12px rgba(50,39,32,.16);
+  opacity: .88;
+}
+html[data-skin="children"] .fd-ch-block--1 {
+  right: 58px; bottom: 62px; width: 40px; height: 40px;
+  background: linear-gradient(150deg, #EFC44B, #D9A92E); transform: rotate(-7deg);
+}
+html[data-skin="children"] .fd-ch-block--2 {
+  right: 88px; bottom: 96px; width: 30px; height: 30px;
+  background: linear-gradient(150deg, #7FB069, #5E8E4C); transform: rotate(9deg);
+}
+html[data-skin="children"] .fd-ch-block--3 {
+  right: 30px; bottom: 96px; width: 26px; height: 26px;
+  background: linear-gradient(150deg, #5B8FB9, #3F6E93); transform: rotate(-13deg);
+}
+/* 纸飞机：小巧，压在积木上方 */
+html[data-skin="children"] .fd-ch-plane {
+  display: block; position: absolute; right: 132px; bottom: 128px; width: 0; height: 0;
+  border-bottom: 12px solid rgba(224,122,95,.7);
+  border-left: 18px solid transparent;
+  transform: rotate(-18deg);
+}
+html[data-skin="children"] .fj-locked { position: relative; }
+html[data-skin="children"] .fj-locked::after {
+  content: "儿童节期间固定为「糖果色」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 14px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="children"] .fd-ch-block--1 { width: 32px; height: 32px; right: 24px; bottom: 70px; }
+  html[data-skin="children"] .fd-ch-block--2 { width: 24px; height: 24px; right: 48px; bottom: 96px; }
+  html[data-skin="children"] .fd-ch-block--3 { width: 21px; height: 21px; right: 8px; bottom: 98px; }
+  html[data-skin="children"] .fd-ch-plane { right: 78px; bottom: 118px; }
+}

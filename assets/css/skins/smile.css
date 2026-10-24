@@ -1,0 +1,60 @@
+/* 皮肤：微笑日 · 一条笑弧与两点
+ * 呈现：5/8。母题=只画三个元素：一条弧、两个点。极简到不能再减。
+ * 动效：弧线两端各有一道很淡的高光缓慢移动，像嘴角的弧度在变化。 */
+html[data-skin="smile"] {
+  --accent: #C99A1E !important; --accent-2: #E0B84A !important; --accent-ink: #FFFBEE !important;
+  --toggle-on: #C99A1E !important; --slider-fill: #C99A1E !important;
+  --sm-yellow: #EFC44B; --sm-yellow-deep: #C99A1E; --sm-warm: #FFFBF0; --sm-ink: #332B14;
+  --bg-1: #FEFAE9; --bg-2: #F8EDC9; --surface: rgba(255,254,247,.91); --surface-solid: #FFFDF5;
+  --border: rgba(201,154,30,.20); --border-soft: rgba(201,154,30,.10);
+  --text: #332B14; --text-2: #665536; --text-3: #9A8759;
+  --radius-lg: 24px; --radius-md: 15px; --radius-sm: 11px;
+  --shadow: 0 10px 28px rgba(201,154,30,.16); --shadow-sm: 0 4px 12px rgba(201,154,30,.10);
+  --tab-active-bg: rgba(201,154,30,.14); --tab-active-fg: #A67C10;
+  --msg-bg: rgba(255,254,247,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#E0B84A,#C99A1E); --msg-mine-fg: #332B14;
+  --toast-bg: rgba(51,43,20,.95); --toast-fg: #FCF4DC; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="smile"][data-theme="dark"] {
+  --bg-1: #171307; --bg-2: #221C0D; --surface: rgba(37,30,16,.84); --surface-solid: #221C0D;
+  --border: rgba(239,196,75,.22); --border-soft: rgba(239,196,75,.11);
+  --text: #F7EFD6; --text-2: #C9B58A; --text-3: #95835E;
+  --accent: #EFC44B !important; --accent-2: #F7E1A0 !important; --accent-ink: #171307 !important;
+  --tab-active-bg: rgba(239,196,75,.16); --tab-active-fg: #F3D375;
+  --msg-bg: rgba(42,34,18,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#D9AE35,#F7E1A0); --msg-mine-fg: #171307;
+  --toast-bg: rgba(247,239,214,.95); --toast-fg: #171307;
+}
+.fd-sm-arc, .fd-sm-dot { display: none; }
+html[data-skin="smile"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 笑弧：一条半圆的粗线，靠 border 画 */
+html[data-skin="smile"] .fd-sm-arc {
+  display: block; position: absolute; right: 40px; top: 72px; width: 96px; height: 48px;
+  border: 5px solid rgba(201,154,30,.55);
+  border-top: 0;
+  border-radius: 0 0 96px 96px;
+  opacity: .9;
+}
+html[data-skin="smile"] .fd-sm-arc::after {
+  content: ""; position: absolute; left: 50%; bottom: -9px; width: 6px; height: 6px;
+  margin-left: -3px; border-radius: 50%; background: rgba(201,154,30,.45);
+}
+/* 两点眼睛：很小的两个实心圆 */
+html[data-skin="smile"] .fd-sm-dot {
+  display: block; position: absolute; width: 7px; height: 7px; border-radius: 50%;
+  background: rgba(201,154,30,.5);
+}
+html[data-skin="smile"] .fd-sm-dot--1 { right: 112px; top: 56px; }
+html[data-skin="smile"] .fd-sm-dot--2 { right: 76px; top: 56px; }
+html[data-skin="smile"] .fj-locked { position: relative; }
+html[data-skin="smile"] .fj-locked::after {
+  content: "微笑日期间固定为「明黄」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 15px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="smile"] .fd-sm-arc { width: 72px; height: 36px; right: 22px; top: 62px; border-width: 4px; }
+  html[data-skin="smile"] .fd-sm-dot--1 { right: 84px; top: 50px; }
+  html[data-skin="smile"] .fd-sm-dot--2 { right: 56px; top: 50px; }
+}

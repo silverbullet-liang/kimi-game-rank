@@ -1,0 +1,71 @@
+/* 皮肤：南方小年 · 掸尘与竹帚
+ * 呈现：农历腊月廿四。母题=掸尘（扫房）——一枝带叶的竹帚 + 被扫起的几粒尘。
+ * 与北方小年刻意不同：不画窗格、不画糖，用"墙"的米白与竹的青绿说话。 */
+html[data-skin="xiaonian_s"] {
+  --accent: #C4552F !important; --accent-2: #7B8A4E !important; --accent-ink: #FEF9F2 !important;
+  --toggle-on: #C4552F !important; --slider-fill: #C4552F !important;
+  --xs-orange: #C4552F; --xs-bamboo: #7B8A4E; --xs-paper: #F5F0E6; --xs-dust: #C8B89A;
+  --bg-1: #F8F5EE; --bg-2: #EBE4D6; --surface: rgba(255,254,250,.92); --surface-solid: #FDFBF5;
+  --border: rgba(196,85,47,.16); --border-soft: rgba(196,85,47,.08);
+  --text: #2E2A21; --text-2: #5E5748; --text-3: #8E8676;
+  --radius-lg: 10px; --radius-md: 8px; --radius-sm: 5px;
+  --shadow: 0 8px 22px rgba(46,42,33,.13); --shadow-sm: 0 3px 10px rgba(46,42,33,.08);
+  --tab-active-bg: rgba(196,85,47,.10); --tab-active-fg: var(--xs-orange);
+  --msg-bg: rgba(255,254,250,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#C4552F,#7B8A4E); --msg-mine-fg: #FEF9F2;
+  --toast-bg: rgba(46,42,33,.95); --toast-fg: #F4EFE3; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="xiaonian_s"][data-theme="dark"] {
+  --bg-1: #12110D; --bg-2: #1B1913; --surface: rgba(31,28,21,.84); --surface-solid: #1B1913;
+  --border: rgba(200,184,154,.18); --border-soft: rgba(200,184,154,.09);
+  --text: #EAE4D6; --text-2: #B5AC98; --text-3: #877F6E;
+  --accent: #E08056 !important; --accent-2: #A9B77A !important; --accent-ink: #12110D !important;
+  --tab-active-bg: rgba(224,128,86,.14); --tab-active-fg: #E89C7A;
+  --msg-bg: rgba(34,31,23,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#B04A28,#8E9C5E); --msg-mine-fg: #FFF7EC;
+  --toast-bg: rgba(234,228,214,.95); --toast-fg: #12110D;
+}
+.fd-xs-broom, .fd-xs-dust { display: none; }
+html[data-skin="xiaonian_s"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 竹帚：一根斜柄 + 扇形须，靠在墙上 */
+html[data-skin="xiaonian_s"] .fd-xs-broom {
+  display: block; position: absolute; right: 44px; bottom: 56px; width: 12px; height: 104px;
+  background: linear-gradient(180deg, rgba(123,138,78,.75), rgba(123,138,78,.35));
+  border-radius: 3px; transform: rotate(14deg); opacity: .8;
+}
+html[data-skin="xiaonian_s"] .fd-xs-broom::after {
+  content: ""; position: absolute; left: 50%; bottom: -26px; width: 54px; height: 30px;
+  margin-left: -27px;
+  background: repeating-linear-gradient(88deg,
+    rgba(123,138,78,.42) 0 2px, transparent 2px 7px);
+  -webkit-mask: linear-gradient(180deg, #000 10%, transparent 100%);
+  mask: linear-gradient(180deg, #000 10%, transparent 100%);
+  transform: rotate(-14deg);
+}
+/* 被扫起的尘：四粒，向上飘一点再落 */
+html[data-skin="xiaonian_s"] .fd-xs-dust {
+  display: block; position: absolute; width: 4px; height: 4px; border-radius: 50%;
+  background: rgba(200,184,154,.75); opacity: .5;
+  animation: xs-dust 9s ease-in-out infinite;
+}
+html[data-skin="xiaonian_s"] .fd-xs-dust--1 { right: 122px; bottom: 92px; animation-delay: -1s; }
+html[data-skin="xiaonian_s"] .fd-xs-dust--2 { right: 140px; bottom: 118px; animation-delay: -4s; width: 3px; height: 3px; }
+html[data-skin="xiaonian_s"] .fd-xs-dust--3 { right: 106px; bottom: 132px; animation-delay: -7s; width: 5px; height: 5px; opacity: .35; }
+html[data-skin="xiaonian_s"] .fd-xs-dust--4 { right: 158px; bottom: 76px; animation-delay: -2.5s; width: 3px; height: 3px; }
+@keyframes xs-dust {
+  0%, 100% { transform: translate(0, 0); opacity: .45; }
+  50%      { transform: translate(-10px, -14px); opacity: .15; }
+}
+html[data-skin="xiaonian_s"] .fj-locked { position: relative; }
+html[data-skin="xiaonian_s"] .fj-locked::after {
+  content: "小年期间固定为「米白 · 桔红」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 8px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="xiaonian_s"] .fd-xs-broom { right: 24px; height: 80px; }
+  html[data-skin="xiaonian_s"] .fd-xs-broom::after { width: 40px; height: 24px; margin-left: -20px; }
+  html[data-skin="xiaonian_s"] .fd-xs-dust--3 { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { html[data-skin="xiaonian_s"] .fd-xs-dust { animation: none; opacity: .35; } }

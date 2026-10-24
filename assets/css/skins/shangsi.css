@@ -1,0 +1,70 @@
+/* 皮肤：上巳节 · 曲水流觞
+ * 呈现：农历三月初三。母题=一道弯曲的水流（三层弧线）+ 一只顺水漂着的杯。
+ * 全站唯一"横向流动"的皮肤：装饰都在页面底部，像水从左边来。 */
+html[data-skin="shangsi"] {
+  --accent: #4A8A98 !important; --accent-2: #8FA86B !important; --accent-ink: #F4FBFC !important;
+  --toggle-on: #4A8A98 !important; --slider-fill: #4A8A98 !important;
+  --ss-water: #5A9AA8; --ss-bamboo: #8FA86B; --ss-jade: #DCEBEA; --ss-ink: #16302F;
+  --bg-1: #F3F9F9; --bg-2: #E1EEEC; --surface: rgba(255,255,255,.91); --surface-solid: #FBFDFD;
+  --border: rgba(90,154,168,.18); --border-soft: rgba(90,154,168,.09);
+  --text: #16302F; --text-2: #436460; --text-3: #7A9691;
+  --radius-lg: 16px; --radius-md: 11px; --radius-sm: 8px;
+  --shadow: 0 9px 24px rgba(22,48,47,.12); --shadow-sm: 0 3px 10px rgba(22,48,47,.07);
+  --tab-active-bg: rgba(90,154,168,.12); --tab-active-fg: #3C7A86;
+  --msg-bg: rgba(255,255,255,.96); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#4A8A98,#8FA86B); --msg-mine-fg: #F4FBFC;
+  --toast-bg: rgba(22,48,47,.95); --toast-fg: #EAF4F3; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="shangsi"][data-theme="dark"] {
+  --bg-1: #0A1414; --bg-2: #101D1C; --surface: rgba(17,31,30,.84); --surface-solid: #101D1C;
+  --border: rgba(143,168,107,.18); --border-soft: rgba(143,168,107,.09);
+  --text: #DCEAE8; --text-2: #9EB5B1; --text-3: #718783;
+  --accent: #7FBAC6 !important; --accent-2: #B4C98D !important; --accent-ink: #0A1414 !important;
+  --tab-active-bg: rgba(127,186,198,.15); --tab-active-fg: #9ACBD5;
+  --msg-bg: rgba(20,36,35,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#3C7A86,#8FA86B); --msg-mine-fg: #0A1414;
+  --toast-bg: rgba(220,234,232,.95); --toast-fg: #0A1414;
+}
+.fd-ss-wave, .fd-ss-cup { display: none; }
+html[data-skin="shangsi"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 水流：三层弧线，越靠上越淡，错开相位缓慢起伏 */
+html[data-skin="shangsi"] .fd-ss-wave {
+  display: block; position: absolute; left: -10%; right: -10%; height: 26px;
+  border-radius: 50%;
+  border-top: 1px solid rgba(90,154,168,.32);
+  animation: ss-flow 14s ease-in-out infinite;
+}
+html[data-skin="shangsi"] .fd-ss-wave--1 { bottom: 34px; }
+html[data-skin="shangsi"] .fd-ss-wave--2 { bottom: 52px; opacity: .6; animation-delay: -4s; border-top-color: rgba(143,168,107,.30); }
+html[data-skin="shangsi"] .fd-ss-wave--3 { bottom: 70px; opacity: .35; animation-delay: -8s; }
+@keyframes ss-flow {
+  0%, 100% { transform: translateX(0) scaleY(1); }
+  50%      { transform: translateX(18px) scaleY(1.35); }
+}
+/* 浮杯：一只小椭圆杯，顺水轻轻晃 */
+html[data-skin="shangsi"] .fd-ss-cup {
+  display: block; position: absolute; left: 22%; bottom: 42px; width: 20px; height: 11px;
+  border-radius: 2px 2px 50% 50%;
+  background: linear-gradient(180deg, #E4EFE9, #C6DCD6);
+  box-shadow: 0 2px 6px rgba(90,154,168,.35);
+  animation: ss-cup 7s ease-in-out infinite;
+}
+@keyframes ss-cup {
+  0%, 100% { transform: translate(0, 0) rotate(-3deg); }
+  50%      { transform: translate(14px, -2px) rotate(4deg); }
+}
+html[data-skin="shangsi"] .fj-locked { position: relative; }
+html[data-skin="shangsi"] .fj-locked::after {
+  content: "上巳节期间固定为「水青 · 竹青」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 11px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="shangsi"] .fd-ss-wave--3 { display: none; }
+  html[data-skin="shangsi"] .fd-ss-cup { left: 14%; bottom: 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin="shangsi"] .fd-ss-wave { animation: none; }
+  html[data-skin="shangsi"] .fd-ss-cup { animation: none; }
+}

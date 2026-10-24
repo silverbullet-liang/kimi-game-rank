@@ -1,0 +1,52 @@
+/* 皮肤：抗战胜利日 · 地平线上的一线曙光
+ * 呈现：9/3。母题=地平线 + 从线后升起的一圈弧光。
+ * 不做烟花、不做欢呼：胜利的表达是"天亮了"，一道渐亮的光就够。 */
+html[data-skin="victory"] {
+  --accent: #8A4B28 !important; --accent-2: #E0B274 !important; --accent-ink: #FDF6EE !important;
+  --toggle-on: #8A4B28 !important; --slider-fill: #8A4B28 !important;
+  --vc-ochre: #8A4B28; --vc-ochre-deep: #5E3018; --vc-dawn: #E0B274; --vc-cream: #FDF6EE;
+  --bg-1: #FDF8F2; --bg-2: #F3E6D7; --surface: rgba(255,252,247,.92); --surface-solid: #FEFAF5;
+  --border: rgba(138,75,40,.16); --border-soft: rgba(138,75,40,.08);
+  --text: #2E1D12; --text-2: #63432D; --text-3: #9A7A5F;
+  --radius-lg: 12px; --radius-md: 8px; --radius-sm: 6px;
+  --shadow: 0 9px 24px rgba(46,29,18,.12); --shadow-sm: 0 3px 9px rgba(46,29,18,.07);
+  --tab-active-bg: rgba(138,75,40,.10); --tab-active-fg: var(--vc-ochre);
+  --msg-bg: rgba(255,252,247,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#8A4B28,#E0B274); --msg-mine-fg: #FDF6EE;
+  --toast-bg: rgba(46,29,18,.95); --toast-fg: #FAEFE2; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="victory"][data-theme="dark"] {
+  --bg-1: #150E09; --bg-2: #1F150C; --surface: rgba(34,24,15,.85); --surface-solid: #1F150C;
+  --border: rgba(224,178,116,.19); --border-soft: rgba(224,178,116,.09);
+  --text: #F1E3D3; --text-2: #C1A88C; --text-3: #907B62;
+  --accent: #D08F5A !important; --accent-2: #E0B274 !important; --accent-ink: #150E09 !important;
+  --tab-active-bg: rgba(208,143,90,.15); --tab-active-fg: #DEA678;
+  --msg-bg: rgba(38,27,17,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#6E3B1F,#E0B274); --msg-mine-fg: #150E09;
+  --toast-bg: rgba(241,227,211,.95); --toast-fg: #150E09;
+}
+.fd-vc-dawn, .fd-vc-line { display: none; }
+html[data-skin="victory"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 曙光：地平线之上的一圈半弧，从中心向外渐隐 */
+html[data-skin="victory"] .fd-vc-dawn {
+  display: block; position: absolute; left: 50%; bottom: 7vh; width: 320px; height: 160px; margin-left: -160px;
+  background: radial-gradient(circle at 50% 100%, rgba(224,178,116,.55), rgba(224,178,116,.16) 42%, transparent 70%);
+  border-radius: 50% 50% 0 0;
+  opacity: .85;
+}
+/* 地平线：一道极细的实线，与弧底对齐 */
+html[data-skin="victory"] .fd-vc-line {
+  display: block; position: absolute; left: 12%; right: 12%; bottom: 7vh; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(138,75,40,.35) 20%, rgba(138,75,40,.50) 50%, rgba(138,75,40,.35) 80%, transparent);
+}
+html[data-skin="victory"] .fj-locked { position: relative; }
+html[data-skin="victory"] .fj-locked::after {
+  content: "抗战胜利日期间固定为「赭石 · 曙光金」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 8px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="victory"] .fd-vc-dawn { width: 220px; height: 110px; margin-left: -110px; bottom: 8vh; }
+  html[data-skin="victory"] .fd-vc-line { bottom: 8vh; left: 6%; right: 6%; }
+}

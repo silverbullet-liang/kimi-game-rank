@@ -1,0 +1,66 @@
+/* 皮肤：端午 · 一枚棱锥粽与水纹
+ * 呈现：农历五月初五。母题=一枚四棱锥形的粽子（三条棱线）+ 下方三道水纹。
+ * 粽用 clip-path 做三角，棱线用两层线性渐变；绳用一道红。 */
+html[data-skin="duanwu"] {
+  --accent: #4A7A52 !important; --accent-2: #B4402F !important; --accent-ink: #F6FBF4 !important;
+  --toggle-on: #4A7A52 !important; --slider-fill: #4A7A52 !important;
+  --dw-leaf: #4A7A52; --dw-leaf-dark: #33593A; --dw-rope: #B4402F; --dw-rice: #F2EFDC;
+  --bg-1: #F4F9F2; --bg-2: #E4EEE1; --surface: rgba(255,255,255,.91); --surface-solid: #FBFDFA;
+  --border: rgba(74,122,82,.18); --border-soft: rgba(74,122,82,.09);
+  --text: #1B2A1D; --text-2: #43583F; --text-3: #7B9179;
+  --radius-lg: 14px; --radius-md: 10px; --radius-sm: 7px;
+  --shadow: 0 9px 24px rgba(27,42,29,.13); --shadow-sm: 0 3px 10px rgba(27,42,29,.08);
+  --tab-active-bg: rgba(74,122,82,.11); --tab-active-fg: var(--dw-leaf);
+  --msg-bg: rgba(255,255,255,.96); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#4A7A52,#B4402F); --msg-mine-fg: #F6FBF4;
+  --toast-bg: rgba(27,42,29,.95); --toast-fg: #EAF2E7; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="duanwu"][data-theme="dark"] {
+  --bg-1: #0A130C; --bg-2: #101C12; --surface: rgba(17,31,20,.84); --surface-solid: #101C12;
+  --border: rgba(180,64,47,.20); --border-soft: rgba(180,64,47,.10);
+  --text: #DEEADE; --text-2: #A2B6A0; --text-3: #748873;
+  --accent: #7FA87F !important; --accent-2: #D9695E !important; --accent-ink: #0A130C !important;
+  --tab-active-bg: rgba(127,168,127,.15); --tab-active-fg: #97BD97;
+  --msg-bg: rgba(20,36,24,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#38603E,#B4402F); --msg-mine-fg: #F6FBF4;
+  --toast-bg: rgba(222,234,222,.95); --toast-fg: #0A130C;
+}
+.fd-dw-zong, .fd-dw-rope, .fd-dw-wave { display: none; }
+html[data-skin="duanwu"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 粽：四棱锥剪影，棱线用两层渐变表示 */
+html[data-skin="duanwu"] .fd-dw-zong {
+  display: block; position: absolute; right: 40px; bottom: 84px; width: 74px; height: 62px;
+  background:
+    linear-gradient(58deg, transparent 48%, rgba(51,89,58,.55) 49% 52%, transparent 53%),
+    linear-gradient(-58deg, transparent 48%, rgba(51,89,58,.55) 49% 52%, transparent 53%),
+    linear-gradient(180deg, var(--dw-leaf), var(--dw-leaf-dark));
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  opacity: .92;
+}
+/* 绳：一道红，横向绕在锥体中段 */
+html[data-skin="duanwu"] .fd-dw-rope {
+  display: block; position: absolute; right: 46px; bottom: 96px; width: 62px; height: 2px;
+  background: rgba(180,64,47,.75);
+  transform: rotate(-1deg);
+}
+/* 水纹：三道横向波纹，间距渐大 */
+html[data-skin="duanwu"] .fd-dw-wave {
+  display: block; position: absolute; left: 0; right: 0; height: 8px;
+  border-top: 1px solid rgba(74,122,82,.28);
+  border-radius: 50%;
+}
+html[data-skin="duanwu"] .fd-dw-wave--1 { bottom: 26px; left: 4%; right: 8%; opacity: .8; }
+html[data-skin="duanwu"] .fd-dw-wave--2 { bottom: 44px; left: 12%; right: 2%; opacity: .5; }
+html[data-skin="duanwu"] .fd-dw-wave--3 { bottom: 60px; left: 0; right: 14%; opacity: .3; }
+html[data-skin="duanwu"] .fj-locked { position: relative; }
+html[data-skin="duanwu"] .fj-locked::after {
+  content: "端午期间固定为「粽叶青 · 绳红」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 10px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="duanwu"] .fd-dw-zong { width: 56px; height: 48px; right: 20px; bottom: 92px; }
+  html[data-skin="duanwu"] .fd-dw-rope { width: 46px; right: 25px; bottom: 102px; }
+  html[data-skin="duanwu"] .fd-dw-wave--3 { display: none; }
+}

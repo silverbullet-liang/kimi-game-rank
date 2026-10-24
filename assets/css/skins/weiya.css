@@ -1,0 +1,68 @@
+/* 皮肤：尾牙 · 宴席将散
+ * 呈现：农历腊月十六（一年最后一次做牙）。母题=红桌布的一道边、一双搁下的筷子、一盏残灯。
+ * 情绪是"散场"而不是"热闹"：暖色压暗一档，动效只剩残灯的呼吸。 */
+html[data-skin="weiya"] {
+  --accent: #A8322A !important; --accent-2: #6B4A2F !important; --accent-ink: #FFF6EE !important;
+  --toggle-on: #A8322A !important; --slider-fill: #A8322A !important;
+  --wy-red: #A8322A; --wy-wood: #6B4A2F; --wy-lamp: #E8B75A; --wy-cream: #FBF0E4;
+  --bg-1: #FBF3E9; --bg-2: #F0DFCC; --surface: rgba(255,250,244,.91); --surface-solid: #FEF8F0;
+  --border: rgba(168,50,42,.17); --border-soft: rgba(168,50,42,.08);
+  --text: #35201A; --text-2: #6B4A3C; --text-3: #9C7C6B;
+  --radius-lg: 14px; --radius-md: 10px; --radius-sm: 7px;
+  --shadow: 0 10px 26px rgba(107,74,47,.16); --shadow-sm: 0 3px 11px rgba(107,74,47,.10);
+  --tab-active-bg: rgba(168,50,42,.11); --tab-active-fg: var(--wy-red);
+  --msg-bg: rgba(255,250,244,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#A8322A,#6B4A2F); --msg-mine-fg: #FFF6EE;
+  --toast-bg: rgba(53,32,26,.95); --toast-fg: #FBEDE0; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="weiya"][data-theme="dark"] {
+  --bg-1: #150F0C; --bg-2: #1F1611; --surface: rgba(36,26,20,.84); --surface-solid: #1F1611;
+  --border: rgba(232,183,90,.20); --border-soft: rgba(232,183,90,.10);
+  --text: #F1DFD0; --text-2: #C4A48D; --text-3: #94796A;
+  --accent: #D9695E !important; --accent-2: #E8B75A !important; --accent-ink: #150F0C !important;
+  --tab-active-bg: rgba(217,105,94,.14); --tab-active-fg: #E58B80;
+  --msg-bg: rgba(40,29,22,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#8E2A23,#C08A3E); --msg-mine-fg: #FFF6EE;
+  --toast-bg: rgba(241,223,208,.95); --toast-fg: #150F0C;
+}
+.fd-wy-cloth, .fd-wy-chopsticks, .fd-wy-lamp { display: none; }
+html[data-skin="weiya"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 桌布：屏幕底部一道红边 + 上方一条极淡的折痕 */
+html[data-skin="weiya"] .fd-wy-cloth {
+  display: block; position: absolute; left: 0; right: 0; bottom: 0; height: 64px;
+  background: linear-gradient(180deg, rgba(168,50,42,.20), rgba(168,50,42,.05) 40%, transparent);
+  border-top: 2px solid rgba(168,50,42,.30);
+}
+/* 筷子：一双，随意搁着（角度不同才有"搁下"的意思） */
+html[data-skin="weiya"] .fd-wy-chopsticks {
+  display: block; position: absolute; right: 52px; bottom: 30px; width: 74px; height: 30px;
+  background:
+    linear-gradient(76deg, rgba(107,74,47,.55) 0 3px, transparent 3px),
+    linear-gradient(82deg, rgba(107,74,47,.40) 0 3px, transparent 3px);
+  opacity: .8;
+}
+html[data-skin="weiya"] .fd-wy-chopsticks::after {
+  content: ""; position: absolute; left: -8px; bottom: -2px; width: 22px; height: 8px;
+  border-radius: 2px; background: rgba(107,74,47,.22);
+}
+/* 残灯：唯一的光，缓慢呼吸 */
+html[data-skin="weiya"] .fd-wy-lamp {
+  display: block; position: absolute; left: 28px; bottom: 70px; width: 9px; height: 13px;
+  border-radius: 50% 50% 46% 46% / 62% 62% 38% 38%;
+  background: radial-gradient(ellipse at 50% 72%, #FFF2D2, var(--wy-lamp) 62%, rgba(232,183,90,.2));
+  box-shadow: 0 0 24px 9px rgba(232,183,90,.35);
+  animation: wy-lamp 5.5s ease-in-out infinite;
+}
+@keyframes wy-lamp { 0%,100% { opacity: .7; transform: scale(.96); } 50% { opacity: 1; transform: scale(1.04); } }
+html[data-skin="weiya"] .fj-locked { position: relative; }
+html[data-skin="weiya"] .fj-locked::after {
+  content: "尾牙期间固定为「朱红 · 暖木」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 10px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="weiya"] .fd-wy-chopsticks { right: 24px; width: 58px; }
+  html[data-skin="weiya"] .fd-wy-lamp { left: 16px; bottom: 80px; }
+}
+@media (prefers-reduced-motion: reduce) { html[data-skin="weiya"] .fd-wy-lamp { animation: none; opacity: .85; } }

@@ -1,0 +1,66 @@
+/* 皮肤：青年节 · 一只向上的纸飞机
+ * 呈现：5/4。母题=纸飞机 + 一条虚线上升轨迹（从右下画到左上）。
+ * 动效只有一处：纸飞机沿轨迹缓慢上移一点再退回，像被风托了一下。 */
+html[data-skin="youth"] {
+  --accent: #E2662E !important; --accent-2: #5FA8D3 !important; --accent-ink: #FFFAF5 !important;
+  --toggle-on: #E2662E !important; --slider-fill: #E2662E !important;
+  --yo-orange: #E2662E; --yo-sky: #5FA8D3; --yo-cream: #FDF3E9; --yo-ink: #2A211C;
+  --bg-1: #FEF7F0; --bg-2: #F7E7D7; --surface: rgba(255,252,248,.91); --surface-solid: #FFFBF6;
+  --border: rgba(226,102,46,.17); --border-soft: rgba(226,102,46,.08);
+  --text: #2A211C; --text-2: #5E4A3E; --text-3: #92796C;
+  --radius-lg: 20px; --radius-md: 13px; --radius-sm: 9px;
+  --shadow: 0 10px 28px rgba(226,102,46,.15); --shadow-sm: 0 4px 12px rgba(226,102,46,.09);
+  --tab-active-bg: rgba(226,102,46,.12); --tab-active-fg: var(--yo-orange);
+  --msg-bg: rgba(255,252,248,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#E2662E,#5FA8D3); --msg-mine-fg: #FFFAF5;
+  --toast-bg: rgba(42,33,28,.95); --toast-fg: #FBEFE3; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="youth"][data-theme="dark"] {
+  --bg-1: #160F0B; --bg-2: #20160F; --surface: rgba(36,26,19,.84); --surface-solid: #20160F;
+  --border: rgba(95,168,211,.20); --border-soft: rgba(95,168,211,.10);
+  --text: #F5E7DB; --text-2: #C6AA96; --text-3: #96796A;
+  --accent: #F0854F !important; --accent-2: #7FC0E4 !important; --accent-ink: #160F0B !important;
+  --tab-active-bg: rgba(240,133,79,.15); --tab-active-fg: #F29B6C;
+  --msg-bg: rgba(41,30,22,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#C4541F,#4A8FBA); --msg-mine-fg: #FFFAF5;
+  --toast-bg: rgba(245,231,219,.95); --toast-fg: #160F0B;
+}
+.fd-yo-plane, .fd-yo-trail { display: none; }
+html[data-skin="youth"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 纸飞机：两个三角拼成，朝左上 */
+html[data-skin="youth"] .fd-yo-plane {
+  display: block; position: absolute; right: 64px; bottom: 132px; width: 0; height: 0;
+  border-bottom: 20px solid rgba(226,102,46,.75);
+  border-left: 30px solid transparent;
+  transform: rotate(-24deg);
+  filter: drop-shadow(0 4px 8px rgba(226,102,46,.28));
+  animation: yo-glide 6s ease-in-out infinite;
+}
+html[data-skin="youth"] .fd-yo-plane::after {
+  content: ""; position: absolute; left: -30px; bottom: -20px; width: 0; height: 0;
+  border-top: 9px solid rgba(95,168,211,.55);
+  border-right: 22px solid transparent;
+}
+@keyframes yo-glide {
+  0%, 100% { transform: rotate(-24deg) translate(0, 0); }
+  50%      { transform: rotate(-20deg) translate(-8px, -10px); }
+}
+/* 轨迹：一条虚线，从左下升到右上，与飞机方向一致 */
+html[data-skin="youth"] .fd-yo-trail {
+  display: block; position: absolute; left: 18%; bottom: 62px; width: 240px; height: 1px;
+  background: repeating-linear-gradient(90deg, rgba(95,168,211,.55) 0 7px, transparent 7px 15px);
+  transform: rotate(-16deg); transform-origin: 0 50%;
+  opacity: .7;
+}
+html[data-skin="youth"] .fj-locked { position: relative; }
+html[data-skin="youth"] .fj-locked::after {
+  content: "青年节期间固定为「朝气橙 · 天蓝」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 13px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="youth"] .fd-yo-plane { right: 34px; bottom: 150px; border-bottom-width: 16px; border-left-width: 24px; }
+  html[data-skin="youth"] .fd-yo-trail { width: 170px; left: 8%; }
+}
+@media (prefers-reduced-motion: reduce) { html[data-skin="youth"] .fd-yo-plane { animation: none; } }

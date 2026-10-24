@@ -1,0 +1,59 @@
+/* 皮肤：教师节 · 一枚粉笔与粉笔灰
+ * 呈现：9/10。母题=一段斜放的粉笔（带一点磨圆的那头）+ 三点散落的粉笔灰。
+ * 全站唯一使用"板书绿"作底色的皮肤 —— 不是学院风装饰，是黑板本身。 */
+html[data-skin="teacher"] {
+  --accent: #2F5A45 !important; --accent-2: #E8E2D0 !important; --accent-ink: #F6F8F4 !important;
+  --toggle-on: #2F5A45 !important; --slider-fill: #2F5A45 !important;
+  --tc-board: #2F5A45; --tc-board-deep: #1E3C2E; --tc-chalk: #E8E2D0; --tc-paper: #F6F8F4;
+  --bg-1: #F4F7F3; --bg-2: #E4EBE3; --surface: rgba(255,255,252,.92); --surface-solid: #FBFCF9;
+  --border: rgba(47,90,69,.17); --border-soft: rgba(47,90,69,.08);
+  --text: #1B2A22; --text-2: #435C4E; --text-3: #7C9285;
+  --radius-lg: 8px; --radius-md: 6px; --radius-sm: 4px;
+  --shadow: 0 7px 20px rgba(27,42,34,.12); --shadow-sm: 0 3px 9px rgba(27,42,34,.07);
+  --tab-active-bg: rgba(47,90,69,.11); --tab-active-fg: var(--tc-board);
+  --msg-bg: rgba(255,255,252,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#2F5A45,#7F9E8B); --msg-mine-fg: #F6F8F4;
+  --toast-bg: rgba(27,42,34,.95); --toast-fg: #EFF4EE; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="teacher"][data-theme="dark"] {
+  --bg-1: #080F0B; --bg-2: #0D1712; --surface: rgba(16,27,21,.85); --surface-solid: #0D1712;
+  --border: rgba(232,226,208,.16); --border-soft: rgba(232,226,208,.07);
+  --text: #E3EBE2; --text-2: #AEBDB1; --text-3: #7F8F82;
+  --accent: #9FBFA8 !important; --accent-2: #E8E2D0 !important; --accent-ink: #080F0B !important;
+  --tab-active-bg: rgba(159,191,168,.15); --tab-active-fg: #B3CDB9;
+  --msg-bg: rgba(18,31,24,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#2A4E3C,#9FBFA8); --msg-mine-fg: #080F0B;
+  --toast-bg: rgba(227,235,226,.95); --toast-fg: #080F0B;
+}
+.fd-tc-chalk, .fd-tc-dust { display: none; }
+html[data-skin="teacher"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 粉笔：一枚斜放的短棒，头端做圆 */
+html[data-skin="teacher"] .fd-tc-chalk {
+  display: block; position: absolute; right: 54px; top: 74px; width: 66px; height: 9px;
+  background: linear-gradient(90deg, var(--tc-chalk), rgba(232,226,208,.55));
+  border-radius: 5px 2px 2px 5px;
+  transform: rotate(-24deg);
+  box-shadow: 0 2px 6px rgba(47,90,69,.16);
+  opacity: .92;
+}
+/* 粉笔灰：三点散落，越远越小越淡 */
+html[data-skin="teacher"] .fd-tc-dust {
+  display: block; position: absolute; width: 3px; height: 3px; border-radius: 50%;
+  background: rgba(232,226,208,.85);
+}
+html[data-skin="teacher"] .fd-tc-dust--1 { right: 40px; top: 96px; }
+html[data-skin="teacher"] .fd-tc-dust--2 { right: 30px; top: 108px; width: 2px; height: 2px; opacity: .7; }
+html[data-skin="teacher"] .fd-tc-dust--3 { right: 48px; top: 116px; width: 2px; height: 2px; opacity: .5; }
+html[data-skin="teacher"] .fj-locked { position: relative; }
+html[data-skin="teacher"] .fj-locked::after {
+  content: "教师节期间固定为「板书绿 · 粉笔白」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 6px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="teacher"] .fd-tc-chalk { width: 48px; height: 7px; right: 28px; top: 62px; }
+  html[data-skin="teacher"] .fd-tc-dust--1 { right: 20px; top: 82px; }
+  html[data-skin="teacher"] .fd-tc-dust--2 { right: 14px; top: 92px; }
+  html[data-skin="teacher"] .fd-tc-dust--3 { right: 26px; top: 98px; }
+}

@@ -1,0 +1,60 @@
+/* 皮肤：中秋 · 一轮满月与一片薄云
+ * 呈现：农历八月十五。母题=满月（外圈柔光 + 内圈实心）+ 横过月面的一片云。
+ * 与元宵的区别：元宵是"灯"，中秋是"月" —— 一个来自人间，一个来自天上。 */
+html[data-skin="midautumn"] {
+  --accent: #34456E !important; --accent-2: #E8C77A !important; --accent-ink: #FBF8F0 !important;
+  --toggle-on: #34456E !important; --slider-fill: #34456E !important;
+  --ma-indigo: #34456E; --ma-indigo-deep: #202C4A; --ma-moon: #E8C77A; --ma-cloud: #DCE2EF;
+  --bg-1: #F7F7FB; --bg-2: #E7E9F2; --surface: rgba(255,255,255,.92); --surface-solid: #FCFCFF;
+  --border: rgba(52,69,110,.16); --border-soft: rgba(52,69,110,.08);
+  --text: #1C2233; --text-2: #444F70; --text-3: #7D87A3;
+  --radius-lg: 20px; --radius-md: 13px; --radius-sm: 9px;
+  --shadow: 0 11px 28px rgba(28,34,51,.13); --shadow-sm: 0 4px 12px rgba(28,34,51,.08);
+  --tab-active-bg: rgba(52,69,110,.10); --tab-active-fg: var(--ma-indigo);
+  --msg-bg: rgba(255,255,255,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#34456E,#E8C77A); --msg-mine-fg: #FBF8F0;
+  --toast-bg: rgba(28,34,51,.95); --toast-fg: #F0F2FA; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="midautumn"][data-theme="dark"] {
+  --bg-1: #080B14; --bg-2: #0D1220; --surface: rgba(17,22,36,.86); --surface-solid: #0D1220;
+  --border: rgba(232,199,122,.18); --border-soft: rgba(232,199,122,.09);
+  --text: #E2E6F2; --text-2: #A6AFC7; --text-3: #77809A;
+  --accent: #E8C77A !important; --accent-2: #8C9BC4 !important; --accent-ink: #080B14 !important;
+  --tab-active-bg: rgba(232,199,122,.15); --tab-active-fg: #EDD294;
+  --msg-bg: rgba(20,26,42,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#2A3A5E,#E8C77A); --msg-mine-fg: #080B14;
+  --toast-bg: rgba(226,230,242,.95); --toast-fg: #080B14;
+}
+.fd-ma-moon, .fd-ma-halo, .fd-ma-cloud { display: none; }
+html[data-skin="midautumn"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 满月：内圈实心 + 一层外晕 */
+html[data-skin="midautumn"] .fd-ma-moon {
+  display: block; position: absolute; right: 54px; top: 60px; width: 56px; height: 56px; border-radius: 50%;
+  background: var(--ma-moon);
+  box-shadow: inset -6px -4px 12px rgba(52,69,110,.16);
+  opacity: .95;
+}
+html[data-skin="midautumn"] .fd-ma-halo {
+  display: block; position: absolute; right: 34px; top: 40px; width: 96px; height: 96px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(232,199,122,.26), transparent 68%);
+}
+/* 薄云：一条横过月面的浅色带（不被裁剪，直接压在上面） */
+html[data-skin="midautumn"] .fd-ma-cloud {
+  display: block; position: absolute; right: 26px; top: 86px; width: 118px; height: 15px;
+  background: linear-gradient(90deg, transparent, rgba(220,226,239,.92) 22%, rgba(220,226,239,.96) 68%, transparent);
+  border-radius: 50%;
+  filter: blur(.6px);
+  opacity: .8;
+}
+html[data-skin="midautumn"] .fj-locked { position: relative; }
+html[data-skin="midautumn"] .fj-locked::after {
+  content: "中秋期间固定为「靛青 · 月黄」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 13px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="midautumn"] .fd-ma-moon { width: 40px; height: 40px; right: 26px; top: 52px; }
+  html[data-skin="midautumn"] .fd-ma-halo { width: 70px; height: 70px; right: 11px; top: 37px; }
+  html[data-skin="midautumn"] .fd-ma-cloud { width: 86px; right: 6px; top: 70px; height: 12px; }
+}

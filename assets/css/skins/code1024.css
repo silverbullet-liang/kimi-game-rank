@@ -1,0 +1,198 @@
+/* ============================================================
+ * 皮肤：1024 程序员节 · 二进制绿
+ * ------------------------------------------------------------
+ * 当日呈现：北京时间 10/24（1024 = 2^10，程序员的自嘲单位）
+ * 主题色：专版期间固定「终端绿 + 电光蓝」
+ *
+ * 设计意图
+ *   · 不是「贴一堆代码图」：真正的程序员审美是克制 —— 深墨底、一个荧光绿、等宽字
+ *   · 代码雨只做氛围：三列极淡的 0/1，向下缓流，压到几乎看不见，视线仍落在内容上
+ *   · 光标是唯一的亮动：一根 1px 竖条，1.2s 呼吸一次，像终端在等你输入
+ *   · 角标放 </>，右上角一枚，不抢镜
+ *   · 亮色模式给「浅纸终端」而不是硬塞深色，避免整站突变
+ *   · 装饰层 pointer-events:none；尊重 prefers-reduced-motion
+ * ============================================================ */
+
+html[data-skin="code1024"] {
+  --accent: #15924A !important;
+  --accent-2: #0B7FD4 !important;
+  --accent-ink: #F3FFF8 !important;
+  --toggle-on: #15924A !important;
+  --slider-fill: #15924A !important;
+
+  --pd-green: #15924A;
+  --pd-green-bright: #22C55E;
+  --pd-green-soft: #86E3A8;
+  --pd-blue: #0B7FD4;
+  --pd-ink: #122019;
+  --pd-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  --bg-1: #F3F9F5;
+  --bg-2: #E4F0E9;
+  --surface: rgba(255, 255, 255, .88);
+  --surface-solid: #FBFEFC;
+  --border: rgba(21, 146, 74, .20);
+  --border-soft: rgba(21, 146, 74, .10);
+  --text: #122019;
+  --text-2: #47604F;
+  --text-3: #7D9385;
+
+  --radius-lg: 16px;
+  --radius-md: 11px;
+  --radius-sm: 8px;
+  --shadow: 0 10px 28px rgba(18, 32, 25, .14);
+  --shadow-sm: 0 3px 12px rgba(18, 32, 25, .09);
+
+  --tab-active-bg: rgba(21, 146, 74, .12);
+  --tab-active-fg: var(--pd-green);
+  --msg-bg: rgba(255, 255, 255, .96);
+  --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg, #15924A, #0B7FD4);
+  --msg-mine-fg: #F3FFF8;
+  --toast-bg: rgba(18, 32, 25, .95);
+  --toast-fg: #E8FFF1;
+  --toast-err-bg: #B4342C;
+}
+
+html[data-skin="code1024"][data-theme="dark"] {
+  --bg-1: #070D10;
+  --bg-2: #0C171C;
+  --surface: rgba(14, 27, 31, .82);
+  --surface-solid: #0E1B1F;
+  --border: rgba(34, 197, 94, .24);
+  --border-soft: rgba(34, 197, 94, .12);
+  --text: #D6F2E1;
+  --text-2: #8FB6A2;
+  --text-3: #63836F;
+
+  --accent: #22C55E !important;
+  --accent-2: #38BDF8 !important;
+  --accent-ink: #05140B !important;
+  --tab-active-bg: rgba(34, 197, 94, .16);
+  --tab-active-fg: #6EE7A0;
+  --msg-bg: rgba(16, 31, 36, .9);
+  --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg, #22C55E, #38BDF8);
+  --msg-mine-fg: #04120A;
+  --toast-bg: rgba(214, 242, 225, .95);
+  --toast-fg: #0A1611;
+}
+
+/* 等宽感：数字与作品 ID 用等宽字，程序员主题的细节 */
+html[data-skin="code1024"] .oid,
+html[data-skin="code1024"] .rank-no,
+html[data-skin="code1024"] .cnt { font-family: var(--pd-mono); }
+
+/* ============================================================
+ * 装饰层：三列代码雨 + 光标 + </> 角标 + 扫描线
+ * ============================================================ */
+.fd-pd-rain, .fd-pd-caret, .fd-pd-angle, .fd-pd-scan { display: none; }
+
+html[data-skin="code1024"] .festival-deco {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* 代码雨：竖排 0/1，靠 mask 上下渐隐，避免"柱子"感 */
+html[data-skin="code1024"] .fd-pd-rain {
+  display: block;
+  position: absolute;
+  top: -30%;
+  width: 1.1em;
+  font: 13px/1.5 var(--pd-mono);
+  letter-spacing: .32em;
+  color: var(--pd-green);
+  opacity: .16;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  white-space: nowrap;
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 18%, #000 72%, transparent);
+  mask-image: linear-gradient(180deg, transparent, #000 18%, #000 72%, transparent);
+  animation: pd-rain 26s linear infinite;
+}
+html[data-skin="code1024"] .fd-pd-rain--1 { left: 4%; animation-delay: -2s; }
+html[data-skin="code1024"] .fd-pd-rain--2 { left: 47%; animation-delay: -11s; opacity: .11; }
+html[data-skin="code1024"] .fd-pd-rain--3 { right: 6%; animation-delay: -18s; opacity: .13; }
+
+@keyframes pd-rain {
+  from { transform: translateY(0); }
+  to   { transform: translateY(130%); }
+}
+
+/* 光标：内容区左上角一枚，像终端刚刚启动 */
+html[data-skin="code1024"] .fd-pd-caret {
+  display: block;
+  position: absolute;
+  left: 14px;
+  top: 62px;
+  width: 2px;
+  height: 18px;
+  background: var(--pd-green-bright);
+  box-shadow: 0 0 8px rgba(34, 197, 94, .55);
+  animation: pd-caret 1.2s steps(1, end) infinite;
+}
+@keyframes pd-caret { 0%, 55% { opacity: 1; } 56%, 100% { opacity: 0; } }
+
+/* </> 角标 */
+html[data-skin="code1024"] .fd-pd-angle {
+  display: block;
+  position: absolute;
+  right: 12px;
+  top: 58px;
+  font: 700 13px/1 var(--pd-mono);
+  color: var(--pd-green);
+  opacity: .5;
+  letter-spacing: .5px;
+}
+
+/* 扫描线：极淡横向条纹，慢速下移，制造 CRT 质感 */
+html[data-skin="code1024"] .fd-pd-scan {
+  display: block;
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(180deg,
+    rgba(34, 197, 94, .05) 0 1px,
+    transparent 1px 4px);
+  opacity: .5;
+  animation: pd-scan 12s linear infinite;
+}
+@keyframes pd-scan {
+  from { transform: translateY(0); }
+  to   { transform: translateY(16px); }
+}
+
+/* 外观设置里的主题色栏：专版期间禁用并说明原因 */
+html[data-skin="code1024"] .fj-locked { position: relative; }
+html[data-skin="code1024"] .fj-locked::after {
+  content: "1024 程序员节期间固定为「终端绿」";
+  position: absolute;
+  inset: -4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent);
+  border-radius: 12px;
+  filter: none;
+}
+
+@media (max-width: 560px) {
+  html[data-skin="code1024"] .fd-pd-rain--2,
+  html[data-skin="code1024"] .fd-pd-angle { display: none; }
+  html[data-skin="code1024"] .fd-pd-caret { top: 56px; height: 15px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin="code1024"] .fd-pd-rain,
+  html[data-skin="code1024"] .fd-pd-scan { animation: none; }
+  html[data-skin="code1024"] .fd-pd-caret { animation: none; opacity: .8; }
+}

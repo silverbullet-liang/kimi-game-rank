@@ -1,0 +1,61 @@
+/* 皮肤：元旦 · 新年第一缕光
+ * 呈现：1/1。母题=地平线上的一道金线 + 昨夜刚落下的钟声余响。
+ * 不用烟花、不用彩带：新年的分量在"静"，一道线就够。 */
+html[data-skin="newyear"] {
+  --accent: #B08A3E !important; --accent-2: #2B4A6F !important; --accent-ink: #0B1420 !important;
+  --toggle-on: #B08A3E !important; --slider-fill: #B08A3E !important;
+  --ny-gold: #D9B25F; --ny-gold-soft: #F0D69A; --ny-night: #0E1A2B; --ny-ink: #101A26;
+  --bg-1: #F7F8FA; --bg-2: #E7EBF0; --surface: rgba(255,255,255,.90); --surface-solid: #FCFDFE;
+  --border: rgba(43,74,111,.16); --border-soft: rgba(43,74,111,.08);
+  --text: #101A26; --text-2: #46586B; --text-3: #7C8D9E;
+  --radius-lg: 16px; --radius-md: 11px; --radius-sm: 8px;
+  --shadow: 0 10px 28px rgba(16,26,38,.13); --shadow-sm: 0 3px 11px rgba(16,26,38,.08);
+  --tab-active-bg: rgba(176,138,62,.12); --tab-active-fg: #8A6A28;
+  --msg-bg: rgba(255,255,255,.96); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#2B4A6F,#B08A3E); --msg-mine-fg: #FBF7EC;
+  --toast-bg: rgba(16,26,38,.95); --toast-fg: #F0F4F8; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="newyear"][data-theme="dark"] {
+  --bg-1: #080D15; --bg-2: #0D1521; --surface: rgba(16,25,37,.84); --surface-solid: #0D1521;
+  --border: rgba(217,178,95,.22); --border-soft: rgba(217,178,95,.11);
+  --text: #E8EEF6; --text-2: #A4B4C7; --text-3: #74859A;
+  --accent: #D9B25F !important; --accent-2: #7FA6CE !important; --accent-ink: #080D15 !important;
+  --tab-active-bg: rgba(217,178,95,.15); --tab-active-fg: #E8C87E;
+  --msg-bg: rgba(19,29,42,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#3A5A80,#D9B25F); --msg-mine-fg: #08101A;
+  --toast-bg: rgba(232,238,246,.95); --toast-fg: #080D15;
+}
+.fd-ny-line, .fd-ny-tick, .fd-ny-glow { display: none; }
+html[data-skin="newyear"] .festival-deco {
+  display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden;
+}
+/* 地平线：一条从透明到金色再回透明的细线，压在屏幕下三分之一 */
+html[data-skin="newyear"] .fd-ny-line {
+  display: block; position: absolute; left: 6%; right: 6%; bottom: 22%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(217,178,95,.9) 22%, rgba(240,214,154,1) 50%, rgba(217,178,95,.9) 78%, transparent);
+  box-shadow: 0 0 18px 3px rgba(217,178,95,.28);
+}
+/* 线下的天光：极淡的暖色扩散 */
+html[data-skin="newyear"] .fd-ny-glow {
+  display: block; position: absolute; left: 0; right: 0; bottom: 0; height: 30%;
+  background: radial-gradient(ellipse at 50% 100%, rgba(217,178,95,.20), transparent 70%);
+  opacity: .9;
+}
+/* 刻度：线上一枚极小的竖线，像钟面最后一格 */
+html[data-skin="newyear"] .fd-ny-tick {
+  display: block; position: absolute; left: 50%; bottom: 22%;
+  width: 1px; height: 13px; margin-left: -.5px;
+  background: var(--ny-gold-soft); opacity: .85;
+  animation: ny-tick 4s ease-in-out infinite;
+}
+@keyframes ny-tick { 0%,100% { opacity: .85; } 50% { opacity: .35; } }
+html[data-skin="newyear"] .fj-locked { position: relative; }
+html[data-skin="newyear"] .fj-locked::after {
+  content: "元旦期间固定为「深夜蓝 · 古金」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 12px; filter: none;
+}
+@media (max-width: 560px) { html[data-skin="newyear"] .fd-ny-line { left: 3%; right: 3%; bottom: 18%; } }
+@media (prefers-reduced-motion: reduce) { html[data-skin="newyear"] .fd-ny-tick { animation: none; opacity: .7; } }

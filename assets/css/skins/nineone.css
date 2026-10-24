@@ -1,0 +1,57 @@
+/* 皮肤：九一八 · 一页撕开的日历
+ * 呈现：9/18。母题=日历格（细网格）+ 一道自上而下的裂痕正好切在中间格。
+ * 与七七的"城墙缺口"区分：那套是边界被击穿，这套是时间被撕开。 */
+html[data-skin="nineone"] {
+  --accent: #4A4A48 !important; --accent-2: #8C8478 !important; --accent-ink: #F5F4F0 !important;
+  --toggle-on: #4A4A48 !important; --slider-fill: #4A4A48 !important;
+  --n9-iron: #4A4A48; --n9-iron-deep: #2C2C2A; --n9-paper: #F5F4F0; --n9-ash: #B3ADA2;
+  --bg-1: #F6F5F1; --bg-2: #E9E7E1; --surface: rgba(255,255,251,.92); --surface-solid: #FBFAF6;
+  --border: rgba(74,74,72,.16); --border-soft: rgba(74,74,72,.08);
+  --text: #222220; --text-2: #52524F; --text-3: #87857F;
+  --radius-lg: 3px; --radius-md: 2px; --radius-sm: 1px;
+  --shadow: 0 5px 16px rgba(34,34,32,.11); --shadow-sm: 0 2px 7px rgba(34,34,32,.07);
+  --tab-active-bg: rgba(74,74,72,.10); --tab-active-fg: var(--n9-iron);
+  --msg-bg: rgba(255,255,251,.98); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#4A4A48,#8C8478); --msg-mine-fg: #F5F4F0;
+  --toast-bg: rgba(34,34,32,.95); --toast-fg: #F2F0EB; --toast-err-bg: #8E3A2E;
+}
+html[data-skin="nineone"][data-theme="dark"] {
+  --bg-1: #111110; --bg-2: #181816; --surface: rgba(26,26,24,.85); --surface-solid: #181816;
+  --border: rgba(179,173,162,.15); --border-soft: rgba(179,173,162,.07);
+  --text: #E3E1DA; --text-2: #AEA9A0; --text-3: #807C74;
+  --accent: #BDB8AE !important; --accent-2: #8C8478 !important; --accent-ink: #111110 !important;
+  --tab-active-bg: rgba(189,184,174,.13); --tab-active-fg: #CCC7BD;
+  --msg-bg: rgba(29,29,26,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#3E3E3B,#8C8478); --msg-mine-fg: #F5F4F0;
+  --toast-bg: rgba(227,225,218,.95); --toast-fg: #111110;
+}
+.fd-n9-grid, .fd-n9-crack { display: none; }
+html[data-skin="nineone"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 日历格：只铺右上角一块，不覆盖全屏 */
+html[data-skin="nineone"] .fd-n9-grid {
+  display: block; position: absolute; right: 24px; top: 24px; width: 150px; height: 110px;
+  background:
+    repeating-linear-gradient(0deg, rgba(74,74,72,.20) 0 1px, transparent 1px 22px),
+    repeating-linear-gradient(90deg, rgba(74,74,72,.20) 0 1px, transparent 1px 30px);
+  -webkit-mask: linear-gradient(180deg, #000, transparent 92%);
+  mask: linear-gradient(180deg, #000, transparent 92%);
+  opacity: .7;
+}
+/* 裂痕：一条多段折线，从格子顶端斜劈到中部 */
+html[data-skin="nineone"] .fd-n9-crack {
+  display: block; position: absolute; right: 92px; top: 24px; width: 3px; height: 124px;
+  background: linear-gradient(180deg, rgba(34,34,32,.62), rgba(34,34,32,.16) 72%, transparent);
+  clip-path: polygon(38% 0, 100% 0, 62% 18%, 96% 22%, 52% 40%, 88% 46%, 40% 64%, 74% 70%, 26% 88%, 54% 92%, 20% 100%, 0 100%, 22% 86%, 0 80%, 30% 62%, 6% 56%, 44% 38%, 12% 32%, 48% 16%, 18% 10%);
+  opacity: .85;
+}
+html[data-skin="nineone"] .fj-locked { position: relative; }
+html[data-skin="nineone"] .fj-locked::after {
+  content: "九一八期间固定为「铁灰 · 素白」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 2px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="nineone"] .fd-n9-grid { width: 104px; height: 78px; right: 12px; top: 18px; }
+  html[data-skin="nineone"] .fd-n9-crack { right: 58px; top: 18px; height: 88px; }
+}

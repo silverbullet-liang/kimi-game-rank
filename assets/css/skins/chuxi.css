@@ -1,0 +1,94 @@
+/* 皮肤：除夕 · 守岁到最后一格
+ * 呈现：农历腊月最后一天。母题=秒针（一根金线缓慢走到最后一格）+ 上升的金点（守岁的灯）+ 倒福水印。
+ * 与春节（初一）刻意区分：除夕是"等"，所以整页只有一个慢动作。 */
+html[data-skin="chuxi"] {
+  --accent: #B22A22 !important; --accent-2: #E0B44A !important; --accent-ink: #FFF7EF !important;
+  --toggle-on: #B22A22 !important; --slider-fill: #B22A22 !important;
+  --cx-red: #B22A22; --cx-red-deep: #7E1A14; --cx-gold: #E0B44A; --cx-gold-soft: #F5DA9A;
+  --bg-1: #FFF6F0; --bg-2: #FBE3D8; --surface: rgba(255,251,247,.91); --surface-solid: #FFFBF7;
+  --border: rgba(178,42,34,.18); --border-soft: rgba(178,42,34,.09);
+  --text: #2B1613; --text-2: #6B4038; --text-3: #9B736A;
+  --radius-lg: 18px; --radius-md: 12px; --radius-sm: 9px;
+  --shadow: 0 10px 30px rgba(126,26,20,.16); --shadow-sm: 0 4px 13px rgba(126,26,20,.10);
+  --tab-active-bg: rgba(178,42,34,.11); --tab-active-fg: var(--cx-red);
+  --msg-bg: rgba(255,251,247,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#B22A22,#E0B44A); --msg-mine-fg: #FFF7EF;
+  --toast-bg: rgba(43,22,19,.95); --toast-fg: #FCEBE0; --toast-err-bg: #9E2A1E;
+}
+html[data-skin="chuxi"][data-theme="dark"] {
+  --bg-1: #170A08; --bg-2: #23110D; --surface: rgba(37,18,14,.84); --surface-solid: #23110D;
+  --border: rgba(224,180,74,.20); --border-soft: rgba(224,180,74,.10);
+  --text: #F6E3D8; --text-2: #CBA396; --text-3: #9A7568;
+  --accent: #E8675A !important; --accent-2: #E0B44A !important; --accent-ink: #170A08 !important;
+  --tab-active-bg: rgba(232,103,90,.15); --tab-active-fg: #F39A8C;
+  --msg-bg: rgba(42,20,16,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#C0362C,#D9A93F); --msg-mine-fg: #FFF7EF;
+  --toast-bg: rgba(246,227,216,.95); --toast-fg: #170A08;
+}
+.fd-cx-hand, .fd-cx-dial, .fd-cx-spark, .fd-cx-fu { display: none; }
+html[data-skin="chuxi"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 表盘：只有下半圈一道弧，像钟面 */
+html[data-skin="chuxi"] .fd-cx-dial {
+  display: block; position: absolute; left: 26px; bottom: 54px; width: 96px; height: 96px;
+  border-radius: 50%;
+  border: 1px solid rgba(224,180,74,.35);
+  -webkit-mask: linear-gradient(180deg, transparent 42%, #000 43%);
+  mask: linear-gradient(180deg, transparent 42%, #000 43%);
+  opacity: .7;
+}
+/* 秒针：12s 走一圈，极慢 —— 守岁的节奏 */
+html[data-skin="chuxi"] .fd-cx-hand {
+  display: block; position: absolute; left: 74px; bottom: 102px; width: 1px; height: 34px;
+  background: linear-gradient(180deg, var(--cx-gold), rgba(224,180,74,.3));
+  transform-origin: 50% 100%;
+  animation: cx-tick 12s steps(12, end) infinite;
+}
+@keyframes cx-tick {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+/* 守岁的灯：三粒金点向上飘，很慢 */
+html[data-skin="chuxi"] .fd-cx-spark {
+  display: block; position: absolute; width: 4px; height: 4px; border-radius: 50%;
+  background: var(--cx-gold-soft);
+  box-shadow: 0 0 10px 2px rgba(224,180,74,.5);
+  opacity: 0;
+  animation: cx-rise 11s linear infinite;
+}
+html[data-skin="chuxi"] .fd-cx-spark--1 { left: 42%; bottom: 18%; animation-delay: -2s; }
+html[data-skin="chuxi"] .fd-cx-spark--2 { left: 62%; bottom: 12%; animation-delay: -6s; }
+html[data-skin="chuxi"] .fd-cx-spark--3 { left: 78%; bottom: 20%; animation-delay: -9s; width: 3px; height: 3px; }
+@keyframes cx-rise {
+  0%   { transform: translateY(0); opacity: 0; }
+  15%  { opacity: .85; }
+  80%  { opacity: .35; }
+  100% { transform: translateY(-160px); opacity: 0; }
+}
+/* 倒福：水印式，极淡，只在右上 */
+html[data-skin="chuxi"] .fd-cx-fu {
+  display: block; position: absolute; right: 26px; top: 62px; width: 84px; height: 84px;
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(178,42,34,.16) 0 34%, transparent 35%),
+    linear-gradient(45deg, transparent 46%, rgba(178,42,34,.14) 47% 53%, transparent 54%),
+    linear-gradient(-45deg, transparent 46%, rgba(178,42,34,.14) 47% 53%, transparent 54%);
+  transform: rotate(180deg);
+  opacity: .55;
+}
+html[data-skin="chuxi"] .fj-locked { position: relative; }
+html[data-skin="chuxi"] .fj-locked::after {
+  content: "除夕期间固定为「朱红 · 金」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 12px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="chuxi"] .fd-cx-dial { width: 70px; height: 70px; left: 16px; }
+  html[data-skin="chuxi"] .fd-cx-hand { left: 50px; bottom: 92px; height: 26px; }
+  html[data-skin="chuxi"] .fd-cx-fu { width: 62px; height: 62px; right: 14px; top: 54px; }
+  html[data-skin="chuxi"] .fd-cx-spark--3 { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin="chuxi"] .fd-cx-hand { animation: none; }
+  html[data-skin="chuxi"] .fd-cx-spark { animation: none; opacity: .4; }
+}

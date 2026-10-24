@@ -1,0 +1,62 @@
+/* 皮肤：建党节 · 一枚五角星
+ * 呈现：7/1。母题=一枚金色五角星的轮廓（只描边）+ 一道朱红竖带。
+ * 全站最"正"的一套：不做渐变、不做纹理，只有两种颜色与干净的几何。 */
+html[data-skin="party"] {
+  --accent: #B22A22 !important; --accent-2: #E0B44A !important; --accent-ink: #FFF7F2 !important;
+  --toggle-on: #B22A22 !important; --slider-fill: #B22A22 !important;
+  --pt-red: #B22A22; --pt-red-deep: #7E1A14; --pt-gold: #E0B44A; --pt-cream: #FFF6F0;
+  --bg-1: #FFF7F3; --bg-2: #FBE4DA; --surface: rgba(255,252,249,.92); --surface-solid: #FFFBF8;
+  --border: rgba(178,42,34,.16); --border-soft: rgba(178,42,34,.08);
+  --text: #2B1613; --text-2: #6B423A; --text-3: #9B746B;
+  --radius-lg: 10px; --radius-md: 7px; --radius-sm: 5px;
+  --shadow: 0 8px 24px rgba(126,26,20,.14); --shadow-sm: 0 3px 10px rgba(126,26,20,.09);
+  --tab-active-bg: rgba(178,42,34,.10); --tab-active-fg: var(--pt-red);
+  --msg-bg: rgba(255,252,249,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#B22A22,#E0B44A); --msg-mine-fg: #FFF7F2;
+  --toast-bg: rgba(43,22,19,.95); --toast-fg: #FCEDE4; --toast-err-bg: #9E2A1E;
+}
+html[data-skin="party"][data-theme="dark"] {
+  --bg-1: #170A08; --bg-2: #22100C; --surface: rgba(36,18,14,.84); --surface-solid: #22100C;
+  --border: rgba(224,180,74,.20); --border-soft: rgba(224,180,74,.10);
+  --text: #F6E4D9; --text-2: #C9A497; --text-3: #987569;
+  --accent: #E8675A !important; --accent-2: #E0B44A !important; --accent-ink: #170A08 !important;
+  --tab-active-bg: rgba(232,103,90,.15); --tab-active-fg: #F39A8C;
+  --msg-bg: rgba(41,20,16,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#C0362C,#D9A93F); --msg-mine-fg: #FFF7F2;
+  --toast-bg: rgba(246,228,217,.95); --toast-fg: #170A08;
+}
+.fd-pt-star, .fd-pt-band { display: none; }
+html[data-skin="party"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 五角星：用两枚三角形叠出五角（两枚朝上的等腰三角，交错角度） */
+html[data-skin="party"] .fd-pt-star {
+  display: block; position: absolute; right: 46px; top: 62px; width: 0; height: 0;
+  border-left: 26px solid transparent;
+  border-right: 26px solid transparent;
+  border-bottom: 46px solid rgba(224,180,74,.55);
+  transform: rotate(0deg);
+  opacity: .9;
+}
+html[data-skin="party"] .fd-pt-star::after {
+  content: ""; position: absolute; left: -26px; top: 14px; width: 0; height: 0;
+  border-left: 26px solid transparent;
+  border-right: 26px solid transparent;
+  border-bottom: 46px solid rgba(224,180,74,.35);
+  transform: rotate(180deg);
+}
+/* 竖带：一条窄朱红带，从顶部垂到中部 */
+html[data-skin="party"] .fd-pt-band {
+  display: block; position: absolute; left: 22px; top: 0; width: 10px; height: 46vh;
+  background: linear-gradient(180deg, rgba(178,42,34,.42), rgba(178,42,34,.06));
+}
+html[data-skin="party"] .fj-locked { position: relative; }
+html[data-skin="party"] .fj-locked::after {
+  content: "建党节期间固定为「朱红 · 金」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 7px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="party"] .fd-pt-star { right: 24px; top: 54px; border-left-width: 19px; border-right-width: 19px; border-bottom-width: 34px; }
+  html[data-skin="party"] .fd-pt-star::after { left: -19px; top: 10px; border-left-width: 19px; border-right-width: 19px; border-bottom-width: 34px; }
+  html[data-skin="party"] .fd-pt-band { width: 7px; left: 14px; }
+}

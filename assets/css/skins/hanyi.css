@@ -1,0 +1,186 @@
+/* ============================================================
+ * 皮肤：寒衣节 · 霜色寄衣
+ * ------------------------------------------------------------
+ * 当日呈现：农历十月初一（公历日期逐年不同，服务端按农历换算下发）
+ * 主题色：专版期间固定「霜蓝 · 灰白」
+ *
+ * 设计意图
+ *   · 寒衣节是**祭祀日**（送寒衣、寄远思），与清明、中元并称三大鬼节 ——
+ *     所以这套皮肤一个暖色都没有：冷月、霜粒、一件叠好的衣
+ *   · 衣只画剪影：梯形衣身 + 两只下垂的袖，摆在右下，像放在石阶上
+ *   · 霜粒极慢下落（20s 一个循环），粒很小、很淡，不做"雪景"
+ *   · 低垂的月挂在左上，光晕软扩，是整页唯一的光源感
+ *   · 无动效噪音：不闪烁、不飘带、不出现火与红
+ *   · 装饰层 pointer-events:none；尊重 prefers-reduced-motion
+ * ============================================================ */
+
+html[data-skin="hanyi"] {
+  --accent: #48596A !important;
+  --accent-2: #8FA6B8 !important;
+  --accent-ink: #F4F8FB !important;
+  --toggle-on: #48596A !important;
+  --slider-fill: #48596A !important;
+
+  --hy-frost: #E9EFF4;
+  --hy-slate: #56697A;
+  --hy-slate-deep: #37474F;
+  --hy-moon: #DDE8F0;
+  --hy-ink: #1D2A33;
+
+  --bg-1: #F4F7FA;
+  --bg-2: #E3EAF0;
+  --surface: rgba(255, 255, 255, .90);
+  --surface-solid: #FBFDFE;
+  --border: rgba(86, 105, 122, .18);
+  --border-soft: rgba(86, 105, 122, .09);
+  --text: #1D2A33;
+  --text-2: #4C5F6C;
+  --text-3: #8496A2;
+
+  --radius-lg: 14px;
+  --radius-md: 10px;
+  --radius-sm: 7px;
+  --shadow: 0 10px 26px rgba(29, 42, 51, .12);
+  --shadow-sm: 0 3px 11px rgba(29, 42, 51, .08);
+
+  --tab-active-bg: rgba(86, 105, 122, .11);
+  --tab-active-fg: var(--hy-slate);
+  --msg-bg: rgba(255, 255, 255, .96);
+  --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg, #48596A, #8FA6B8);
+  --msg-mine-fg: #F4F8FB;
+  --toast-bg: rgba(29, 42, 51, .95);
+  --toast-fg: #EAF1F6;
+  --toast-err-bg: #9E3A2E;
+}
+
+html[data-skin="hanyi"][data-theme="dark"] {
+  --bg-1: #0A1015;
+  --bg-2: #101A21;
+  --surface: rgba(18, 28, 36, .84);
+  --surface-solid: #101A21;
+  --border: rgba(143, 166, 184, .20);
+  --border-soft: rgba(143, 166, 184, .10);
+  --text: #DCE7EE;
+  --text-2: #9DAFBC;
+  --text-3: #6E808C;
+
+  --accent: #8FA6B8 !important;
+  --accent-2: #C7D6E1 !important;
+  --accent-ink: #0A1015 !important;
+  --tab-active-bg: rgba(143, 166, 184, .15);
+  --tab-active-fg: #B6C8D5;
+  --msg-bg: rgba(22, 33, 42, .9);
+  --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg, #56697A, #8FA6B8);
+  --msg-mine-fg: #0A1015;
+  --toast-bg: rgba(220, 231, 238, .95);
+  --toast-fg: #0A1015;
+}
+
+/* ============================================================
+ * 装饰层：低垂的月 + 叠好的寒衣 + 极慢霜粒
+ * ============================================================ */
+.fd-hy-moon, .fd-hy-robe, .fd-hy-frost { display: none; }
+
+html[data-skin="hanyi"] .festival-deco {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* 月：左上，低垂，光晕软扩 */
+html[data-skin="hanyi"] .fd-hy-moon {
+  display: block;
+  position: absolute;
+  left: 26px;
+  top: 62px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, #F7FBFE, var(--hy-moon) 62%, #C6D6E1);
+  box-shadow: 0 0 34px 14px rgba(221, 232, 240, .55);
+  opacity: .85;
+}
+
+/* 寒衣：梯形衣身 + 两只下垂的袖 —— 只留剪影，不画纹理 */
+html[data-skin="hanyi"] .fd-hy-robe {
+  display: block;
+  position: absolute;
+  right: 30px;
+  bottom: 64px;
+  width: 74px;
+  height: 56px;
+  background: linear-gradient(180deg, rgba(86, 105, 122, .26), rgba(86, 105, 122, .12));
+  clip-path: polygon(22% 0, 78% 0, 100% 34%, 82% 40%, 82% 100%, 18% 100%, 18% 40%, 0 34%);
+  opacity: .75;
+}
+/* 衣领：一条浅口 */
+html[data-skin="hanyi"] .fd-hy-robe::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 20px;
+  height: 14px;
+  margin-left: -10px;
+  border-radius: 0 0 50% 50%;
+  background: rgba(233, 239, 244, .75);
+}
+
+/* 霜粒：六颗极小的白点，20s 缓落，几乎察觉不到 */
+html[data-skin="hanyi"] .fd-hy-frost {
+  display: block;
+  position: absolute;
+  top: -8px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .9);
+  box-shadow: 0 0 4px rgba(221, 232, 240, .8);
+  animation: hy-drift 20s linear infinite;
+}
+html[data-skin="hanyi"] .fd-hy-frost--1 { left: 14%; animation-delay: -2s; }
+html[data-skin="hanyi"] .fd-hy-frost--2 { left: 31%; animation-delay: -9s; opacity: .7; }
+html[data-skin="hanyi"] .fd-hy-frost--3 { left: 47%; animation-delay: -15s; }
+html[data-skin="hanyi"] .fd-hy-frost--4 { left: 63%; animation-delay: -5s; opacity: .6; }
+html[data-skin="hanyi"] .fd-hy-frost--5 { left: 79%; animation-delay: -12s; }
+html[data-skin="hanyi"] .fd-hy-frost--6 { left: 92%; animation-delay: -18s; opacity: .5; }
+@keyframes hy-drift {
+  0%   { transform: translateY(0); opacity: 0; }
+  10%  { opacity: .85; }
+  90%  { opacity: .5; }
+  100% { transform: translateY(102vh); opacity: 0; }
+}
+
+html[data-skin="hanyi"] .fj-locked { position: relative; }
+html[data-skin="hanyi"] .fj-locked::after {
+  content: "寒衣节期间固定为「霜蓝」";
+  position: absolute;
+  inset: -4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent);
+  border-radius: 10px;
+  filter: none;
+}
+
+@media (max-width: 560px) {
+  html[data-skin="hanyi"] .fd-hy-robe { width: 60px; height: 46px; right: 16px; bottom: 76px; }
+  html[data-skin="hanyi"] .fd-hy-moon { width: 34px; height: 34px; left: 16px; top: 58px; }
+  html[data-skin="hanyi"] .fd-hy-frost--4 { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin="hanyi"] .fd-hy-frost { animation: none; opacity: .35; }
+}

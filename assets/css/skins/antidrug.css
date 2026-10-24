@@ -1,0 +1,52 @@
+/* 皮肤：禁毒日 · 断开的锁链
+ * 呈现：6/26。母题=一段锁链从中间断开（三节完整 + 一节错位）。
+ * 只画链，不画骷髅与注射器：警示靠"断"，不靠惊悚图形。 */
+html[data-skin="antidrug"] {
+  --accent: #1B3A5C !important; --accent-2: #C9D3DC !important; --accent-ink: #F4F8FC !important;
+  --toggle-on: #1B3A5C !important; --slider-fill: #1B3A5C !important;
+  --ad-navy: #1B3A5C; --ad-navy-deep: #12283E; --ad-silver: #C9D3DC; --ad-white: #FBFDFF;
+  --bg-1: #F5F8FB; --bg-2: #E5EBF1; --surface: rgba(255,255,255,.91); --surface-solid: #FCFDFF;
+  --border: rgba(27,58,92,.16); --border-soft: rgba(27,58,92,.08);
+  --text: #16212D; --text-2: #46586A; --text-3: #7C8D9C;
+  --radius-lg: 8px; --radius-md: 6px; --radius-sm: 4px;
+  --shadow: 0 8px 22px rgba(22,33,45,.12); --shadow-sm: 0 3px 9px rgba(22,33,45,.07);
+  --tab-active-bg: rgba(27,58,92,.10); --tab-active-fg: var(--ad-navy);
+  --msg-bg: rgba(255,255,255,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#1B3A5C,#5C7A96); --msg-mine-fg: #F4F8FC;
+  --toast-bg: rgba(22,33,45,.95); --toast-fg: #EDF2F8; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="antidrug"][data-theme="dark"] {
+  --bg-1: #0B1117; --bg-2: #111A22; --surface: rgba(17,26,34,.84); --surface-solid: #111A22;
+  --border: rgba(201,211,220,.18); --border-soft: rgba(201,211,220,.09);
+  --text: #DFE7EE; --text-2: #9FB0BE; --text-3: #71818F;
+  --accent: #9FB6CC !important; --accent-2: #C9D3DC !important; --accent-ink: #0B1117 !important;
+  --tab-active-bg: rgba(159,182,204,.15); --tab-active-fg: #B7C9DA;
+  --msg-bg: rgba(21,31,40,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#2F4E6E,#9FB6CC); --msg-mine-fg: #0B1117;
+  --toast-bg: rgba(223,231,238,.95); --toast-fg: #0B1117;
+}
+.fd-ad-link { display: none; }
+html[data-skin="antidrug"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 链：四个圆角环横排，第四节右移并下移 —— 断口就出来了 */
+html[data-skin="antidrug"] .fd-ad-link {
+  display: block; position: absolute; right: 44px; top: 66px; width: 26px; height: 14px;
+  border: 2px solid rgba(27,58,92,.45); border-radius: 9px;
+}
+html[data-skin="antidrug"] .fd-ad-link--1 { right: 128px; }
+html[data-skin="antidrug"] .fd-ad-link--2 { right: 100px; }
+html[data-skin="antidrug"] .fd-ad-link--3 { right: 72px; }
+html[data-skin="antidrug"] .fd-ad-link--4 { right: 34px; top: 78px; transform: rotate(14deg); opacity: .55; }
+html[data-skin="antidrug"] .fj-locked { position: relative; }
+html[data-skin="antidrug"] .fj-locked::after {
+  content: "禁毒日期间固定为「深蓝 · 白」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 6px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="antidrug"] .fd-ad-link { width: 20px; height: 11px; }
+  html[data-skin="antidrug"] .fd-ad-link--1 { right: 108px; top: 58px; }
+  html[data-skin="antidrug"] .fd-ad-link--2 { right: 84px; top: 58px; }
+  html[data-skin="antidrug"] .fd-ad-link--3 { right: 60px; top: 58px; }
+  html[data-skin="antidrug"] .fd-ad-link--4 { right: 26px; top: 68px; }
+}

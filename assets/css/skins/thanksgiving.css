@@ -1,0 +1,190 @@
+/* ============================================================
+ * 皮肤：感恩节 · 南瓜与枫叶
+ * ------------------------------------------------------------
+ * 当日呈现：11 月第 4 个星期四（美国惯例，公历日期逐年变，服务端按 nth 规则算）
+ * 主题色：专版期间固定「南瓜橙 · 枫叶红」
+ *
+ * 设计意图
+ *   · 暖而不腻：奶油纸底 + 南瓜橙 + 一点枫红，靠明度差分层，不堆高饱和
+ *   · 南瓜只放一只：椭圆 + 四条竖沟 + 一截弯蒂，右下角，够说明就行
+ *   · 枫叶两片旋落：15s 一个循环，旋转与横移同步，像真的在飘
+ *   · 底部一团暖光：整页最暖的地方，暗示餐桌上的烛
+ *   · 装饰层 pointer-events:none；尊重 prefers-reduced-motion
+ * ============================================================ */
+
+html[data-skin="thanksgiving"] {
+  --accent: #A6521C !important;
+  --accent-2: #B4402F !important;
+  --accent-ink: #FFF7EC !important;
+  --toggle-on: #A6521C !important;
+  --slider-fill: #A6521C !important;
+
+  --tg-pumpkin: #C2651F;
+  --tg-pumpkin-deep: #8C4413;
+  --tg-pumpkin-light: #E08A3C;
+  --tg-maple: #B4402F;
+  --tg-maple-light: #D96B4E;
+  --tg-cream: #FDF6EC;
+  --tg-gold: #E0A93A;
+  --tg-ink: #331E12;
+
+  --bg-1: #FDF6EC;
+  --bg-2: #F5E5D2;
+  --surface: rgba(255, 252, 246, .90);
+  --surface-solid: #FFFBF4;
+  --border: rgba(166, 82, 28, .18);
+  --border-soft: rgba(166, 82, 28, .09);
+  --text: #331E12;
+  --text-2: #6E4A32;
+  --text-3: #9C7A5E;
+
+  --radius-lg: 18px;
+  --radius-md: 12px;
+  --radius-sm: 9px;
+  --shadow: 0 10px 30px rgba(140, 68, 19, .16);
+  --shadow-sm: 0 4px 14px rgba(140, 68, 19, .10);
+
+  --tab-active-bg: rgba(166, 82, 28, .11);
+  --tab-active-fg: var(--accent);
+  --msg-bg: rgba(255, 252, 246, .96);
+  --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg, #A6521C, #B4402F);
+  --msg-mine-fg: #FFF7EC;
+  --toast-bg: rgba(51, 30, 18, .95);
+  --toast-fg: #FCEDDD;
+  --toast-err-bg: #A8281C;
+}
+
+html[data-skin="thanksgiving"][data-theme="dark"] {
+  --bg-1: #17100A;
+  --bg-2: #22170E;
+  --surface: rgba(38, 26, 16, .84);
+  --surface-solid: #22170E;
+  --border: rgba(224, 169, 58, .20);
+  --border-soft: rgba(224, 169, 58, .10);
+  --text: #F3E3D2;
+  --text-2: #C3A488;
+  --text-3: #94765C;
+
+  --accent: #E0A93A !important;
+  --accent-2: #D96B4E !important;
+  --accent-ink: #17100A !important;
+  --tab-active-bg: rgba(224, 169, 58, .15);
+  --tab-active-fg: #EDBE5E;
+  --msg-bg: rgba(42, 29, 18, .9);
+  --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg, #C2651F, #B4402F);
+  --msg-mine-fg: #FFF7EC;
+  --toast-bg: rgba(243, 227, 210, .95);
+  --toast-fg: #17100A;
+}
+
+/* ============================================================
+ * 装饰层：一只南瓜 + 两片旋落枫叶 + 底部暖光
+ * ============================================================ */
+.fd-tg-pumpkin, .fd-tg-leaf, .fd-tg-glow { display: none; }
+
+html[data-skin="thanksgiving"] .festival-deco {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* 底部的暖光：整页最暖的一处，像餐桌上的烛映在桌布 */
+html[data-skin="thanksgiving"] .fd-tg-glow {
+  display: block;
+  position: absolute;
+  left: 50%;
+  bottom: -120px;
+  width: 620px;
+  height: 320px;
+  margin-left: -310px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 70%, rgba(224, 169, 58, .30), rgba(224, 169, 58, .10) 45%, transparent 72%);
+  opacity: .8;
+}
+
+/* 南瓜：椭圆 + 四条竖沟 + 弯蒂 */
+html[data-skin="thanksgiving"] .fd-tg-pumpkin {
+  display: block;
+  position: absolute;
+  right: 26px;
+  bottom: 62px;
+  width: 78px;
+  height: 58px;
+  border-radius: 50% / 46%;
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(140, 68, 19, .22) 0 2px,
+      transparent 2px 19px),
+    radial-gradient(ellipse at 34% 26%, var(--tg-pumpkin-light), var(--tg-pumpkin) 58%, var(--tg-pumpkin-deep));
+  box-shadow: 0 8px 20px rgba(140, 68, 19, .26);
+  opacity: .9;
+}
+/* 蒂 */
+html[data-skin="thanksgiving"] .fd-tg-pumpkin::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -9px;
+  width: 8px;
+  height: 11px;
+  margin-left: -4px;
+  border-radius: 3px 3px 1px 1px;
+  background: #6B5A2E;
+  transform: rotate(-8deg);
+}
+
+/* 枫叶：五裂的剪影，靠 clip-path 裁出来，旋落时更自然 */
+html[data-skin="thanksgiving"] .fd-tg-leaf {
+  display: block;
+  position: absolute;
+  top: -30px;
+  width: 22px;
+  height: 22px;
+  background: linear-gradient(140deg, var(--tg-maple-light), var(--tg-maple));
+  clip-path: polygon(50% 0, 62% 26%, 88% 18%, 76% 42%, 100% 52%, 72% 60%, 80% 88%, 54% 74%, 46% 100%, 38% 74%, 12% 86%, 22% 58%, 0 50%, 26% 40%, 14% 14%, 40% 24%);
+  opacity: .55;
+  animation: tg-fall 15s linear infinite;
+}
+html[data-skin="thanksgiving"] .fd-tg-leaf--1 { left: 16%; animation-delay: -3s; }
+html[data-skin="thanksgiving"] .fd-tg-leaf--2 { left: 68%; animation-delay: -9.5s; width: 17px; height: 17px; opacity: .42; }
+@keyframes tg-fall {
+  0%   { transform: translate(0, -20px) rotate(0deg); opacity: 0; }
+  10%  { opacity: .55; }
+  50%  { transform: translate(26px, 50vh) rotate(180deg); }
+  90%  { opacity: .4; }
+  100% { transform: translate(-14px, 104vh) rotate(380deg); opacity: 0; }
+}
+
+html[data-skin="thanksgiving"] .fj-locked { position: relative; }
+html[data-skin="thanksgiving"] .fj-locked::after {
+  content: "感恩节期间固定为「南瓜橙」";
+  position: absolute;
+  inset: -4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent);
+  border-radius: 12px;
+  filter: none;
+}
+
+@media (max-width: 560px) {
+  html[data-skin="thanksgiving"] .fd-tg-pumpkin { width: 62px; height: 46px; right: 14px; bottom: 74px; }
+  html[data-skin="thanksgiving"] .fd-tg-glow { width: 420px; margin-left: -210px; height: 240px; }
+  html[data-skin="thanksgiving"] .fd-tg-leaf--2 { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin="thanksgiving"] .fd-tg-leaf { animation: none; opacity: .3; }
+}

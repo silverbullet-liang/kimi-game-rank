@@ -1,0 +1,62 @@
+/* 皮肤：中元节 · 一盏河灯
+ * 呈现：农历七月十五。母题=水面上一盏灯（灯体 + 一圈倒影 + 三道散开的涟漪）。
+ * 基调是"静"：全站唯一不用描边、不用阴影的皮肤，一切靠光晕表达。 */
+html[data-skin="zhongyuan"] {
+  --accent: #2E4A4E !important; --accent-2: #C9A86B !important; --accent-ink: #F4F9F9 !important;
+  --toggle-on: #2E4A4E !important; --slider-fill: #2E4A4E !important;
+  --zy-slate: #2E4A4E; --zy-slate-deep: #1B3134; --zy-lamp: #C9A86B; --zy-mist: #E4EDED;
+  --bg-1: #F2F7F7; --bg-2: #E0EAEA; --surface: rgba(255,255,255,.90); --surface-solid: #FAFDFD;
+  --border: rgba(46,74,78,.16); --border-soft: rgba(46,74,78,.08);
+  --text: #18272A; --text-2: #42595C; --text-3: #7A8E91;
+  --radius-lg: 26px; --radius-md: 16px; --radius-sm: 11px;
+  --shadow: 0 14px 34px rgba(24,39,42,.13); --shadow-sm: 0 5px 14px rgba(24,39,42,.08);
+  --tab-active-bg: rgba(46,74,78,.10); --tab-active-fg: var(--zy-slate);
+  --msg-bg: rgba(255,255,255,.96); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#2E4A4E,#C9A86B); --msg-mine-fg: #F4F9F9;
+  --toast-bg: rgba(24,39,42,.95); --toast-fg: #EDF5F5; --toast-err-bg: #8E3A2E;
+}
+html[data-skin="zhongyuan"][data-theme="dark"] {
+  --bg-1: #070F10; --bg-2: #0C181A; --surface: rgba(14,28,30,.86); --surface-solid: #0C181A;
+  --border: rgba(201,168,107,.18); --border-soft: rgba(201,168,107,.09);
+  --text: #DDECEC; --text-2: #A0B6B8; --text-3: #718789;
+  --accent: #7FA8A6 !important; --accent-2: #C9A86B !important; --accent-ink: #070F10 !important;
+  --tab-active-bg: rgba(127,168,166,.15); --tab-active-fg: #97BEBC;
+  --msg-bg: rgba(16,32,34,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#24403F,#C9A86B); --msg-mine-fg: #070F10;
+  --toast-bg: rgba(221,236,236,.95); --toast-fg: #070F10;
+}
+.fd-zy-lamp, .fd-zy-glow, .fd-zy-ripple { display: none; }
+html[data-skin="zhongyuan"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 灯体：一枚小小的瓣状剪影 */
+html[data-skin="zhongyuan"] .fd-zy-lamp {
+  display: block; position: absolute; left: 50%; bottom: 6vh; width: 34px; height: 21px; margin-left: -17px;
+  background: var(--zy-lamp);
+  border-radius: 50% 50% 46% 46% / 62% 62% 38% 38%;
+  opacity: .9;
+}
+/* 水中的光晕：灯下方一段柔和的椭圆 */
+html[data-skin="zhongyuan"] .fd-zy-glow {
+  display: block; position: absolute; left: 50%; bottom: calc(6vh - 26px); width: 160px; height: 40px; margin-left: -80px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(201,168,107,.42), transparent 68%);
+  filter: blur(2px);
+}
+/* 涟漪：三道同心的扁椭圆 */
+html[data-skin="zhongyuan"] .fd-zy-ripple {
+  display: block; position: absolute; left: 50%; bottom: calc(6vh - 12px); height: 14px;
+  border: 1px solid rgba(46,74,78,.22); border-radius: 50%;
+}
+html[data-skin="zhongyuan"] .fd-zy-ripple--1 { width: 110px; margin-left: -55px; opacity: .55; }
+html[data-skin="zhongyuan"] .fd-zy-ripple--2 { width: 180px; margin-left: -90px; opacity: .32; }
+html[data-skin="zhongyuan"] .fd-zy-ripple--3 { width: 260px; margin-left: -130px; opacity: .18; }
+html[data-skin="zhongyuan"] .fj-locked { position: relative; }
+html[data-skin="zhongyuan"] .fj-locked::after {
+  content: "中元节期间固定为「青灰 · 灯黄」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 16px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="zhongyuan"] .fd-zy-glow { width: 84px; margin-left: -42px; }
+  html[data-skin="zhongyuan"] .fd-zy-ripple--3 { display: none; }
+  html[data-skin="zhongyuan"] .fd-zy-ripple--2 { width: 116px; margin-left: -58px; }
+}

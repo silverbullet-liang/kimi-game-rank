@@ -1,0 +1,64 @@
+/* 皮肤：清明 · 斜雨与垂柳
+ * 呈现：4/5。母题=极细的斜雨线（满屏但极淡）+ 一枝垂柳。
+ * 雨用 repeating-linear-gradient 做 78° 的细线，密度低到"像雾"，不做大雨。 */
+html[data-skin="qingming"] {
+  --accent: #5F7F85 !important; --accent-2: #A8C08A !important; --accent-ink: #F5FAFA !important;
+  --toggle-on: #5F7F85 !important; --slider-fill: #5F7F85 !important;
+  --qm-slate: #6B8A8F; --qm-willow: #A8C08A; --qm-mist: #E7EEEE; --qm-ink: #1B2A2C;
+  --bg-1: #F4F8F8; --bg-2: #E3ECEC; --surface: rgba(255,255,255,.91); --surface-solid: #FBFDFD;
+  --border: rgba(107,138,143,.18); --border-soft: rgba(107,138,143,.09);
+  --text: #1B2A2C; --text-2: #48605F; --text-3: #7C9392;
+  --radius-lg: 12px; --radius-md: 9px; --radius-sm: 6px;
+  --shadow: 0 9px 24px rgba(27,42,44,.12); --shadow-sm: 0 3px 10px rgba(27,42,44,.07);
+  --tab-active-bg: rgba(107,138,143,.11); --tab-active-fg: #4A6B70;
+  --msg-bg: rgba(255,255,255,.96); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#5F7F85,#A8C08A); --msg-mine-fg: #F5FAFA;
+  --toast-bg: rgba(27,42,44,.95); --toast-fg: #ECF3F3; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="qingming"][data-theme="dark"] {
+  --bg-1: #0C1214; --bg-2: #121C1E; --surface: rgba(19,30,32,.84); --surface-solid: #121C1E;
+  --border: rgba(168,192,138,.18); --border-soft: rgba(168,192,138,.09);
+  --text: #DEE8E8; --text-2: #A0B4B3; --text-3: #728685;
+  --accent: #A8C08A !important; --accent-2: #7FA6AE !important; --accent-ink: #0C1214 !important;
+  --tab-active-bg: rgba(168,192,138,.14); --tab-active-fg: #BBD0A2;
+  --msg-bg: rgba(23,35,37,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#4A6B70,#A8C08A); --msg-mine-fg: #0C1214;
+  --toast-bg: rgba(222,232,232,.95); --toast-fg: #0C1214;
+}
+.fd-qm-rain, .fd-qm-willow { display: none; }
+html[data-skin="qingming"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 雨：78° 细线，间距 26px，极淡，整页铺满 */
+html[data-skin="qingming"] .fd-qm-rain {
+  display: block; position: absolute; inset: -10% -20%;
+  background: repeating-linear-gradient(78deg,
+    rgba(107,138,143,.16) 0 1px, transparent 1px 26px);
+  animation: qm-rain 9s linear infinite;
+  opacity: .8;
+}
+@keyframes qm-rain { from { transform: translateY(-26px); } to { transform: translateY(0); } }
+/* 垂柳：一条向右下垂的弧 + 几片细叶 */
+html[data-skin="qingming"] .fd-qm-willow {
+  display: block; position: absolute; right: 8px; top: 44px; width: 150px; height: 210px;
+  border-top: 1px solid rgba(107,138,143,.35);
+  border-right: 1px solid rgba(107,138,143,.28);
+  border-radius: 0 120px 0 0;
+  opacity: .75;
+}
+html[data-skin="qingming"] .fd-qm-willow::before,
+html[data-skin="qingming"] .fd-qm-willow::after {
+  content: ""; position: absolute; width: 1px; background: linear-gradient(180deg, rgba(168,192,138,.55), transparent);
+}
+html[data-skin="qingming"] .fd-qm-willow::before { right: 18px; top: 60px; height: 96px; transform: rotate(6deg); }
+html[data-skin="qingming"] .fd-qm-willow::after  { right: 52px; top: 42px; height: 74px; transform: rotate(3deg); }
+html[data-skin="qingming"] .fj-locked { position: relative; }
+html[data-skin="qingming"] .fj-locked::after {
+  content: "清明期间固定为「青灰 · 柳绿」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 9px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="qingming"] .fd-qm-willow { width: 100px; height: 150px; top: 40px; }
+  html[data-skin="qingming"] .fd-qm-rain { background-size: auto; }
+}
+@media (prefers-reduced-motion: reduce) { html[data-skin="qingming"] .fd-qm-rain { animation: none; } }

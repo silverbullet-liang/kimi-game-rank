@@ -1,0 +1,63 @@
+/* 皮肤：建军节 · 军绿织物的质感
+ * 呈现：8/1。母题=粗织物的经纬纹（极细网格）+ 一枚星 + 一条深绿压边。
+ * 与建党节区分：那套是"干净的几何"，这套是"有质感的布"。 */
+html[data-skin="army"] {
+  --accent: #4A5A3A !important; --accent-2: #B03A2E !important; --accent-ink: #F6F7F2 !important;
+  --toggle-on: #4A5A3A !important; --slider-fill: #4A5A3A !important;
+  --ar-olive: #4A5A3A; --ar-olive-deep: #33402A; --ar-canvas: #E8E6DC; --ar-red: #B03A2E;
+  --bg-1: #F6F6F0; --bg-2: #E9E8DD; --surface: rgba(255,255,251,.91); --surface-solid: #FBFAF4;
+  --border: rgba(74,90,58,.18); --border-soft: rgba(74,90,58,.09);
+  --text: #22271D; --text-2: #4E5545; --text-3: #828A76;
+  --radius-lg: 6px; --radius-md: 5px; --radius-sm: 3px;
+  --shadow: 0 7px 20px rgba(34,39,29,.13); --shadow-sm: 0 3px 9px rgba(34,39,29,.08);
+  --tab-active-bg: rgba(74,90,58,.11); --tab-active-fg: var(--ar-olive);
+  --msg-bg: rgba(255,255,251,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#4A5A3A,#B03A2E); --msg-mine-fg: #F6F7F2;
+  --toast-bg: rgba(34,39,29,.95); --toast-fg: #F1F3EA; --toast-err-bg: #A02E22;
+}
+html[data-skin="army"][data-theme="dark"] {
+  --bg-1: #0E110B; --bg-2: #151A11; --surface: rgba(22,28,18,.84); --surface-solid: #151A11;
+  --border: rgba(200,205,186,.16); --border-soft: rgba(200,205,186,.08);
+  --text: #E4E7DA; --text-2: #AEB39F; --text-3: #7F8570;
+  --accent: #9DAE7E !important; --accent-2: #D06A5A !important; --accent-ink: #0E110B !important;
+  --tab-active-bg: rgba(157,174,126,.15); --tab-active-fg: #B2C296;
+  --msg-bg: rgba(24,30,20,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#3A472E,#B03A2E); --msg-mine-fg: #F6F7F2;
+  --toast-bg: rgba(228,231,218,.95); --toast-fg: #0E110B;
+}
+.fd-ar-weave, .fd-ar-star { display: none; }
+html[data-skin="army"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 织物：极细的经纬网格，整页铺满，透明度很低 */
+html[data-skin="army"] .fd-ar-weave {
+  display: block; position: absolute; inset: 0;
+  background:
+    repeating-linear-gradient(0deg, rgba(74,90,58,.10) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, rgba(74,90,58,.10) 0 1px, transparent 1px 4px);
+  opacity: .8;
+}
+/* 星：一枚小红星，压在右上 */
+html[data-skin="army"] .fd-ar-star {
+  display: block; position: absolute; right: 44px; top: 60px; width: 0; height: 0;
+  border-left: 18px solid transparent;
+  border-right: 18px solid transparent;
+  border-bottom: 32px solid rgba(176,58,46,.7);
+  filter: drop-shadow(0 3px 6px rgba(176,58,46,.28));
+}
+html[data-skin="army"] .fd-ar-star::after {
+  content: ""; position: absolute; left: -18px; top: 10px; width: 0; height: 0;
+  border-left: 18px solid transparent;
+  border-right: 18px solid transparent;
+  border-bottom: 32px solid rgba(176,58,46,.45);
+  transform: rotate(180deg);
+}
+html[data-skin="army"] .fj-locked { position: relative; }
+html[data-skin="army"] .fj-locked::after {
+  content: "建军节期间固定为「军绿 · 红」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 5px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="army"] .fd-ar-star { right: 22px; top: 52px; border-left-width: 13px; border-right-width: 13px; border-bottom-width: 23px; }
+  html[data-skin="army"] .fd-ar-star::after { left: -13px; top: 7px; border-left-width: 13px; border-right-width: 13px; border-bottom-width: 23px; }
+}

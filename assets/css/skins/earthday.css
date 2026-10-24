@@ -1,0 +1,68 @@
+/* 皮肤：地球日 · 只画球的边缘
+ * 呈现：4/22。母题=一颗球的轮廓（不填色，只留一道弧形高光）+ 一道云带。
+ * 关键取舍：不画地图、不画大陆 —— 一颗没有细节的球更像"我们只有这一个"。 */
+html[data-skin="earthday"] {
+  --accent: #2E7BA6 !important; --accent-2: #6FA84F !important; --accent-ink: #F3FAFE !important;
+  --toggle-on: #2E7BA6 !important; --slider-fill: #2E7BA6 !important;
+  --ed-sea: #2E7BA6; --ed-sea-deep: #1D5A7E; --ed-grass: #6FA84F; --ed-cloud: #EAF3F8;
+  --bg-1: #F2F8FC; --bg-2: #DFEDF5; --surface: rgba(255,255,255,.91); --surface-solid: #FBFDFF;
+  --border: rgba(46,123,166,.18); --border-soft: rgba(46,123,166,.09);
+  --text: #12242E; --text-2: #3F5D6B; --text-3: #7893A0;
+  --radius-lg: 22px; --radius-md: 14px; --radius-sm: 10px;
+  --shadow: 0 10px 28px rgba(18,36,46,.13); --shadow-sm: 0 4px 12px rgba(18,36,46,.08);
+  --tab-active-bg: rgba(46,123,166,.12); --tab-active-fg: var(--ed-sea);
+  --msg-bg: rgba(255,255,255,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#2E7BA6,#6FA84F); --msg-mine-fg: #F3FAFE;
+  --toast-bg: rgba(18,36,46,.95); --toast-fg: #EAF3F8; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="earthday"][data-theme="dark"] {
+  --bg-1: #071018; --bg-2: #0C1922; --surface: rgba(13,26,35,.84); --surface-solid: #0C1922;
+  --border: rgba(111,168,79,.18); --border-soft: rgba(111,168,79,.09);
+  --text: #DCEAF2; --text-2: #9BB4C2; --text-3: #6E8794;
+  --accent: #6FA84F !important; --accent-2: #5FA8CE !important; --accent-ink: #071018 !important;
+  --tab-active-bg: rgba(111,168,79,.15); --tab-active-fg: #8FC073;
+  --msg-bg: rgba(15,30,40,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#25708F,#6FA84F); --msg-mine-fg: #071018;
+  --toast-bg: rgba(220,234,242,.95); --toast-fg: #071018;
+}
+.fd-ed-globe, .fd-ed-highlight, .fd-ed-band { display: none; }
+html[data-skin="earthday"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 球：一个大圆，只有左上 1/4 有弧光 */
+html[data-skin="earthday"] .fd-ed-globe {
+  display: block; position: absolute; right: -70px; top: 46px; width: 260px; height: 260px;
+  border-radius: 50%;
+  border: 1px solid rgba(46,123,166,.26);
+  background: radial-gradient(circle at 30% 26%, rgba(111,168,79,.14), transparent 58%);
+  opacity: .9;
+}
+/* 高光弧：一段白色弧线，模拟大气层边缘 */
+html[data-skin="earthday"] .fd-ed-highlight {
+  display: block; position: absolute; right: -70px; top: 46px; width: 260px; height: 260px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: rgba(255,255,255,.85);
+  border-left-color: rgba(255,255,255,.45);
+  transform: rotate(-24deg);
+  opacity: .8;
+}
+/* 云带：一条斜椭圆的白带，跨过球面 */
+html[data-skin="earthday"] .fd-ed-band {
+  display: block; position: absolute; right: 24px; top: 150px; width: 130px; height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, transparent, rgba(234,243,248,.9) 30%, rgba(234,243,248,.55) 70%, transparent);
+  transform: rotate(-18deg);
+  filter: blur(.6px);
+  opacity: .7;
+}
+html[data-skin="earthday"] .fj-locked { position: relative; }
+html[data-skin="earthday"] .fj-locked::after {
+  content: "地球日期间固定为「海蓝 · 草绿」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 14px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="earthday"] .fd-ed-globe,
+  html[data-skin="earthday"] .fd-ed-highlight { width: 180px; height: 180px; right: -56px; top: 40px; }
+  html[data-skin="earthday"] .fd-ed-band { width: 96px; height: 26px; right: 10px; top: 118px; }
+}

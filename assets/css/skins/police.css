@@ -1,0 +1,61 @@
+/* 皮肤：警察节 · 八角警徽与警戒带
+ * 呈现：1/10。母题=警徽的八角轮廓（只画线，不填色）+ 一条斜纹警戒带。
+ * 不做卡通警车、不做卡通警察：庄重靠几何与留白。 */
+html[data-skin="police"] {
+  --accent: #1B3A5C !important; --accent-2: #C9D3DC !important; --accent-ink: #F4F7FA !important;
+  --toggle-on: #1B3A5C !important; --slider-fill: #1B3A5C !important;
+  --pl-navy: #1B3A5C; --pl-navy-deep: #122940; --pl-silver: #C9D3DC; --pl-steel: #7C8FA1;
+  --bg-1: #F5F7FA; --bg-2: #E5EAF0; --surface: rgba(255,255,255,.90); --surface-solid: #FCFDFE;
+  --border: rgba(27,58,92,.17); --border-soft: rgba(27,58,92,.08);
+  --text: #14202B; --text-2: #48586A; --text-3: #7E8E9E;
+  --radius-lg: 12px; --radius-md: 9px; --radius-sm: 6px;
+  --shadow: 0 9px 24px rgba(20,32,43,.13); --shadow-sm: 0 3px 10px rgba(20,32,43,.08);
+  --tab-active-bg: rgba(27,58,92,.11); --tab-active-fg: var(--pl-navy);
+  --msg-bg: rgba(255,255,255,.96); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#1B3A5C,#4E6C8A); --msg-mine-fg: #F4F7FA;
+  --toast-bg: rgba(20,32,43,.95); --toast-fg: #EDF2F7; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="police"][data-theme="dark"] {
+  --bg-1: #0B1218; --bg-2: #111C25; --surface: rgba(18,29,38,.84); --surface-solid: #111C25;
+  --border: rgba(201,211,220,.20); --border-soft: rgba(201,211,220,.10);
+  --text: #DFE7EE; --text-2: #9FB0BE; --text-3: #71818F;
+  --accent: #9FB6CC !important; --accent-2: #C9D3DC !important; --accent-ink: #0B1218 !important;
+  --tab-active-bg: rgba(159,182,204,.15); --tab-active-fg: #B7C9DA;
+  --msg-bg: rgba(22,33,43,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#2F4E6E,#9FB6CC); --msg-mine-fg: #0B1218;
+  --toast-bg: rgba(223,231,238,.95); --toast-fg: #0B1218;
+}
+.fd-pl-badge, .fd-pl-tape { display: none; }
+html[data-skin="police"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 警徽：八边形细线轮廓 + 内圈一道，靠 mask 做出"只在边缘有线" */
+html[data-skin="police"] .fd-pl-badge {
+  display: block; position: absolute; right: 24px; top: 58px; width: 96px; height: 96px;
+  background: repeating-conic-gradient(from 22.5deg,
+    rgba(27,58,92,.55) 0deg .6deg, transparent .6deg 45deg);
+  border-radius: 50%;
+  -webkit-mask: radial-gradient(circle, transparent 0 52%, #000 53% 100%);
+  mask: radial-gradient(circle, transparent 0 52%, #000 53% 100%);
+  opacity: .42;
+}
+html[data-skin="police"] .fd-pl-badge::after {
+  content: ""; position: absolute; inset: 22%; border: 1px solid rgba(27,58,92,.45); border-radius: 50%;
+}
+/* 警戒带：左上到右下的斜纹条，只有一条，压在页面边缘 */
+html[data-skin="police"] .fd-pl-tape {
+  display: block; position: absolute; left: -60px; top: 30%; width: 240px; height: 14px;
+  transform: rotate(-24deg);
+  background: repeating-linear-gradient(45deg,
+    rgba(27,58,92,.30) 0 10px, rgba(201,211,220,.30) 10px 20px);
+  opacity: .38;
+}
+html[data-skin="police"] .fj-locked { position: relative; }
+html[data-skin="police"] .fj-locked::after {
+  content: "警察节期间固定为「藏青 · 银」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 9px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="police"] .fd-pl-badge { width: 70px; height: 70px; right: 14px; top: 52px; }
+  html[data-skin="police"] .fd-pl-tape { width: 180px; height: 11px; }
+}

@@ -1,0 +1,234 @@
+/* ============================================================
+ * 皮肤：春节 · 年味红金
+ * ------------------------------------------------------------
+ * 呈现窗口：农历正月初一起连续 9 天（正月初一至初九；
+ *   公历日期逐年不同，由 app/festival.php 按 app/lunar.php 换算后下发）
+ * 主题色：专版期间固定「朱红 + 鎏金」
+ *
+ * 设计意图
+ *   · 年味靠「红纸 + 金箔」两种材质，不靠满屏元素堆砌
+ *   · 两盏灯笼挂在顶部两侧，轻晃（8s 一个来回），挂钩与流苏都画出来
+ *   · 窗花只放一枚：八角对称的剪纸，靠 conic/radial 叠出来，比贴图更干净
+ *   · 金色碎屑四片缓落，是唯一的"喜庆动效"，不做爆闪
+ *   · 亮色模式是米白宣纸 + 朱红；暗色模式是深檀木 + 灯笼橙，都不刺眼
+ *   · 装饰层 pointer-events:none；尊重 prefers-reduced-motion
+ * ============================================================ */
+
+html[data-skin="spring"] {
+  --accent: #C0392B !important;
+  --accent-2: #D4A017 !important;
+  --accent-ink: #FFF8F2 !important;
+  --toggle-on: #C0392B !important;
+  --slider-fill: #C0392B !important;
+
+  --sf-red: #C0392B;
+  --sf-red-deep: #8E2016;
+  --sf-red-soft: #E8675A;
+  --sf-gold: #D4A017;
+  --sf-gold-soft: #F2D27A;
+  --sf-paper: #FFF7F2;
+  --sf-ink: #2A1512;
+
+  --bg-1: #FFF7F2;
+  --bg-2: #FBE6DA;
+  --surface: rgba(255, 253, 250, .89);
+  --surface-solid: #FFFBF7;
+  --border: rgba(192, 57, 43, .18);
+  --border-soft: rgba(192, 57, 43, .09);
+  --text: #2A1512;
+  --text-2: #6B443B;
+  --text-3: #9B776C;
+
+  --radius-lg: 18px;
+  --radius-md: 12px;
+  --radius-sm: 9px;
+  --shadow: 0 10px 30px rgba(142, 32, 22, .16);
+  --shadow-sm: 0 4px 14px rgba(142, 32, 22, .10);
+
+  --tab-active-bg: rgba(192, 57, 43, .11);
+  --tab-active-fg: var(--sf-red);
+  --msg-bg: rgba(255, 252, 248, .96);
+  --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg, #C0392B, #D4A017);
+  --msg-mine-fg: #FFF8F2;
+  --toast-bg: rgba(42, 21, 18, .95);
+  --toast-fg: #FDEDE4;
+  --toast-err-bg: #A8281C;
+}
+
+html[data-skin="spring"][data-theme="dark"] {
+  --bg-1: #180C0A;
+  --bg-2: #24120E;
+  --surface: rgba(38, 20, 16, .82);
+  --surface-solid: #24120E;
+  --border: rgba(232, 103, 90, .22);
+  --border-soft: rgba(232, 103, 90, .11);
+  --text: #F7E4DA;
+  --text-2: #C9A093;
+  --text-3: #9A7568;
+
+  --accent: #E8675A !important;
+  --accent-2: #E8B84A !important;
+  --accent-ink: #1A0A07 !important;
+  --tab-active-bg: rgba(232, 103, 90, .15);
+  --tab-active-fg: #F79A8D;
+  --msg-bg: rgba(42, 22, 17, .9);
+  --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg, #E8675A, #E8B84A);
+  --msg-mine-fg: #1A0A07;
+  --toast-bg: rgba(247, 228, 218, .95);
+  --toast-fg: #180C0A;
+}
+
+/* ============================================================
+ * 装饰层：两盏灯笼 + 一枚窗花 + 金色碎屑
+ * ============================================================ */
+.fd-sf-lantern, .fd-sf-window, .fd-sf-flake { display: none; }
+
+html[data-skin="spring"] .festival-deco {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* 灯笼：椭圆灯身 + 顶部金箍 + 底部流苏，挂钩一根细线 */
+html[data-skin="spring"] .fd-sf-lantern {
+  display: block;
+  position: absolute;
+  top: 0;
+  width: 58px;
+  height: 74px;
+  transform-origin: 50% -18px;
+  animation: sf-sway 8s ease-in-out infinite;
+}
+html[data-skin="spring"] .fd-sf-lantern--l { left: 14px; }
+html[data-skin="spring"] .fd-sf-lantern--r { right: 14px; animation-delay: -3.4s; }
+
+html[data-skin="spring"] .fd-sf-lantern::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -18px;
+  width: 1px;
+  height: 20px;
+  margin-left: -.5px;
+  background: linear-gradient(180deg, transparent, rgba(212, 160, 23, .8));
+}
+html[data-skin="spring"] .fd-sf-lantern::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50% / 44%;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 246, 220, .6), transparent 52%),
+    linear-gradient(158deg, var(--sf-red-soft), var(--sf-red) 58%, var(--sf-red-deep));
+  box-shadow: 0 6px 18px rgba(142, 32, 22, .3), inset 0 0 0 1px rgba(242, 210, 122, .5);
+}
+/* 竖向灯骨 + 顶部金箍 + 底部流苏 */
+html[data-skin="spring"] .fd-sf-lantern i {
+  position: absolute;
+  inset: 6px 12px 8px;
+  border-radius: 50% / 44%;
+  background: repeating-linear-gradient(90deg,
+    rgba(142, 32, 22, .34) 0 1px,
+    transparent 1px 13px);
+}
+html[data-skin="spring"] .fd-sf-lantern i::before,
+html[data-skin="spring"] .fd-sf-lantern i::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 26px;
+  margin-left: -13px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--sf-gold), var(--sf-gold-soft), var(--sf-gold));
+}
+html[data-skin="spring"] .fd-sf-lantern i::before { top: -5px; }
+html[data-skin="spring"] .fd-sf-lantern i::after {
+  bottom: -6px;
+  height: 10px;
+  width: 12px;
+  margin-left: -6px;
+  border-radius: 0 0 50% 50%;
+  background: linear-gradient(180deg, var(--sf-gold), rgba(212, 160, 23, .25));
+}
+@keyframes sf-sway {
+  0%, 100% { transform: rotate(-2.2deg); }
+  50%      { transform: rotate(2.2deg); }
+}
+
+/* 窗花：八角对称，靠锥形渐变叠出剪纸的放射感 */
+html[data-skin="spring"] .fd-sf-window {
+  display: block;
+  position: absolute;
+  right: -34px;
+  bottom: 46px;
+  width: 150px;
+  height: 150px;
+  opacity: .3;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 0 26%, var(--sf-red-soft) 27% 29%, transparent 30%),
+    repeating-conic-gradient(from 0deg,
+      var(--sf-red) 0deg 6deg,
+      transparent 6deg 45deg);
+  border-radius: 50%;
+  -webkit-mask: radial-gradient(circle, #000 0 46%, transparent 47%);
+  mask: radial-gradient(circle, #000 0 46%, transparent 47%);
+}
+
+/* 金色碎屑：四片，错开延迟，下落 + 微旋 */
+html[data-skin="spring"] .fd-sf-flake {
+  display: block;
+  position: absolute;
+  top: -12px;
+  width: 7px;
+  height: 7px;
+  background: linear-gradient(140deg, var(--sf-gold-soft), var(--sf-gold));
+  border-radius: 1px 6px 1px 6px;
+  opacity: .5;
+  animation: sf-fall 13s linear infinite;
+}
+html[data-skin="spring"] .fd-sf-flake--1 { left: 12%; animation-delay: -1s; }
+html[data-skin="spring"] .fd-sf-flake--2 { left: 38%; animation-delay: -5.5s; }
+html[data-skin="spring"] .fd-sf-flake--3 { left: 66%; animation-delay: -9s; }
+html[data-skin="spring"] .fd-sf-flake--4 { left: 88%; animation-delay: -3s; }
+@keyframes sf-fall {
+  0%   { transform: translateY(-10px) rotate(0deg); opacity: 0; }
+  12%  { opacity: .55; }
+  88%  { opacity: .45; }
+  100% { transform: translateY(102vh) rotate(220deg); opacity: 0; }
+}
+
+html[data-skin="spring"] .fj-locked { position: relative; }
+html[data-skin="spring"] .fj-locked::after {
+  content: "春节期间固定为「朱红 · 鎏金」";
+  position: absolute;
+  inset: -4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent);
+  border-radius: 12px;
+  filter: none;
+}
+
+@media (max-width: 560px) {
+  html[data-skin="spring"] .fd-sf-window { width: 108px; height: 108px; right: -28px; bottom: 58px; }
+  html[data-skin="spring"] .fd-sf-lantern { width: 46px; height: 60px; }
+  html[data-skin="spring"] .fd-sf-flake--2 { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin="spring"] .fd-sf-lantern { animation: none; }
+  html[data-skin="spring"] .fd-sf-flake { animation: none; opacity: .35; }
+}

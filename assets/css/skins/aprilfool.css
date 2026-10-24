@@ -1,0 +1,55 @@
+/* 皮肤：愚人节 · 倒置的问号
+ * 呈现：4/1。母题=一个倒过来的问号 + 一条画歪的横线。
+ * 全站唯一用"中性灰"的节日皮肤：玩笑归玩笑，配色不为难眼睛。 */
+html[data-skin="aprilfool"] {
+  --accent: #6E6E6E !important; --accent-2: #E8D44D !important; --accent-ink: #FFFDF2 !important;
+  --toggle-on: #6E6E6E !important; --slider-fill: #6E6E6E !important;
+  --af-grey: #6E6E6E; --af-grey-deep: #4A4A4A; --af-yellow: #E8D44D; --af-paper: #F6F5F1;
+  --bg-1: #F7F6F3; --bg-2: #EAE8E2; --surface: rgba(255,255,253,.92); --surface-solid: #FCFBF8;
+  --border: rgba(110,110,110,.16); --border-soft: rgba(110,110,110,.08);
+  --text: #232323; --text-2: #565656; --text-3: #8A8A8A;
+  --radius-lg: 8px; --radius-md: 6px; --radius-sm: 4px;
+  --shadow: 0 7px 20px rgba(35,35,35,.11); --shadow-sm: 0 2px 9px rgba(35,35,35,.07);
+  --tab-active-bg: rgba(110,110,110,.11); --tab-active-fg: #4A4A4A;
+  --msg-bg: rgba(255,255,253,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#6E6E6E,#4A4A4A); --msg-mine-fg: #FFFDF2;
+  --toast-bg: rgba(35,35,35,.95); --toast-fg: #F4F3EF; --toast-err-bg: #A33A28;
+}
+html[data-skin="aprilfool"][data-theme="dark"] {
+  --bg-1: #141413; --bg-2: #1D1D1B; --surface: rgba(32,32,30,.84); --surface-solid: #1D1D1B;
+  --border: rgba(232,212,77,.18); --border-soft: rgba(232,212,77,.09);
+  --text: #E8E7E0; --text-2: #B0AFA6; --text-3: #82817A;
+  --accent: #E8D44D !important; --accent-2: #B0AFA6 !important; --accent-ink: #141413 !important;
+  --tab-active-bg: rgba(232,212,77,.14); --tab-active-fg: #EEDD75;
+  --msg-bg: rgba(36,36,33,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#575754,#8A8A82); --msg-mine-fg: #141413;
+  --toast-bg: rgba(232,231,224,.95); --toast-fg: #141413;
+}
+.fd-af-q, .fd-af-line { display: none; }
+html[data-skin="aprilfool"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 倒问号：真字符，旋转 180°，用亮黄 —— 全页唯一的有色元素 */
+html[data-skin="aprilfool"] .fd-af-q {
+  display: block; position: absolute; right: 34px; top: 56px;
+  font: 700 84px/1 Georgia, "Songti SC", serif;
+  color: var(--af-yellow);
+  transform: rotate(180deg);
+  opacity: .9;
+  text-shadow: 0 6px 16px rgba(35,35,35,.16);
+}
+/* 那条画歪的线：手抖的直线，故意不是水平 */
+html[data-skin="aprilfool"] .fd-af-line {
+  display: block; position: absolute; left: 0; right: 0; top: 46%;
+  height: 2px; background: rgba(110,110,110,.22);
+  transform: rotate(-1.4deg); transform-origin: 0 50%;
+}
+html[data-skin="aprilfool"] .fj-locked { position: relative; }
+html[data-skin="aprilfool"] .fj-locked::after {
+  content: "愚人节期间固定为「中性灰 · 亮黄」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 6px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="aprilfool"] .fd-af-q { font-size: 58px; right: 16px; top: 50px; }
+  html[data-skin="aprilfool"] .fd-af-line { top: 52%; }
+}

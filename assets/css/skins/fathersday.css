@@ -1,0 +1,58 @@
+/* 皮肤：父亲节 · 一件旧外套的宽肩
+ * 呈现：6 月第 3 个星期日。母题=挂在椅背上的旧外套（宽肩剪影 + 一点磨白的袖口）。
+ * 情绪靠"旧"：色温偏暖褐，边缘加一点磨损的浅色，不做任何装饰性动效。 */
+html[data-skin="fathersday"] {
+  --accent: #7A5238 !important; --accent-2: #A8A29A !important; --accent-ink: #FBF6EE !important;
+  --toggle-on: #7A5238 !important; --slider-fill: #7A5238 !important;
+  --fa-brown: #7A5238; --fa-brown-deep: #553720; --fa-worn: #C9BBA8; --fa-cream: #F7F1E7;
+  --bg-1: #FAF6EF; --bg-2: #EDE3D5; --surface: rgba(255,252,247,.91); --surface-solid: #FDF9F2;
+  --border: rgba(122,82,56,.18); --border-soft: rgba(122,82,56,.09);
+  --text: #2D2118; --text-2: #5C4632; --text-3: #8E7660;
+  --radius-lg: 10px; --radius-md: 7px; --radius-sm: 5px;
+  --shadow: 0 8px 22px rgba(45,33,24,.14); --shadow-sm: 0 3px 9px rgba(45,33,24,.09);
+  --tab-active-bg: rgba(122,82,56,.11); --tab-active-fg: var(--fa-brown);
+  --msg-bg: rgba(255,252,247,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#7A5238,#A8A29A); --msg-mine-fg: #FBF6EE;
+  --toast-bg: rgba(45,33,24,.95); --toast-fg: #F9F0E2; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="fathersday"][data-theme="dark"] {
+  --bg-1: #12100C; --bg-2: #1C1811; --surface: rgba(32,27,20,.84); --surface-solid: #1C1811;
+  --border: rgba(201,187,168,.18); --border-soft: rgba(201,187,168,.09);
+  --text: #EEE5D8; --text-2: #BEAF9B; --text-3: #8C7E6C;
+  --accent: #C9A276 !important; --accent-2: #A8A29A !important; --accent-ink: #12100C !important;
+  --tab-active-bg: rgba(201,162,118,.15); --tab-active-fg: #D3B08C;
+  --msg-bg: rgba(36,30,22,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#5E3E29,#8E877E); --msg-mine-fg: #FBF6EE;
+  --toast-bg: rgba(238,229,216,.95); --toast-fg: #12100C;
+}
+.fd-fa-coat { display: none; }
+html[data-skin="fathersday"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 外套：宽肩梯形 + 两个袖口，肩线磨白 */
+html[data-skin="fathersday"] .fd-fa-coat {
+  display: block; position: absolute; right: 34px; bottom: 56px; width: 104px; height: 92px;
+  background: linear-gradient(170deg, #8A6344, var(--fa-brown) 52%, var(--fa-brown-deep));
+  clip-path: polygon(18% 0, 82% 0, 100% 26%, 88% 30%, 88% 100%, 12% 100%, 12% 30%, 0 26%);
+  opacity: .88;
+}
+/* 磨白的肩线 + 领口 */
+html[data-skin="fathersday"] .fd-fa-coat::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 12px;
+  background: linear-gradient(180deg, rgba(201,187,168,.55), transparent);
+  clip-path: polygon(18% 0, 82% 0, 100% 26%, 0 26%);
+}
+html[data-skin="fathersday"] .fd-fa-coat::after {
+  content: ""; position: absolute; left: 50%; top: 0; width: 22px; height: 18px;
+  margin-left: -11px;
+  border-radius: 0 0 50% 50%;
+  background: rgba(247,241,231,.55);
+}
+html[data-skin="fathersday"] .fj-locked { position: relative; }
+html[data-skin="fathersday"] .fj-locked::after {
+  content: "父亲节期间固定为「暖褐 · 米」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 7px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="fathersday"] .fd-fa-coat { width: 76px; height: 68px; right: 16px; bottom: 68px; }
+}

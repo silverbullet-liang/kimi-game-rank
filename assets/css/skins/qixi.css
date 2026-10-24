@@ -1,0 +1,73 @@
+/* 皮肤：七夕 · 一条星河与两岸的星
+ * 呈现：农历七月初七。母题=一条斜向的星河（细密点阵）+ 河中两侧各一颗亮星。
+ * 与春节/元宵的"灯火"完全不同：这套的底色是夜，光只来自星。 */
+html[data-skin="qixi"] {
+  --accent: #3A3A6E !important; --accent-2: #C9A6D9 !important; --accent-ink: #F8F4FF !important;
+  --toggle-on: #3A3A6E !important; --slider-fill: #3A3A6E !important;
+  --qx-indigo: #3A3A6E; --qx-violet: #C9A6D9; --qx-night: #1A1A33; --qx-star: #FFF3C4;
+  --bg-1: #F6F5FC; --bg-2: #E7E4F5; --surface: rgba(255,254,255,.92); --surface-solid: #FCFBFF;
+  --border: rgba(58,58,110,.16); --border-soft: rgba(58,58,110,.08);
+  --text: #1D1B33; --text-2: #4C4870; --text-3: #817DA3;
+  --radius-lg: 22px; --radius-md: 14px; --radius-sm: 10px;
+  --shadow: 0 12px 30px rgba(29,27,51,.16); --shadow-sm: 0 4px 12px rgba(29,27,51,.10);
+  --tab-active-bg: rgba(58,58,110,.10); --tab-active-fg: var(--qx-indigo);
+  --msg-bg: rgba(255,254,255,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#3A3A6E,#C9A6D9); --msg-mine-fg: #F8F4FF;
+  --toast-bg: rgba(26,26,51,.95); --toast-fg: #F1EEFB; --toast-err-bg: #9E3A5E;
+}
+html[data-skin="qixi"][data-theme="dark"] {
+  --bg-1: #0A0A16; --bg-2: #101022; --surface: rgba(20,20,42,.85); --surface-solid: #101022;
+  --border: rgba(201,166,217,.20); --border-soft: rgba(201,166,217,.10);
+  --text: #E6E2F5; --text-2: #ADA6CC; --text-3: #7D76A0;
+  --accent: #C9A6D9 !important; --accent-2: #8E86C9 !important; --accent-ink: #0A0A16 !important;
+  --tab-active-bg: rgba(201,166,217,.16); --tab-active-fg: #D6BAE3;
+  --msg-bg: rgba(26,26,52,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#4A4A85,#C9A6D9); --msg-mine-fg: #0A0A16;
+  --toast-bg: rgba(230,226,245,.95); --toast-fg: #0A0A16;
+}
+.fd-qx-river, .fd-qx-star { display: none; }
+html[data-skin="qixi"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 星河：一条斜向的宽带，内部是两层错位的亮点阵 */
+html[data-skin="qixi"] .fd-qx-river {
+  display: block; position: absolute; left: -20%; top: 3vh; width: 140%; height: 96px;
+  transform: rotate(-11deg);
+  background:
+    radial-gradient(circle, rgba(201,166,217,.55) 0 1.1px, transparent 2px) 0 0 / 17px 17px,
+    radial-gradient(circle, rgba(255,243,196,.42) 0 1px, transparent 1.8px) 8px 9px / 23px 23px;
+  -webkit-mask: linear-gradient(180deg, transparent, #000 40%, #000 60%, transparent);
+  mask: linear-gradient(180deg, transparent, #000 40%, #000 60%, transparent);
+  opacity: .40;
+}
+/* 两岸的星：两颗，一上一下，隔着河 */
+html[data-skin="qixi"] .fd-qx-star {
+  display: block; position: absolute; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--qx-star);
+  box-shadow: 0 0 14px 4px rgba(255,243,196,.75), 0 0 30px 10px rgba(201,166,217,.40);
+}
+html[data-skin="qixi"] .fd-qx-star--1 { left: 5%; top: 7vh; }
+html[data-skin="qixi"] .fd-qx-star--2 { right: 5%; top: 15vh; }
+/* 星芒：两道互交的细线，让亮星在满屏星点里能立住 */
+html[data-skin="qixi"] .fd-qx-star::after {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 22px; height: 1px;
+  margin: -0.5px 0 0 -11px;
+  background: linear-gradient(90deg, transparent, rgba(255,243,196,.85) 22%, rgba(255,243,196,.85) 78%, transparent);
+  box-shadow: 0 0 6px rgba(255,243,196,.6);
+}
+html[data-skin="qixi"] .fd-qx-star::before {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 1px; height: 22px;
+  margin: -11px 0 0 -0.5px;
+  background: linear-gradient(180deg, transparent, rgba(255,243,196,.85) 22%, rgba(255,243,196,.85) 78%, transparent);
+  box-shadow: 0 0 6px rgba(255,243,196,.6);
+}
+html[data-skin="qixi"] .fj-locked { position: relative; }
+html[data-skin="qixi"] .fj-locked::after {
+  content: "七夕期间固定为「靛蓝 · 星河紫」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 14px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="qixi"] .fd-qx-river { height: 68px; top: 3vh; }
+  html[data-skin="qixi"] .fd-qx-star--1 { left: 4%; top: 6vh; }
+  html[data-skin="qixi"] .fd-qx-star--2 { right: 4%; top: 13vh; }
+}

@@ -1,0 +1,61 @@
+/* 皮肤：日本投降日 · 半降的旗
+ * 呈现：8/15。母题=一面已降到杆中段的旗（旗面下垂、无风）。
+ * 只描轮廓不填色：纪念日不需要色彩去渲染情绪，留白本身就是态度。 */
+html[data-skin="surrender"] {
+  --accent: #6B6B63 !important; --accent-2: #9A9A90 !important; --accent-ink: #FAFAF7 !important;
+  --toggle-on: #6B6B63 !important; --slider-fill: #6B6B63 !important;
+  --sr-stone: #6B6B63; --sr-stone-deep: #47473F; --sr-paper: #FAFAF7; --sr-line: #B8B8AE;
+  --bg-1: #FAFAF7; --bg-2: #EDEDE7; --surface: rgba(255,255,252,.93); --surface-solid: #FCFCF9;
+  --border: rgba(107,107,99,.15); --border-soft: rgba(107,107,99,.07);
+  --text: #252521; --text-2: #55554E; --text-3: #8A8A80;
+  --radius-lg: 3px; --radius-md: 2px; --radius-sm: 1px;
+  --shadow: 0 5px 16px rgba(37,37,33,.10); --shadow-sm: 0 2px 7px rgba(37,37,33,.06);
+  --tab-active-bg: rgba(107,107,99,.10); --tab-active-fg: var(--sr-stone);
+  --msg-bg: rgba(255,255,252,.98); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#6B6B63,#47473F); --msg-mine-fg: #FAFAF7;
+  --toast-bg: rgba(37,37,33,.95); --toast-fg: #F4F4EF; --toast-err-bg: #8E3A2E;
+}
+html[data-skin="surrender"][data-theme="dark"] {
+  --bg-1: #111110; --bg-2: #191917; --surface: rgba(27,27,25,.85); --surface-solid: #191917;
+  --border: rgba(184,184,174,.15); --border-soft: rgba(184,184,174,.07);
+  --text: #E5E5DE; --text-2: #B0B0A7; --text-3: #828279;
+  --accent: #C2C2B8 !important; --accent-2: #8A8A80 !important; --accent-ink: #111110 !important;
+  --tab-active-bg: rgba(194,194,184,.13); --tab-active-fg: #D2D2C8;
+  --msg-bg: rgba(30,30,27,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#54544C,#8A8A80); --msg-mine-fg: #FAFAF7;
+  --toast-bg: rgba(229,229,222,.95); --toast-fg: #111110;
+}
+.fd-sr-pole, .fd-sr-flag, .fd-sr-banner { display: none; }
+html[data-skin="surrender"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 旗杆 */
+html[data-skin="surrender"] .fd-sr-pole {
+  display: block; position: absolute; right: 52px; top: 40px; width: 1.5px; height: 132px;
+  background: linear-gradient(180deg, rgba(107,107,99,.40), rgba(107,107,99,.12));
+}
+/* 半降的旗：只描边，下垂 */
+html[data-skin="surrender"] .fd-sr-flag {
+  display: block; position: absolute; right: 53px; top: 118px; width: 62px; height: 34px;
+  border: 1px solid rgba(107,107,99,.45);
+  border-left: none;
+  border-radius: 0 0 6px 0;
+  background: linear-gradient(180deg, transparent, rgba(107,107,99,.06));
+  transform-origin: left center;
+  transform: skewY(4deg);
+}
+/* 旗上的一条素色横带（不写字） */
+html[data-skin="surrender"] .fd-sr-banner {
+  display: block; position: absolute; right: 53px; top: 132px; width: 62px; height: 1px;
+  background: rgba(184,184,174,.7);
+}
+html[data-skin="surrender"] .fj-locked { position: relative; }
+html[data-skin="surrender"] .fj-locked::after {
+  content: "日本投降日期间固定为「素白 · 石灰」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 2px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="surrender"] .fd-sr-pole { right: 28px; top: 34px; height: 96px; }
+  html[data-skin="surrender"] .fd-sr-flag { right: 29px; top: 92px; width: 44px; height: 26px; }
+  html[data-skin="surrender"] .fd-sr-banner { right: 29px; top: 104px; width: 44px; }
+}

@@ -1,0 +1,63 @@
+/* 皮肤：母亲节 · 三瓣康乃馨
+ * 呈现：5 月第 2 个星期日。母题=一朵线描康乃馨：三片花瓣 + 一根细茎 + 一片叶。
+ * 花瓣用三个旋转的椭圆叠出，边缘做锯齿感的 mask —— 像康乃馨的皱边。 */
+html[data-skin="mothersday"] {
+  --accent: #C4627A !important; --accent-2: #8FA86B !important; --accent-ink: #FFF7F9 !important;
+  --toggle-on: #C4627A !important; --slider-fill: #C4627A !important;
+  --mo-pink: #D97A8A; --mo-pink-deep: #B8546A; --mo-cream: #FDF6F4; --mo-leaf: #8FA86B;
+  --bg-1: #FDF8F6; --bg-2: #F7E8E6; --surface: rgba(255,252,251,.92); --surface-solid: #FFFCFA;
+  --border: rgba(196,98,122,.16); --border-soft: rgba(196,98,122,.08);
+  --text: #33211F; --text-2: #6B4A47; --text-3: #9B7C78;
+  --radius-lg: 22px; --radius-md: 14px; --radius-sm: 10px;
+  --shadow: 0 10px 28px rgba(196,98,122,.14); --shadow-sm: 0 4px 12px rgba(196,98,122,.09);
+  --tab-active-bg: rgba(196,98,122,.10); --tab-active-fg: var(--mo-pink-deep);
+  --msg-bg: rgba(255,252,251,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#C4627A,#E8A8B4); --msg-mine-fg: #FFF7F9;
+  --toast-bg: rgba(51,33,31,.95); --toast-fg: #FBEDEF; --toast-err-bg: #A32B44;
+}
+html[data-skin="mothersday"][data-theme="dark"] {
+  --bg-1: #170F10; --bg-2: #211518; --surface: rgba(38,24,27,.84); --surface-solid: #211518;
+  --border: rgba(217,122,138,.20); --border-soft: rgba(217,122,138,.10);
+  --text: #F6E6E8; --text-2: #CBA6AC; --text-3: #9A767C;
+  --accent: #E8A8B4 !important; --accent-2: #A9C085 !important; --accent-ink: #170F10 !important;
+  --tab-active-bg: rgba(232,168,180,.15); --tab-active-fg: #EDB9C2;
+  --msg-bg: rgba(43,27,31,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#B8546A,#E8A8B4); --msg-mine-fg: #170F10;
+  --toast-bg: rgba(246,230,232,.95); --toast-fg: #170F10;
+}
+.fd-mo-flower, .fd-mo-stem { display: none; }
+html[data-skin="mothersday"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 花：三片错位椭圆，各转一个角度，边缘用轻微模糊做出皱边感 */
+html[data-skin="mothersday"] .fd-mo-flower {
+  display: block; position: absolute; right: 44px; top: 58px; width: 54px; height: 54px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(255,245,247,.9) 0 12%, transparent 13%),
+    radial-gradient(ellipse 62% 40% at 42% 30%, rgba(217,122,138,.65), transparent 62%),
+    radial-gradient(ellipse 58% 38% at 62% 44%, rgba(184,84,106,.55), transparent 60%),
+    radial-gradient(ellipse 52% 34% at 44% 62%, rgba(232,168,180,.60), transparent 60%);
+  filter: blur(.3px);
+  opacity: .92;
+}
+/* 茎与叶：一条细线 + 一枚斜叶 */
+html[data-skin="mothersday"] .fd-mo-stem {
+  display: block; position: absolute; right: 68px; top: 108px; width: 1px; height: 76px;
+  background: linear-gradient(180deg, rgba(143,168,107,.65), rgba(143,168,107,.2));
+}
+html[data-skin="mothersday"] .fd-mo-stem::after {
+  content: ""; position: absolute; left: -18px; top: 26px; width: 20px; height: 9px;
+  border-radius: 0 50% 0 50%;
+  background: rgba(143,168,107,.35);
+  transform: rotate(-16deg);
+}
+html[data-skin="mothersday"] .fj-locked { position: relative; }
+html[data-skin="mothersday"] .fj-locked::after {
+  content: "母亲节期间固定为「暖粉 · 奶白」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 14px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="mothersday"] .fd-mo-flower { width: 42px; height: 42px; right: 20px; top: 52px; }
+  html[data-skin="mothersday"] .fd-mo-stem { right: 40px; top: 94px; height: 58px; }
+}

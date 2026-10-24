@@ -1,0 +1,67 @@
+/* 皮肤：情人节 · 一支线描玫瑰
+ * 呈现：2/14。母题=一根连续曲线画出的玫瑰（螺旋花瓣）+ 一条茎。
+ * 刻意不画心形、不撒亮片：一朵线描玫瑰比满屏爱心更耐看，也不至于俗。 */
+html[data-skin="valentine"] {
+  --accent: #C2405A !important; --accent-2: #8A5A6A !important; --accent-ink: #FFF6F8 !important;
+  --toggle-on: #C2405A !important; --slider-fill: #C2405A !important;
+  --va-rose: #C2405A; --va-rose-light: #E58AA0; --va-grey: #8A5A6A; --va-blush: #F8EAEE;
+  --bg-1: #FDF6F8; --bg-2: #F6E5EA; --surface: rgba(255,252,253,.91); --surface-solid: #FFFBFC;
+  --border: rgba(194,64,90,.16); --border-soft: rgba(194,64,90,.08);
+  --text: #2F1E24; --text-2: #6B4A54; --text-3: #9B7C86;
+  --radius-lg: 20px; --radius-md: 13px; --radius-sm: 10px;
+  --shadow: 0 10px 28px rgba(194,64,90,.14); --shadow-sm: 0 4px 12px rgba(194,64,90,.09);
+  --tab-active-bg: rgba(194,64,90,.10); --tab-active-fg: var(--va-rose);
+  --msg-bg: rgba(255,252,253,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#C2405A,#E58AA0); --msg-mine-fg: #FFF6F8;
+  --toast-bg: rgba(47,30,36,.95); --toast-fg: #FBEEF1; --toast-err-bg: #A32B44;
+}
+html[data-skin="valentine"][data-theme="dark"] {
+  --bg-1: #180E12; --bg-2: #22141A; --surface: rgba(38,22,28,.84); --surface-solid: #22141A;
+  --border: rgba(229,138,160,.20); --border-soft: rgba(229,138,160,.10);
+  --text: #F6E4EA; --text-2: #CBA3B0; --text-3: #9A7482;
+  --accent: #E58AA0 !important; --accent-2: #C2405A !important; --accent-ink: #180E12 !important;
+  --tab-active-bg: rgba(229,138,160,.15); --tab-active-fg: #EB9FB2;
+  --msg-bg: rgba(43,25,32,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#B03450,#E58AA0); --msg-mine-fg: #FFF6F8;
+  --toast-bg: rgba(246,228,234,.95); --toast-fg: #180E12;
+}
+.fd-va-rose, .fd-va-stem { display: none; }
+html[data-skin="valentine"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 玫瑰：同心椭圆旋出错位花瓣，靠 repeating-radial 与旋转叠出来 */
+html[data-skin="valentine"] .fd-va-rose {
+  display: block; position: absolute; right: 30px; top: 60px; width: 92px; height: 92px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 46% 44%, rgba(255,255,255,.55) 0 6%, transparent 7%),
+    repeating-radial-gradient(circle at 50% 50%,
+      rgba(194,64,90,.42) 0 5px, transparent 5px 11px, rgba(229,138,160,.30) 11px 15px, transparent 15px 21px);
+  -webkit-mask: radial-gradient(circle, #000 0 48%, transparent 49%);
+  mask: radial-gradient(circle, #000 0 48%, transparent 49%);
+  transform: rotate(-14deg);
+  opacity: .8;
+}
+/* 茎：一条 1px 的曲线（用圆角边框做弧） */
+html[data-skin="valentine"] .fd-va-stem {
+  display: block; position: absolute; right: 66px; top: 148px; width: 46px; height: 84px;
+  border-left: 1px solid rgba(138,90,106,.45);
+  border-bottom: 1px solid rgba(138,90,106,.45);
+  border-radius: 0 0 0 44px;
+  opacity: .7;
+}
+html[data-skin="valentine"] .fd-va-stem::after {
+  content: ""; position: absolute; left: -1px; top: 30px; width: 22px; height: 11px;
+  border-radius: 0 50% 0 50%;
+  background: rgba(138,90,106,.22);
+  transform: rotate(-12deg);
+}
+html[data-skin="valentine"] .fj-locked { position: relative; }
+html[data-skin="valentine"] .fj-locked::after {
+  content: "情人节期间固定为「玫瑰 · 灰粉」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 13px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="valentine"] .fd-va-rose { width: 68px; height: 68px; right: 16px; top: 54px; }
+  html[data-skin="valentine"] .fd-va-stem { right: 40px; top: 122px; width: 36px; height: 66px; }
+}

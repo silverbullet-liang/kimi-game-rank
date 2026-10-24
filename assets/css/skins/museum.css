@@ -1,0 +1,64 @@
+/* 皮肤：博物馆日 · 展柜里的陶罐
+ * 呈现：5/18。母题=展柜玻璃上的一道反光斜条 + 柜里一只陶罐剪影。
+ * 釉色用陶土橙，柜体用石青：冷暖各一半，是"玻璃外面"与"玻璃里面"。 */
+html[data-skin="museum"] {
+  --accent: #4F6B72 !important; --accent-2: #B07A4A !important; --accent-ink: #F6FAFA !important;
+  --toggle-on: #4F6B72 !important; --slider-fill: #4F6B72 !important;
+  --mu-slate: #4F6B72; --mu-clay: #B07A4A; --mu-glass: #E6EEF0; --mu-ink: #1D2A2D;
+  --bg-1: #F4F7F8; --bg-2: #E4EBED; --surface: rgba(255,255,255,.92); --surface-solid: #FCFDFE;
+  --border: rgba(79,107,114,.17); --border-soft: rgba(79,107,114,.08);
+  --text: #1D2A2D; --text-2: #48595E; --text-3: #7C8E93;
+  --radius-lg: 6px; --radius-md: 5px; --radius-sm: 3px;
+  --shadow: 0 8px 22px rgba(29,42,45,.12); --shadow-sm: 0 3px 9px rgba(29,42,45,.07);
+  --tab-active-bg: rgba(79,107,114,.10); --tab-active-fg: var(--mu-slate);
+  --msg-bg: rgba(255,255,255,.97); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#4F6B72,#B07A4A); --msg-mine-fg: #F6FAFA;
+  --toast-bg: rgba(29,42,45,.95); --toast-fg: #EDF3F4; --toast-err-bg: #9E3A2E;
+}
+html[data-skin="museum"][data-theme="dark"] {
+  --bg-1: #0B1213; --bg-2: #111B1D; --surface: rgba(17,27,29,.84); --surface-solid: #111B1D;
+  --border: rgba(176,122,74,.20); --border-soft: rgba(176,122,74,.10);
+  --text: #DFE9EA; --text-2: #A2B2B5; --text-3: #748589;
+  --accent: #C79363 !important; --accent-2: #8FAEB4 !important; --accent-ink: #0B1213 !important;
+  --tab-active-bg: rgba(199,147,99,.15); --tab-active-fg: #D3A87B;
+  --msg-bg: rgba(21,33,35,.9); --msg-fg: var(--text);
+  --msg-mine-bg: linear-gradient(120deg,#3E565C,#B07A4A); --msg-mine-fg: #0B1213;
+  --toast-bg: rgba(223,233,234,.95); --toast-fg: #0B1213;
+}
+.fd-mu-vase, .fd-mu-glass { display: none; }
+html[data-skin="museum"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+/* 陶罐：敛口 + 鼓腹 + 小平底，用圆角与渐变拼 */
+html[data-skin="museum"] .fd-mu-vase {
+  display: block; position: absolute; right: 42px; bottom: 66px; width: 64px; height: 78px;
+  border-radius: 42% 42% 30% 30% / 26% 26% 62% 62%;
+  background:
+    linear-gradient(100deg, rgba(255,255,255,.25), transparent 42%),
+    linear-gradient(180deg, #C08A58, #B07A4A 52%, #8E5F38);
+  box-shadow: 0 8px 18px rgba(142,95,56,.26);
+  opacity: .9;
+}
+/* 罐口：一条椭圆口沿 */
+html[data-skin="museum"] .fd-mu-vase::before {
+  content: ""; position: absolute; left: 12%; right: 12%; top: -5px; height: 9px;
+  border-radius: 50%; background: #D2A173;
+}
+/* 展柜玻璃：一道斜向反光条 + 柜边细线 */
+html[data-skin="museum"] .fd-mu-glass {
+  display: block; position: absolute; right: 18px; bottom: 40px; width: 118px; height: 140px;
+  border: 1px solid rgba(79,107,114,.22);
+  border-radius: 3px;
+  background: linear-gradient(118deg,
+    transparent 0 32%, rgba(230,238,240,.85) 34% 42%, transparent 44% 100%);
+  opacity: .7;
+}
+html[data-skin="museum"] .fj-locked { position: relative; }
+html[data-skin="museum"] .fj-locked::after {
+  content: "博物馆日期间固定为「石青 · 陶土」"; position: absolute; inset: -4px; display: flex;
+  align-items: center; justify-content: center; padding: 0 12px; text-align: center;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px; color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent); border-radius: 5px; filter: none;
+}
+@media (max-width: 560px) {
+  html[data-skin="museum"] .fd-mu-vase { width: 48px; height: 58px; right: 20px; bottom: 74px; }
+  html[data-skin="museum"] .fd-mu-glass { width: 88px; height: 108px; right: 8px; bottom: 56px; }
+}
