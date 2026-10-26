@@ -54,7 +54,7 @@ The site is a **non-profit personal hobby project**, run and maintained independ
 9. **One person, one account**: to prevent abuse, bulk registration by one person is discouraged, and clearly abnormal bulk registrations may be restricted or cleaned up.
 10. **Account closure and data deletion**: there is **no self-service closure entry**. Apply through "Feedback" to close your account or to have your comments, conversations and profile deleted; we act after verifying identity. Information involving others' rights, legal requirements or a security audit may be retained for a period as the law provides — see article 12 of the [Privacy Policy](?p=doc&arg=隐私政策). **Closure is irreversible**; "sign out" only clears the credential on your device and is not closure.
 11. **Rate limiting of sign-in attempts**: to stop passwords being guessed, **a burst of failed attempts is temporarily blocked** (wait a moment). Limits accrue **both per origin and per account**, so changing networks and continuing to probe the same account is blocked too. If you see "too many attempts" without any unusual activity, wait a few minutes and try again.
-12. **Human verification**: to prevent bulk registration and automated abuse, signing in and registering require a **human check** (one tap, no code to type). **A failed check does not accept the submission — the check is never bypassed because the verification service itself is down.** There is a primary channel and a fallback, switched automatically when the primary is unavailable, so normal sign-in is usually unaffected.
+12. **Human verification**: to prevent bulk registration and automated abuse, signing in and registering require a **human check** (one tap, no code to type). **A failed check does not accept the submission — the check is never bypassed because the verification service itself is down.** The primary channel is Cloudflare Turnstile; if it is unavailable a fallback channel is switched to automatically, so normal sign-in is usually unaffected.
 
 ## 6. Site data and virtual benefits
 
@@ -188,7 +188,8 @@ When using the service you **must not**, including but not limited to:
 | Moonshot AI · Kimi Community | [www.kimi.com](https://www.kimi.com) | Public data source for listed works |
 | Zhipu AI (Beijing Zhipu Huazhang) | [open.bigmodel.cn](https://open.bigmodel.cn) | AI assistant conversations (site model); fallback judgement for content moderation (text and images) |
 | OpenRouter | [openrouter.ai](https://openrouter.ai) | AI assistant conversations (free-model gateway) |
-| Cap (open-source proof-of-work verification) | [trycap.dev](https://trycap.dev) | Human verification for sign-in and registration (primary and fallback public instances) |
+| Cloudflare Turnstile (primary) | [cloudflare.com](https://www.cloudflare.com/products/turnstile/) | Human verification for sign-in and registration |
+| Cap (open-source verification, fallback) | [trycap.dev](https://trycap.dev) | Human verification for sign-in and registration (switched to automatically when the primary is unavailable) |
 | classifier.dev (Jev classifier) | [classifier.dev](https://classifier.dev) | Content moderation for comments and messages |
 | OVHcloud AI Endpoints | [OVHcloud AI Endpoints](https://www.ovhcloud.com/en/public-cloud/ai-endpoints/) | Image content moderation |
 | mir6 region lookup | [www.mir6.com](https://www.mir6.com) | Resolving the access region (primary channel) |

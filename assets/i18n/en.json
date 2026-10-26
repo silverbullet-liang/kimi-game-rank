@@ -859,5 +859,18 @@
  "九一八": "September 18 Incident",
  "撕开的日历格 · 9 月 18 日": "A torn calendar grid · September 18",
  "烈士纪念": "Martyrs' Day",
- "一面纪念墙与一枚小星 · 9 月 30 日": "A memorial wall and a small star · September 30"
+ "一面纪念墙与一枚小星 · 9 月 30 日": "A memorial wall and a small star · September 30",
+ "验证已过期，请重新验证": "Verification expired, please verify again",
+ "验证超时，请重新验证": "Verification timed out, please verify again",
+ "人机验证加载失败，请刷新重试": "Verification failed to load, please refresh and try again",
+ "人机验证未通过，请重新验证后再试": "Verification did not pass, please verify again and retry",
+ "请先完成人机验证": "Please complete the human verification first",
+ "主通道不可用": "Primary channel unavailable",
+ "，已切换到备用通道": ", switched to the fallback channel",
+ "备用通道加载中": "Loading the fallback channel",
+ "人机验证暂不可用，请刷新重试": "Verification is temporarily unavailable, please refresh and try again",
+ "验证出错": "Verification error",
+ "渲染失败": "Failed to render",
+ "脚本未加载": "script did not load",
+ "验证框若长时间未显示，请刷新重试": "If the verification box does not appear, please refresh and try again"
 }

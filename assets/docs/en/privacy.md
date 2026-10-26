@@ -100,8 +100,8 @@ We **never sell** your personal information. We share it only in the following *
 | Bilibili | [www.bilibili.com](https://www.bilibili.com) | Public information about the Bilibili video (video page) | Getting title, description, cover and duration for display and moderation |
 | Zhipu AI (Beijing Zhipu Huazhang) | [open.bigmodel.cn](https://open.bigmodel.cn) | Question content in AI conversations; the **search keyword** used for the AI summary; comments and messages awaiting publication; uploaded images (fallback image-moderation channel) | Generating AI answers, content moderation (text and images) |
 | OpenRouter | [openrouter.ai](https://openrouter.ai) | Question content in AI conversations (only when using its free model) | Generating AI answers (free-model gateway) |
-| Cap human verification · primary (captcha.gurl.eu.org) | [trycap.dev](https://trycap.dev) | Your access IP | Human verification for sign-in and registration |
-| Cap human verification · fallback (cap-pow.wuw.li) | [cap-pow.wuw.li](https://cap-pow.wuw.li) | Your access IP | Human verification (used automatically when the primary is unavailable) |
+| Cloudflare Turnstile (primary) | [cloudflare.com](https://www.cloudflare.com/products/turnstile/) | Your access IP and browser environment signals | Human verification for sign-in and registration |
+| Cap human verification (fallback) | [trycap.dev](https://trycap.dev) | Your access IP | Human verification (used automatically when the primary is unavailable) |
 | classifier.dev (Jev classifier) | [classifier.dev](https://classifier.dev) | Comments and messages awaiting publication | Model judgement for content moderation |
 | OVHcloud AI Endpoints | [OVHcloud AI Endpoints](https://www.ovhcloud.com/en/public-cloud/ai-endpoints/) | Images you upload | Image moderation (reading text in the image and detecting prohibited imagery) |
 | MyMemory translation | [mymemory.translated.net](https://mymemory.translated.net) | Comments and messages awaiting publication (first 300 characters) | Translating to English for profanity detection |
@@ -137,7 +137,7 @@ Notes:
 3. **Sign-in rate limiting**: verification uses an **irreversible hash** of the IP, never the plain address.
 4. **Your control**: you can **turn visit history off** at any time under "Mine → Settings". No new entries are recorded afterwards, and you may request deletion of existing ones.
 5. **Region resolution**: to obtain region and carrier information an IP is sent to third-party lookup services (see section 8), which receive only the IP, never your account information.
-6. **Human verification**: sign-in and registration use a third-party public instance, which receives your access IP; afterwards this site stores only the one-time verification result and nothing else returned by that service.
+6. **Human verification**: the primary channel is Cloudflare Turnstile, which receives your access IP and browser environment signals; our server then validates the result with Cloudflare once more and keeps only "passed or not", never anything else it returns. When the primary is unavailable a Cap fallback channel is used automatically (it likewise receives only your access IP). The check does not use cookies for cross-site tracking.
 7. **Protection against collateral blocking**: a single exit address is often shared by many people (schools, companies, public networks). To avoid affecting unrelated people, a restricted origin that **you actively authorise location for** is compared with the restricted area; if clearly outside it, the access is judged to be a different person and restored. The tolerance is about **30 km** (adjustable). Refusing location keeps the normal rules and never adds restrictions.
 
 ## 10. Storage and cross-border transfer

@@ -36,4 +36,12 @@ return array(
        形如 /check.php?k=<debug_key>。留空或删除本项 = 这些工具完全不可访问。
        请改成一段随机字符串，不要用容易猜到的词。 */
     'debug_key' => 'CHANGE_ME_DEBUG_KEY',
+    /* Cloudflare Turnstile：登录 / 注册的人机验证。
+       sitekey 是公开值（会下发到前端）；secret 只在本文件，用于服务端校验。
+       未填 secret 时本站会关闭人机验证并在日志里告警，绝不会因此锁死登录。 */
+    'turnstile' => array(
+        'sitekey' => '',
+        'secret'  => '',
+    ),
+
 );

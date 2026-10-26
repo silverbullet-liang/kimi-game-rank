@@ -1636,6 +1636,11 @@ html[data-theme="dark"] .mon-app { --mok:#4ade80; --mwarn:#fbbf24; --mbad:#f8717
 .festival-deco { display: none; pointer-events: none; }
 .fd-pd-rain, .fd-pd-angle { display: none; }
 
+/* 人机验证（Cloudflare Turnstile）：先在容器里占住高度，脚本到位后原地渲染，
+   避免内容跳动；尺寸用 flexible，窄屏自适应。 */
+.cf-box{display:flex;flex-direction:column;gap:6px;min-height:66px}
+.cf-box #cfSlot{min-height:65px}
+
 /* 语言选择 */
 .lang-list{display:flex;gap:8px;flex-wrap:wrap}
 .lang-btn{appearance:none;border:1px solid var(--line);background:0;color:var(--muted);font-size:14px;padding:9px 18px;cursor:pointer}
