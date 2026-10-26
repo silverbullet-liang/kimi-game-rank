@@ -87,10 +87,13 @@ ck('前端处理过期回调', strpos($js, 'expired-callback') !== false);
 ck('前端提交前清空旧 token', strpos($js, "cb('', '')") !== false);
 ck('渲染判定只认 render 返回（有 cfState 状态机）', strpos($js, "cfState = 'rendered'") !== false && strpos($js, "cfState = 'failed'") !== false);
 ck('已渲染时不做破坏性切换', strpos($js, "if (cfState === 'rendered') {") !== false);
-ck('主通道不再用 DOM 探测当判据（Cap 内部仍可探测 shadowRoot）', strpos($js, "switchToCap('standard', t('未渲染'))") === false);
+ck('主通道不再用 DOM 探测当判据', strpos($js, "switchToCap('standard', t('未渲染'))") === false);
+ck('用户面前的文案不再暴露内部原因', strpos($js, "t('主通道不可用，已切换到备用通道')") !== false);
+ck('备通道自检放宽到 5 秒且认已拿到的 token', strpos($js, '}, 5000);') !== false && strpos($js, "if (activeChannel !== 'standard' || CH.token) { return; }") !== false);
+ck('切换原因只进 console', strpos($js, "console.debug('[captcha] switched to'") !== false);
 ck('仅脚本未回来才切备通道', strpos($js, "t('脚本未加载')") !== false && strpos($js, "t('渲染失败')") !== false);
 ck('备通道 Cap 双实例保留', strpos($js, 'cap-widget') !== false && strpos($js, 'CapPow') !== false);
-ck('备通道内部也有健康检查', strpos($js, "switchToCap('php', t('未渲染'))") !== false);
+ck('备通道内部也有健康检查', strpos($js, "switchToCap('php', t('组件未出现'))") !== false);
 ck('切换时销毁主通道 widget', strpos($js, 'turnstile.remove') !== false);
 
 $login = (string)file_get_contents(APP_ROOT . '/assets/js/src/pages/login.js');

@@ -872,5 +872,7 @@
  "验证出错": "Verification error",
  "渲染失败": "Failed to render",
  "脚本未加载": "script did not load",
- "验证框若长时间未显示，请刷新重试": "If the verification box does not appear, please refresh and try again"
+ "验证框若长时间未显示，请刷新重试": "If the verification box does not appear, please refresh and try again",
+ "主通道不可用，已切换到备用通道": "Primary channel unavailable, switched to the fallback channel",
+ "组件未出现": "widget did not appear"
 }

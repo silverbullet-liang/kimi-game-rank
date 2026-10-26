@@ -99,6 +99,8 @@ export function mountCaptcha(host, onChange) {
   /* ---------- 备通道：Cap 双实例（原逻辑原样保留） ---------- */
   function switchToCap(which, why) {
     if (activeChannel === which) { return; }
+    /* 切换原因只进控制台，不显示给用户：内部措辞容易被误读成组件坏了 */
+    if (why) { try { console.debug('[captcha] switched to', which, '|', why); } catch (e) {} }
     /* 主通道若已渲染出 widget，先销毁，避免残留 iframe */
     if (window.turnstile && cfWidget !== null) {
       try { window.turnstile.remove(cfWidget); } catch (e) { /* 已销毁则忽略 */ }
@@ -115,7 +117,7 @@ export function mountCaptcha(host, onChange) {
       const box = host.querySelector('#capPhp');
       box.style.display = 'block';
       if (!php.script) { hint.textContent = t('人机验证暂不可用，请稍后再试'); return; }
-      hint.textContent = t('备用通道加载中') + (why ? '（' + why + '）' : '');
+      hint.textContent = t('备用通道加载中');
       if (php.css && !document.querySelector('link[data-cap-php]')) {
         const l = document.createElement('link');
         l.rel = 'stylesheet';
@@ -151,7 +153,7 @@ export function mountCaptcha(host, onChange) {
     const stdBox = host.querySelector('#capStd');
     stdBox.style.display = 'block';
     if (!std.script) { switchToCap('php', t('未配置')); return; }
-    hint.textContent = t('主通道不可用') + (why ? '（' + why + '）' : '') + t('，已切换到备用通道');
+    hint.textContent = t('主通道不可用，已切换到备用通道');
     const w = document.createElement('cap-widget');
     w.id = 'cap-widget';
     if (std.api) { w.setAttribute('data-cap-api-endpoint', std.api); }
@@ -161,12 +163,14 @@ export function mountCaptcha(host, onChange) {
     stdBox.appendChild(w);
     activeChannel = 'standard';
     loadScript(std.script).catch(() => switchToCap('php', t('脚本加载失败')));
+    /* 只有「组件既没升级出 shadowRoot、也没有任何子节点、且还没拿到 token」才算失败；
+       时间放宽到 5 秒，避免慢网络下把正在初始化的组件判死。 */
     setTimeout(() => {
-      if (activeChannel !== 'standard') { return; }
+      if (activeChannel !== 'standard' || CH.token) { return; }
       const inst = host.querySelector('#cap-widget');
       const ok = inst && (inst.shadowRoot || inst.children.length > 0);
-      if (!ok) { switchToCap('php', t('未渲染')); }
-    }, 3000);
+      if (!ok) { switchToCap('php', t('组件未出现')); }
+    }, 5000);
   }
 
   /* ---------- 主通道：Cloudflare Turnstile ---------- */
