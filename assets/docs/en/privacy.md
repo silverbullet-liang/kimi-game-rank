@@ -42,7 +42,7 @@ We follow the **principle of minimum necessity** and collect only what is needed
 2. **Collected automatically**: when you visit, the server records necessary technical information such as the origin IP and request time. An IP used to resolve the region is sent to third-party lookup services (see section 8).
 3. **Local storage**: sign-in state and preferences kept in browser cookies and `localStorage` (see section 7).
 4. We **do not** passively collect behavioural data through third-party analytics, advertising or social plugin SDKs.
-5. **Browser geolocation (only with your authorisation)**: when an access origin is restricted and you may simply be someone else on the same network, the interface offers a "Verify my location" entry. We **explain the purpose in a dialog before requesting the browser's location permission**, and call geolocation only after you agree. The result is used only to compute a rough distance from the restricted area; **coordinates are not stored in plain text** and are never used to track you.
+5. **Browser geolocation (only with your authorisation)**: when an access origin is restricted and you may simply be someone else on the same network, the interface offers a "Verify my location" entry. We **explain the purpose in a dialog before requesting the browser's location permission**, and call geolocation only after you agree. The result is used only to compute a rough distance from the restricted area; **our server does not store coordinates in plain text** (they are cached in your own browser for 24 hours for reuse) and they are never used to track you.
 
 ## 5. Purposes and legal basis
 
@@ -77,10 +77,17 @@ We use a small number of cookies and browser storage to **provide and protect th
 |---|---|---|---|
 | Session identifier | Cookie | Keeps your session, used for form security checks (CSRF protection) | Expires when the browser closes |
 | `kimgr_skin` | Cookie | Remembers your **interface style** and applies it next visit | About 1 year |
+| `kimgr_skin_optout` | Cookie | Remembers your choice to **turn the automatic theme off** inside a festival window, so it is not applied again until the window ends | About 1 year |
+| `kimgr_lang` / `lang` / `doclang` | Cookie / local storage | Remembers your **interface language**, and whether a document page shows the Chinese or the English edition | About 1 year (cookie) / until you clear it (local storage) |
+| `kimgr_lang_synced` | Session storage | Whether this session's language is already aligned with the server, to avoid repeated reloads | Expires when the browser closes |
 | `kimgr_token` | Local storage | Stores your **sign-in credential** to keep you signed in | About 7 days (sign in again after that) |
 | `kimgr_prefs` | Local storage | Stores your **interface preferences** (theme choice and similar) | Until you clear it |
-| Cooldown counters | Local storage | Records recent actions to **prevent duplicate submissions** | Short-lived, expires automatically |
+| Cooldown counters (`kimgr_cd_*`) | Local storage | Records recent actions to **prevent duplicate submissions** | Short-lived, expires automatically |
 | Blocked words | Local storage / account settings | Stores your **blocked words**; saved with the account when signed in, on the device only for guests | Until you clear or change them |
+| `kimgr_ai_think` | Local storage | Remembers the **"deep thinking" switch** in World Chat | Until you clear it |
+| `kimgr_qrdev` / `kimi_qr_wid` | Local storage | Remembers the **device identifier** used for QR sign-in (a browser identifier supplied by Kimi, used only to generate the code) | Until you clear it |
+| `kimgr_geo` | Local storage | Caches the **location** you authorised (latitude, longitude, time) for a later check of the same restriction | 24 hours, then expires |
+| `kimgr_disc_seen` | Local storage | Remembers the **latest violation notice** you have read, so it is not shown again | Until you clear it |
 | `kimgr_ban` / `kimgr_b` | Local storage, session storage, IndexedDB, Cache Storage, cookie | Records **whether the access origin is restricted**, so the restriction notice appears immediately on refresh or navigation; written only while restricted and cleared automatically when lifted | Until lifted or expired (at most 30 days) |
 
 1. **We do not use**: third-party analytics (traffic analysis, tracking SDKs), advertising cookies, cross-site tracking; we embed no social plugins and **never sell** cookie or local-storage data.
