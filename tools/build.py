@@ -26,6 +26,8 @@ ORDER_EXEMPT = {'router.js'}
 ORDER = [
     # config.js：集中常量（UI_PAGE / MON_DEFAULT）—— 必须最先合并，其余模块依赖它
     'config.js',
+    # base.js：站点路径前缀（SITE_BASE / API_BASE / ASSET_BASE）—— 无依赖，供其余模块引用
+    'base.js',
     # i18n.js：界面多语言（key 用中文原文，缺译回退中文）
     'i18n.js',
     # md.js：Markdown 渲染，文档页与 AI 回复共用

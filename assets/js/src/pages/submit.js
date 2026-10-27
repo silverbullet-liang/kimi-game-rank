@@ -121,7 +121,7 @@ export async function renderSubmit(container) {
     try {
       let d = null;
       try {
-        const r = await api('submit.php', 'qr_new', null, { silent: true });
+        const r = await api('submit', 'qr_new', null, { silent: true });
         if (r && r.code) { d = { code: r.code, content: qrContent(r.code) }; }   // 统一带 device_id
       } catch (e) { /* 主机侧取不到 → 浏览器直连 */ }
       if (!d) {
@@ -146,7 +146,7 @@ export async function renderSubmit(container) {
         if (left <= 0) { stopQR(); $('sbQrTip').textContent = t('二维码已过期，请重新生成'); return; }
         try {
           let r = null;
-          try { r = await api('submit.php', 'qr_poll', { code: d.code }, { silent: true }); }
+          try { r = await api('submit', 'qr_poll', { code: d.code }, { silent: true }); }
           catch (e) { try { r = await kimiAuth('GetLoginQRCodeStatus', { code: d.code }); } catch (e2) { r = null; } }
           if (!r) { return; }
           if (r.accessToken && !r.token) { r.token = r.accessToken; }
@@ -188,7 +188,7 @@ export async function renderSubmit(container) {
       const my = ++seq;
       hits.innerHTML = '<p class="tiny muted">搜索中…</p>';
       try {
-        const d = await api('submit.php', 'community_search', { q, token }, { silent: true });
+        const d = await api('submit', 'community_search', { q, token }, { silent: true });
         if (my !== seq) { return; }
         const list = (d && d.list) || [];
         if (!list.length) { hits.innerHTML = '<p class="tiny muted">社区里没有找到匹配的作品。</p>'; return; }
@@ -248,7 +248,7 @@ export async function renderSubmit(container) {
     btnLoading(btn, true);
     hint.textContent = t('正在抓取作品并计算评分，可能需要十几秒…');
     try {
-      await api('submit.php', 'submit', { name, work_id: wid, cover, token }, { silent: true });
+      await api('submit', 'submit', { name, work_id: wid, cover, token }, { silent: true });
       hint.textContent = t('已收录，正在跳转到作品页…');
       toast('提交成功');
       setTimeout(() => navigate('#/detail/' + wid), 600);

@@ -1,3 +1,4 @@
+import { SITE_BASE } from './base.js';
 /**
  * 应用入口：启动引导、路由、底栏、抽屉、搜索、通知轮询
  */
@@ -57,44 +58,60 @@ const routes = {
 let currentPage = '';
 
 /* ---------- URL ↔ 路由 ----------
- * 对外的地址形如 ?p=work&id=12（旧式 #/work?id=12 链接仍可访问并自动转换）。
- * 之所以用查询参数而非 #：任何浏览器、任何设备打开该地址都能直达同一界面。
+ * 对外一律是普通路径：/rank 、/detail/12 、/doc/入榜规则 、/chat?q=关键词。
+ * 部署在子目录时由服务端下发 window.__BASE 作前缀，前端不必猜。
+ * 旧地址（?p=detail&arg=12、#/detail/12）仍可打开：服务端 301，前端另有兜底。
  * 敏感参数（控制面板密钥等）一律不写入 URL，只走请求体。 */
+const URL_BASE = SITE_BASE;
+
+/** 路由（#/name/arg?q）→ 地址（/name/arg?q） */
 function routeToUrl(hash) {
   const raw = String(hash || '').replace(/^#\/?/, '');
   const [path, query] = raw.split('?');
   const seg = String(path || '').split('/').filter(Boolean);
   const sp = new URLSearchParams(query || '');
-  const url = new URL(location.href);
-  url.search = '';
-  url.searchParams.set('p', seg[0] || 'rank');
-  if (seg.length > 1) { url.searchParams.set('arg', seg.slice(1).join('/')); }
-  sp.forEach((v, k) => { if (k && k !== 'p' && k !== 'arg') { url.searchParams.set(k, v); } });
-  return url.pathname + url.search;
+  sp.delete('p');
+  sp.delete('arg');
+  let url = URL_BASE + '/' + encodeURIComponent(seg[0] || 'rank');
+  if (seg.length > 1) { url += '/' + seg.slice(1).map(encodeURIComponent).join('/'); }
+  const q = sp.toString();
+  return q ? url + '?' + q : url;
 }
 
 /* 敏感界面：不接受通过地址参数直达，必须由站内入口进入（控制面板另有二次验证） */
 const SENSITIVE_PAGES = ['panel'];
 
 function readRoute() {
-  if (location.hash && location.hash.length > 1) { return location.hash; }   // 旧式链接优先
-  const u = new URL(location.href);
-  const qs = new URLSearchParams(u.search);
+  if (location.hash && location.hash.length > 1) { return location.hash; }   // 旧式 #/ 链接优先
   const KNOWN = ['rank', 'detail', 'chat', 'mine', 'login', 'doc', 'feedback', 'about', 'violation', 'discipline'];
-  let p = qs.get('p') || '';
-  let arg = qs.get('arg') || '';
+
+  /* 主路径：/rank 、/detail/12 、/doc/入榜规则 */
+  let path = location.pathname;
+  if (URL_BASE && path.indexOf(URL_BASE) === 0) { path = path.slice(URL_BASE.length); }
+  const seg = path.split('/').filter(Boolean).map(s => {
+    try { return decodeURIComponent(s); } catch (e) { return s; }
+  });
+  let name = seg[0] || '';
+  let arg = seg.slice(1).join('/');
+
+  /* 兜底：查询式旧地址（服务端已 301，这里只处理脚本内手拼的情况） */
+  const qs = new URLSearchParams(location.search);
+  if (KNOWN.indexOf(name) < 0) {
+    let p = qs.get('p') || '';
+    if (!p) {
+      for (let i = 0; i < KNOWN.length; i++) {
+        const k = KNOWN[i];
+        if (qs.has(k)) { p = k; const v = qs.get(k) || ''; if (v) { arg = v; } break; }
+      }
+    }
+    if (!p) { return ''; }
+    const sp = p.split('/');
+    name = sp[0];
+    if (!arg && sp.length > 1) { arg = sp[1]; }
+  }
   qs.delete('p');
   qs.delete('arg');
-  /* 宽容写法：?p=chat 等价于裸参数 ?chat；?doc=入榜规则 等价于 ?p=doc&arg=入榜规则 */
-  if (!p) {
-    for (let i = 0; i < KNOWN.length; i++) {
-      const k = KNOWN[i];
-      if (qs.has(k)) { p = k; const v = qs.get(k) || ''; if (v) { arg = v; } qs.delete(k); break; }
-    }
-  }
-  if (!p) { return ''; }
-  const q = qs.toString();
-  return '#/' + p + (arg ? '/' + arg : '') + (q ? '?' + q : '');
+  return '#/' + name + (arg ? '/' + arg : '') + (qs.toString() ? '?' + qs.toString() : '');
 }
 
 function parseHash() {
@@ -328,7 +345,7 @@ function renderDrawer() {
       if (it.act === 'search') { openSearch(); return; }
       if (it.act === 'logout') {
         if (await dialog(t('退出登录'), t('确认退出当前账号吗？'), t('退出'))) {
-          try { await api('auth.php', 'logout'); } catch (e) {}
+          try { await api('auth', 'logout'); } catch (e) {}
           setToken('');
           /* 就地切到游客态：重绘抽屉并跳转，不再整页刷新 */
           state.role = 'guest'; state.uid = 0; state.username = t('游客');
@@ -383,6 +400,20 @@ function bindEvents() {
     const cur = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
     saveTheme({ theme: cur === 'dark' ? 'light' : 'dark' });
     renderDrawer();
+  });
+
+  /* 站内链接（文档正文、服务端渲染内容里的 /rank、/doc/xxx 等）走前端路由，
+     不再整页刷新；外链、新标签打开、组合键点击一律放行 */
+  document.addEventListener('click', function (e) {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) { return; }
+    const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+    if (!a || (a.target && a.target !== '_self')) { return; }
+    const href = a.getAttribute('href') || '';
+    if (href.charAt(0) !== '/') { return; }
+    const path = href.slice(URL_BASE.length);
+    if (!/^\/(rank|detail|chat|mine|login|doc|feedback|about|violation|discipline)(\/|$|\?)/.test(path)) { return; }
+    e.preventDefault();
+    navigate(path);
   });
 
   /* 返回：traverse —— 命中缓存直接恢复，不重新加载 */
@@ -443,7 +474,7 @@ function schedulePoll() {
       && window.__chatPollEnabled === true && !window.__aiBusy;
     if (canPoll) {
       try {
-        const d = await api('lobby.php', 'list', { since_id: lastMsgId, limit: 20 }, { silent: true, tries: 1 });
+        const d = await api('lobby', 'list', { since_id: lastMsgId, limit: 20 }, { silent: true, tries: 1 });
         const items = d.items || [];
         if (items.length) {
           const fresh = items.filter(m => m.id > lastMsgId);
@@ -546,7 +577,7 @@ function renderAbout(container) {
   /* 管理者名单：实时读取。走公开只读接口，与控制面板那条链路完全分开 */
   const alBox = container.querySelector('#adminList');
   if (alBox) {
-    api('site.php', 'admins')
+    api('site', 'admins')
       .then(function (d) { alBox.innerHTML = adminListHtml(d.items); })
       .catch(function () { alBox.innerHTML = adminListHtml(null); });
   }
@@ -603,11 +634,11 @@ function maybeNameFix() {
     const name = String(v).trim();
     if (!name) { toast('用户名不能为空', 'err'); __nameFixShown = false; return; }
     try {
-      const r = await api('auth.php', 'rename', { username: name });
+      const r = await api('auth', 'rename', { username: name });
       state.username = r.username || name;
       state.nameFix = null;
       try {
-        const vv = await api('auth.php', 'verify');   // 头像按用户名生成，一并刷新
+        const vv = await api('auth', 'verify');   // 头像按用户名生成，一并刷新
         state.avatar = vv.avatar || '';
         state.settings = vv.settings || state.settings;
         state.nameFix = vv.name_fix || null;
@@ -642,7 +673,7 @@ async function refreshDiscState(force) {
   if (now - __discLast < (force ? 4000 : 8000)) { return; }
   __discLast = now;
   try {
-    const d = await api('start.php', 'app', null, { silent: true, tries: 1 });
+    const d = await api('start', 'app', null, { silent: true, tries: 1 });
     state.ban  = (d && d.ban)  ? d.ban  : null;
     state.disc = (d && d.disc) ? d.disc : null;
     saveBanCache(state.ban);      // 缓存封禁状态：刷新 / 切页立即可见，解封自动清除
@@ -720,11 +751,11 @@ async function main() {
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden) { refreshDiscState(); }
   });
-  /* 首屏地址规范化：hash / 裸参数统一改为 ?p= 形式；无参数默认「我的」。
+  /* 首屏地址规范化：旧式 hash / 查询参数一律改写为普通路径；根地址即榜单。
      敏感界面不接受通过地址直达（站内入口仍可正常进入）。 */
-  const initial = readRoute();
+  const initial = readRoute() || '#/rank';
   const initialPage = String(initial || '').replace(/^#\/?/, '').split('?')[0].split('/')[0];
-  const safeInitial = (initial && SENSITIVE_PAGES.indexOf(initialPage) < 0) ? initial : '#/mine';
+  const safeInitial = (SENSITIVE_PAGES.indexOf(initialPage) < 0) ? initial : '#/mine';
   history.replaceState({}, '', routeToUrl(safeInitial));
   await route();
   maybeNameFix();          // 存量用户名待更新：提醒并引导改名（不阻断功能）

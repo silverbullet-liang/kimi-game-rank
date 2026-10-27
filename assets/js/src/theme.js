@@ -98,7 +98,7 @@ export async function saveTheme(patch) {
   setPrefs(prefs);
   applyTheme();
   if (state.role !== 'guest') {   // 普通用户 / 副管理员 / 管理员均可同步偏好
-    try { await api('profile.php', 'settings', patch); state.settings = Object.assign({}, state.settings, patch); } catch (e) {}
+    try { await api('profile', 'settings', patch); state.settings = Object.assign({}, state.settings, patch); } catch (e) {}
   }
 }
 

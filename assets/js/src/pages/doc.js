@@ -1,3 +1,4 @@
+import { ASSET_BASE } from '../base.js';
 /**
  * 文档页：直接 fetch assets/docs/*.md 并渲染（不在前端硬编码文案）
  */
@@ -45,8 +46,8 @@ export async function renderDoc(container, ctx) {
   try {
     const lang = docLang();
     const path = (lang === 'en')
-      ? 'assets/docs/en/' + (SLUG[name] || 'features') + '.md'
-      : 'assets/docs/' + encodeURIComponent(name) + '.md';
+      ? ASSET_BASE + '/docs/en/' + (SLUG[name] || 'features') + '.md'
+      : ASSET_BASE + '/docs/' + encodeURIComponent(name) + '.md';
     const resp = await fetch(path, { cache: 'no-cache' });
     if (!resp.ok) throw new Error(lang === 'en' ? 'English version of this document is not available yet' : '文档加载失败');
     const md = await resp.text();

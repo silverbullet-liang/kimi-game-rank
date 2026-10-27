@@ -21,7 +21,11 @@ export function mdToHtml(md, inlineExtra) {
       .replace(/`([^`]+)`/g, '<code>$1</code>')
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
       .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (m, text, href) {
+        /* 站内链接（/ 或 # 开头）原地跳转，外链才新开标签 */
+        var inside = /^(\/|#)/.test(href);
+        return '<a href="' + href + '"' + (inside ? '' : ' target="_blank" rel="noopener"') + '>' + text + '</a>';
+      });
     return (typeof inlineExtra === 'function') ? inlineExtra(h) : h;
   };
 

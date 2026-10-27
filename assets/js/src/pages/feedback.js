@@ -41,7 +41,7 @@ export async function renderFeedback(container) {
     const text = container.querySelector('#fbText').value.trim();
     if (text.length < 2) { toast('内容太短', 'err'); return; }
     btnLoading(send, true);
-    try { await api('feedback.php', 'create', { content: text, is_public: vis }); toast('已提交'); container.querySelector('#fbText').value = ''; load(); }
+    try { await api('feedback', 'create', { content: text, is_public: vis }); toast('已提交'); container.querySelector('#fbText').value = ''; load(); }
     catch (e) { toast(e.message, 'err'); }
     finally { btnLoading(send, false); }
   });
@@ -50,7 +50,7 @@ export async function renderFeedback(container) {
     const list = container.querySelector('#fbList');
     list.innerHTML = '<div class="skeleton" style="height:70px"></div>';
     try {
-      const d = await api('feedback.php', 'list');
+      const d = await api('feedback', 'list');
       list.innerHTML = '';
       if (!d.items.length) { list.innerHTML = '<div class="empty" style="padding:26px">暂无反馈</div>'; return; }
       d.items.forEach(f => list.appendChild(fbNode(f, isAdmin, load)));
@@ -79,13 +79,13 @@ function fbNode(f, isAdmin, reload) {
   if (reply) reply.addEventListener('click', async () => {
     const replyText = await promptText();
     if (!replyText) return;
-    try { await api('feedback.php', 'reply', { id: f.id, content: replyText }); toast('已回复'); reload(); }
+    try { await api('feedback', 'reply', { id: f.id, content: replyText }); toast('已回复'); reload(); }
     catch (e) { toast(e.message, 'err'); }
   });
   const del = el.querySelector('[data-act="del"]');
   if (del) del.addEventListener('click', async () => {
     if (await dialog(t('删除反馈'), t('确认删除？'), t('删除'), { danger: true })) {
-      try { await api('feedback.php', 'delete', { id: f.id }); toast('已删除'); reload(); }
+      try { await api('feedback', 'delete', { id: f.id }); toast('已删除'); reload(); }
       catch (e) { toast(e.message, 'err'); }
     }
   });

@@ -1,3 +1,4 @@
+import { API_BASE, ASSET_BASE } from '../base.js';
 /**
  * 对话页：世界对话 / AI 对话
  * 文件名曾为 chat.js：主机拦截路径中含 chat 的请求，故改名（页面路由仍为 #/chat）。
@@ -18,12 +19,12 @@ let PACKS = null;          // [ { id, name, items:[{code,file}] } ] 供分组面
 async function loadPacks() {
   if (PACKS) { return PACKS; }
   try {
-    const r = await fetch('assets/emoji/index.json', { cache: 'force-cache' });
+    const r = await fetch(ASSET_BASE + '/emoji/index.json', { cache: 'force-cache' });
     const d = await r.json();
     PACKS = (d.packs || []).filter(function (p) { return (p.items || []).length; });
     EMOJI = {};
     PACKS.forEach(function (p) {
-      (p.items || []).forEach(function (it) { EMOJI[it.code] = 'assets/emoji/' + it.file; });
+      (p.items || []).forEach(function (it) { EMOJI[it.code] = ASSET_BASE + '/emoji/' + it.file; });
     });
   } catch (e) { PACKS = []; EMOJI = {}; }
   return PACKS;
@@ -57,7 +58,7 @@ async function mountEmojiPicker(picker, input) {
   const draw = function (i) {
     grid.innerHTML = (packs[i].items || []).map(function (it) {
       return '<button class="pk-emoji" data-name="' + esc(it.code) + '" title="' + esc(it.code) + '">' +
-        '<img src="assets/emoji/' + esc(it.file) + '" alt="' + esc(it.code) + '" loading="lazy" draggable="false"></button>';
+        '<img src="' + ASSET_BASE + '/emoji/' + esc(it.file) + '" alt="' + esc(it.code) + '" loading="lazy" draggable="false"></button>';
     }).join('');
     picker.scrollTop = 0;
   };
@@ -222,7 +223,7 @@ async function playVideo(card, bv) {
   card.dataset.loading = '1';
   card.classList.add('mv-loading');
   try {
-    const d = await api('video.php', 'url', { bv: bv }, { timeout: 20000 });
+    const d = await api('video', 'url', { bv: bv }, { timeout: 20000 });
     const url = String((d && d.url) || '');
     if (!url) { throw new Error(t('视频解析失败')); }
     card.classList.remove('mv-loading');
@@ -330,7 +331,7 @@ async function mountWorld(body) {
       rb.addEventListener('click', async () => {
         rb.disabled = true;
         try {
-          await api('lobby.php', 'recall', { id: m.id });
+          await api('lobby', 'recall', { id: m.id });
           m.recalled = true;
           const b = el.querySelector('.bubble');
           if (b) { b.innerHTML = '<span class="recall">该消息已撤回</span>'; }
@@ -345,7 +346,7 @@ async function mountWorld(body) {
         if (!(await dialog(t('删除这条消息'), t('删除后这条消息在对话里不再显示（对所有人）。确认？'), t('删除'), { danger: true }))) { return; }
         db2.disabled = true;
         try {
-          await api('lobby.php', 'del', { id: m.id });
+          await api('lobby', 'del', { id: m.id });
           m.recalled = true;
           const b = el.querySelector('.bubble');
           if (b) { b.innerHTML = '<span class="recall">该消息已删除</span>'; }
@@ -361,7 +362,7 @@ async function mountWorld(body) {
       ub.addEventListener('click', async () => {
         ub.disabled = true;
         try {
-          await api('lobby.php', 'flag', { id: m.id, on: 0 });
+          await api('lobby', 'flag', { id: m.id, on: 0 });
           m.flag = '';
           const f = el.querySelector('.msg-flag'); if (f) { f.remove(); }
           toast('已取消标注');
@@ -414,7 +415,7 @@ async function mountWorld(body) {
   async function load() {
     stream.innerHTML = '<div class="skeleton" style="height:54px"></div><div class="skeleton" style="height:54px"></div>';
     try {
-      const d = await api('lobby.php', 'list', { limit: 30 });
+      const d = await api('lobby', 'list', { limit: 30 });
       stream.innerHTML = '';
       if (d && d.degraded) { errorNote(d.hint || t('对话暂时不可用，请稍后重试'), load); return; }
       const items = (d && d.items) || [];
@@ -446,7 +447,7 @@ async function mountWorld(body) {
       btn.disabled = true;
       btn.textContent = t('重审中…');
       try {
-        const r = await api('recheck.php', 'run', { content: payload.content }, { timeout: 30000 });
+        const r = await api('recheck', 'run', { content: payload.content }, { timeout: 30000 });
         const v = (r && r.verdict) || 'false';
         if (v === 'false') {
           bar.querySelector('.rn-text').textContent = t('AI 复核后仍判为违规，未发送');
@@ -487,8 +488,8 @@ async function mountWorld(body) {
     btnLoading(sendBtn, true);
     try {
       const m = (type === 'video')
-        ? await api('video.php', 'send', { input: payload.media, content: payload.content || '' }, { timeout: 90000 })
-        : await api('lobby.php', 'send', Object.assign({ type: type }, payload), { timeout: 60000 });
+        ? await api('video', 'send', { input: payload.media, content: payload.content || '' }, { timeout: 90000 })
+        : await api('lobby', 'send', Object.assign({ type: type }, payload), { timeout: 60000 });
       optEl.remove();
       put(m, true);
       if (m && m.ai) { put(m.ai, true); }
@@ -551,7 +552,7 @@ async function mountWorld(body) {
       try {
         const fd = new FormData();
         fd.append('file', f);
-        const resp = await fetch('api/media.php?action=upload', {
+        const resp = await fetch(API_BASE + '/media?action=upload', {
           method: 'POST',
           headers: { 'X-Token': state.token, 'X-CSRF-Token': state.csrf },
           body: fd,
@@ -659,7 +660,7 @@ async function mountWorld(body) {
       hint.textContent = t('解析中…');
       prev.innerHTML = '';
       try {
-        const d = await api('video.php', 'preview', { input: val }, { timeout: 25000 });
+        const d = await api('video', 'preview', { input: val }, { timeout: 25000 });
         hint.textContent = t('解析成功，确认后发送（发送时会检查视频标题与简介）');
         prev.innerHTML = videoCardHtml(d.bv, { title: d.title, cover: d.cover, dur_f: d.duration_f, author: d.author }).replace(' data-play="1"', '');
         const b = document.createElement('button');
@@ -874,7 +875,7 @@ async function mountAi(body) {
   /** 按历史重建消息（清洗旧数据里残留的工具标签） */
   async function loadHistory() {
     try {
-      const d = await api('ai.php', 'history');
+      const d = await api('ai', 'history');
       stream.innerHTML = '';
       (d.items || []).forEach(m => {
         const text = m.role === 'user' ? m.content : stripToolTags(m.content);
@@ -928,7 +929,7 @@ async function mountAi(body) {
 
   async function loadState() {
     try {
-      const d = await api('ai.php', 'models', null, { silent: true, timeout: 40000 });
+      const d = await api('ai', 'models', null, { silent: true, timeout: 40000 });
       aiModels = d.models || [];
       defaultModelName = d.default_name || '';
       const saved = selLoad();
@@ -973,7 +974,7 @@ async function mountAi(body) {
 
   /** 非流式兜底：返回完整回答文本。counted = 流式那次服务端是否已受理（受理过才算「已计入」，否则必须重新检查并占用额度） */
   async function sendSync(text, target, counted) {
-    const d = await api('ai.php', 'send_sync',
+    const d = await api('ai', 'send_sync',
       { content: text, fallback: counted ? 1 : 0, model: selModel, think: thinkOn ? 1 : 0 },
       { timeout: 180000, silent: true });
     const p = aiParts(target);
@@ -1015,7 +1016,7 @@ async function mountAi(body) {
     const idleTimer = setTimeout(() => { if (!gotAny && controller) { controller.abort(); } }, 15000);
 
     try {
-      const resp = await fetch('api/ai.php?action=send', {
+      const resp = await fetch(API_BASE + '/ai?action=send', {
         signal: controller.signal,
         method: 'POST',
         headers: {
@@ -1176,7 +1177,7 @@ async function mountAi(body) {
   body.querySelector('#clearAi').addEventListener('click', async () => {
     if (!(await dialog(t('清空对话'), t('将删除你与 AI 的全部聊天记录，不可恢复。确认？'), t('清空'), { danger: true }))) { return; }
     try {
-      await api('ai.php', 'clear');
+      await api('ai', 'clear');
       if (usageNow) { usageNow.textContent = ''; }
       await loadHistory();
       toast('已清空对话记录');

@@ -114,7 +114,7 @@ export async function renderRank(container, ctx) {
         state.firstPage = null;
       }
       if (!d) {
-        d = await api('works.php', 'list', { category: cat, board: board, q: q, page: page, size: PAGE_SIZE });
+        d = await api('works', 'list', { category: cat, board: board, q: q, page: page, size: PAGE_SIZE });
       }
       if (reset) { list.innerHTML = ''; shownCount = 0; }
       const items = d.items || [];
@@ -151,7 +151,7 @@ export async function renderRank(container, ctx) {
   }
   paintCounts(state.categories);
   if (!state.categories || !Object.keys(state.categories).length) {
-    api('site.php', 'bootstrap', null, { silent: true }).then(d => paintCounts(d && d.categories)).catch(() => {});
+    api('site', 'bootstrap', null, { silent: true }).then(d => paintCounts(d && d.categories)).catch(() => {});
   }
 
   container.querySelector('#boardSeg').addEventListener('click', e => {
@@ -268,7 +268,7 @@ async function loadSearchAi(container, q) {
 
   let d;
   try {
-    d = await api('ai.php', 'search_ai', { q: q }, { silent: true, timeout: 40000 });
+    d = await api('ai', 'search_ai', { q: q }, { silent: true, timeout: 40000 });
   } catch (e) { card.remove(); return; }
 
   const answer = String((d && d.answer) || '').trim();

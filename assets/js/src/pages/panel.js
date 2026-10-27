@@ -1,3 +1,4 @@
+import { API_BASE } from '../base.js';
 /**
  * 控制面板：二次认证 + 统计 + 作品/用户管理 + 副管理员
  * 视觉：普通后台风格（不使用液态玻璃）
@@ -26,14 +27,14 @@ export async function renderPanel(container) {
   if (!isSub) {
     container.innerHTML = '<div class="skeleton" style="height:120px"></div>';
     let ov;
-    try { ov = await api('dashboard.php', 'overview'); }
+    try { ov = await api('dashboard', 'overview'); }
     catch (e) { container.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`; return; }
     if (!ov.panel_verified) {
       const key = await prompt_(t('控制面板验证'), t('请输入管理员密钥（64 位十六进制，由密钥原文经 sha256 计算得出）。'), t('验证'));
       if (!key) { container.innerHTML = '<div class="empty"><p>已取消验证</p></div>'; return; }
-      try { await api('admin.php', 'panel_auth', { key: key }); }
+      try { await api('admin', 'panel_auth', { key: key }); }
       catch (e) { container.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`; return; }
-      ov = await api('dashboard.php', 'overview');
+      ov = await api('dashboard', 'overview');
     }
     container.innerHTML = adminLayout();
     renderOverview(container.querySelector('#ovGrid'), ov, container);
@@ -56,7 +57,7 @@ export async function renderPanel(container) {
     /* 副管理员的只读数据：总览、趋势、用户列表（不含 IP 与归属地明细）、访问排行。
        任一接口失败都不影响作品上传这条主线。 */
     try {
-      const ov = await api('dashboard.php', 'overview');
+      const ov = await api('dashboard', 'overview');
       const ovGrid = container.querySelector('#ovGrid');
       if (ovGrid) { renderOverview(ovGrid, ov, container); }
     } catch (e) { /* 静默 */ }
@@ -198,7 +199,7 @@ async function loadCommentBin(container) {
   if (!box) { return; }
   const head = container.querySelector('#cmBinHead');
   try {
-    const d = await api('admin.php', 'comments_deleted', { page: 1 });
+    const d = await api('admin', 'comments_deleted', { page: 1 });
     if (head) { head.innerHTML = '共 <b>' + Number(d.total) + '</b> 条已删除评论'; }
     if (!d.items.length) { box.innerHTML = '<div class="tiny muted">回收站是空的。</div>'; return; }
     box.innerHTML = '<table class="table"><thead><tr><th>作者</th><th>内容</th><th>所属作品</th><th>删除时间</th><th>操作</th></tr></thead><tbody>'
@@ -214,7 +215,7 @@ async function loadCommentBin(container) {
       if (!b) { return; }
       b.addEventListener('click', async () => {
         btnLoading(b, true);
-        try { await api('admin.php', 'comment_restore', { id: tr.dataset.cid }); toast('已恢复'); loadCommentBin(container); }
+        try { await api('admin', 'comment_restore', { id: tr.dataset.cid }); toast('已恢复'); loadCommentBin(container); }
         catch (e) { toast(e.message, 'err'); btnLoading(b, false); }
       });
     });
@@ -231,7 +232,7 @@ function bindCommentBin(container) {
           '将<b>彻底删除</b>回收站中的全部评论（含其点赞），<b>此操作不可撤销</b>。确认继续？', '清空', { danger: true }))) { return; }
       btnLoading(purge, true);
       try {
-        const r = await api('admin.php', 'comment_purge', {});
+        const r = await api('admin', 'comment_purge', {});
         toast('已彻底删除 ' + Number(r.purged) + ' 条');
         loadCommentBin(container);
       } catch (e) { toast(e.message, 'err'); }
@@ -329,7 +330,7 @@ function bindDb(container) {
   checkBtn.addEventListener('click', async () => {
     checkBtn.disabled = true;
     status.innerHTML = '<div class="skeleton" style="height:40px"></div>';
-    try { paint(await api('admin.php', 'db_status', {})); }
+    try { paint(await api('admin', 'db_status', {})); }
     catch (e) { status.innerHTML = '<div style="color:var(--danger)">' + esc(e.message) + '</div>'; }
     checkBtn.disabled = false;
   });
@@ -340,7 +341,7 @@ function bindDb(container) {
     result.hidden = false;
     result.innerHTML = '<div class="skeleton" style="height:48px"></div>';
     try {
-      const d = await api('admin.php', 'db_update', {}, { timeout: 120000 });
+      const d = await api('admin', 'db_update', {}, { timeout: 120000 });
       paint(d.after);
 
       let html = '';
@@ -428,7 +429,7 @@ function bindBackup(container) {
         const name = b.getAttribute('data-del');
         if (!(await dialog(t('删除备份'), '将永久删除 ' + name + t('，无法恢复。确定继续？'), t('删除')))) { return; }
         b.disabled = true;
-        try { await api('admin.php', 'backup_delete', { name: name }); toast('已删除'); load(); }
+        try { await api('admin', 'backup_delete', { name: name }); toast('已删除'); load(); }
         catch (e) { toast(e.message, 'err'); b.disabled = false; }
       });
     });
@@ -436,7 +437,7 @@ function bindBackup(container) {
 
   const load = async () => {
     box.innerHTML = '<div class="skeleton" style="height:60px"></div>';
-    try { paint(await api('admin.php', 'backup_list')); }
+    try { paint(await api('admin', 'backup_list')); }
     catch (e) { box.innerHTML = '<div class="tiny" style="color:var(--danger)">' + esc(e.message) + '</div>'; }
   };
 
@@ -451,7 +452,7 @@ function bindBackup(container) {
         headers['Authorization'] = 'Bearer ' + state.token;
         headers['X-Token'] = state.token;
       }
-      const resp = await fetch('api/admin.php?action=backup_download&name=' + encodeURIComponent(name),
+      const resp = await fetch(API_BASE + '/admin?action=backup_download&name=' + encodeURIComponent(name),
         { headers: headers, credentials: 'same-origin' });
       const type = resp.headers.get('Content-Type') || '';
       if (!resp.ok || type.indexOf('json') >= 0) {   // 被拦或鉴权失败时返回的是 JSON
@@ -478,7 +479,7 @@ function bindBackup(container) {
     btnLoading(runBtn, true);
     meta.innerHTML = '<span class="muted">正在导出，请勿关闭页面…</span>';
     try {
-      const d = await api('admin.php', 'backup', {}, { timeout: 300000, silent: true });
+      const d = await api('admin', 'backup', {}, { timeout: 300000, silent: true });
       toast('备份完成');
       meta.innerHTML = '刚生成 <b>' + esc(d.name) + '</b> · ' + fmtBytes(d.bytes)
         + ' · ' + d.tables + ' 张表 / ' + d.rows + ' 行 · 耗时 ' + d.seconds + ' 秒'
@@ -600,7 +601,7 @@ function bindCommunitySearch(container) {
     if (busy || !cursor) { return; }
     busy = true; paintMore();
     try {
-      const d = await api('admin.php', 'community_search', { q: q, page_token: cursor }, { timeout: 30000 });
+      const d = await api('admin', 'community_search', { q: q, page_token: cursor }, { timeout: 30000 });
       (d.items || []).forEach(it => pool.push(it));
       cursor = d.next_page_token || '';
       busy = false;
@@ -618,7 +619,7 @@ function bindCommunitySearch(container) {
     list.innerHTML = ''; list.hidden = false; more.hidden = true;
     btnLoading(btn, true);
     try {
-      const d = await api('admin.php', 'community_search', { q: q }, { timeout: 30000 });
+      const d = await api('admin', 'community_search', { q: q }, { timeout: 30000 });
       pool = (d.items || []).slice();
       cursor = d.next_page_token || '';
       if (!pool.length) {
@@ -650,7 +651,7 @@ function bindCommunitySearch(container) {
     const id = b.dataset.id || '';
     b.disabled = true; b.textContent = t('添加中…');
     try {
-      const r = await api('admin.php', 'add_work', { mode: 'manual', work_id: id }, { timeout: 60000 });
+      const r = await api('admin', 'add_work', { mode: 'manual', work_id: id }, { timeout: 60000 });
       b.textContent = t('已收录');
       toast('已收录：' + (b.dataset.title || id) + (r.scored === false ? '（未改动评分）' : ''));
       loadWorks(container, container.querySelector('#wq').value.trim(), state.role === 'subadmin');
@@ -705,17 +706,17 @@ function bindScore(container) {
     const auto = b.dataset.a === '1';
     lock(true);
     try {
-      const d = await api('admin.php', 'score_mode_set', { auto: auto ? 1 : 0 });
+      const d = await api('admin', 'score_mode_set', { auto: auto ? 1 : 0 });
       paint(d.auto === true);
       toast(d.auto === true ? '已恢复自动评分' : t('已关闭自动评分，之后不再改动评分'));
     } catch (e2) {
       toast(e2.message, 'err');
-      try { paint((await api('admin.php', 'score_mode', {}, { silent: true })).auto === true); } catch (e3) {}
+      try { paint((await api('admin', 'score_mode', {}, { silent: true })).auto === true); } catch (e3) {}
     }
     lock(false);
   });
 
-  api('admin.php', 'score_mode', {}, { silent: true })
+  api('admin', 'score_mode', {}, { silent: true })
     .then(d => paint(d.auto === true))
     .catch(() => { note.textContent = t('读取评分方式失败，刷新页面再试'); });
 }
@@ -739,7 +740,7 @@ function paintLinkState(container, on) {
 async function refreshLinkState(container, force) {
   if (container.__linkOn !== undefined && force !== true) { paintLinkState(container, container.__linkOn); return; }
   try {
-    const d = await api('admin.php', 'link_mode', {}, { silent: true });
+    const d = await api('admin', 'link_mode', {}, { silent: true });
     container.__linkOn = d.on === true;
     paintLinkState(container, container.__linkOn);
   } catch (e) { /* 读不到就不显示，不打扰操作 */ }
@@ -782,7 +783,7 @@ function bindLink(container) {
     const on = b.dataset.v === '1';
     lock(true);
     try {
-      const d = await api('admin.php', 'link_mode_set', { on: on ? 1 : 0 });
+      const d = await api('admin', 'link_mode_set', { on: on ? 1 : 0 });
       container.__linkOn = d.on === true;
       paintLinkState(container, container.__linkOn);
       toast(d.on === true ? '已开启智能链接识别' : t('已关闭智能链接识别'));
@@ -809,7 +810,7 @@ function relinkBind(container) {
     let scanned = 0, changed = 0, more = false, rounds = 0;
     try {
       for (; rounds < 60; rounds++) {
-        const r = await api('admin.php', 'relink', { limit: LIMIT });
+        const r = await api('admin', 'relink', { limit: LIMIT });
         scanned += r.scanned || 0; changed += r.changed || 0;
         note.innerHTML = '已检查 <b>' + scanned + '</b> 个，替换 <b>' + changed + '</b> 个…';
         if ((r.scanned || 0) < LIMIT) { break; }
@@ -978,7 +979,7 @@ function bindAiRank(container) {
     box.innerHTML = '<div class="skeleton" style="height:80px"></div>';
     if (pager) { pager.innerHTML = ''; }
     let d;
-    try { d = await api('dashboard.php', 'ai_rank', { ch: ch, page: pg }, { silent: true }); }
+    try { d = await api('dashboard', 'ai_rank', { ch: ch, page: pg }, { silent: true }); }
     catch (e) { box.innerHTML = '<div class="tiny muted">读取失败，稍后再试</div>'; return; }
     paintNote(d.split);
     const items = (d && d.items) || [];
@@ -1034,7 +1035,7 @@ async function loadStats(range, container) {
   const legend = container.querySelector('#legend');
   const dist   = container.querySelector('#distArea');
   try {
-    const d = await api('dashboard.php', 'stats', { range: range });
+    const d = await api('dashboard', 'stats', { range: range });
     const series = d.series || [];
     const metrics = [
       { k: 'signups', n: t('注册'), c: '#7C3AED' }, { k: 'logins', n: t('登录'), c: '#007AFF' },
@@ -1315,7 +1316,7 @@ function bindCredential(container) {
     btn.addEventListener('click', async () => {
       const tokField = container.querySelector('#tokInput').value.trim();
       if (!tokField) { toast('请填写 cookie/token', 'err'); return; }
-      try { await api('admin.php', 'token_set', { kimi_token: tokField }); container.querySelector('#tokInput').value = ''; toast('已加密保存'); }
+      try { await api('admin', 'token_set', { kimi_token: tokField }); container.querySelector('#tokInput').value = ''; toast('已加密保存'); }
       catch (e) { toast(e.message, 'err'); }
     });
   }
@@ -1333,7 +1334,7 @@ function bindCredential(container) {
         headers['Authorization'] = 'Bearer ' + state.token;
         headers['X-Token'] = state.token;
       }
-      const resp = await fetch('api/admin.php?action=userscript', { headers, credentials: 'same-origin' });
+      const resp = await fetch(API_BASE + '/admin?action=userscript', { headers, credentials: 'same-origin' });
       if (!resp.ok) { throw new Error('HTTP ' + resp.status); }
       const blob = await resp.blob();
       const url = window.URL.createObjectURL(blob);
@@ -1373,7 +1374,7 @@ function bindAddWork(container) {
     if (q.length < 1) { sug.hidden = true; sug.innerHTML = ''; return; }
     timer = setTimeout(async () => {
       try {
-        const d = await api('admin.php', 'search_works', { q: q }, { silent: true });
+        const d = await api('admin', 'search_works', { q: q }, { silent: true });
         if (!d.items.length) { sug.hidden = true; sug.innerHTML = ''; return; }
         sug.innerHTML = d.items.map(w =>
           `<button type="button" data-cid="${esc(w.community_id)}"><b>${esc(w.title)}</b>
@@ -1398,7 +1399,7 @@ function bindAddWork(container) {
     const btn = container.querySelector('#addBtn');
     btnLoading(btn, true); btn.textContent = t('处理中…');
     try {
-      const r = await api('admin.php', 'add_work', body, { timeout: 60000 });
+      const r = await api('admin', 'add_work', body, { timeout: 60000 });
       const noScore = r.scored === false ? '（未改动评分）' : '';
       const syncNote = r.scored === false ? '（已有作品未重算评分）' : '';
       const linkNote = r.link_real ? '（已改用真实地址）' : '';
@@ -1436,7 +1437,7 @@ function bindReclassify(container) {
     box.hidden = false;
     box.innerHTML = '<div class="skeleton" style="height:64px"></div>';
     try {
-      const d = await api('admin.php', 'reclassify_preview', {});
+      const d = await api('admin', 'reclassify_preview', {});
       const c = d.counts;
       let html = '<div class="tiny" style="line-height:1.9">'
         + '共扫描 <b>' + c.total + '</b> 件 · 需要变更 <b>' + c.changed + '</b> 件 · '
@@ -1480,7 +1481,7 @@ function bindReclassify(container) {
 
     while (true) {
       let r;
-      try { r = await api('admin.php', 'reclassify_apply', { offset: offset }, { timeout: 90000, silent: true }); }
+      try { r = await api('admin', 'reclassify_apply', { offset: offset }, { timeout: 90000, silent: true }); }
       catch (e) { text.textContent = t('中断：') + e.message; break; }
 
       applied += r.applied;
@@ -1525,7 +1526,7 @@ function bindReclassify(container) {
       if (!(await dialog(t('批量迁移分区'), t('将把「') + fromLabel + t('」迁移到「') + catName(mvTo) + t('」，确定？'), t('迁移')))) { return; }
       mvBtn.disabled = true;
       try {
-        const r = await api('admin.php', 'move_category', { from: mvFrom, to: mvTo });
+        const r = await api('admin', 'move_category', { from: mvFrom, to: mvTo });
         toast('已迁移 ' + r.moved + ' 件作品');
         loadWorks(container, container.querySelector('#wq').value.trim(), false);
       } catch (e) { toast(e.message, 'err'); }
@@ -1547,7 +1548,7 @@ function bindRefresh(container) {
         t('清理'), { danger: true }))) { return; }
       btnLoading(pruneBtn, true);
       try {
-        const r = await api('admin.php', 'prune_invalid', {});
+        const r = await api('admin', 'prune_invalid', {});
         const n = Number(r && r.pruned) || 0;
         toast(n > 0 ? ('已下架 ' + n + ' 件无效作品') : t('没有需要清理的作品'));
       } catch (e) { toast(e.message, 'err'); }
@@ -1596,7 +1597,7 @@ function bindRefresh(container) {
         if (go) {
           go.addEventListener('click', () => {
             go.disabled = true;
-            api('admin.php', 'score_recalc_start', {}).then(() => { tick(); })
+            api('admin', 'score_recalc_start', {}).then(() => { tick(); })
               .catch(() => { go.disabled = false; });
           });
         }
@@ -1607,7 +1608,7 @@ function bindRefresh(container) {
       setTimeout(tick, 3000);
     };
     const tick = () => {
-      api('admin.php', 'score_recalc_status', {}, { silent: true }).then(paintRc).catch(() => {});
+      api('admin', 'score_recalc_status', {}, { silent: true }).then(paintRc).catch(() => {});
     };
     tick();
   }
@@ -1629,7 +1630,7 @@ function bindRefresh(container) {
 
     /* 第一步：取回按排名（总分从高到低）排好的名单，整轮顺序就此固定 */
     try {
-      const p = await api('admin.php', 'refresh_plan', {}, { timeout: 90000, silent: true });
+      const p = await api('admin', 'refresh_plan', {}, { timeout: 90000, silent: true });
       plan = p.ids || [];
       total = Number(p.total) || plan.length;
       scoreOn = recalc;
@@ -1644,7 +1645,7 @@ function bindRefresh(container) {
     /* 第二步：按名单分批更新，每批 5 件 */
     for (let i = 0; i < plan.length && !stopped; i += 5) {
       let r;
-      try { r = await api('admin.php', 'refresh_batch', { ids: plan.slice(i, i + 5), auto: scoreOn ? 1 : 0 }, { timeout: 90000, silent: true }); }
+      try { r = await api('admin', 'refresh_batch', { ids: plan.slice(i, i + 5), auto: scoreOn ? 1 : 0 }, { timeout: 90000, silent: true }); }
       catch (e) { text.textContent = t('中断：') + e.message; stopped = true; break; }
 
       okN += r.ok; failN += r.fail; done += Number(r.processed) || 0;
@@ -1688,7 +1689,7 @@ function openEditor(container, id, onSaved) {
   const box = document.getElementById('dialog');
   if (!scrim || !box) { return; }
 
-  api('admin.php', 'work_get', { id: id }).then(w => {
+  api('admin', 'work_get', { id: id }).then(w => {
     const sc = w.score || {};
     let cat = String(w.category || 'game');
     let hidden = !!w.hidden;
@@ -1777,7 +1778,7 @@ function openEditor(container, id, onSaved) {
       });
       btnLoading(btn, true);
       try {
-        await api('admin.php', 'work_save', payload);
+        await api('admin', 'work_save', payload);
         toast('已保存');
         close();
         if (typeof onSaved === 'function') { onSaved(); }
@@ -1792,7 +1793,7 @@ async function loadWorks(container, q, readOnly, page) {
   const pg = Math.max(1, Number(page || 1));
   const size = workPageSize(container);
   try {
-    const d = await api('admin.php', 'works', { q: q || '', page: pg, size: size });
+    const d = await api('admin', 'works', { q: q || '', page: pg, size: size });
     const total = Number(d.total || 0);
     const pages = Math.max(1, Number(d.total_pages || 1));
 
@@ -1838,12 +1839,12 @@ async function loadWorks(container, q, readOnly, page) {
       const hidden = tr.children[3].textContent === t('已下架');
       tr.querySelector('[data-act="edit"]').addEventListener('click', () => openEditor(container, id, () => loadWorks(container, q, false, pg)));
       tr.querySelector('[data-act="toggle"]').addEventListener('click', async () => {
-        try { await api('admin.php', 'work_save', { id: id, hidden: hidden ? 0 : 1 }); toast('已更新'); loadWorks(container, q, false, pg); }
+        try { await api('admin', 'work_save', { id: id, hidden: hidden ? 0 : 1 }); toast('已更新'); loadWorks(container, q, false, pg); }
         catch (e) { toast(e.message, 'err'); }
       });
       tr.querySelector('[data-act="del"]').addEventListener('click', async () => {
         if (await dialog(t('删除作品'), t('删除后不可恢复，确认？'), t('删除'), { danger: true })) {
-          try { await api('admin.php', 'work_delete', { id: id }); toast('已删除'); loadWorks(container, q, false, pg); }
+          try { await api('admin', 'work_delete', { id: id }); toast('已删除'); loadWorks(container, q, false, pg); }
           catch (e) { toast(e.message, 'err'); }
         }
       });
@@ -1859,7 +1860,7 @@ async function loadVisitsTop(container) {
   const box = container.querySelector('#visitsTop');
   if (!box || !box.isConnected) { return; }
   try {
-    const d = await api('admin.php', 'visits_top');
+    const d = await api('admin', 'visits_top');
     const col = (title, arr) => {
       if (!arr || !arr.length) { return `<div class="tp-col"><div class="tp-h">${title}</div><div class="tiny muted">暂无数据</div></div>`; }
       const max = arr.reduce((m, x) => Math.max(m, Number(x.count) || 0), 1);
@@ -1930,7 +1931,7 @@ async function loadPeer(container) {
   const addBtn  = container.querySelector('#peerAdd');
   if (!listEl) { return; }
 
-  const st = await api('admin.php', 'peers_state', {}, { silent: true }).catch(() => null);
+  const st = await api('admin', 'peers_state', {}, { silent: true }).catch(() => null);
   if (!st) { listEl.innerHTML = '<div class="tiny muted">读取失败</div>'; return; }
   keyEl.textContent = !st.sodium
     ? '主机未启用 sodium 扩展，互通不可用'
@@ -1953,7 +1954,7 @@ async function loadPeer(container) {
   drawList();
 
   const refresh = async () => {
-    const s = await api('admin.php', 'peers_state', {}, { silent: true }).catch(() => null);
+    const s = await api('admin', 'peers_state', {}, { silent: true }).catch(() => null);
     if (s && s.peers) { rows = s.peers; drawList(); }
   };
 
@@ -1979,7 +1980,7 @@ async function loadPeer(container) {
         pubkey: formEl.querySelector('#pKey').value.trim(),
         enabled: formEl.querySelector('#pEn').checked ? 1 : 0,
       };
-      try { await api('admin.php', 'peer_save', payload); toast('已保存'); formEl.innerHTML = ''; await refresh(); }
+      try { await api('admin', 'peer_save', payload); toast('已保存'); formEl.innerHTML = ''; await refresh(); }
       catch (e) { toast(e.message || t('保存失败'), 'err'); }
     });
   };
@@ -1991,13 +1992,13 @@ async function loadPeer(container) {
     if (b.dataset.a === 'edit') { openForm(rows.find(r => Number(r.id) === id)); return; }
     if (b.dataset.a === 'del') {
       if (!(await dialog(t('删除站点'), t('将从列表中移除该站点，不影响已同步的数据。确定？'), t('删除')))) { return; }
-      try { await api('admin.php', 'peer_del', { id }); toast('已删除'); await refresh(); }
+      try { await api('admin', 'peer_del', { id }); toast('已删除'); await refresh(); }
       catch (e) { toast(e.message || t('删除失败'), 'err'); }
       return;
     }
     if (b.dataset.a === 'test') {
       b.disabled = true; b.textContent = t('测试中…');
-      try { await api('admin.php', 'peer_test', { id }, { timeout: 30000 }); toast('连接正常，密钥校验通过'); }
+      try { await api('admin', 'peer_test', { id }, { timeout: 30000 }); toast('连接正常，密钥校验通过'); }
       catch (e) { toast(e.message || t('连接失败'), 'err'); }
       finally { b.disabled = false; b.textContent = t('测试'); }
     }
@@ -2009,7 +2010,7 @@ async function loadPeer(container) {
     if (!(await dialog(t('一键互通'), t('将与列表中所有启用站点双向同步数据，期间不要关闭页面。确定继续？'), t('开始')))) { return; }
     syncBtn.disabled = true; syncBtn.textContent = t('互通中…');
     try {
-      const r = await api('admin.php', 'peer_sync', {}, { timeout: 300000 });
+      const r = await api('admin', 'peer_sync', {}, { timeout: 300000 });
       const list = (r.results || []).map(x => x.ok
         ? x.name + '：拉取 ' + x.pulled + ' / 推送 ' + x.pushed + '（' + x.tables + ' 张表'
           + (Number(x.failed || 0) > 0 ? '，跳过 ' + x.failed + ' 行' : '') + '）'
@@ -2036,7 +2037,7 @@ function discBlock() {
 
 async function discEditDialog(row) {
   let preset = [];
-  try { preset = ((await api('admin.php', 'disc_reasons', {}, { silent: true })).items) || []; } catch (e) { }
+  try { preset = ((await api('admin', 'disc_reasons', {}, { silent: true })).items) || []; } catch (e) { }
   const cur = row.reasons || [];
   const opts = [];
   preset.concat(cur).forEach(r => { if (r && opts.indexOf(r) < 0) { opts.push(r); } });
@@ -2138,7 +2139,7 @@ async function loadDisc(container) {
   const box = container.querySelector('#discListBox');
   if (!box) { return; }
   try {
-    const d = await api('admin.php', 'disc_list', { page: 1 });
+    const d = await api('admin', 'disc_list', { page: 1 });
     const items = d.items || [];
     if (!items.length) { box.innerHTML = '<div class="tiny muted">还没有通报记录。</div>'; return; }
 
@@ -2159,12 +2160,12 @@ async function loadDisc(container) {
       tr.querySelector('[data-act="edit"]').addEventListener('click', async () => {
         const patch = await discEditDialog(row);
         if (!patch) { return; }
-        try { await api('admin.php', 'disc_update', patch); toast('已更新该通报'); loadDisc(container); }
+        try { await api('admin', 'disc_update', patch); toast('已更新该通报'); loadDisc(container); }
         catch (e) { toast(e.message, 'err'); }
       });
       tr.querySelector('[data-act="revoke"]').addEventListener('click', async () => {
         if (!(await dialog(t('撤销通报'), t('将删除该通报并解除其账号与 IP 封禁，确认？'), t('撤销'), { danger: true }))) { return; }
-        try { await api('admin.php', 'disc_delete', { id: row.id }); toast('已撤销'); loadDisc(container); }
+        try { await api('admin', 'disc_delete', { id: row.id }); toast('已撤销'); loadDisc(container); }
         catch (e) { toast(e.message, 'err'); }
       });
 
@@ -2182,7 +2183,7 @@ async function loadDisc(container) {
  */
 async function discDialog(ids, names) {
   let preset = [];
-  try { preset = ((await api('admin.php', 'disc_reasons', {}, { silent: true })).items) || []; } catch (e) { }
+  try { preset = ((await api('admin', 'disc_reasons', {}, { silent: true })).items) || []; } catch (e) { }
 
   return new Promise(resolve => {
     const scrim = document.getElementById('dialogScrim');
@@ -2277,7 +2278,7 @@ async function submitDiscipline(container, ids, names, q, readOnly, pg) {
   const form = await discDialog(ids, names);
   if (!form) { return; }
   try {
-    const r = await api('admin.php', 'disc_create', {
+    const r = await api('admin', 'disc_create', {
       user_ids: JSON.stringify(ids),
       reasons: JSON.stringify(form.reasons),
       note: form.note,
@@ -2308,7 +2309,7 @@ async function loadUsers(container, q, readOnly, page) {
   const pager = container.querySelector('#userPager');
   const pg = Math.max(1, Number(page || 1));
   try {
-    const d = await api('admin.php', 'users', { q: q, page: pg });
+    const d = await api('admin', 'users', { q: q, page: pg });
     if (!d.items.length) {
       box.innerHTML = '<div class="tiny">' + (pg > 1 ? '这一页没有用户了。' : t('暂无用户')) + '</div>';
       if (pager) {
@@ -2343,7 +2344,7 @@ async function loadUsers(container, q, readOnly, page) {
       const delBtn = tr.querySelector('[data-act="del"]');
       if (delBtn) delBtn.addEventListener('click', async () => {
         if (await dialog(t('删除用户'), t('将删除「') + esc(uname) + t('」及其全部数据，不可恢复。确认？'), t('删除'), { danger: true })) {
-          try { await api('admin.php', 'user_delete', { id: tr.dataset.id }); toast('已删除'); loadUsers(container, q, readOnly, pg); }
+          try { await api('admin', 'user_delete', { id: tr.dataset.id }); toast('已删除'); loadUsers(container, q, readOnly, pg); }
           catch (e) { toast(e.message, 'err'); }
         }
       });
@@ -2354,7 +2355,7 @@ async function loadUsers(container, q, readOnly, page) {
         const v = String(nn).trim();
         if (v.length < 2) { toast('用户名至少 2 个字符', 'err'); return; }
         if (v === uname) { return; }
-        try { await api('admin.php', 'user_rename', { id: tr.dataset.id, username: v }); toast('已改名为「' + v + '」'); loadUsers(container, q, readOnly, pg); }
+        try { await api('admin', 'user_rename', { id: tr.dataset.id, username: v }); toast('已改名为「' + v + '」'); loadUsers(container, q, readOnly, pg); }
         catch (e) { toast(e.message, 'err'); }
       });
       const discBtn = tr.querySelector('[data-act="disc"]');
@@ -2371,7 +2372,7 @@ async function loadUsers(container, q, readOnly, page) {
             + t('· 获得作品搜索/上传与回复反馈权限'), t('确认设立')))) { return; }
         btnLoading(proBtn, true);
         try {
-          const r = await api('admin.php', 'sub_add', { username: uname, secret: '' });
+          const r = await api('admin', 'sub_add', { username: uname, secret: '' });
           toast('已升级为副管理员');
           await dialog(t('升级完成'),
             '「<b>' + esc(r.username) + '</b>」现为副管理员：<b>密码保持不变</b>，数据全部保留。<br><br>'
@@ -2405,7 +2406,7 @@ async function loadSubs(container) {
   const box = container.querySelector('#subList');
   if (!box) return;
   try {
-    const d = await api('admin.php', 'subs');
+    const d = await api('admin', 'subs');
     /* 豹子号余量：池用尽后新副管理员自动改用普通 8 位 UID，身份与权限不受影响，
        这里把余量摆在眼前，免得加人时对着 UID 发懵。 */
     const bTotal = Number(d.babao_total || 0), bLeft = Number(d.babao_left || 0);
@@ -2428,13 +2429,13 @@ async function loadSubs(container) {
         if (await dialog(t('取消副管理员身份'),
             '该账号将变回普通用户：<br>· 评论、对话、反馈等数据<b>全部保留</b><br>· UID 由豹子号换回普通编号<br>· 若该账号是升级而来，仍可用其原密码登录',
             t('取消身份'))) {
-          try { await api('admin.php', 'sub_demote', { id: tr.dataset.id }); toast('已取消副管理员身份'); loadSubs(container); loadUsers(container, container.querySelector('#uq').value.trim()); }
+          try { await api('admin', 'sub_demote', { id: tr.dataset.id }); toast('已取消副管理员身份'); loadSubs(container); loadUsers(container, container.querySelector('#uq').value.trim()); }
           catch (e) { toast(e.message, 'err'); }
         }
       });
       tr.querySelector('[data-act="del"]').addEventListener('click', async () => {
         if (await dialog(t('删除副管理员'), t('将同时删除其账号与全部数据，不可恢复。若只是收回权限，请用「取消身份」。确认？'), t('删除'), { danger: true })) {
-          try { await api('admin.php', 'sub_del', { id: tr.dataset.id }); toast('已删除'); loadSubs(container); }
+          try { await api('admin', 'sub_del', { id: tr.dataset.id }); toast('已删除'); loadSubs(container); }
           catch (e) { toast(e.message, 'err'); }
         }
       });
@@ -2456,7 +2457,7 @@ async function loadSubs(container) {
     if (!v) { return; }
     subTimer = setTimeout(async () => {
       try {
-        const d = await api('admin.php', 'users', { q: v, page: 1 }, { silent: true });
+        const d = await api('admin', 'users', { q: v, page: 1 }, { silent: true });
         const hit = (d.items || []).find(u => String(u.username) === v);
         if (!hintEl) { return; }
         if (!hit) {
@@ -2479,7 +2480,7 @@ async function loadSubs(container) {
     const btn = container.querySelector('#subAdd');
     btnLoading(btn, true);
     try {
-      const r = await api('admin.php', 'sub_add', { username: n, secret: k });
+      const r = await api('admin', 'sub_add', { username: n, secret: k });
       nameEl.value = ''; keyEl.value = ''; if (hintEl) { hintEl.innerHTML = ''; }
       const modeTxt = {
         promoted:          [t('现有用户已升级为副管理员'), '账号「<b>' + esc(r.username) + '</b>」已升级：<b>密码保持不变</b>（继续用原密码登录），评论、对话等数据全部保留，UID 已换为豹子号。'],
@@ -2505,9 +2506,9 @@ async function loadSubs(container) {
 function bindAnnounce(container) {
   const inp = container.querySelector('#annInput');
   if (!inp) return;
-  api('admin.php', 'announce_get').then(a => { inp.value = a.content || ''; }).catch(() => {});
+  api('admin', 'announce_get').then(a => { inp.value = a.content || ''; }).catch(() => {});
   container.querySelector('#annSave').addEventListener('click', async () => {
-    try { await api('admin.php', 'announce_set', { content: inp.value }); toast('公告已更新'); }
+    try { await api('admin', 'announce_set', { content: inp.value }); toast('公告已更新'); }
     catch (e) { toast(e.message, 'err'); }
   });
 }
@@ -2534,7 +2535,7 @@ function startPanelPolling(container) {
       const uPgEl = container.querySelector('#userPager');
       const rangeEl = container.querySelector('#rangeSeg button.on');
 
-      const ov = await api('dashboard.php', 'overview', null, { silent: true });
+      const ov = await api('dashboard', 'overview', null, { silent: true });
       const ovGrid = container.querySelector('#ovGrid');
       if (ovGrid) { renderOverview(ovGrid, ov, container); }
 

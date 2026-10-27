@@ -25,11 +25,20 @@ AddDefaultCharset UTF-8
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
+    # ---------- 端点规整化：对外一律无扩展名 ----------
+    # /api/works 等价 /api/works.php；带 .php 的旧地址继续可用，外部调用与旧缓存不受影响
+    RewriteRule ^api/([a-zA-Z0-9_-]+)/?$ api/$1.php [L,QSA]
+
     # SEO 端点：动态生成（按当前域名给出正确的 Sitemap 地址；镜像站 Disallow All）
     RewriteRule ^robots\.txt$ robots.php [L]
     RewriteRule ^sitemap\.xml$ sitemap.php [L]
 
-    RewriteRule ^$ index.php [L]
+    # ---------- 界面规整化：普通路径交给入口 ----------
+    # /rank  /detail/12  /doc/入榜规则  /chat … 一律由 index.php 解析，
+    # 真实存在的文件与目录（assets、api/*.php、favicon 等）不拦。
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [L,QSA]
 </IfModule>
 
 # ---------- 传输压缩 ----------

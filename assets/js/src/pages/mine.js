@@ -48,7 +48,7 @@ export async function renderMine(container) {
   }
 
   let d;
-  try { d = await api('profile.php', 'info'); }
+  try { d = await api('profile', 'info'); }
   catch (e) { container.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`; return; }
 
   const isAdmin = isAdminish();
@@ -161,7 +161,7 @@ export async function renderMine(container) {
   /* AI 免费模型额度卡片：独立拉取，失败静默（不影响页面其它部分） */
   (async () => {
     try {
-      const q = await api('ai.php', 'models', null, { silent: true, timeout: 40000 });
+      const q = await api('ai', 'models', null, { silent: true, timeout: 40000 });
       const set = (sel, v) => { const el = container.querySelector(sel); if (el) { el.textContent = v; } };
       set('#aiModelCount', String((q.models || []).length));
       set('#aiSiteQuota', q.site.remaining + ' / ' + q.site.limit);
@@ -195,7 +195,7 @@ export async function renderMine(container) {
   if (swIp) swIp.addEventListener('click', async () => {
     const on = swIp.getAttribute('aria-checked') === 'true' ? 0 : 1;
     swIp.setAttribute('aria-checked', on ? 'true' : 'false');
-    try { await api('profile.php', 'settings', { ip_record: on }); state.settings.ip_record = on; toast('已保存'); }
+    try { await api('profile', 'settings', { ip_record: on }); state.settings.ip_record = on; toast('已保存'); }
     catch (e) { toast(e.message, 'err'); }
   });
 
@@ -204,7 +204,7 @@ export async function renderMine(container) {
     const on = swNotify.getAttribute('aria-checked') === 'true' ? 0 : 1;
     swNotify.setAttribute('aria-checked', on ? 'true' : 'false');
     try {
-      await api('profile.php', 'settings', { notify: on }, { silent: true });
+      await api('profile', 'settings', { notify: on }, { silent: true });
       state.settings.notify = on;
       toast('已保存');
       if (on) { const g = await askNotifyPermission(); if (!g) toast('浏览器未授予通知权限', 'err'); }
@@ -222,7 +222,7 @@ export async function renderMine(container) {
     ck.addEventListener('click', async () => {
       ck.disabled = true;
       try {
-        const r = await api('ai.php', 'checkin', {});
+        const r = await api('ai', 'checkin', {});
         const wb = Number(r.week_bonus) > 0 ? `！连续满 7 天，本月额度 +${r.week_bonus}` : '';
         toast('签到成功：当日额度 +' + r.daily_bonus + wb);
         renderMine(container);   // 刷新连续天数与配额分母
@@ -235,7 +235,7 @@ export async function renderMine(container) {
 
   container.querySelector('#logoutBtn').addEventListener('click', async () => {
     if (await dialog(t('退出登录'), t('确认退出当前账号吗？'), t('退出'))) {
-      try { await api('auth.php', 'logout'); } catch (e) {}
+      try { await api('auth', 'logout'); } catch (e) {}
       setToken('');
       /* 就地切到游客态并重绘，不整页刷新 */
       state.role = 'guest'; state.uid = 0; state.username = t('游客');
@@ -293,7 +293,7 @@ function mountSearchAi(box, isGuest) {
       return;
     }
     try {
-      const st = await api('profile.php', 'settings', { search_ai: next });
+      const st = await api('profile', 'settings', { search_ai: next });
       state.settings = Object.assign({}, state.settings, st || {});
       toast('已保存');
     } catch (e) {
@@ -324,7 +324,7 @@ function mountBlockList(box, isGuest) {
       toast('已保存到本机浏览器');
     } else {
       try {
-        const st = await api('profile.php', 'settings', { block_words: v });
+        const st = await api('profile', 'settings', { block_words: v });
         state.settings = Object.assign({}, state.settings, st || {});
         toast('已保存');
       } catch (e) { toast(e.message, 'err'); }
@@ -419,7 +419,7 @@ function mountAppearance(box) {
       setSkinCookie(sk);
       setPrefs(Object.assign({}, getPrefs(), { skin: sk }));
       if (state.role !== 'guest') {
-        try { await api('profile.php', 'settings', { skin: sk }); state.settings.skin = sk; } catch (err) {}
+        try { await api('profile', 'settings', { skin: sk }); state.settings.skin = sk; } catch (err) {}
       }
       skinRow.querySelectorAll('.skin-card').forEach(x => x.classList.toggle('on', x === b));
       toast(t('正在切换到「') + t(SKINS[sk].name) + t('」…'));
@@ -528,7 +528,7 @@ function initHsl(box) {
 async function loadVisits(box) {
   if (!box) return;
   try {
-    const d = await api('profile.php', 'visits');
+    const d = await api('profile', 'visits');
     box.innerHTML = '';
     if (!d.items.length) { box.innerHTML = '<div class="tiny" style="padding:8px 0">暂无访问记录</div>'; return; }
     d.items.forEach(v => {
@@ -544,7 +544,7 @@ async function loadVisits(box) {
 async function loadTop3(box) {
   if (!box) return;
   try {
-    const d = await api('profile.php', 'usage');
+    const d = await api('profile', 'usage');
     const t3 = d.top3 || [];
     if (!t3.length) { box.innerHTML = '<div class="tiny">暂无用量排行</div>'; return; }
     box.innerHTML = '<div class="tiny" style="margin-bottom:6px">全站用量 Top3</div>' + t3.map((u, i) =>

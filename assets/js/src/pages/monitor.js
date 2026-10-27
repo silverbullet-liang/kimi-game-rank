@@ -173,7 +173,7 @@ function monTrend(trend) {
 }
 
 async function monOverview(box) {
-  const d = await api('monitor.php', 'stats', { range: st.range });
+  const d = await api('monitor', 'stats', { range: st.range });
   const k = d.kpi || {};
   const js = Number(k.js || 0), succ = Number(k.api_succ || 100), slowR = Number(k.slow_ratio || 0);
   box.innerHTML = `
@@ -217,7 +217,7 @@ function monSrvTrend(trend, slowMs) {
 }
 
 async function monSrv(box) {
-  const d = await api('monitor.php', 'srv', { range: st.range });
+  const d = await api('monitor', 'srv', { range: st.range });
   const k = d.kpi || {};
   const track = d.track_urls || [];
   const routes = d.routes || [];
@@ -273,7 +273,7 @@ async function monSrvList(box, route) {
   const el = box.querySelector('#monSrvDetail'); if (!el) { return; }
   el.innerHTML = '<div class="mon-sk"></div>';
   try {
-    const d = await api('monitor.php', 'srvlist', { route: route, range: st.range, page: 1 });
+    const d = await api('monitor', 'srvlist', { route: route, range: st.range, page: 1 });
     const items = d.items || [];
     el.innerHTML = monCard('请求明细 · ' + route + '（共 ' + Number(d.total || 0) + '）',
       '<table class="table"><thead><tr><th>时间</th><th>方法</th><th>状态</th><th>耗时</th><th>DB</th><th>查询</th><th>慢</th><th>内存</th><th>信息</th></tr></thead><tbody>' +
@@ -340,7 +340,7 @@ async function monSessions(box) {
     if (reset) { page = 1; done = false; shown = 0; body.innerHTML = ''; }
     loading = true; paintFoot();
     try {
-      const d = await api('monitor.php', 'sessions', { range: st.range, only: only, page: page });
+      const d = await api('monitor', 'sessions', { range: st.range, only: only, page: page });
       const items = d.items || [];
       total = Number(d.total || 0);
       if (!items.length && page === 1) {
@@ -389,7 +389,7 @@ async function monSessionDetail(box, sid) {
   el.innerHTML = '<div class="mon-sk"></div>';
   const KIND = { pv: t('访问'), js: 'JS', api: t('接口'), resource: t('资源'), perf: t('性能'), custom: t('自定义'), error: t('错误') };
   try {
-    const d = await api('monitor.php', 'session', { sid: sid, range: st.range });
+    const d = await api('monitor', 'session', { sid: sid, range: st.range });
     const items = d.items || [];
     const who = Number(d.uid) > 0 ? (d.user ? esc(d.user) : ('#' + d.uid)) : '游客';
     const meta = '<div class="mon-sess-meta">用户：<b>' + who + '</b>'
@@ -409,7 +409,7 @@ async function monSessionDetail(box, sid) {
 }
 
 async function monAlerts(box) {
-  const d = await api('monitor.php', 'alerts');
+  const d = await api('monitor', 'alerts');
   const items = d.items || [];
   const rows = items.length ? items.map(a => `<tr class="${a.acked ? '' : 'mon-unacked'}">
       <td>${esc(a.time)}</td><td>${esc(a.level)}</td>
@@ -421,7 +421,7 @@ async function monAlerts(box) {
     `<table class="table"><thead><tr><th>时间</th><th>级别</th><th>内容</th><th>实测</th><th>阈值</th><th>操作</th></tr></thead>
       <tbody>${rows}</tbody></table>`);
   box.querySelectorAll('[data-ack]').forEach(b => b.addEventListener('click', async () => {
-    try { await api('monitor.php', 'alert_ack', { id: b.dataset.ack }); toast('已确认'); monAlerts(box); }
+    try { await api('monitor', 'alert_ack', { id: b.dataset.ack }); toast('已确认'); monAlerts(box); }
     catch (e) { toast(e.message, 'err'); }
   }));
 }
@@ -437,7 +437,7 @@ async function monEvents(box, kind) {
   const head = HEADS[kind] || HEADS.js;
   const isDetail = (kind !== 'api' && kind !== 'perf' && kind !== 'custom');
 
-  const d = await api('monitor.php', 'events', { kind: kind, range: st.range, page: 1 });
+  const d = await api('monitor', 'events', { kind: kind, range: st.range, page: 1 });
   const groups = d.groups || [];
   const rows = groups.length ? groups.map(x => {
     if (kind === 'api') { return `<tr><td class="mon-ell" title="${esc(x.name)}">${esc(x.name)}</td><td>${x.n}</td><td>${x.avg_ms} ms</td><td>${x.slow}</td><td>${x.fails}</td></tr>`; }
@@ -487,7 +487,7 @@ async function monEvents(box, kind) {
     if (loading || done) { return; }
     loading = true; paintFoot();
     try {
-      const r = await api('monitor.php', 'events', { kind: kind, range: st.range, page: page });
+      const r = await api('monitor', 'events', { kind: kind, range: st.range, page: page });
       append(r.items || []);
       done = !r.has_more;
       page++;
@@ -513,7 +513,7 @@ async function monEvents(box, kind) {
 }
 
 async function monSettings(box) {
-  const d = await api('monitor.php', 'settings');
+  const d = await api('monitor', 'settings');
   box.innerHTML = monCard(t('采集设置'), `
       <div class="mon-row"><span>启用采集</span>
         <div class="mon-seg" id="monEnabled">
@@ -544,7 +544,7 @@ async function monSettings(box) {
   box.querySelector('#monSave').addEventListener('click', async ev => {
     btnLoading(ev.target, true);
     try {
-      await api('monitor.php', 'settings', {
+      await api('monitor', 'settings', {
         save: '1', enabled: enabled,
         sample: Number(box.querySelector('#monSample').value || 100),
         keep_days: Number(box.querySelector('#monKeep').value || 7),
@@ -562,7 +562,7 @@ async function monSettings(box) {
   });
   box.querySelector('#monPurge').addEventListener('click', async ev => {
     btnLoading(ev.target, true);
-    try { const r = await api('monitor.php', 'purge', {}); toast('已清理 ' + (Number(r.deleted) || 0) + ' 条'); }
+    try { const r = await api('monitor', 'purge', {}); toast('已清理 ' + (Number(r.deleted) || 0) + ' 条'); }
     catch (e) { toast(e.message, 'err'); }
     finally { btnLoading(ev.target, false); }
   });

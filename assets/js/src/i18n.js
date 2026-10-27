@@ -1,3 +1,4 @@
+import { ASSET_BASE } from './base.js';
 /**
  * 界面多语言：中 / 英 / 日。
  *
@@ -60,7 +61,7 @@ export async function i18nInit() {
   document.documentElement.lang = (I18N.lang === 'zh' ? 'zh-CN' : I18N.lang);
   if (I18N.lang === 'zh') { I18N.ready = true; return; }
   try {
-    const r = await fetch('assets/i18n/' + I18N.lang + '.json', { cache: 'no-cache' });
+    const r = await fetch(ASSET_BASE + '/i18n/' + I18N.lang + '.json', { cache: 'no-cache' });
     if (r.ok) { I18N.dict = await r.json(); }
   } catch (e) { /* 取不到就退回中文 */ }
   I18N.ready = true;

@@ -52,7 +52,7 @@ The site is a **non-profit personal hobby project**, run and maintained independ
 7. If you find your account used unlawfully or at risk, **sign out immediately** and tell the site through the contact below so necessary measures can be taken.
 8. The site **offers no self-service password reset** (no email or phone is bound). If you forget your password, contact an administrator and cooperate with the necessary identity check. The site is not liable for an account that becomes unusable because of a forgotten password.
 9. **One person, one account**: to prevent abuse, bulk registration by one person is discouraged, and clearly abnormal bulk registrations may be restricted or cleaned up.
-10. **Account closure and data deletion**: there is **no self-service closure entry**. Apply through "Feedback" to close your account or to have your comments, conversations and profile deleted; we act after verifying identity. Information involving others' rights, legal requirements or a security audit may be retained for a period as the law provides — see article 12 of the [Privacy Policy](?p=doc&arg=隐私政策). **Closure is irreversible**; "sign out" only clears the credential on your device and is not closure.
+10. **Account closure and data deletion**: there is **no self-service closure entry**. Apply through "Feedback" to close your account or to have your comments, conversations and profile deleted; we act after verifying identity. Information involving others' rights, legal requirements or a security audit may be retained for a period as the law provides — see article 12 of the [Privacy Policy](/doc/隐私政策). **Closure is irreversible**; "sign out" only clears the credential on your device and is not closure.
 11. **Rate limiting of sign-in attempts**: to stop passwords being guessed, **a burst of failed attempts is temporarily blocked** (wait a moment). Limits accrue **both per origin and per account**, so changing networks and continuing to probe the same account is blocked too. If you see "too many attempts" without any unusual activity, wait a few minutes and try again.
 12. **Human verification**: to prevent bulk registration and automated abuse, signing in and registering require a **human check** (one tap, no code to type). **A failed check does not accept the submission — the check is never bypassed because the verification service itself is down.** The primary channel is Cloudflare Turnstile; if it is unavailable a fallback channel is switched to automatically, so normal sign-in is usually unaffected.
 
@@ -108,7 +108,7 @@ When using the service you **must not**, including but not limited to:
 
    How we handle it: we first **check that the notice is complete** and may ask you for missing material; where the claim is established we correct, delete or unlink **promptly** and tell you the outcome. Simple complaints are handled quickly; where further verification is needed, normally **within 15 working days of receipt**.
 3. **Counter-notice**: if your content was acted on and you believe it **does not infringe**, you may submit a counter-notice (also through "Feedback") stating who you are, where the content was, why it does not infringe and on what basis, your contact details and a statement of truthfulness. We forward it to the original notifier and act accordingly after verification (restore, maintain or take further action).
-4. **Repeat infringement**: where one account posts infringing content **repeatedly**, measures escalate with severity, including restricting features, muting and banning — see chapter 5 of the [Community Guidelines](?p=doc&arg=社区公约).
+4. **Repeat infringement**: where one account posts infringing content **repeatedly**, measures escalate with severity, including restricting features, muting and banning — see chapter 5 of the [Community Guidelines](/doc/社区公约).
 5. **Bad-faith notices**: rights holders must exercise the notice right **in good faith**. A notice you know to be untrue that causes loss to the site or others may make you liable.
 6. **User content**: copyright in the comments, messages and feedback you post remains yours. You also grant the site a **free, non-exclusive licence to use, store and display that content on the site for display and operational purposes**; this does not change ownership, and deleting the content ends the site's further display of it.
 7. **Site content**: intellectual property in the site's page design, scoring algorithm, source code, copy and visual elements belongs to the operator. Without written permission, none of it may be copied, modified, distributed or used commercially, in whole or in substantial part.
@@ -163,7 +163,7 @@ When using the service you **must not**, including but not limited to:
    - **The same content is checked once**: conclusions are cached against the content, so identical content is not sent again or judged again while cached.
    - **Notes can be removed**: middle-band content carries a "possibly malicious" line — a hint to readers that **does not affect visibility**; an administrator who thinks it is misapplied can remove it in one tap.
    - **Fail-open on outages**: if the **external service** of a stage is unavailable (timeout, rate limit, failure), that stage is treated as passed and the event is logged, so a third-party outage does not stop you posting; the site owner may change this to "fail closed".
-   - **No personal information involved**: moderation processes **only the content**, does not analyse your account, history or personal information, is not used for profiling, recommendation or different treatment, and only decides whether that piece is published. The third-party services and what is shared are listed in article 8 of the [Privacy Policy](?p=doc&arg=隐私政策).
+   - **No personal information involved**: moderation processes **only the content**, does not analyse your account, history or personal information, is not used for profiling, recommendation or different treatment, and only decides whether that piece is published. The third-party services and what is shared are listed in article 8 of the [Privacy Policy](/doc/隐私政策).
 
    **Image moderation**
 
@@ -202,7 +202,7 @@ When using the service you **must not**, including but not limited to:
 2. The site may contain links to third-party sites (such as a work's original page or pages cited in AI answers). Such links are for convenience only; **the site cannot control their content or services and is not responsible for their content, availability, security or privacy practices**.
 3. The availability, stability and compliance of third-party services are the provider's responsibility; the site is not liable where their failure, change or discontinuation disrupts or interrupts the service. There is **no affiliation, agency, sponsorship or endorsement** between the site and these providers.
 4. Providers may change or be replaced; if a channel is unavailable the site switches to an equivalent fallback whose purpose falls within this article. Any transaction or dispute between you and a third party is for you and that party to resolve.
-5. When using third-party features you must also comply with their terms; how they handle personal information is described in article 8 of the [Privacy Policy](?p=doc&arg=隐私政策).
+5. When using third-party features you must also comply with their terms; how they handle personal information is described in article 8 of the [Privacy Policy](/doc/隐私政策).
 
 ## 12. Disclaimer
 
@@ -259,9 +259,9 @@ When using the service you **must not**, including but not limited to:
 
 For any question, complaint, report or rights claim, submit it through the site's "Feedback" (optionally marked "visible to administrators only") or contact the site owner, `admin`. We respond within a reasonable period.
 
-**Related documents**: [Community Guidelines](?p=doc&arg=社区公约) · [Features](?p=doc&arg=功能说明) · [AI Guide](?p=doc&arg=AI 使用说明) · [Privacy Policy](?p=doc&arg=隐私政策) · [Scoring Standard](?p=doc&arg=评分标准) · [Admission Rules](?p=doc&arg=入榜规则) · [Changelog](?p=doc&arg=更新日志)
+**Related documents**: [Community Guidelines](/doc/社区公约) · [Features](/doc/功能说明) · [AI Guide](/doc/AI%20使用说明) · [Privacy Policy](/doc/隐私政策) · [Scoring Standard](/doc/评分标准) · [Admission Rules](/doc/入榜规则) · [Changelog](/doc/更新日志)
 
 ---
 
 > Last updated: 2026-10-22
-> This agreement, together with the [Privacy Policy](?p=doc&arg=隐私政策), forms your arrangement on using this service. Please read both.
+> This agreement, together with the [Privacy Policy](/doc/隐私政策), forms your arrangement on using this service. Please read both.

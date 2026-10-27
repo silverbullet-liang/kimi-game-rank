@@ -26,7 +26,7 @@ export async function renderDetail(container, ctx) {
 
   container.innerHTML = '<div class="skeleton" style="height:220px"></div>';
   let d;
-  try { d = await api('works.php', 'detail', { id: id }); }
+  try { d = await api('works', 'detail', { id: id }); }
   catch (e) { container.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`; return; }
 
   const sd = d.score_detail || {};
@@ -124,7 +124,7 @@ export async function renderDetail(container, ctx) {
   voteBtn.addEventListener('click', async () => {
     if (!canPost()) { toast('登录后才能点赞', 'err'); return; }
     try {
-      const r = await api('works.php', 'vote', { id: id });
+      const r = await api('works', 'vote', { id: id });
       voteBtn.textContent = r.voted ? '已点赞' : t('点赞作品');
       voteBtn.classList.toggle('btn-ghost', r.voted);
       toast(r.voted ? '已点赞' : t('已取消'));
@@ -261,20 +261,20 @@ async function onCommentClick(ev) {
 
   if (btn.dataset.act === 'like') {
     if (!canPost()) { toast('登录后才能点赞', 'err'); return; }
-    try { const r = await api('comments.php', 'vote', { id: cid }); btn.textContent = t('赞 ') + r.count; } catch (e) { toast(e.message, 'err'); }
+    try { const r = await api('comments', 'vote', { id: cid }); btn.textContent = t('赞 ') + r.count; } catch (e) { toast(e.message, 'err'); }
   } else if (btn.dataset.act === 'unflag') {
     try {
-      await api('comments.php', 'flag', { id: cid, on: 0 });
+      await api('comments', 'flag', { id: cid, on: 0 });
       const f = node.querySelector('.msg-flag'); if (f) { f.remove(); }
       toast('已取消标注');
     } catch (e) { toast(e.message, 'err'); }
   } else if (btn.dataset.act === 'del') {
     if (await dialog(t('删除评论'), t('确认删除这条评论吗？删除后会移入回收站，页面不再显示。'), t('删除'), { danger: true })) {
-      try { await api('comments.php', 'delete', { id: cid }); toast('已移入回收站'); ctx.refresh(true); } catch (e) { toast(e.message, 'err'); }
+      try { await api('comments', 'delete', { id: cid }); toast('已移入回收站'); ctx.refresh(true); } catch (e) { toast(e.message, 'err'); }
     }
   } else if (btn.dataset.act === 'block') {
     try {
-      const r = await api('comments.php', 'block', { id: cid, on: btn.dataset.on === '1' ? 0 : 1 });
+      const r = await api('comments', 'block', { id: cid, on: btn.dataset.on === '1' ? 0 : 1 });
       toast(r.blocked ? '已屏蔽（折叠显示）' : t('已取消屏蔽'));
       ctx.refresh(true);
     } catch (e) { toast(e.message, 'err'); }
@@ -283,7 +283,7 @@ async function onCommentClick(ev) {
     if (text) {
       const post = async () => {
         try {
-          await api('comments.php', 'create', { work_id: ctx.workId, target_type: ctx.ttype, content: text, parent_id: cid }, { timeout: 30000 });
+          await api('comments', 'create', { work_id: ctx.workId, target_type: ctx.ttype, content: text, parent_id: cid }, { timeout: 30000 });
           toast('已回复');
           ctx.refresh(true);
         } catch (e) {
@@ -326,7 +326,7 @@ export async function renderComments(container, workId, targetType) {
       if (!v) { toast('请输入内容', 'err'); return; }
       btnLoading(btn, true);
       try {
-        await api('comments.php', 'create', { work_id: workId, target_type: ttype, content: v }, { timeout: 30000 });
+        await api('comments', 'create', { work_id: workId, target_type: ttype, content: v }, { timeout: 30000 });
         ta.value = ''; form.querySelector('#cmtCount').textContent = '0';
         await refresh(true);
         toast('已发表');
@@ -391,7 +391,7 @@ export async function renderComments(container, workId, targetType) {
   async function refresh(showSkeleton) {
     if (showSkeleton) { listBox.innerHTML = '<div class="skeleton" style="height:44px"></div>'; }
     try {
-      const d = await api('comments.php', 'list', { work_id: workId, target_type: ttype }, showSkeleton ? {} : { silent: true });
+      const d = await api('comments', 'list', { work_id: workId, target_type: ttype }, showSkeleton ? {} : { silent: true });
       st.roots = d.comments || [];
       st.total = Number(d.total || 0);
       if (st.shown < PAGE) { st.shown = PAGE; }
@@ -414,7 +414,7 @@ export async function renderComments(container, workId, targetType) {
     if (ae && (ae.id === 'cmtText' || ae.id === 'rpText')) { return; }
     const scrim = document.getElementById('dialogScrim');
     if (scrim && !scrim.hidden) { return; }
-    api('comments.php', 'list', { work_id: workId, target_type: ttype }, { silent: true, tries: 1 })
+    api('comments', 'list', { work_id: workId, target_type: ttype }, { silent: true, tries: 1 })
       .then(d => {
         if (Number(d.total || 0) === st.total) { return; }   // 无新评论 → 不重绘
         st.roots = d.comments || [];
@@ -449,7 +449,7 @@ function commentReject(host, text, content, onPass) {
     btn.disabled = true;
     btn.textContent = t('重审中…');
     try {
-      const r = await api('recheck.php', 'run', { content: content }, { timeout: 30000 });
+      const r = await api('recheck', 'run', { content: content }, { timeout: 30000 });
       const v = (r && r.verdict) || 'false';
       if (v === 'false') {
         bar.querySelector('.rn-text').textContent = t('AI 复核后仍判为违规，未发表');

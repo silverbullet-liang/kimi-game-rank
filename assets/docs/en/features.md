@@ -35,7 +35,7 @@ The four leaderboards use **the same works and the same six-dimension score** (g
 
 - Every leaderboard can be filtered by category: **Games / Tools / Literature / Fan Work**.
 - Totals and ranks are **dynamic**: they are recalculated when a work's data updates, so a work can rise, or slip as its heat fades.
-- The six dimensions, formulas and rating rules are in the [Scoring Standard](?p=doc&arg=评分标准); category, listing and removal rules are in the [Admission Rules](?p=doc&arg=入榜规则).
+- The six dimensions, formulas and rating rules are in the [Scoring Standard](/doc/评分标准); category, listing and removal rules are in the [Admission Rules](/doc/入榜规则).
 
 ---
 
@@ -59,8 +59,8 @@ The four leaderboards use **the same works and the same six-dimension score** (g
 
 1. **Likes**: signed-in users can like works and comments. Each person can like a given item **once**; after unliking, it can be liked again.
 2. **Comments**: signed-in users can comment on works. You can delete your own comment (its replies are removed with it). A deleted comment **goes to the recycle bin** and disappears from the page; an administrator can restore it or clear it permanently from "Comment recycle bin" in the control panel.
-3. **Automatic check before posting**: comments and messages pass **three stages** before they appear — a site word list and sentence-pattern check, a profanity check on an English rendering, and a classification model that returns a **1–10 severity level** (higher means more like abuse). Only content reaching the blocking level is stopped; content in the middle range is posted with a "possibly malicious" note beside it (an administrator can remove the note in one tap). When blocked you see "content did not pass review" — edit and post again, or report a mistaken judgement through "Feedback". All three stages are paid for by the site and use none of your quota. Probing prompts aimed at the AI (such as "ignore the above instructions") are **annotated, never blocked**. Uploaded images get their own check: text and picture are read first, then judged by the same classifier. The full logic is published in article 9 of the [Terms of Service](?p=doc&arg=用户协议).
-4. **Content rules**: comments that break the law, advertise, attack people or spam are prohibited. Administrators may delete, collapse or hide them, and in serious cases restrict, mute or ban the account. See articles 7 and 9 of the [Terms of Service](?p=doc&arg=用户协议).
+3. **Automatic check before posting**: comments and messages pass **three stages** before they appear — a site word list and sentence-pattern check, a profanity check on an English rendering, and a classification model that returns a **1–10 severity level** (higher means more like abuse). Only content reaching the blocking level is stopped; content in the middle range is posted with a "possibly malicious" note beside it (an administrator can remove the note in one tap). When blocked you see "content did not pass review" — edit and post again, or report a mistaken judgement through "Feedback". All three stages are paid for by the site and use none of your quota. Probing prompts aimed at the AI (such as "ignore the above instructions") are **annotated, never blocked**. Uploaded images get their own check: text and picture are read first, then judged by the same classifier. The full logic is published in article 9 of the [Terms of Service](/doc/用户协议).
+4. **Content rules**: comments that break the law, advertise, attack people or spam are prohibited. Administrators may delete, collapse or hide them, and in serious cases restrict, mute or ban the account. See articles 7 and 9 of the [Terms of Service](/doc/用户协议).
 
 ---
 
@@ -72,7 +72,7 @@ The four leaderboards use **the same works and the same six-dimension score** (g
 4. **Bilibili videos can be sent**: tap the video button beside the input box and paste a **Bilibili link or BV number**. Before sending, the system checks the video's **title and description** (together with your note) and refuses if it does not pass. Accepted videos appear as a **card**; **the player loads only when you tap the card** and supports **fullscreen**. The site **stores only the BV number and display information** (title, cover, duration, author); the video is always served by Bilibili from its own CDN (no video file and no playback URL is stored).
 5. **Images are cleaned up with the message lifecycle** to save space: recalling a message deletes its image, and images no longer referenced, or belonging to messages that have scrolled out of the displayed range, are removed too. A removed image shows an "image cleaned up" placeholder rather than a broken icon.
 6. Chat content is visible to everyone — **do not post personal information** there (phone numbers, addresses, account passwords and so on). Administrators may act on content that breaks the rules.
-7. **@ the official AI**: type `@` in a message and choose "Official AI", or use the `@` button beside the input box, to have the official AI answer that message. The reply appears as **AI**, usually under 150 words of plain text, and its cost is **deducted from the quota of the person who asked** (see section 3 of the [AI Guide](?p=doc&arg=AI 使用说明)). It **can look things up** — site data, arithmetic, weather, time, lunar dates and festivals (at most 2 lookups per reply) — and marks sources with a faint "Reference: ..." line. It **reads no personal account data**.
+7. **@ the official AI**: type `@` in a message and choose "Official AI", or use the `@` button beside the input box, to have the official AI answer that message. The reply appears as **AI**, usually under 150 words of plain text, and its cost is **deducted from the quota of the person who asked** (see section 3 of the [AI Guide](/doc/AI%20使用说明)). It **can look things up** — site data, arithmetic, weather, time, lunar dates and festivals (at most 2 lookups per reply) — and marks sources with a faint "Reference: ..." line. It **reads no personal account data**.
 
 ---
 
@@ -93,7 +93,7 @@ The AI assistant is a conversational assistant that **can browse the web and rea
 How to use it:
 
 1. **Choose a model** before chatting: the **site model** is the default, and the **free model** can be selected from the list;
-2. The two models are **charged differently**; quota rules, caching and tips for spending less are in the [AI Guide](?p=doc&arg=AI 使用说明);
+2. The two models are **charged differently**; quota rules, caching and tips for spending less are in the [AI Guide](/doc/AI%20使用说明);
 3. There is a **"Deep thinking" switch** above the input box: when on, the assistant reasons first and the reasoning is shown as collapsible blocks (a single question may produce several); lookups also appear as cards inside the answer; blocks and cards are kept with the conversation, so reopening it shows them again;
 4. AI answers are generated by an algorithm, **may be inaccurate**, do not represent the views of this site and are not professional advice.
 
@@ -115,7 +115,7 @@ How to use it:
      - When two skins match the same day, the one earlier in the catalogue wins (for example 8/19 in years when it is both Doctors' Day and Qixi).
    - **Profile**: avatar and profile card;
    - **Feedback entry**: goes straight to "Feedback".
-4. **Privacy**: you can **turn visit history off at any time** in settings, and request deletion of what has already been recorded. See the [Privacy Policy](?p=doc&arg=隐私政策).
+4. **Privacy**: you can **turn visit history off at any time** in settings, and request deletion of what has already been recorded. See the [Privacy Policy](/doc/隐私政策).
 
 ---
 
@@ -123,7 +123,7 @@ How to use it:
 
 1. Site emoji are used in **chat and comments**; typing a related keyword suggests the emoji and a tap inserts it.
 2. The emoji artwork **comes from Bilibili**, and copyright belongs to its rights holders. This site uses it only for on-site conversation, claims no rights and has no partnership with Bilibili.
-3. The full statement (scope of use and how to make a rights claim) is in article 8, item 9 of the [Terms of Service](?p=doc&arg=用户协议).
+3. The full statement (scope of use and how to make a rights claim) is in article 8, item 9 of the [Terms of Service](/doc/用户协议).
 
 ---
 
@@ -133,7 +133,7 @@ How to use it:
 2. **What you can send**: bugs and errors, corrections, reports of violations, requests to recommend or remove a work, and **copyright claims**.
 3. **Please include**: the work or page concerned, a description of the problem, and any screenshots or links. There is an option to make it **visible to administrators only**.
 4. Handling: administrators reply in "Reply to feedback"; general issues are handled as quickly as possible.
-5. **For anything involving personal information or a rights claim**, provide the necessary material as described in article 18 of the [Privacy Policy](?p=doc&arg=隐私政策) and article 8 of the [Terms of Service](?p=doc&arg=用户协议).
+5. **For anything involving personal information or a rights claim**, provide the necessary material as described in article 18 of the [Privacy Policy](/doc/隐私政策) and article 8 of the [Terms of Service](/doc/用户协议).
 
 ---
 
@@ -189,14 +189,14 @@ The login is used only to read this one work. It is not stored and not displayed
 
 1. **Why can't I see "Control panel"?** It is an administrator-only interface — see section 10.
 2. **Why can't I like or post?** Check that you are signed in (guests can only browse).
-3. **Why do scores and ranks change?** Scoring is dynamic and recalculated when a work's data updates — see the [Scoring Standard](?p=doc&arg=评分标准).
-4. **The AI says my calls are used up.** See section 4 of the [AI Guide](?p=doc&arg=AI 使用说明); quota resets per calendar day.
-5. **My work is not listed / is in the wrong category.** See the [Admission Rules](?p=doc&arg=入榜规则) and tell us through "Feedback".
+3. **Why do scores and ranks change?** Scoring is dynamic and recalculated when a work's data updates — see the [Scoring Standard](/doc/评分标准).
+4. **The AI says my calls are used up.** See section 4 of the [AI Guide](/doc/AI%20使用说明); quota resets per calendar day.
+5. **My work is not listed / is in the wrong category.** See the [Admission Rules](/doc/入榜规则) and tell us through "Feedback".
 6. **Can't find the explanation you need?** Ask through "Feedback" and we will add it to the documents.
 7. **Why is there no AI summary on the search page?** Three normal cases: the keyword matched nothing; you turned it off under "Mine → Search"; or the site's daily summary allowance is used up (it returns the next day).
 
 ---
 
-**Related documents**: [AI Guide](?p=doc&arg=AI 使用说明) · [Community Guidelines](?p=doc&arg=社区公约) · [Scoring Standard](?p=doc&arg=评分标准) · [Admission Rules](?p=doc&arg=入榜规则) · [Terms of Service](?p=doc&arg=用户协议) · [Privacy Policy](?p=doc&arg=隐私政策) · [Changelog](?p=doc&arg=更新日志)
+**Related documents**: [AI Guide](/doc/AI%20使用说明) · [Community Guidelines](/doc/社区公约) · [Scoring Standard](/doc/评分标准) · [Admission Rules](/doc/入榜规则) · [Terms of Service](/doc/用户协议) · [Privacy Policy](/doc/隐私政策) · [Changelog](/doc/更新日志)
 
 > Last updated: 2026-10-22

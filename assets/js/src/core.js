@@ -1,3 +1,4 @@
+import { API_BASE } from './base.js';
 /**
  * 核心：令牌管理、API 封装、UI 工具、启动引导
  * 信任边界：本层只负责「原样传递数据」，一切规整/校验均在后端完成。
@@ -76,11 +77,11 @@ export function searchAiOn() {
  * 主管理员不受限；点赞不在此列（后端区分新增/取消，取消不应被锁）。
  * ============================================================ */
 const CD_LIMITS = {
-  'lobby.php:send':       { label: t('发言'),     max: 15, window: 60   },
-  'comments.php:create': { label: t('发表评论'), max: 20, window: 60   },
-  'ai.php:send_sync':    { label: t('AI 对话'),  max: 6,  window: 60   },
-  'feedback.php:create': { label: t('提交反馈'), max: 5,  window: 600  },
-  'auth.php:register':   { label: t('注册'),     max: 10, window: 3600 },
+  'lobby:send':           { label: t('发言'),     max: 15, window: 60   },
+  'comments:create':      { label: t('发表评论'), max: 20, window: 60   },
+  'ai:send_sync':         { label: t('AI 对话'),  max: 6,  window: 60   },
+  'feedback:create':      { label: t('提交反馈'), max: 5,  window: 600  },
+  'auth:register':        { label: t('注册'),     max: 10, window: 3600 },
 };
 
 /** 读写本机该动作的时间戳队列（只在窗口内的才留） */
@@ -185,9 +186,10 @@ export async function api(file, action, data = null, opts = {}) {
 }
 
 async function apiOnce(file, action, data = null, opts = {}) {
+  file = String(file || '').replace(/\.php$/i, '');   // 端点规整化：对外一律无扩展名
   const timeoutMs = opts.timeout || 20000;
   const method = opts.method || (data ? 'POST' : 'GET');
-  const url = new URL('api/' + file, location.href);
+  const url = new URL(API_BASE + '/' + file, location.origin);
   if (action) url.searchParams.set('action', action);
 
   const headers = { 'Accept': 'application/json' };
@@ -424,7 +426,7 @@ export async function boot() {
   try {
     const q = { first: want ? 1 : 0 };
     if (want) { q.category = want.category; q.board = want.board; q.size = want.size; }
-    const d = await api('start.php', 'app', q, { silent: true, tries: 2 });
+    const d = await api('start', 'app', q, { silent: true, tries: 2 });
     if (d && d.token) { setToken(d.token); }
     applyIdentity(d);
     state.announce = (d && d.announce !== undefined) ? String(d.announce || '') : '';
@@ -440,13 +442,13 @@ export async function boot() {
 
   // CSRF（会话级）
   try {
-    const d = await fetch('api/auth.php?action=csrf', { credentials: 'same-origin' }).then(r => r.json());
+    const d = await fetch(API_BASE + '/auth?action=csrf', { credentials: 'same-origin' }).then(r => r.json());
     if (d && d.data && d.data.csrf) state.csrf = d.data.csrf;
   } catch (e) {}
 
   if (t) {
     try {
-      const d = await api('auth.php', 'verify');
+      const d = await api('auth', 'verify');
       applyIdentity(d);
       state.booted = true;
       return state;
@@ -460,7 +462,7 @@ export async function boot() {
 
   // 无有效登录态 → 游客
   try {
-    const d = await api('auth.php', 'guest');
+    const d = await api('auth', 'guest');
     setToken(d.token);
     state.role = 'guest';
     state.username = d.username || t('游客');
@@ -477,7 +479,7 @@ export async function boot() {
 /** 静默重新获取游客令牌（失败返回 false，不抛错） */
 async function reauthGuest() {
   try {
-    const r = await fetch('api/auth.php?action=guest', { credentials: 'same-origin' });
+    const r = await fetch(API_BASE + '/auth?action=guest', { credentials: 'same-origin' });
     const j = await r.json();
     if (j && j.code === 0 && j.data && j.data.token) { setToken(j.data.token); return true; }
   } catch (e) { /* 交给上层处理 */ }
@@ -486,7 +488,7 @@ async function reauthGuest() {
 
 async function ensureGuestCsrf() {
   try {
-    const d = await api('auth.php', 'guest');
+    const d = await api('auth', 'guest');
     setToken(d.token);
     state.role = 'guest';
   } catch (e) {}
@@ -764,7 +766,7 @@ async function banGeoCheck(lockEl) {
     async function (pos) {
       const lat = pos.coords.latitude, lng = pos.coords.longitude;
       try {
-        const r = await api('discipline.php', 'geo', { lat: lat, lng: lng }, { silent: true, tries: 1 });
+        const r = await api('discipline', 'geo', { lat: lat, lng: lng }, { silent: true, tries: 1 });
         if (r && r.blocked === false) {
           saveGeo(lat, lng);
           saveBanCache(null);
@@ -819,7 +821,7 @@ export function showBanLock(info) {
   if (sw) {
     sw.addEventListener('click', function () {
       try { setToken(''); } catch (e) {}
-      location.href = location.pathname + '?p=login';
+      location.href = ((typeof window !== 'undefined' && window.__BASE) ? String(window.__BASE) : '') + '/login';
     });
   }
   return el;

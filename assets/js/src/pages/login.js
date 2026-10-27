@@ -40,7 +40,7 @@ export async function renderLogin(container) {
     container.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => { tab = b.dataset.tab; paint(); }));
     container.querySelectorAll('[data-doc]').forEach(l => l.addEventListener('click', () => navigate('#/doc/' + encodeURIComponent(l.dataset.doc))));
     container.querySelector('#skipLogin').addEventListener('click', async () => {
-      try { const d = await api('auth.php', 'guest'); await finishLogin(d, true); }
+      try { const d = await api('auth', 'guest'); await finishLogin(d, true); }
       catch (e) { toast(e.message, 'err'); }
     });
     const pane = container.querySelector('#pane');
@@ -111,7 +111,7 @@ export async function renderLogin(container) {
       if (captchaConfig().on && !captchaToken()) { toast('请先完成人机验证', 'err'); return; }
       btnLoading(btn, true);
       try {
-        const d = await api('auth.php', sub === 'register' ? 'register' : 'login', {
+        const d = await api('auth', sub === 'register' ? 'register' : 'login', {
           username: name, password: pwd,
           cap_token: captchaToken(), cap_channel: captchaChannel(),
         });
@@ -137,7 +137,7 @@ export async function renderLogin(container) {
       const btn = pane.querySelector('#guestBtn');
       if (btn.disabled) { return; }
       btnLoading(btn, true);
-      try { const d = await api('auth.php', 'guest'); await finishLogin(d, true); }
+      try { const d = await api('auth', 'guest'); await finishLogin(d, true); }
       catch (e) { toast(e.message, 'err'); btnLoading(btn, false); }
     });
   }
@@ -149,7 +149,7 @@ export async function renderLogin(container) {
     state.username = d.username || t('游客');
     // 重新校验以拉取设置与头像
     try {
-      const v = await api('auth.php', 'verify');
+      const v = await api('auth', 'verify');
       state.settings = v.settings || {};
       state.avatar = v.avatar || '';
       state.username = v.username || state.username;

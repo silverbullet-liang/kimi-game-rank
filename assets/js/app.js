@@ -28,6 +28,16 @@ const UI_PAGE = {
   apiTimeout: 20000,   // 默认请求超时（ms）
 };
 
+/* ========== base.js ========== */
+/**
+ * 站点路径前缀 —— 路径式路由（/detail/12、/doc/入榜规则）下，浏览器会以「当前页面目录」
+ * 为基准解析相对地址，`assets/js/app.js` 会变成 `/detail/assets/js/app.js`。
+ * 因此静态资源与接口一律走绝对路径，子目录部署时自动带上前缀（由 index.php 下发）。
+ */
+const SITE_BASE  = (typeof window !== 'undefined' && window.__BASE) ? String(window.__BASE) : '';
+const API_BASE   = SITE_BASE + '/api';
+const ASSET_BASE = SITE_BASE + '/assets';
+
 /* ========== i18n.js ========== */
 /**
  * 界面多语言：中 / 英 / 日。
@@ -91,7 +101,7 @@ async function i18nInit() {
   document.documentElement.lang = (I18N.lang === 'zh' ? 'zh-CN' : I18N.lang);
   if (I18N.lang === 'zh') { I18N.ready = true; return; }
   try {
-    const r = await fetch('assets/i18n/' + I18N.lang + '.json', { cache: 'no-cache' });
+    const r = await fetch(ASSET_BASE + '/i18n/' + I18N.lang + '.json', { cache: 'no-cache' });
     if (r.ok) { I18N.dict = await r.json(); }
   } catch (e) { /* 取不到就退回中文 */ }
   I18N.ready = true;
@@ -256,11 +266,11 @@ function searchAiOn() {
  * 主管理员不受限；点赞不在此列（后端区分新增/取消，取消不应被锁）。
  * ============================================================ */
 const CD_LIMITS = {
-  'lobby.php:send':       { label: t('发言'),     max: 15, window: 60   },
-  'comments.php:create': { label: t('发表评论'), max: 20, window: 60   },
-  'ai.php:send_sync':    { label: t('AI 对话'),  max: 6,  window: 60   },
-  'feedback.php:create': { label: t('提交反馈'), max: 5,  window: 600  },
-  'auth.php:register':   { label: t('注册'),     max: 10, window: 3600 },
+  'lobby:send':           { label: t('发言'),     max: 15, window: 60   },
+  'comments:create':      { label: t('发表评论'), max: 20, window: 60   },
+  'ai:send_sync':         { label: t('AI 对话'),  max: 6,  window: 60   },
+  'feedback:create':      { label: t('提交反馈'), max: 5,  window: 600  },
+  'auth:register':        { label: t('注册'),     max: 10, window: 3600 },
 };
 
 /** 读写本机该动作的时间戳队列（只在窗口内的才留） */
@@ -365,9 +375,10 @@ async function api(file, action, data = null, opts = {}) {
 }
 
 async function apiOnce(file, action, data = null, opts = {}) {
+  file = String(file || '').replace(/\.php$/i, '');   // 端点规整化：对外一律无扩展名
   const timeoutMs = opts.timeout || 20000;
   const method = opts.method || (data ? 'POST' : 'GET');
-  const url = new URL('api/' + file, location.href);
+  const url = new URL(API_BASE + '/' + file, location.origin);
   if (action) url.searchParams.set('action', action);
 
   const headers = { 'Accept': 'application/json' };
@@ -604,7 +615,7 @@ async function boot() {
   try {
     const q = { first: want ? 1 : 0 };
     if (want) { q.category = want.category; q.board = want.board; q.size = want.size; }
-    const d = await api('start.php', 'app', q, { silent: true, tries: 2 });
+    const d = await api('start', 'app', q, { silent: true, tries: 2 });
     if (d && d.token) { setToken(d.token); }
     applyIdentity(d);
     state.announce = (d && d.announce !== undefined) ? String(d.announce || '') : '';
@@ -620,13 +631,13 @@ async function boot() {
 
   // CSRF（会话级）
   try {
-    const d = await fetch('api/auth.php?action=csrf', { credentials: 'same-origin' }).then(r => r.json());
+    const d = await fetch(API_BASE + '/auth?action=csrf', { credentials: 'same-origin' }).then(r => r.json());
     if (d && d.data && d.data.csrf) state.csrf = d.data.csrf;
   } catch (e) {}
 
   if (t) {
     try {
-      const d = await api('auth.php', 'verify');
+      const d = await api('auth', 'verify');
       applyIdentity(d);
       state.booted = true;
       return state;
@@ -640,7 +651,7 @@ async function boot() {
 
   // 无有效登录态 → 游客
   try {
-    const d = await api('auth.php', 'guest');
+    const d = await api('auth', 'guest');
     setToken(d.token);
     state.role = 'guest';
     state.username = d.username || t('游客');
@@ -657,7 +668,7 @@ async function boot() {
 /** 静默重新获取游客令牌（失败返回 false，不抛错） */
 async function reauthGuest() {
   try {
-    const r = await fetch('api/auth.php?action=guest', { credentials: 'same-origin' });
+    const r = await fetch(API_BASE + '/auth?action=guest', { credentials: 'same-origin' });
     const j = await r.json();
     if (j && j.code === 0 && j.data && j.data.token) { setToken(j.data.token); return true; }
   } catch (e) { /* 交给上层处理 */ }
@@ -666,7 +677,7 @@ async function reauthGuest() {
 
 async function ensureGuestCsrf() {
   try {
-    const d = await api('auth.php', 'guest');
+    const d = await api('auth', 'guest');
     setToken(d.token);
     state.role = 'guest';
   } catch (e) {}
@@ -944,7 +955,7 @@ async function banGeoCheck(lockEl) {
     async function (pos) {
       const lat = pos.coords.latitude, lng = pos.coords.longitude;
       try {
-        const r = await api('discipline.php', 'geo', { lat: lat, lng: lng }, { silent: true, tries: 1 });
+        const r = await api('discipline', 'geo', { lat: lat, lng: lng }, { silent: true, tries: 1 });
         if (r && r.blocked === false) {
           saveGeo(lat, lng);
           saveBanCache(null);
@@ -999,7 +1010,7 @@ function showBanLock(info) {
   if (sw) {
     sw.addEventListener('click', function () {
       try { setToken(''); } catch (e) {}
-      location.href = location.pathname + '?p=login';
+      location.href = ((typeof window !== 'undefined' && window.__BASE) ? String(window.__BASE) : '') + '/login';
     });
   }
   return el;
@@ -1083,7 +1094,11 @@ function mdToHtml(md, inlineExtra) {
       .replace(/`([^`]+)`/g, '<code>$1</code>')
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
       .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (m, text, href) {
+        /* 站内链接（/ 或 # 开头）原地跳转，外链才新开标签 */
+        var inside = /^(\/|#)/.test(href);
+        return '<a href="' + href + '"' + (inside ? '' : ' target="_blank" rel="noopener"') + '>' + text + '</a>';
+      });
     return (typeof inlineExtra === 'function') ? inlineExtra(h) : h;
   };
 
@@ -1245,7 +1260,7 @@ async function saveTheme(patch) {
   setPrefs(prefs);
   applyTheme();
   if (state.role !== 'guest') {   // 普通用户 / 副管理员 / 管理员均可同步偏好
-    try { await api('profile.php', 'settings', patch); state.settings = Object.assign({}, state.settings, patch); } catch (e) {}
+    try { await api('profile', 'settings', patch); state.settings = Object.assign({}, state.settings, patch); } catch (e) {}
   }
 }
 
@@ -1840,7 +1855,7 @@ async function renderRank(container, ctx) {
         state.firstPage = null;
       }
       if (!d) {
-        d = await api('works.php', 'list', { category: cat, board: board, q: q, page: page, size: PAGE_SIZE });
+        d = await api('works', 'list', { category: cat, board: board, q: q, page: page, size: PAGE_SIZE });
       }
       if (reset) { list.innerHTML = ''; shownCount = 0; }
       const items = d.items || [];
@@ -1877,7 +1892,7 @@ async function renderRank(container, ctx) {
   }
   paintCounts(state.categories);
   if (!state.categories || !Object.keys(state.categories).length) {
-    api('site.php', 'bootstrap', null, { silent: true }).then(d => paintCounts(d && d.categories)).catch(() => {});
+    api('site', 'bootstrap', null, { silent: true }).then(d => paintCounts(d && d.categories)).catch(() => {});
   }
 
   container.querySelector('#boardSeg').addEventListener('click', e => {
@@ -1994,7 +2009,7 @@ async function loadSearchAi(container, q) {
 
   let d;
   try {
-    d = await api('ai.php', 'search_ai', { q: q }, { silent: true, timeout: 40000 });
+    d = await api('ai', 'search_ai', { q: q }, { silent: true, timeout: 40000 });
   } catch (e) { card.remove(); return; }
 
   const answer = String((d && d.answer) || '').trim();
@@ -2046,7 +2061,7 @@ async function renderDetail(container, ctx) {
 
   container.innerHTML = '<div class="skeleton" style="height:220px"></div>';
   let d;
-  try { d = await api('works.php', 'detail', { id: id }); }
+  try { d = await api('works', 'detail', { id: id }); }
   catch (e) { container.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`; return; }
 
   const sd = d.score_detail || {};
@@ -2144,7 +2159,7 @@ async function renderDetail(container, ctx) {
   voteBtn.addEventListener('click', async () => {
     if (!canPost()) { toast('登录后才能点赞', 'err'); return; }
     try {
-      const r = await api('works.php', 'vote', { id: id });
+      const r = await api('works', 'vote', { id: id });
       voteBtn.textContent = r.voted ? '已点赞' : t('点赞作品');
       voteBtn.classList.toggle('btn-ghost', r.voted);
       toast(r.voted ? '已点赞' : t('已取消'));
@@ -2281,20 +2296,20 @@ async function onCommentClick(ev) {
 
   if (btn.dataset.act === 'like') {
     if (!canPost()) { toast('登录后才能点赞', 'err'); return; }
-    try { const r = await api('comments.php', 'vote', { id: cid }); btn.textContent = t('赞 ') + r.count; } catch (e) { toast(e.message, 'err'); }
+    try { const r = await api('comments', 'vote', { id: cid }); btn.textContent = t('赞 ') + r.count; } catch (e) { toast(e.message, 'err'); }
   } else if (btn.dataset.act === 'unflag') {
     try {
-      await api('comments.php', 'flag', { id: cid, on: 0 });
+      await api('comments', 'flag', { id: cid, on: 0 });
       const f = node.querySelector('.msg-flag'); if (f) { f.remove(); }
       toast('已取消标注');
     } catch (e) { toast(e.message, 'err'); }
   } else if (btn.dataset.act === 'del') {
     if (await dialog(t('删除评论'), t('确认删除这条评论吗？删除后会移入回收站，页面不再显示。'), t('删除'), { danger: true })) {
-      try { await api('comments.php', 'delete', { id: cid }); toast('已移入回收站'); ctx.refresh(true); } catch (e) { toast(e.message, 'err'); }
+      try { await api('comments', 'delete', { id: cid }); toast('已移入回收站'); ctx.refresh(true); } catch (e) { toast(e.message, 'err'); }
     }
   } else if (btn.dataset.act === 'block') {
     try {
-      const r = await api('comments.php', 'block', { id: cid, on: btn.dataset.on === '1' ? 0 : 1 });
+      const r = await api('comments', 'block', { id: cid, on: btn.dataset.on === '1' ? 0 : 1 });
       toast(r.blocked ? '已屏蔽（折叠显示）' : t('已取消屏蔽'));
       ctx.refresh(true);
     } catch (e) { toast(e.message, 'err'); }
@@ -2303,7 +2318,7 @@ async function onCommentClick(ev) {
     if (text) {
       const post = async () => {
         try {
-          await api('comments.php', 'create', { work_id: ctx.workId, target_type: ctx.ttype, content: text, parent_id: cid }, { timeout: 30000 });
+          await api('comments', 'create', { work_id: ctx.workId, target_type: ctx.ttype, content: text, parent_id: cid }, { timeout: 30000 });
           toast('已回复');
           ctx.refresh(true);
         } catch (e) {
@@ -2346,7 +2361,7 @@ async function renderComments(container, workId, targetType) {
       if (!v) { toast('请输入内容', 'err'); return; }
       btnLoading(btn, true);
       try {
-        await api('comments.php', 'create', { work_id: workId, target_type: ttype, content: v }, { timeout: 30000 });
+        await api('comments', 'create', { work_id: workId, target_type: ttype, content: v }, { timeout: 30000 });
         ta.value = ''; form.querySelector('#cmtCount').textContent = '0';
         await refresh(true);
         toast('已发表');
@@ -2411,7 +2426,7 @@ async function renderComments(container, workId, targetType) {
   async function refresh(showSkeleton) {
     if (showSkeleton) { listBox.innerHTML = '<div class="skeleton" style="height:44px"></div>'; }
     try {
-      const d = await api('comments.php', 'list', { work_id: workId, target_type: ttype }, showSkeleton ? {} : { silent: true });
+      const d = await api('comments', 'list', { work_id: workId, target_type: ttype }, showSkeleton ? {} : { silent: true });
       st.roots = d.comments || [];
       st.total = Number(d.total || 0);
       if (st.shown < PAGE) { st.shown = PAGE; }
@@ -2434,7 +2449,7 @@ async function renderComments(container, workId, targetType) {
     if (ae && (ae.id === 'cmtText' || ae.id === 'rpText')) { return; }
     const scrim = document.getElementById('dialogScrim');
     if (scrim && !scrim.hidden) { return; }
-    api('comments.php', 'list', { work_id: workId, target_type: ttype }, { silent: true, tries: 1 })
+    api('comments', 'list', { work_id: workId, target_type: ttype }, { silent: true, tries: 1 })
       .then(d => {
         if (Number(d.total || 0) === st.total) { return; }   // 无新评论 → 不重绘
         st.roots = d.comments || [];
@@ -2469,7 +2484,7 @@ function commentReject(host, text, content, onPass) {
     btn.disabled = true;
     btn.textContent = t('重审中…');
     try {
-      const r = await api('recheck.php', 'run', { content: content }, { timeout: 30000 });
+      const r = await api('recheck', 'run', { content: content }, { timeout: 30000 });
       const v = (r && r.verdict) || 'false';
       if (v === 'false') {
         bar.querySelector('.rn-text').textContent = t('AI 复核后仍判为违规，未发表');
@@ -2555,12 +2570,12 @@ let PACKS = null;          // [ { id, name, items:[{code,file}] } ] 供分组面
 async function loadPacks() {
   if (PACKS) { return PACKS; }
   try {
-    const r = await fetch('assets/emoji/index.json', { cache: 'force-cache' });
+    const r = await fetch(ASSET_BASE + '/emoji/index.json', { cache: 'force-cache' });
     const d = await r.json();
     PACKS = (d.packs || []).filter(function (p) { return (p.items || []).length; });
     EMOJI = {};
     PACKS.forEach(function (p) {
-      (p.items || []).forEach(function (it) { EMOJI[it.code] = 'assets/emoji/' + it.file; });
+      (p.items || []).forEach(function (it) { EMOJI[it.code] = ASSET_BASE + '/emoji/' + it.file; });
     });
   } catch (e) { PACKS = []; EMOJI = {}; }
   return PACKS;
@@ -2594,7 +2609,7 @@ async function mountEmojiPicker(picker, input) {
   const draw = function (i) {
     grid.innerHTML = (packs[i].items || []).map(function (it) {
       return '<button class="pk-emoji" data-name="' + esc(it.code) + '" title="' + esc(it.code) + '">' +
-        '<img src="assets/emoji/' + esc(it.file) + '" alt="' + esc(it.code) + '" loading="lazy" draggable="false"></button>';
+        '<img src="' + ASSET_BASE + '/emoji/' + esc(it.file) + '" alt="' + esc(it.code) + '" loading="lazy" draggable="false"></button>';
     }).join('');
     picker.scrollTop = 0;
   };
@@ -2759,7 +2774,7 @@ async function playVideo(card, bv) {
   card.dataset.loading = '1';
   card.classList.add('mv-loading');
   try {
-    const d = await api('video.php', 'url', { bv: bv }, { timeout: 20000 });
+    const d = await api('video', 'url', { bv: bv }, { timeout: 20000 });
     const url = String((d && d.url) || '');
     if (!url) { throw new Error(t('视频解析失败')); }
     card.classList.remove('mv-loading');
@@ -2867,7 +2882,7 @@ async function mountWorld(body) {
       rb.addEventListener('click', async () => {
         rb.disabled = true;
         try {
-          await api('lobby.php', 'recall', { id: m.id });
+          await api('lobby', 'recall', { id: m.id });
           m.recalled = true;
           const b = el.querySelector('.bubble');
           if (b) { b.innerHTML = '<span class="recall">该消息已撤回</span>'; }
@@ -2882,7 +2897,7 @@ async function mountWorld(body) {
         if (!(await dialog(t('删除这条消息'), t('删除后这条消息在对话里不再显示（对所有人）。确认？'), t('删除'), { danger: true }))) { return; }
         db2.disabled = true;
         try {
-          await api('lobby.php', 'del', { id: m.id });
+          await api('lobby', 'del', { id: m.id });
           m.recalled = true;
           const b = el.querySelector('.bubble');
           if (b) { b.innerHTML = '<span class="recall">该消息已删除</span>'; }
@@ -2898,7 +2913,7 @@ async function mountWorld(body) {
       ub.addEventListener('click', async () => {
         ub.disabled = true;
         try {
-          await api('lobby.php', 'flag', { id: m.id, on: 0 });
+          await api('lobby', 'flag', { id: m.id, on: 0 });
           m.flag = '';
           const f = el.querySelector('.msg-flag'); if (f) { f.remove(); }
           toast('已取消标注');
@@ -2951,7 +2966,7 @@ async function mountWorld(body) {
   async function load() {
     stream.innerHTML = '<div class="skeleton" style="height:54px"></div><div class="skeleton" style="height:54px"></div>';
     try {
-      const d = await api('lobby.php', 'list', { limit: 30 });
+      const d = await api('lobby', 'list', { limit: 30 });
       stream.innerHTML = '';
       if (d && d.degraded) { errorNote(d.hint || t('对话暂时不可用，请稍后重试'), load); return; }
       const items = (d && d.items) || [];
@@ -2983,7 +2998,7 @@ async function mountWorld(body) {
       btn.disabled = true;
       btn.textContent = t('重审中…');
       try {
-        const r = await api('recheck.php', 'run', { content: payload.content }, { timeout: 30000 });
+        const r = await api('recheck', 'run', { content: payload.content }, { timeout: 30000 });
         const v = (r && r.verdict) || 'false';
         if (v === 'false') {
           bar.querySelector('.rn-text').textContent = t('AI 复核后仍判为违规，未发送');
@@ -3024,8 +3039,8 @@ async function mountWorld(body) {
     btnLoading(sendBtn, true);
     try {
       const m = (type === 'video')
-        ? await api('video.php', 'send', { input: payload.media, content: payload.content || '' }, { timeout: 90000 })
-        : await api('lobby.php', 'send', Object.assign({ type: type }, payload), { timeout: 60000 });
+        ? await api('video', 'send', { input: payload.media, content: payload.content || '' }, { timeout: 90000 })
+        : await api('lobby', 'send', Object.assign({ type: type }, payload), { timeout: 60000 });
       optEl.remove();
       put(m, true);
       if (m && m.ai) { put(m.ai, true); }
@@ -3088,7 +3103,7 @@ async function mountWorld(body) {
       try {
         const fd = new FormData();
         fd.append('file', f);
-        const resp = await fetch('api/media.php?action=upload', {
+        const resp = await fetch(API_BASE + '/media?action=upload', {
           method: 'POST',
           headers: { 'X-Token': state.token, 'X-CSRF-Token': state.csrf },
           body: fd,
@@ -3196,7 +3211,7 @@ async function mountWorld(body) {
       hint.textContent = t('解析中…');
       prev.innerHTML = '';
       try {
-        const d = await api('video.php', 'preview', { input: val }, { timeout: 25000 });
+        const d = await api('video', 'preview', { input: val }, { timeout: 25000 });
         hint.textContent = t('解析成功，确认后发送（发送时会检查视频标题与简介）');
         prev.innerHTML = videoCardHtml(d.bv, { title: d.title, cover: d.cover, dur_f: d.duration_f, author: d.author }).replace(' data-play="1"', '');
         const b = document.createElement('button');
@@ -3411,7 +3426,7 @@ async function mountAi(body) {
   /** 按历史重建消息（清洗旧数据里残留的工具标签） */
   async function loadHistory() {
     try {
-      const d = await api('ai.php', 'history');
+      const d = await api('ai', 'history');
       stream.innerHTML = '';
       (d.items || []).forEach(m => {
         const text = m.role === 'user' ? m.content : stripToolTags(m.content);
@@ -3465,7 +3480,7 @@ async function mountAi(body) {
 
   async function loadState() {
     try {
-      const d = await api('ai.php', 'models', null, { silent: true, timeout: 40000 });
+      const d = await api('ai', 'models', null, { silent: true, timeout: 40000 });
       aiModels = d.models || [];
       defaultModelName = d.default_name || '';
       const saved = selLoad();
@@ -3510,7 +3525,7 @@ async function mountAi(body) {
 
   /** 非流式兜底：返回完整回答文本。counted = 流式那次服务端是否已受理（受理过才算「已计入」，否则必须重新检查并占用额度） */
   async function sendSync(text, target, counted) {
-    const d = await api('ai.php', 'send_sync',
+    const d = await api('ai', 'send_sync',
       { content: text, fallback: counted ? 1 : 0, model: selModel, think: thinkOn ? 1 : 0 },
       { timeout: 180000, silent: true });
     const p = aiParts(target);
@@ -3552,7 +3567,7 @@ async function mountAi(body) {
     const idleTimer = setTimeout(() => { if (!gotAny && controller) { controller.abort(); } }, 15000);
 
     try {
-      const resp = await fetch('api/ai.php?action=send', {
+      const resp = await fetch(API_BASE + '/ai?action=send', {
         signal: controller.signal,
         method: 'POST',
         headers: {
@@ -3713,7 +3728,7 @@ async function mountAi(body) {
   body.querySelector('#clearAi').addEventListener('click', async () => {
     if (!(await dialog(t('清空对话'), t('将删除你与 AI 的全部聊天记录，不可恢复。确认？'), t('清空'), { danger: true }))) { return; }
     try {
-      await api('ai.php', 'clear');
+      await api('ai', 'clear');
       if (usageNow) { usageNow.textContent = ''; }
       await loadHistory();
       toast('已清空对话记录');
@@ -3823,7 +3838,7 @@ async function renderMine(container) {
   }
 
   let d;
-  try { d = await api('profile.php', 'info'); }
+  try { d = await api('profile', 'info'); }
   catch (e) { container.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`; return; }
 
   const isAdmin = isAdminish();
@@ -3936,7 +3951,7 @@ async function renderMine(container) {
   /* AI 免费模型额度卡片：独立拉取，失败静默（不影响页面其它部分） */
   (async () => {
     try {
-      const q = await api('ai.php', 'models', null, { silent: true, timeout: 40000 });
+      const q = await api('ai', 'models', null, { silent: true, timeout: 40000 });
       const set = (sel, v) => { const el = container.querySelector(sel); if (el) { el.textContent = v; } };
       set('#aiModelCount', String((q.models || []).length));
       set('#aiSiteQuota', q.site.remaining + ' / ' + q.site.limit);
@@ -3970,7 +3985,7 @@ async function renderMine(container) {
   if (swIp) swIp.addEventListener('click', async () => {
     const on = swIp.getAttribute('aria-checked') === 'true' ? 0 : 1;
     swIp.setAttribute('aria-checked', on ? 'true' : 'false');
-    try { await api('profile.php', 'settings', { ip_record: on }); state.settings.ip_record = on; toast('已保存'); }
+    try { await api('profile', 'settings', { ip_record: on }); state.settings.ip_record = on; toast('已保存'); }
     catch (e) { toast(e.message, 'err'); }
   });
 
@@ -3979,7 +3994,7 @@ async function renderMine(container) {
     const on = swNotify.getAttribute('aria-checked') === 'true' ? 0 : 1;
     swNotify.setAttribute('aria-checked', on ? 'true' : 'false');
     try {
-      await api('profile.php', 'settings', { notify: on }, { silent: true });
+      await api('profile', 'settings', { notify: on }, { silent: true });
       state.settings.notify = on;
       toast('已保存');
       if (on) { const g = await askNotifyPermission(); if (!g) toast('浏览器未授予通知权限', 'err'); }
@@ -3997,7 +4012,7 @@ async function renderMine(container) {
     ck.addEventListener('click', async () => {
       ck.disabled = true;
       try {
-        const r = await api('ai.php', 'checkin', {});
+        const r = await api('ai', 'checkin', {});
         const wb = Number(r.week_bonus) > 0 ? `！连续满 7 天，本月额度 +${r.week_bonus}` : '';
         toast('签到成功：当日额度 +' + r.daily_bonus + wb);
         renderMine(container);   // 刷新连续天数与配额分母
@@ -4010,7 +4025,7 @@ async function renderMine(container) {
 
   container.querySelector('#logoutBtn').addEventListener('click', async () => {
     if (await dialog(t('退出登录'), t('确认退出当前账号吗？'), t('退出'))) {
-      try { await api('auth.php', 'logout'); } catch (e) {}
+      try { await api('auth', 'logout'); } catch (e) {}
       setToken('');
       /* 就地切到游客态并重绘，不整页刷新 */
       state.role = 'guest'; state.uid = 0; state.username = t('游客');
@@ -4068,7 +4083,7 @@ function mountSearchAi(box, isGuest) {
       return;
     }
     try {
-      const st = await api('profile.php', 'settings', { search_ai: next });
+      const st = await api('profile', 'settings', { search_ai: next });
       state.settings = Object.assign({}, state.settings, st || {});
       toast('已保存');
     } catch (e) {
@@ -4099,7 +4114,7 @@ function mountBlockList(box, isGuest) {
       toast('已保存到本机浏览器');
     } else {
       try {
-        const st = await api('profile.php', 'settings', { block_words: v });
+        const st = await api('profile', 'settings', { block_words: v });
         state.settings = Object.assign({}, state.settings, st || {});
         toast('已保存');
       } catch (e) { toast(e.message, 'err'); }
@@ -4194,7 +4209,7 @@ function mountAppearance(box) {
       setSkinCookie(sk);
       setPrefs(Object.assign({}, getPrefs(), { skin: sk }));
       if (state.role !== 'guest') {
-        try { await api('profile.php', 'settings', { skin: sk }); state.settings.skin = sk; } catch (err) {}
+        try { await api('profile', 'settings', { skin: sk }); state.settings.skin = sk; } catch (err) {}
       }
       skinRow.querySelectorAll('.skin-card').forEach(x => x.classList.toggle('on', x === b));
       toast(t('正在切换到「') + t(SKINS[sk].name) + t('」…'));
@@ -4303,7 +4318,7 @@ function initHsl(box) {
 async function loadVisits(box) {
   if (!box) return;
   try {
-    const d = await api('profile.php', 'visits');
+    const d = await api('profile', 'visits');
     box.innerHTML = '';
     if (!d.items.length) { box.innerHTML = '<div class="tiny" style="padding:8px 0">暂无访问记录</div>'; return; }
     d.items.forEach(v => {
@@ -4319,7 +4334,7 @@ async function loadVisits(box) {
 async function loadTop3(box) {
   if (!box) return;
   try {
-    const d = await api('profile.php', 'usage');
+    const d = await api('profile', 'usage');
     const t3 = d.top3 || [];
     if (!t3.length) { box.innerHTML = '<div class="tiny">暂无用量排行</div>'; return; }
     box.innerHTML = '<div class="tiny" style="margin-bottom:6px">全站用量 Top3</div>' + t3.map((u, i) =>
@@ -4381,7 +4396,7 @@ async function renderLogin(container) {
     container.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => { tab = b.dataset.tab; paint(); }));
     container.querySelectorAll('[data-doc]').forEach(l => l.addEventListener('click', () => navigate('#/doc/' + encodeURIComponent(l.dataset.doc))));
     container.querySelector('#skipLogin').addEventListener('click', async () => {
-      try { const d = await api('auth.php', 'guest'); await finishLogin(d, true); }
+      try { const d = await api('auth', 'guest'); await finishLogin(d, true); }
       catch (e) { toast(e.message, 'err'); }
     });
     const pane = container.querySelector('#pane');
@@ -4452,7 +4467,7 @@ async function renderLogin(container) {
       if (captchaConfig().on && !captchaToken()) { toast('请先完成人机验证', 'err'); return; }
       btnLoading(btn, true);
       try {
-        const d = await api('auth.php', sub === 'register' ? 'register' : 'login', {
+        const d = await api('auth', sub === 'register' ? 'register' : 'login', {
           username: name, password: pwd,
           cap_token: captchaToken(), cap_channel: captchaChannel(),
         });
@@ -4478,7 +4493,7 @@ async function renderLogin(container) {
       const btn = pane.querySelector('#guestBtn');
       if (btn.disabled) { return; }
       btnLoading(btn, true);
-      try { const d = await api('auth.php', 'guest'); await finishLogin(d, true); }
+      try { const d = await api('auth', 'guest'); await finishLogin(d, true); }
       catch (e) { toast(e.message, 'err'); btnLoading(btn, false); }
     });
   }
@@ -4490,7 +4505,7 @@ async function renderLogin(container) {
     state.username = d.username || t('游客');
     // 重新校验以拉取设置与头像
     try {
-      const v = await api('auth.php', 'verify');
+      const v = await api('auth', 'verify');
       state.settings = v.settings || {};
       state.avatar = v.avatar || '';
       state.username = v.username || state.username;
@@ -4682,7 +4697,7 @@ function monTrend(trend) {
 }
 
 async function monOverview(box) {
-  const d = await api('monitor.php', 'stats', { range: st.range });
+  const d = await api('monitor', 'stats', { range: st.range });
   const k = d.kpi || {};
   const js = Number(k.js || 0), succ = Number(k.api_succ || 100), slowR = Number(k.slow_ratio || 0);
   box.innerHTML = `
@@ -4726,7 +4741,7 @@ function monSrvTrend(trend, slowMs) {
 }
 
 async function monSrv(box) {
-  const d = await api('monitor.php', 'srv', { range: st.range });
+  const d = await api('monitor', 'srv', { range: st.range });
   const k = d.kpi || {};
   const track = d.track_urls || [];
   const routes = d.routes || [];
@@ -4782,7 +4797,7 @@ async function monSrvList(box, route) {
   const el = box.querySelector('#monSrvDetail'); if (!el) { return; }
   el.innerHTML = '<div class="mon-sk"></div>';
   try {
-    const d = await api('monitor.php', 'srvlist', { route: route, range: st.range, page: 1 });
+    const d = await api('monitor', 'srvlist', { route: route, range: st.range, page: 1 });
     const items = d.items || [];
     el.innerHTML = monCard('请求明细 · ' + route + '（共 ' + Number(d.total || 0) + '）',
       '<table class="table"><thead><tr><th>时间</th><th>方法</th><th>状态</th><th>耗时</th><th>DB</th><th>查询</th><th>慢</th><th>内存</th><th>信息</th></tr></thead><tbody>' +
@@ -4849,7 +4864,7 @@ async function monSessions(box) {
     if (reset) { page = 1; done = false; shown = 0; body.innerHTML = ''; }
     loading = true; paintFoot();
     try {
-      const d = await api('monitor.php', 'sessions', { range: st.range, only: only, page: page });
+      const d = await api('monitor', 'sessions', { range: st.range, only: only, page: page });
       const items = d.items || [];
       total = Number(d.total || 0);
       if (!items.length && page === 1) {
@@ -4898,7 +4913,7 @@ async function monSessionDetail(box, sid) {
   el.innerHTML = '<div class="mon-sk"></div>';
   const KIND = { pv: t('访问'), js: 'JS', api: t('接口'), resource: t('资源'), perf: t('性能'), custom: t('自定义'), error: t('错误') };
   try {
-    const d = await api('monitor.php', 'session', { sid: sid, range: st.range });
+    const d = await api('monitor', 'session', { sid: sid, range: st.range });
     const items = d.items || [];
     const who = Number(d.uid) > 0 ? (d.user ? esc(d.user) : ('#' + d.uid)) : '游客';
     const meta = '<div class="mon-sess-meta">用户：<b>' + who + '</b>'
@@ -4918,7 +4933,7 @@ async function monSessionDetail(box, sid) {
 }
 
 async function monAlerts(box) {
-  const d = await api('monitor.php', 'alerts');
+  const d = await api('monitor', 'alerts');
   const items = d.items || [];
   const rows = items.length ? items.map(a => `<tr class="${a.acked ? '' : 'mon-unacked'}">
       <td>${esc(a.time)}</td><td>${esc(a.level)}</td>
@@ -4930,7 +4945,7 @@ async function monAlerts(box) {
     `<table class="table"><thead><tr><th>时间</th><th>级别</th><th>内容</th><th>实测</th><th>阈值</th><th>操作</th></tr></thead>
       <tbody>${rows}</tbody></table>`);
   box.querySelectorAll('[data-ack]').forEach(b => b.addEventListener('click', async () => {
-    try { await api('monitor.php', 'alert_ack', { id: b.dataset.ack }); toast('已确认'); monAlerts(box); }
+    try { await api('monitor', 'alert_ack', { id: b.dataset.ack }); toast('已确认'); monAlerts(box); }
     catch (e) { toast(e.message, 'err'); }
   }));
 }
@@ -4946,7 +4961,7 @@ async function monEvents(box, kind) {
   const head = HEADS[kind] || HEADS.js;
   const isDetail = (kind !== 'api' && kind !== 'perf' && kind !== 'custom');
 
-  const d = await api('monitor.php', 'events', { kind: kind, range: st.range, page: 1 });
+  const d = await api('monitor', 'events', { kind: kind, range: st.range, page: 1 });
   const groups = d.groups || [];
   const rows = groups.length ? groups.map(x => {
     if (kind === 'api') { return `<tr><td class="mon-ell" title="${esc(x.name)}">${esc(x.name)}</td><td>${x.n}</td><td>${x.avg_ms} ms</td><td>${x.slow}</td><td>${x.fails}</td></tr>`; }
@@ -4996,7 +5011,7 @@ async function monEvents(box, kind) {
     if (loading || done) { return; }
     loading = true; paintFoot();
     try {
-      const r = await api('monitor.php', 'events', { kind: kind, range: st.range, page: page });
+      const r = await api('monitor', 'events', { kind: kind, range: st.range, page: page });
       append(r.items || []);
       done = !r.has_more;
       page++;
@@ -5022,7 +5037,7 @@ async function monEvents(box, kind) {
 }
 
 async function monSettings(box) {
-  const d = await api('monitor.php', 'settings');
+  const d = await api('monitor', 'settings');
   box.innerHTML = monCard(t('采集设置'), `
       <div class="mon-row"><span>启用采集</span>
         <div class="mon-seg" id="monEnabled">
@@ -5053,7 +5068,7 @@ async function monSettings(box) {
   box.querySelector('#monSave').addEventListener('click', async ev => {
     btnLoading(ev.target, true);
     try {
-      await api('monitor.php', 'settings', {
+      await api('monitor', 'settings', {
         save: '1', enabled: enabled,
         sample: Number(box.querySelector('#monSample').value || 100),
         keep_days: Number(box.querySelector('#monKeep').value || 7),
@@ -5071,7 +5086,7 @@ async function monSettings(box) {
   });
   box.querySelector('#monPurge').addEventListener('click', async ev => {
     btnLoading(ev.target, true);
-    try { const r = await api('monitor.php', 'purge', {}); toast('已清理 ' + (Number(r.deleted) || 0) + ' 条'); }
+    try { const r = await api('monitor', 'purge', {}); toast('已清理 ' + (Number(r.deleted) || 0) + ' 条'); }
     catch (e) { toast(e.message, 'err'); }
     finally { btnLoading(ev.target, false); }
   });
@@ -5106,14 +5121,14 @@ async function renderPanel(container) {
   if (!isSub) {
     container.innerHTML = '<div class="skeleton" style="height:120px"></div>';
     let ov;
-    try { ov = await api('dashboard.php', 'overview'); }
+    try { ov = await api('dashboard', 'overview'); }
     catch (e) { container.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`; return; }
     if (!ov.panel_verified) {
       const key = await prompt_(t('控制面板验证'), t('请输入管理员密钥（64 位十六进制，由密钥原文经 sha256 计算得出）。'), t('验证'));
       if (!key) { container.innerHTML = '<div class="empty"><p>已取消验证</p></div>'; return; }
-      try { await api('admin.php', 'panel_auth', { key: key }); }
+      try { await api('admin', 'panel_auth', { key: key }); }
       catch (e) { container.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`; return; }
-      ov = await api('dashboard.php', 'overview');
+      ov = await api('dashboard', 'overview');
     }
     container.innerHTML = adminLayout();
     renderOverview(container.querySelector('#ovGrid'), ov, container);
@@ -5136,7 +5151,7 @@ async function renderPanel(container) {
     /* 副管理员的只读数据：总览、趋势、用户列表（不含 IP 与归属地明细）、访问排行。
        任一接口失败都不影响作品上传这条主线。 */
     try {
-      const ov = await api('dashboard.php', 'overview');
+      const ov = await api('dashboard', 'overview');
       const ovGrid = container.querySelector('#ovGrid');
       if (ovGrid) { renderOverview(ovGrid, ov, container); }
     } catch (e) { /* 静默 */ }
@@ -5278,7 +5293,7 @@ async function loadCommentBin(container) {
   if (!box) { return; }
   const head = container.querySelector('#cmBinHead');
   try {
-    const d = await api('admin.php', 'comments_deleted', { page: 1 });
+    const d = await api('admin', 'comments_deleted', { page: 1 });
     if (head) { head.innerHTML = '共 <b>' + Number(d.total) + '</b> 条已删除评论'; }
     if (!d.items.length) { box.innerHTML = '<div class="tiny muted">回收站是空的。</div>'; return; }
     box.innerHTML = '<table class="table"><thead><tr><th>作者</th><th>内容</th><th>所属作品</th><th>删除时间</th><th>操作</th></tr></thead><tbody>'
@@ -5294,7 +5309,7 @@ async function loadCommentBin(container) {
       if (!b) { return; }
       b.addEventListener('click', async () => {
         btnLoading(b, true);
-        try { await api('admin.php', 'comment_restore', { id: tr.dataset.cid }); toast('已恢复'); loadCommentBin(container); }
+        try { await api('admin', 'comment_restore', { id: tr.dataset.cid }); toast('已恢复'); loadCommentBin(container); }
         catch (e) { toast(e.message, 'err'); btnLoading(b, false); }
       });
     });
@@ -5311,7 +5326,7 @@ function bindCommentBin(container) {
           '将<b>彻底删除</b>回收站中的全部评论（含其点赞），<b>此操作不可撤销</b>。确认继续？', '清空', { danger: true }))) { return; }
       btnLoading(purge, true);
       try {
-        const r = await api('admin.php', 'comment_purge', {});
+        const r = await api('admin', 'comment_purge', {});
         toast('已彻底删除 ' + Number(r.purged) + ' 条');
         loadCommentBin(container);
       } catch (e) { toast(e.message, 'err'); }
@@ -5409,7 +5424,7 @@ function bindDb(container) {
   checkBtn.addEventListener('click', async () => {
     checkBtn.disabled = true;
     status.innerHTML = '<div class="skeleton" style="height:40px"></div>';
-    try { paint(await api('admin.php', 'db_status', {})); }
+    try { paint(await api('admin', 'db_status', {})); }
     catch (e) { status.innerHTML = '<div style="color:var(--danger)">' + esc(e.message) + '</div>'; }
     checkBtn.disabled = false;
   });
@@ -5420,7 +5435,7 @@ function bindDb(container) {
     result.hidden = false;
     result.innerHTML = '<div class="skeleton" style="height:48px"></div>';
     try {
-      const d = await api('admin.php', 'db_update', {}, { timeout: 120000 });
+      const d = await api('admin', 'db_update', {}, { timeout: 120000 });
       paint(d.after);
 
       let html = '';
@@ -5508,7 +5523,7 @@ function bindBackup(container) {
         const name = b.getAttribute('data-del');
         if (!(await dialog(t('删除备份'), '将永久删除 ' + name + t('，无法恢复。确定继续？'), t('删除')))) { return; }
         b.disabled = true;
-        try { await api('admin.php', 'backup_delete', { name: name }); toast('已删除'); load(); }
+        try { await api('admin', 'backup_delete', { name: name }); toast('已删除'); load(); }
         catch (e) { toast(e.message, 'err'); b.disabled = false; }
       });
     });
@@ -5516,7 +5531,7 @@ function bindBackup(container) {
 
   const load = async () => {
     box.innerHTML = '<div class="skeleton" style="height:60px"></div>';
-    try { paint(await api('admin.php', 'backup_list')); }
+    try { paint(await api('admin', 'backup_list')); }
     catch (e) { box.innerHTML = '<div class="tiny" style="color:var(--danger)">' + esc(e.message) + '</div>'; }
   };
 
@@ -5531,7 +5546,7 @@ function bindBackup(container) {
         headers['Authorization'] = 'Bearer ' + state.token;
         headers['X-Token'] = state.token;
       }
-      const resp = await fetch('api/admin.php?action=backup_download&name=' + encodeURIComponent(name),
+      const resp = await fetch(API_BASE + '/admin?action=backup_download&name=' + encodeURIComponent(name),
         { headers: headers, credentials: 'same-origin' });
       const type = resp.headers.get('Content-Type') || '';
       if (!resp.ok || type.indexOf('json') >= 0) {   // 被拦或鉴权失败时返回的是 JSON
@@ -5558,7 +5573,7 @@ function bindBackup(container) {
     btnLoading(runBtn, true);
     meta.innerHTML = '<span class="muted">正在导出，请勿关闭页面…</span>';
     try {
-      const d = await api('admin.php', 'backup', {}, { timeout: 300000, silent: true });
+      const d = await api('admin', 'backup', {}, { timeout: 300000, silent: true });
       toast('备份完成');
       meta.innerHTML = '刚生成 <b>' + esc(d.name) + '</b> · ' + fmtBytes(d.bytes)
         + ' · ' + d.tables + ' 张表 / ' + d.rows + ' 行 · 耗时 ' + d.seconds + ' 秒'
@@ -5680,7 +5695,7 @@ function bindCommunitySearch(container) {
     if (busy || !cursor) { return; }
     busy = true; paintMore();
     try {
-      const d = await api('admin.php', 'community_search', { q: q, page_token: cursor }, { timeout: 30000 });
+      const d = await api('admin', 'community_search', { q: q, page_token: cursor }, { timeout: 30000 });
       (d.items || []).forEach(it => pool.push(it));
       cursor = d.next_page_token || '';
       busy = false;
@@ -5698,7 +5713,7 @@ function bindCommunitySearch(container) {
     list.innerHTML = ''; list.hidden = false; more.hidden = true;
     btnLoading(btn, true);
     try {
-      const d = await api('admin.php', 'community_search', { q: q }, { timeout: 30000 });
+      const d = await api('admin', 'community_search', { q: q }, { timeout: 30000 });
       pool = (d.items || []).slice();
       cursor = d.next_page_token || '';
       if (!pool.length) {
@@ -5730,7 +5745,7 @@ function bindCommunitySearch(container) {
     const id = b.dataset.id || '';
     b.disabled = true; b.textContent = t('添加中…');
     try {
-      const r = await api('admin.php', 'add_work', { mode: 'manual', work_id: id }, { timeout: 60000 });
+      const r = await api('admin', 'add_work', { mode: 'manual', work_id: id }, { timeout: 60000 });
       b.textContent = t('已收录');
       toast('已收录：' + (b.dataset.title || id) + (r.scored === false ? '（未改动评分）' : ''));
       loadWorks(container, container.querySelector('#wq').value.trim(), state.role === 'subadmin');
@@ -5785,17 +5800,17 @@ function bindScore(container) {
     const auto = b.dataset.a === '1';
     lock(true);
     try {
-      const d = await api('admin.php', 'score_mode_set', { auto: auto ? 1 : 0 });
+      const d = await api('admin', 'score_mode_set', { auto: auto ? 1 : 0 });
       paint(d.auto === true);
       toast(d.auto === true ? '已恢复自动评分' : t('已关闭自动评分，之后不再改动评分'));
     } catch (e2) {
       toast(e2.message, 'err');
-      try { paint((await api('admin.php', 'score_mode', {}, { silent: true })).auto === true); } catch (e3) {}
+      try { paint((await api('admin', 'score_mode', {}, { silent: true })).auto === true); } catch (e3) {}
     }
     lock(false);
   });
 
-  api('admin.php', 'score_mode', {}, { silent: true })
+  api('admin', 'score_mode', {}, { silent: true })
     .then(d => paint(d.auto === true))
     .catch(() => { note.textContent = t('读取评分方式失败，刷新页面再试'); });
 }
@@ -5819,7 +5834,7 @@ function paintLinkState(container, on) {
 async function refreshLinkState(container, force) {
   if (container.__linkOn !== undefined && force !== true) { paintLinkState(container, container.__linkOn); return; }
   try {
-    const d = await api('admin.php', 'link_mode', {}, { silent: true });
+    const d = await api('admin', 'link_mode', {}, { silent: true });
     container.__linkOn = d.on === true;
     paintLinkState(container, container.__linkOn);
   } catch (e) { /* 读不到就不显示，不打扰操作 */ }
@@ -5862,7 +5877,7 @@ function bindLink(container) {
     const on = b.dataset.v === '1';
     lock(true);
     try {
-      const d = await api('admin.php', 'link_mode_set', { on: on ? 1 : 0 });
+      const d = await api('admin', 'link_mode_set', { on: on ? 1 : 0 });
       container.__linkOn = d.on === true;
       paintLinkState(container, container.__linkOn);
       toast(d.on === true ? '已开启智能链接识别' : t('已关闭智能链接识别'));
@@ -5889,7 +5904,7 @@ function relinkBind(container) {
     let scanned = 0, changed = 0, more = false, rounds = 0;
     try {
       for (; rounds < 60; rounds++) {
-        const r = await api('admin.php', 'relink', { limit: LIMIT });
+        const r = await api('admin', 'relink', { limit: LIMIT });
         scanned += r.scanned || 0; changed += r.changed || 0;
         note.innerHTML = '已检查 <b>' + scanned + '</b> 个，替换 <b>' + changed + '</b> 个…';
         if ((r.scanned || 0) < LIMIT) { break; }
@@ -6058,7 +6073,7 @@ function bindAiRank(container) {
     box.innerHTML = '<div class="skeleton" style="height:80px"></div>';
     if (pager) { pager.innerHTML = ''; }
     let d;
-    try { d = await api('dashboard.php', 'ai_rank', { ch: ch, page: pg }, { silent: true }); }
+    try { d = await api('dashboard', 'ai_rank', { ch: ch, page: pg }, { silent: true }); }
     catch (e) { box.innerHTML = '<div class="tiny muted">读取失败，稍后再试</div>'; return; }
     paintNote(d.split);
     const items = (d && d.items) || [];
@@ -6114,7 +6129,7 @@ async function loadStats(range, container) {
   const legend = container.querySelector('#legend');
   const dist   = container.querySelector('#distArea');
   try {
-    const d = await api('dashboard.php', 'stats', { range: range });
+    const d = await api('dashboard', 'stats', { range: range });
     const series = d.series || [];
     const metrics = [
       { k: 'signups', n: t('注册'), c: '#7C3AED' }, { k: 'logins', n: t('登录'), c: '#007AFF' },
@@ -6395,7 +6410,7 @@ function bindCredential(container) {
     btn.addEventListener('click', async () => {
       const tokField = container.querySelector('#tokInput').value.trim();
       if (!tokField) { toast('请填写 cookie/token', 'err'); return; }
-      try { await api('admin.php', 'token_set', { kimi_token: tokField }); container.querySelector('#tokInput').value = ''; toast('已加密保存'); }
+      try { await api('admin', 'token_set', { kimi_token: tokField }); container.querySelector('#tokInput').value = ''; toast('已加密保存'); }
       catch (e) { toast(e.message, 'err'); }
     });
   }
@@ -6413,7 +6428,7 @@ function bindCredential(container) {
         headers['Authorization'] = 'Bearer ' + state.token;
         headers['X-Token'] = state.token;
       }
-      const resp = await fetch('api/admin.php?action=userscript', { headers, credentials: 'same-origin' });
+      const resp = await fetch(API_BASE + '/admin?action=userscript', { headers, credentials: 'same-origin' });
       if (!resp.ok) { throw new Error('HTTP ' + resp.status); }
       const blob = await resp.blob();
       const url = window.URL.createObjectURL(blob);
@@ -6453,7 +6468,7 @@ function bindAddWork(container) {
     if (q.length < 1) { sug.hidden = true; sug.innerHTML = ''; return; }
     timer = setTimeout(async () => {
       try {
-        const d = await api('admin.php', 'search_works', { q: q }, { silent: true });
+        const d = await api('admin', 'search_works', { q: q }, { silent: true });
         if (!d.items.length) { sug.hidden = true; sug.innerHTML = ''; return; }
         sug.innerHTML = d.items.map(w =>
           `<button type="button" data-cid="${esc(w.community_id)}"><b>${esc(w.title)}</b>
@@ -6478,7 +6493,7 @@ function bindAddWork(container) {
     const btn = container.querySelector('#addBtn');
     btnLoading(btn, true); btn.textContent = t('处理中…');
     try {
-      const r = await api('admin.php', 'add_work', body, { timeout: 60000 });
+      const r = await api('admin', 'add_work', body, { timeout: 60000 });
       const noScore = r.scored === false ? '（未改动评分）' : '';
       const syncNote = r.scored === false ? '（已有作品未重算评分）' : '';
       const linkNote = r.link_real ? '（已改用真实地址）' : '';
@@ -6516,7 +6531,7 @@ function bindReclassify(container) {
     box.hidden = false;
     box.innerHTML = '<div class="skeleton" style="height:64px"></div>';
     try {
-      const d = await api('admin.php', 'reclassify_preview', {});
+      const d = await api('admin', 'reclassify_preview', {});
       const c = d.counts;
       let html = '<div class="tiny" style="line-height:1.9">'
         + '共扫描 <b>' + c.total + '</b> 件 · 需要变更 <b>' + c.changed + '</b> 件 · '
@@ -6560,7 +6575,7 @@ function bindReclassify(container) {
 
     while (true) {
       let r;
-      try { r = await api('admin.php', 'reclassify_apply', { offset: offset }, { timeout: 90000, silent: true }); }
+      try { r = await api('admin', 'reclassify_apply', { offset: offset }, { timeout: 90000, silent: true }); }
       catch (e) { text.textContent = t('中断：') + e.message; break; }
 
       applied += r.applied;
@@ -6605,7 +6620,7 @@ function bindReclassify(container) {
       if (!(await dialog(t('批量迁移分区'), t('将把「') + fromLabel + t('」迁移到「') + catName(mvTo) + t('」，确定？'), t('迁移')))) { return; }
       mvBtn.disabled = true;
       try {
-        const r = await api('admin.php', 'move_category', { from: mvFrom, to: mvTo });
+        const r = await api('admin', 'move_category', { from: mvFrom, to: mvTo });
         toast('已迁移 ' + r.moved + ' 件作品');
         loadWorks(container, container.querySelector('#wq').value.trim(), false);
       } catch (e) { toast(e.message, 'err'); }
@@ -6627,7 +6642,7 @@ function bindRefresh(container) {
         t('清理'), { danger: true }))) { return; }
       btnLoading(pruneBtn, true);
       try {
-        const r = await api('admin.php', 'prune_invalid', {});
+        const r = await api('admin', 'prune_invalid', {});
         const n = Number(r && r.pruned) || 0;
         toast(n > 0 ? ('已下架 ' + n + ' 件无效作品') : t('没有需要清理的作品'));
       } catch (e) { toast(e.message, 'err'); }
@@ -6676,7 +6691,7 @@ function bindRefresh(container) {
         if (go) {
           go.addEventListener('click', () => {
             go.disabled = true;
-            api('admin.php', 'score_recalc_start', {}).then(() => { tick(); })
+            api('admin', 'score_recalc_start', {}).then(() => { tick(); })
               .catch(() => { go.disabled = false; });
           });
         }
@@ -6687,7 +6702,7 @@ function bindRefresh(container) {
       setTimeout(tick, 3000);
     };
     const tick = () => {
-      api('admin.php', 'score_recalc_status', {}, { silent: true }).then(paintRc).catch(() => {});
+      api('admin', 'score_recalc_status', {}, { silent: true }).then(paintRc).catch(() => {});
     };
     tick();
   }
@@ -6709,7 +6724,7 @@ function bindRefresh(container) {
 
     /* 第一步：取回按排名（总分从高到低）排好的名单，整轮顺序就此固定 */
     try {
-      const p = await api('admin.php', 'refresh_plan', {}, { timeout: 90000, silent: true });
+      const p = await api('admin', 'refresh_plan', {}, { timeout: 90000, silent: true });
       plan = p.ids || [];
       total = Number(p.total) || plan.length;
       scoreOn = recalc;
@@ -6724,7 +6739,7 @@ function bindRefresh(container) {
     /* 第二步：按名单分批更新，每批 5 件 */
     for (let i = 0; i < plan.length && !stopped; i += 5) {
       let r;
-      try { r = await api('admin.php', 'refresh_batch', { ids: plan.slice(i, i + 5), auto: scoreOn ? 1 : 0 }, { timeout: 90000, silent: true }); }
+      try { r = await api('admin', 'refresh_batch', { ids: plan.slice(i, i + 5), auto: scoreOn ? 1 : 0 }, { timeout: 90000, silent: true }); }
       catch (e) { text.textContent = t('中断：') + e.message; stopped = true; break; }
 
       okN += r.ok; failN += r.fail; done += Number(r.processed) || 0;
@@ -6768,7 +6783,7 @@ function openEditor(container, id, onSaved) {
   const box = document.getElementById('dialog');
   if (!scrim || !box) { return; }
 
-  api('admin.php', 'work_get', { id: id }).then(w => {
+  api('admin', 'work_get', { id: id }).then(w => {
     const sc = w.score || {};
     let cat = String(w.category || 'game');
     let hidden = !!w.hidden;
@@ -6857,7 +6872,7 @@ function openEditor(container, id, onSaved) {
       });
       btnLoading(btn, true);
       try {
-        await api('admin.php', 'work_save', payload);
+        await api('admin', 'work_save', payload);
         toast('已保存');
         close();
         if (typeof onSaved === 'function') { onSaved(); }
@@ -6872,7 +6887,7 @@ async function loadWorks(container, q, readOnly, page) {
   const pg = Math.max(1, Number(page || 1));
   const size = workPageSize(container);
   try {
-    const d = await api('admin.php', 'works', { q: q || '', page: pg, size: size });
+    const d = await api('admin', 'works', { q: q || '', page: pg, size: size });
     const total = Number(d.total || 0);
     const pages = Math.max(1, Number(d.total_pages || 1));
 
@@ -6918,12 +6933,12 @@ async function loadWorks(container, q, readOnly, page) {
       const hidden = tr.children[3].textContent === t('已下架');
       tr.querySelector('[data-act="edit"]').addEventListener('click', () => openEditor(container, id, () => loadWorks(container, q, false, pg)));
       tr.querySelector('[data-act="toggle"]').addEventListener('click', async () => {
-        try { await api('admin.php', 'work_save', { id: id, hidden: hidden ? 0 : 1 }); toast('已更新'); loadWorks(container, q, false, pg); }
+        try { await api('admin', 'work_save', { id: id, hidden: hidden ? 0 : 1 }); toast('已更新'); loadWorks(container, q, false, pg); }
         catch (e) { toast(e.message, 'err'); }
       });
       tr.querySelector('[data-act="del"]').addEventListener('click', async () => {
         if (await dialog(t('删除作品'), t('删除后不可恢复，确认？'), t('删除'), { danger: true })) {
-          try { await api('admin.php', 'work_delete', { id: id }); toast('已删除'); loadWorks(container, q, false, pg); }
+          try { await api('admin', 'work_delete', { id: id }); toast('已删除'); loadWorks(container, q, false, pg); }
           catch (e) { toast(e.message, 'err'); }
         }
       });
@@ -6939,7 +6954,7 @@ async function loadVisitsTop(container) {
   const box = container.querySelector('#visitsTop');
   if (!box || !box.isConnected) { return; }
   try {
-    const d = await api('admin.php', 'visits_top');
+    const d = await api('admin', 'visits_top');
     const col = (title, arr) => {
       if (!arr || !arr.length) { return `<div class="tp-col"><div class="tp-h">${title}</div><div class="tiny muted">暂无数据</div></div>`; }
       const max = arr.reduce((m, x) => Math.max(m, Number(x.count) || 0), 1);
@@ -7010,7 +7025,7 @@ async function loadPeer(container) {
   const addBtn  = container.querySelector('#peerAdd');
   if (!listEl) { return; }
 
-  const st = await api('admin.php', 'peers_state', {}, { silent: true }).catch(() => null);
+  const st = await api('admin', 'peers_state', {}, { silent: true }).catch(() => null);
   if (!st) { listEl.innerHTML = '<div class="tiny muted">读取失败</div>'; return; }
   keyEl.textContent = !st.sodium
     ? '主机未启用 sodium 扩展，互通不可用'
@@ -7033,7 +7048,7 @@ async function loadPeer(container) {
   drawList();
 
   const refresh = async () => {
-    const s = await api('admin.php', 'peers_state', {}, { silent: true }).catch(() => null);
+    const s = await api('admin', 'peers_state', {}, { silent: true }).catch(() => null);
     if (s && s.peers) { rows = s.peers; drawList(); }
   };
 
@@ -7059,7 +7074,7 @@ async function loadPeer(container) {
         pubkey: formEl.querySelector('#pKey').value.trim(),
         enabled: formEl.querySelector('#pEn').checked ? 1 : 0,
       };
-      try { await api('admin.php', 'peer_save', payload); toast('已保存'); formEl.innerHTML = ''; await refresh(); }
+      try { await api('admin', 'peer_save', payload); toast('已保存'); formEl.innerHTML = ''; await refresh(); }
       catch (e) { toast(e.message || t('保存失败'), 'err'); }
     });
   };
@@ -7071,13 +7086,13 @@ async function loadPeer(container) {
     if (b.dataset.a === 'edit') { openForm(rows.find(r => Number(r.id) === id)); return; }
     if (b.dataset.a === 'del') {
       if (!(await dialog(t('删除站点'), t('将从列表中移除该站点，不影响已同步的数据。确定？'), t('删除')))) { return; }
-      try { await api('admin.php', 'peer_del', { id }); toast('已删除'); await refresh(); }
+      try { await api('admin', 'peer_del', { id }); toast('已删除'); await refresh(); }
       catch (e) { toast(e.message || t('删除失败'), 'err'); }
       return;
     }
     if (b.dataset.a === 'test') {
       b.disabled = true; b.textContent = t('测试中…');
-      try { await api('admin.php', 'peer_test', { id }, { timeout: 30000 }); toast('连接正常，密钥校验通过'); }
+      try { await api('admin', 'peer_test', { id }, { timeout: 30000 }); toast('连接正常，密钥校验通过'); }
       catch (e) { toast(e.message || t('连接失败'), 'err'); }
       finally { b.disabled = false; b.textContent = t('测试'); }
     }
@@ -7089,7 +7104,7 @@ async function loadPeer(container) {
     if (!(await dialog(t('一键互通'), t('将与列表中所有启用站点双向同步数据，期间不要关闭页面。确定继续？'), t('开始')))) { return; }
     syncBtn.disabled = true; syncBtn.textContent = t('互通中…');
     try {
-      const r = await api('admin.php', 'peer_sync', {}, { timeout: 300000 });
+      const r = await api('admin', 'peer_sync', {}, { timeout: 300000 });
       const list = (r.results || []).map(x => x.ok
         ? x.name + '：拉取 ' + x.pulled + ' / 推送 ' + x.pushed + '（' + x.tables + ' 张表'
           + (Number(x.failed || 0) > 0 ? '，跳过 ' + x.failed + ' 行' : '') + '）'
@@ -7116,7 +7131,7 @@ function discBlock() {
 
 async function discEditDialog(row) {
   let preset = [];
-  try { preset = ((await api('admin.php', 'disc_reasons', {}, { silent: true })).items) || []; } catch (e) { }
+  try { preset = ((await api('admin', 'disc_reasons', {}, { silent: true })).items) || []; } catch (e) { }
   const cur = row.reasons || [];
   const opts = [];
   preset.concat(cur).forEach(r => { if (r && opts.indexOf(r) < 0) { opts.push(r); } });
@@ -7218,7 +7233,7 @@ async function loadDisc(container) {
   const box = container.querySelector('#discListBox');
   if (!box) { return; }
   try {
-    const d = await api('admin.php', 'disc_list', { page: 1 });
+    const d = await api('admin', 'disc_list', { page: 1 });
     const items = d.items || [];
     if (!items.length) { box.innerHTML = '<div class="tiny muted">还没有通报记录。</div>'; return; }
 
@@ -7239,12 +7254,12 @@ async function loadDisc(container) {
       tr.querySelector('[data-act="edit"]').addEventListener('click', async () => {
         const patch = await discEditDialog(row);
         if (!patch) { return; }
-        try { await api('admin.php', 'disc_update', patch); toast('已更新该通报'); loadDisc(container); }
+        try { await api('admin', 'disc_update', patch); toast('已更新该通报'); loadDisc(container); }
         catch (e) { toast(e.message, 'err'); }
       });
       tr.querySelector('[data-act="revoke"]').addEventListener('click', async () => {
         if (!(await dialog(t('撤销通报'), t('将删除该通报并解除其账号与 IP 封禁，确认？'), t('撤销'), { danger: true }))) { return; }
-        try { await api('admin.php', 'disc_delete', { id: row.id }); toast('已撤销'); loadDisc(container); }
+        try { await api('admin', 'disc_delete', { id: row.id }); toast('已撤销'); loadDisc(container); }
         catch (e) { toast(e.message, 'err'); }
       });
 
@@ -7262,7 +7277,7 @@ async function loadDisc(container) {
  */
 async function discDialog(ids, names) {
   let preset = [];
-  try { preset = ((await api('admin.php', 'disc_reasons', {}, { silent: true })).items) || []; } catch (e) { }
+  try { preset = ((await api('admin', 'disc_reasons', {}, { silent: true })).items) || []; } catch (e) { }
 
   return new Promise(resolve => {
     const scrim = document.getElementById('dialogScrim');
@@ -7357,7 +7372,7 @@ async function submitDiscipline(container, ids, names, q, readOnly, pg) {
   const form = await discDialog(ids, names);
   if (!form) { return; }
   try {
-    const r = await api('admin.php', 'disc_create', {
+    const r = await api('admin', 'disc_create', {
       user_ids: JSON.stringify(ids),
       reasons: JSON.stringify(form.reasons),
       note: form.note,
@@ -7388,7 +7403,7 @@ async function loadUsers(container, q, readOnly, page) {
   const pager = container.querySelector('#userPager');
   const pg = Math.max(1, Number(page || 1));
   try {
-    const d = await api('admin.php', 'users', { q: q, page: pg });
+    const d = await api('admin', 'users', { q: q, page: pg });
     if (!d.items.length) {
       box.innerHTML = '<div class="tiny">' + (pg > 1 ? '这一页没有用户了。' : t('暂无用户')) + '</div>';
       if (pager) {
@@ -7423,7 +7438,7 @@ async function loadUsers(container, q, readOnly, page) {
       const delBtn = tr.querySelector('[data-act="del"]');
       if (delBtn) delBtn.addEventListener('click', async () => {
         if (await dialog(t('删除用户'), t('将删除「') + esc(uname) + t('」及其全部数据，不可恢复。确认？'), t('删除'), { danger: true })) {
-          try { await api('admin.php', 'user_delete', { id: tr.dataset.id }); toast('已删除'); loadUsers(container, q, readOnly, pg); }
+          try { await api('admin', 'user_delete', { id: tr.dataset.id }); toast('已删除'); loadUsers(container, q, readOnly, pg); }
           catch (e) { toast(e.message, 'err'); }
         }
       });
@@ -7434,7 +7449,7 @@ async function loadUsers(container, q, readOnly, page) {
         const v = String(nn).trim();
         if (v.length < 2) { toast('用户名至少 2 个字符', 'err'); return; }
         if (v === uname) { return; }
-        try { await api('admin.php', 'user_rename', { id: tr.dataset.id, username: v }); toast('已改名为「' + v + '」'); loadUsers(container, q, readOnly, pg); }
+        try { await api('admin', 'user_rename', { id: tr.dataset.id, username: v }); toast('已改名为「' + v + '」'); loadUsers(container, q, readOnly, pg); }
         catch (e) { toast(e.message, 'err'); }
       });
       const discBtn = tr.querySelector('[data-act="disc"]');
@@ -7451,7 +7466,7 @@ async function loadUsers(container, q, readOnly, page) {
             + t('· 获得作品搜索/上传与回复反馈权限'), t('确认设立')))) { return; }
         btnLoading(proBtn, true);
         try {
-          const r = await api('admin.php', 'sub_add', { username: uname, secret: '' });
+          const r = await api('admin', 'sub_add', { username: uname, secret: '' });
           toast('已升级为副管理员');
           await dialog(t('升级完成'),
             '「<b>' + esc(r.username) + '</b>」现为副管理员：<b>密码保持不变</b>，数据全部保留。<br><br>'
@@ -7485,7 +7500,7 @@ async function loadSubs(container) {
   const box = container.querySelector('#subList');
   if (!box) return;
   try {
-    const d = await api('admin.php', 'subs');
+    const d = await api('admin', 'subs');
     /* 豹子号余量：池用尽后新副管理员自动改用普通 8 位 UID，身份与权限不受影响，
        这里把余量摆在眼前，免得加人时对着 UID 发懵。 */
     const bTotal = Number(d.babao_total || 0), bLeft = Number(d.babao_left || 0);
@@ -7508,13 +7523,13 @@ async function loadSubs(container) {
         if (await dialog(t('取消副管理员身份'),
             '该账号将变回普通用户：<br>· 评论、对话、反馈等数据<b>全部保留</b><br>· UID 由豹子号换回普通编号<br>· 若该账号是升级而来，仍可用其原密码登录',
             t('取消身份'))) {
-          try { await api('admin.php', 'sub_demote', { id: tr.dataset.id }); toast('已取消副管理员身份'); loadSubs(container); loadUsers(container, container.querySelector('#uq').value.trim()); }
+          try { await api('admin', 'sub_demote', { id: tr.dataset.id }); toast('已取消副管理员身份'); loadSubs(container); loadUsers(container, container.querySelector('#uq').value.trim()); }
           catch (e) { toast(e.message, 'err'); }
         }
       });
       tr.querySelector('[data-act="del"]').addEventListener('click', async () => {
         if (await dialog(t('删除副管理员'), t('将同时删除其账号与全部数据，不可恢复。若只是收回权限，请用「取消身份」。确认？'), t('删除'), { danger: true })) {
-          try { await api('admin.php', 'sub_del', { id: tr.dataset.id }); toast('已删除'); loadSubs(container); }
+          try { await api('admin', 'sub_del', { id: tr.dataset.id }); toast('已删除'); loadSubs(container); }
           catch (e) { toast(e.message, 'err'); }
         }
       });
@@ -7536,7 +7551,7 @@ async function loadSubs(container) {
     if (!v) { return; }
     subTimer = setTimeout(async () => {
       try {
-        const d = await api('admin.php', 'users', { q: v, page: 1 }, { silent: true });
+        const d = await api('admin', 'users', { q: v, page: 1 }, { silent: true });
         const hit = (d.items || []).find(u => String(u.username) === v);
         if (!hintEl) { return; }
         if (!hit) {
@@ -7559,7 +7574,7 @@ async function loadSubs(container) {
     const btn = container.querySelector('#subAdd');
     btnLoading(btn, true);
     try {
-      const r = await api('admin.php', 'sub_add', { username: n, secret: k });
+      const r = await api('admin', 'sub_add', { username: n, secret: k });
       nameEl.value = ''; keyEl.value = ''; if (hintEl) { hintEl.innerHTML = ''; }
       const modeTxt = {
         promoted:          [t('现有用户已升级为副管理员'), '账号「<b>' + esc(r.username) + '</b>」已升级：<b>密码保持不变</b>（继续用原密码登录），评论、对话等数据全部保留，UID 已换为豹子号。'],
@@ -7585,9 +7600,9 @@ async function loadSubs(container) {
 function bindAnnounce(container) {
   const inp = container.querySelector('#annInput');
   if (!inp) return;
-  api('admin.php', 'announce_get').then(a => { inp.value = a.content || ''; }).catch(() => {});
+  api('admin', 'announce_get').then(a => { inp.value = a.content || ''; }).catch(() => {});
   container.querySelector('#annSave').addEventListener('click', async () => {
-    try { await api('admin.php', 'announce_set', { content: inp.value }); toast('公告已更新'); }
+    try { await api('admin', 'announce_set', { content: inp.value }); toast('公告已更新'); }
     catch (e) { toast(e.message, 'err'); }
   });
 }
@@ -7614,7 +7629,7 @@ function startPanelPolling(container) {
       const uPgEl = container.querySelector('#userPager');
       const rangeEl = container.querySelector('#rangeSeg button.on');
 
-      const ov = await api('dashboard.php', 'overview', null, { silent: true });
+      const ov = await api('dashboard', 'overview', null, { silent: true });
       const ovGrid = container.querySelector('#ovGrid');
       if (ovGrid) { renderOverview(ovGrid, ov, container); }
 
@@ -7679,8 +7694,8 @@ async function renderDoc(container, ctx) {
   try {
     const lang = docLang();
     const path = (lang === 'en')
-      ? 'assets/docs/en/' + (SLUG[name] || 'features') + '.md'
-      : 'assets/docs/' + encodeURIComponent(name) + '.md';
+      ? ASSET_BASE + '/docs/en/' + (SLUG[name] || 'features') + '.md'
+      : ASSET_BASE + '/docs/' + encodeURIComponent(name) + '.md';
     const resp = await fetch(path, { cache: 'no-cache' });
     if (!resp.ok) throw new Error(lang === 'en' ? 'English version of this document is not available yet' : '文档加载失败');
     const md = await resp.text();
@@ -7803,7 +7818,7 @@ async function renderFeedback(container) {
     const text = container.querySelector('#fbText').value.trim();
     if (text.length < 2) { toast('内容太短', 'err'); return; }
     btnLoading(send, true);
-    try { await api('feedback.php', 'create', { content: text, is_public: vis }); toast('已提交'); container.querySelector('#fbText').value = ''; load(); }
+    try { await api('feedback', 'create', { content: text, is_public: vis }); toast('已提交'); container.querySelector('#fbText').value = ''; load(); }
     catch (e) { toast(e.message, 'err'); }
     finally { btnLoading(send, false); }
   });
@@ -7812,7 +7827,7 @@ async function renderFeedback(container) {
     const list = container.querySelector('#fbList');
     list.innerHTML = '<div class="skeleton" style="height:70px"></div>';
     try {
-      const d = await api('feedback.php', 'list');
+      const d = await api('feedback', 'list');
       list.innerHTML = '';
       if (!d.items.length) { list.innerHTML = '<div class="empty" style="padding:26px">暂无反馈</div>'; return; }
       d.items.forEach(f => list.appendChild(fbNode(f, isAdmin, load)));
@@ -7841,13 +7856,13 @@ function fbNode(f, isAdmin, reload) {
   if (reply) reply.addEventListener('click', async () => {
     const replyText = await promptText();
     if (!replyText) return;
-    try { await api('feedback.php', 'reply', { id: f.id, content: replyText }); toast('已回复'); reload(); }
+    try { await api('feedback', 'reply', { id: f.id, content: replyText }); toast('已回复'); reload(); }
     catch (e) { toast(e.message, 'err'); }
   });
   const del = el.querySelector('[data-act="del"]');
   if (del) del.addEventListener('click', async () => {
     if (await dialog(t('删除反馈'), t('确认删除？'), t('删除'), { danger: true })) {
-      try { await api('feedback.php', 'delete', { id: f.id }); toast('已删除'); reload(); }
+      try { await api('feedback', 'delete', { id: f.id }); toast('已删除'); reload(); }
       catch (e) { toast(e.message, 'err'); }
     }
   });
@@ -7993,7 +8008,7 @@ async function renderSubmit(container) {
     try {
       let d = null;
       try {
-        const r = await api('submit.php', 'qr_new', null, { silent: true });
+        const r = await api('submit', 'qr_new', null, { silent: true });
         if (r && r.code) { d = { code: r.code, content: qrContent(r.code) }; }   // 统一带 device_id
       } catch (e) { /* 主机侧取不到 → 浏览器直连 */ }
       if (!d) {
@@ -8018,7 +8033,7 @@ async function renderSubmit(container) {
         if (left <= 0) { stopQR(); $('sbQrTip').textContent = t('二维码已过期，请重新生成'); return; }
         try {
           let r = null;
-          try { r = await api('submit.php', 'qr_poll', { code: d.code }, { silent: true }); }
+          try { r = await api('submit', 'qr_poll', { code: d.code }, { silent: true }); }
           catch (e) { try { r = await kimiAuth('GetLoginQRCodeStatus', { code: d.code }); } catch (e2) { r = null; } }
           if (!r) { return; }
           if (r.accessToken && !r.token) { r.token = r.accessToken; }
@@ -8060,7 +8075,7 @@ async function renderSubmit(container) {
       const my = ++seq;
       hits.innerHTML = '<p class="tiny muted">搜索中…</p>';
       try {
-        const d = await api('submit.php', 'community_search', { q, token }, { silent: true });
+        const d = await api('submit', 'community_search', { q, token }, { silent: true });
         if (my !== seq) { return; }
         const list = (d && d.list) || [];
         if (!list.length) { hits.innerHTML = '<p class="tiny muted">社区里没有找到匹配的作品。</p>'; return; }
@@ -8120,7 +8135,7 @@ async function renderSubmit(container) {
     btnLoading(btn, true);
     hint.textContent = t('正在抓取作品并计算评分，可能需要十几秒…');
     try {
-      await api('submit.php', 'submit', { name, work_id: wid, cover, token }, { silent: true });
+      await api('submit', 'submit', { name, work_id: wid, cover, token }, { silent: true });
       hint.textContent = t('已收录，正在跳转到作品页…');
       toast('提交成功');
       setTimeout(() => navigate('#/detail/' + wid), 600);
@@ -8187,7 +8202,7 @@ function reasonListInline(reasons) {
 
 /** 违纪界面 / 通报详情：$mine 为真时是「你被通报了」的口吻 */
 async function paintDetail(container, id, mine) {
-  const d = await api('discipline.php', 'get', { id: id }, { silent: true });
+  const d = await api('discipline', 'get', { id: id }, { silent: true });
   const wrap = document.createElement('div');
 
   wrap.innerHTML = `
@@ -8260,7 +8275,7 @@ async function renderDiscipline(container, ctx) {
 
   const list = box.querySelector('#discList');
   try {
-    const d = await api('discipline.php', 'list', { page: 1 }, { silent: true });
+    const d = await api('discipline', 'list', { page: 1 }, { silent: true });
     const items = d.items || [];
     if (!items.length) { list.innerHTML = '<div class="empty">还没有通报记录</div>'; return; }
     list.innerHTML = '';
@@ -8345,44 +8360,60 @@ const routes = {
 let currentPage = '';
 
 /* ---------- URL ↔ 路由 ----------
- * 对外的地址形如 ?p=work&id=12（旧式 #/work?id=12 链接仍可访问并自动转换）。
- * 之所以用查询参数而非 #：任何浏览器、任何设备打开该地址都能直达同一界面。
+ * 对外一律是普通路径：/rank 、/detail/12 、/doc/入榜规则 、/chat?q=关键词。
+ * 部署在子目录时由服务端下发 window.__BASE 作前缀，前端不必猜。
+ * 旧地址（?p=detail&arg=12、#/detail/12）仍可打开：服务端 301，前端另有兜底。
  * 敏感参数（控制面板密钥等）一律不写入 URL，只走请求体。 */
+const URL_BASE = SITE_BASE;
+
+/** 路由（#/name/arg?q）→ 地址（/name/arg?q） */
 function routeToUrl(hash) {
   const raw = String(hash || '').replace(/^#\/?/, '');
   const [path, query] = raw.split('?');
   const seg = String(path || '').split('/').filter(Boolean);
   const sp = new URLSearchParams(query || '');
-  const url = new URL(location.href);
-  url.search = '';
-  url.searchParams.set('p', seg[0] || 'rank');
-  if (seg.length > 1) { url.searchParams.set('arg', seg.slice(1).join('/')); }
-  sp.forEach((v, k) => { if (k && k !== 'p' && k !== 'arg') { url.searchParams.set(k, v); } });
-  return url.pathname + url.search;
+  sp.delete('p');
+  sp.delete('arg');
+  let url = URL_BASE + '/' + encodeURIComponent(seg[0] || 'rank');
+  if (seg.length > 1) { url += '/' + seg.slice(1).map(encodeURIComponent).join('/'); }
+  const q = sp.toString();
+  return q ? url + '?' + q : url;
 }
 
 /* 敏感界面：不接受通过地址参数直达，必须由站内入口进入（控制面板另有二次验证） */
 const SENSITIVE_PAGES = ['panel'];
 
 function readRoute() {
-  if (location.hash && location.hash.length > 1) { return location.hash; }   // 旧式链接优先
-  const u = new URL(location.href);
-  const qs = new URLSearchParams(u.search);
+  if (location.hash && location.hash.length > 1) { return location.hash; }   // 旧式 #/ 链接优先
   const KNOWN = ['rank', 'detail', 'chat', 'mine', 'login', 'doc', 'feedback', 'about', 'violation', 'discipline'];
-  let p = qs.get('p') || '';
-  let arg = qs.get('arg') || '';
+
+  /* 主路径：/rank 、/detail/12 、/doc/入榜规则 */
+  let path = location.pathname;
+  if (URL_BASE && path.indexOf(URL_BASE) === 0) { path = path.slice(URL_BASE.length); }
+  const seg = path.split('/').filter(Boolean).map(s => {
+    try { return decodeURIComponent(s); } catch (e) { return s; }
+  });
+  let name = seg[0] || '';
+  let arg = seg.slice(1).join('/');
+
+  /* 兜底：查询式旧地址（服务端已 301，这里只处理脚本内手拼的情况） */
+  const qs = new URLSearchParams(location.search);
+  if (KNOWN.indexOf(name) < 0) {
+    let p = qs.get('p') || '';
+    if (!p) {
+      for (let i = 0; i < KNOWN.length; i++) {
+        const k = KNOWN[i];
+        if (qs.has(k)) { p = k; const v = qs.get(k) || ''; if (v) { arg = v; } break; }
+      }
+    }
+    if (!p) { return ''; }
+    const sp = p.split('/');
+    name = sp[0];
+    if (!arg && sp.length > 1) { arg = sp[1]; }
+  }
   qs.delete('p');
   qs.delete('arg');
-  /* 宽容写法：?p=chat 等价于裸参数 ?chat；?doc=入榜规则 等价于 ?p=doc&arg=入榜规则 */
-  if (!p) {
-    for (let i = 0; i < KNOWN.length; i++) {
-      const k = KNOWN[i];
-      if (qs.has(k)) { p = k; const v = qs.get(k) || ''; if (v) { arg = v; } qs.delete(k); break; }
-    }
-  }
-  if (!p) { return ''; }
-  const q = qs.toString();
-  return '#/' + p + (arg ? '/' + arg : '') + (q ? '?' + q : '');
+  return '#/' + name + (arg ? '/' + arg : '') + (qs.toString() ? '?' + qs.toString() : '');
 }
 
 function parseHash() {
@@ -8616,7 +8647,7 @@ function renderDrawer() {
       if (it.act === 'search') { openSearch(); return; }
       if (it.act === 'logout') {
         if (await dialog(t('退出登录'), t('确认退出当前账号吗？'), t('退出'))) {
-          try { await api('auth.php', 'logout'); } catch (e) {}
+          try { await api('auth', 'logout'); } catch (e) {}
           setToken('');
           /* 就地切到游客态：重绘抽屉并跳转，不再整页刷新 */
           state.role = 'guest'; state.uid = 0; state.username = t('游客');
@@ -8671,6 +8702,20 @@ function bindEvents() {
     const cur = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
     saveTheme({ theme: cur === 'dark' ? 'light' : 'dark' });
     renderDrawer();
+  });
+
+  /* 站内链接（文档正文、服务端渲染内容里的 /rank、/doc/xxx 等）走前端路由，
+     不再整页刷新；外链、新标签打开、组合键点击一律放行 */
+  document.addEventListener('click', function (e) {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) { return; }
+    const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+    if (!a || (a.target && a.target !== '_self')) { return; }
+    const href = a.getAttribute('href') || '';
+    if (href.charAt(0) !== '/') { return; }
+    const path = href.slice(URL_BASE.length);
+    if (!/^\/(rank|detail|chat|mine|login|doc|feedback|about|violation|discipline)(\/|$|\?)/.test(path)) { return; }
+    e.preventDefault();
+    navigate(path);
   });
 
   /* 返回：traverse —— 命中缓存直接恢复，不重新加载 */
@@ -8731,7 +8776,7 @@ function schedulePoll() {
       && window.__chatPollEnabled === true && !window.__aiBusy;
     if (canPoll) {
       try {
-        const d = await api('lobby.php', 'list', { since_id: lastMsgId, limit: 20 }, { silent: true, tries: 1 });
+        const d = await api('lobby', 'list', { since_id: lastMsgId, limit: 20 }, { silent: true, tries: 1 });
         const items = d.items || [];
         if (items.length) {
           const fresh = items.filter(m => m.id > lastMsgId);
@@ -8834,7 +8879,7 @@ function renderAbout(container) {
   /* 管理者名单：实时读取。走公开只读接口，与控制面板那条链路完全分开 */
   const alBox = container.querySelector('#adminList');
   if (alBox) {
-    api('site.php', 'admins')
+    api('site', 'admins')
       .then(function (d) { alBox.innerHTML = adminListHtml(d.items); })
       .catch(function () { alBox.innerHTML = adminListHtml(null); });
   }
@@ -8891,11 +8936,11 @@ function maybeNameFix() {
     const name = String(v).trim();
     if (!name) { toast('用户名不能为空', 'err'); __nameFixShown = false; return; }
     try {
-      const r = await api('auth.php', 'rename', { username: name });
+      const r = await api('auth', 'rename', { username: name });
       state.username = r.username || name;
       state.nameFix = null;
       try {
-        const vv = await api('auth.php', 'verify');   // 头像按用户名生成，一并刷新
+        const vv = await api('auth', 'verify');   // 头像按用户名生成，一并刷新
         state.avatar = vv.avatar || '';
         state.settings = vv.settings || state.settings;
         state.nameFix = vv.name_fix || null;
@@ -8930,7 +8975,7 @@ async function refreshDiscState(force) {
   if (now - __discLast < (force ? 4000 : 8000)) { return; }
   __discLast = now;
   try {
-    const d = await api('start.php', 'app', null, { silent: true, tries: 1 });
+    const d = await api('start', 'app', null, { silent: true, tries: 1 });
     state.ban  = (d && d.ban)  ? d.ban  : null;
     state.disc = (d && d.disc) ? d.disc : null;
     saveBanCache(state.ban);      // 缓存封禁状态：刷新 / 切页立即可见，解封自动清除
@@ -9006,11 +9051,11 @@ async function main() {
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden) { refreshDiscState(); }
   });
-  /* 首屏地址规范化：hash / 裸参数统一改为 ?p= 形式；无参数默认「我的」。
+  /* 首屏地址规范化：旧式 hash / 查询参数一律改写为普通路径；根地址即榜单。
      敏感界面不接受通过地址直达（站内入口仍可正常进入）。 */
-  const initial = readRoute();
+  const initial = readRoute() || '#/rank';
   const initialPage = String(initial || '').replace(/^#\/?/, '').split('?')[0].split('/')[0];
-  const safeInitial = (initial && SENSITIVE_PAGES.indexOf(initialPage) < 0) ? initial : '#/mine';
+  const safeInitial = (SENSITIVE_PAGES.indexOf(initialPage) < 0) ? initial : '#/mine';
   history.replaceState({}, '', routeToUrl(safeInitial));
   await route();
   maybeNameFix();          // 存量用户名待更新：提醒并引导改名（不阻断功能）

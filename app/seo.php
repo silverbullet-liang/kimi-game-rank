@@ -49,23 +49,65 @@ function seo_is_mirror(): bool
 }
 
 /* ============================================================
- * 路由（与前端 app.js 的 ?p= 规则一致）
+ * 路由（与前端 app.js 的路径规则一致）
+ *   对外地址一律是普通路径：/rank、/detail/12、/doc/入榜规则
+ *   旧地址（?p=rank&arg=12、#/rank/12）继续可用，由 seo_legacy_redirect_url() 301 归一
  * ============================================================ */
+
+/** 已知界面名（新增页面必须同时加到 app.js 的 KNOWN 与这里） */
+function seo_route_names(): array
+{
+    return array('rank','detail','chat','mine','login','doc','panel','monitor','feedback','about','violation','discipline');
+}
+
+/** 站点根路径：部署在子目录时返回 /kimgr 之类的前缀，根目录部署返回空串 */
+function seo_base_path(): string
+{
+    $sn  = isset($_SERVER['SCRIPT_NAME']) ? (string)$_SERVER['SCRIPT_NAME'] : '/index.php';
+    $dir = rtrim(str_replace('\\', '/', dirname($sn)), '/');
+    return ($dir === '' || $dir === '.' || $dir === '/') ? '' : $dir;
+}
+
+/** 当前请求的路径片段（剥离站点前缀、已解码、忽略空段） */
+function seo_path_segments(): array
+{
+    $raw  = isset($_SERVER['REQUEST_URI']) ? (string)$_SERVER['REQUEST_URI'] : '/';
+    $path = rawurldecode((string)parse_url($raw, PHP_URL_PATH));
+    $base = seo_base_path();
+    if ($base !== '' && strpos($path, $base) === 0) { $path = substr($path, strlen($base)); }
+    $seg = array();
+    foreach (explode('/', trim($path, '/')) as $s) {
+        if ($s !== '') { $seg[] = $s; }
+    }
+    return $seg;
+}
+
 function seo_request_route(): array
 {
-    $known = array('rank','detail','chat','mine','login','doc','panel','monitor','feedback','about','violation','discipline');
-    $p = isset($_GET['p']) ? trim((string)$_GET['p']) : '';
-    $arg = isset($_GET['arg']) ? trim((string)$_GET['arg']) : '';
-    if ($p === '') {                                   // 宽容写法：?chat 等价 ?p=chat
-        foreach ($known as $k) {
-            if (isset($_GET[$k])) { $p = $k; $v = trim((string)$_GET[$k]); if ($v !== '') { $arg = $v; } break; }
+    $known = seo_route_names();
+
+    /* 主路径：/rank 、/detail/12 、/doc/入榜规则 */
+    $segs = seo_path_segments();
+    $name = $segs ? strtolower(trim($segs[0])) : '';
+    $arg  = count($segs) > 1 ? implode('/', array_slice($segs, 1)) : '';
+
+    /* 兼容旧查询式地址：?p=detail&arg=12 、?p=detail/12 、?chat */
+    if (!in_array($name, $known, true)) {
+        $name = '';
+        $p    = isset($_GET['p']) ? trim((string)$_GET['p']) : '';
+        if ($p === '') {
+            foreach ($known as $k) {
+                if (isset($_GET[$k])) { $p = $k; $v = trim((string)$_GET[$k]); if ($v !== '') { $arg = $v; } break; }
+            }
         }
+        if ($p !== '') {
+            $sp   = explode('/', $p);
+            $name = strtolower(trim($sp[0]));
+            if ($arg === '' && count($sp) > 1) { $arg = $sp[1]; }
+            if ($arg === '' && isset($_GET['arg'])) { $arg = trim((string)$_GET['arg']); }
+        }
+        if (!in_array($name, $known, true)) { $name = 'rank'; }
     }
-    if ($p === '') { $p = 'rank'; }
-    $seg  = explode('/', $p);
-    $name = strtolower(trim($seg[0]));
-    if (count($seg) > 1 && $arg === '') { $arg = $seg[1]; }   // ?p=detail/12
-    if (!in_array($name, $known, true)) { $name = 'rank'; }
     $params = array();
     foreach (array('id','cat','category','board','q') as $k) {
         if (isset($_GET[$k]) && trim((string)$_GET[$k]) !== '') { $params[$k] = trim((string)$_GET[$k]); }
@@ -74,21 +116,56 @@ function seo_request_route(): array
 }
 
 /** 构造本站绝对地址（canonical / 结构化数据用） */
+/** 规范化路径：/detail/12 、/doc/入榜规则（分段编码，中文原样进 URL） */
+function seo_path_of(string $name, string $arg = ''): string
+{
+    $path = '/' . rawurlencode($name);
+    $arg  = trim($arg, '/');
+    if ($arg !== '') {
+        $path .= '/' . implode('/', array_map('rawurlencode', explode('/', $arg)));
+    }
+    return $path;
+}
+
 function seo_abs(string $name, string $arg = '', array $extra = array()): string
 {
-    $q = array('p' => $name);
-    if ($arg !== '') { $q['arg'] = $arg; }
-    foreach ($extra as $k => $v) { $q[$k] = $v; }
-    return seo_canonical_base() . '/?' . http_build_query($q);
+    $url = seo_canonical_base() . seo_base_path() . seo_path_of($name, $arg);
+    if (!empty($extra)) { $url .= '?' . http_build_query($extra); }
+    return $url;
 }
 
 /** 站内链接（相对地址，爬虫可解析） */
 function seo_rel(string $name, string $arg = '', array $extra = array()): string
 {
-    $q = array('p' => $name);
-    if ($arg !== '') { $q['arg'] = $arg; }
-    foreach ($extra as $k => $v) { $q[$k] = $v; }
-    return '?' . http_build_query($q);
+    $url = seo_base_path() . seo_path_of($name, $arg);
+    if (!empty($extra)) { $url .= '?' . http_build_query($extra); }
+    return $url;
+}
+
+/** 旧地址归一：命中查询式参数时返回 301 目标，否则返回空串（由 index.php 处理） */
+function seo_legacy_redirect_url(): string
+{
+    $known = seo_route_names();
+    $hit   = isset($_GET['p']) || isset($_GET['arg']);
+    if (!$hit) {
+        foreach ($known as $k) {
+            if (isset($_GET[$k])) { $hit = true; break; }
+        }
+    }
+    if (!$hit) { return ''; }
+
+    $r     = seo_request_route();
+    $skip  = array_merge(array('p', 'arg'), $known);
+    $extra = array();
+    foreach ($_GET as $k => $v) {
+        if (in_array($k, $skip, true) || !is_string($v) || $v === '') { continue; }
+        $extra[$k] = $v;
+    }
+    $target = seo_rel($r['name'], $r['sub'], $extra);
+    /* 当前路径已与目标路径一致且没有查询式参数残留时不必再跳，避免自循环 */
+    $here = seo_base_path() . '/' . implode('/', array_map('rawurlencode', seo_path_segments()));
+    if ($here === $target && !isset($_GET['p']) && !isset($_GET['arg'])) { return ''; }
+    return $target;
 }
 
 /* ============================================================
@@ -97,7 +174,7 @@ function seo_rel(string $name, string $arg = '', array $extra = array()): string
 function seo_meta_for(array $route): array
 {
     $site  = (string)cfg('site.name', 'Kimi游戏榜');
-    $base  = seo_canonical_base() . '/';
+    $base  = seo_canonical_base() . seo_base_path() . '/';
     $name  = $route['name'];
     $sub   = $route['sub'];
 
@@ -118,7 +195,7 @@ function seo_meta_for(array $route): array
         'name' => $site, 'url' => $base, 'inLanguage' => 'zh-CN',
         'potentialAction' => array(
             '@type' => 'SearchAction',
-            'target' => array('@type' => 'EntryPoint', 'urlTemplate' => $base . '?p=rank&q={search_term_string}'),
+            'target' => array('@type' => 'EntryPoint', 'urlTemplate' => seo_abs('rank') . '?q={search_term_string}'),
             'query-input' => 'required name=search_term_string',
         ),
     );
@@ -132,7 +209,7 @@ function seo_meta_for(array $route): array
             $page = works_list_page('all', 'total', '', 1, 10, 0, true);
             foreach ((array)$page['items'] as $i => $w) {
                 $items[] = array('@type' => 'ListItem', 'position' => $i + 1,
-                    'url' => seo_abs('detail', '', array('id' => (int)$w['id'])), 'name' => (string)$w['title']);
+                    'url' => seo_abs('detail', (string)(int)$w['id']), 'name' => (string)$w['title']);
             }
         } catch (Throwable $e) { $items = array(); }
         if (!empty($items)) {
@@ -145,7 +222,7 @@ function seo_meta_for(array $route): array
         if ($row !== null) {
             $t     = trim((string)$row['title']);
             $intro = trim((string)$row['intro']);
-            $canon = seo_abs('detail', '', array('id' => $id));
+            $canon = seo_abs('detail', (string)$id);
             $title = $t . ' · ' . $site;
             $desc  = $intro !== '' ? mb_substr($intro, 0, 120, 'UTF-8') : ($t . '：Kimi 社区作品，六维评分与点评。');
             $type  = 'article';
@@ -265,7 +342,7 @@ function seo_body_rank(): string
     if (!empty($rows)) {
         $h .= '<h2>' . seo_t('榜单', 'Ranking', 'ランキング') . '</h2><ol>';
         foreach ($rows as $w) {
-            $h .= '<li><a href="' . e(seo_rel('detail', '', array('id' => (int)$w['id']))) . '">'
+            $h .= '<li><a href="' . e(seo_rel('detail', (string)(int)$w['id'])) . '">'
                 . e((string)$w['title']) . '</a> — ' . e((string)$w['author']) . ' · '
                 . e((string)$w['category_name']) . ' · ' . seo_t('总分', 'Score', '総合スコア') . ' ' . (int)$w['total']
                 . ' · ' . seo_t('评级', 'Grade', '評価') . ' ' . e((string)$w['rating']) . '</li>';
@@ -461,7 +538,7 @@ function seo_sitemap_xml(): string
     try {
         foreach (db_all('SELECT id, updated_at FROM works WHERE is_hidden = 0 ORDER BY id DESC LIMIT 20000') as $r) {
             $lm = trim((string)$r['updated_at']);
-            $urls[] = array('loc' => seo_abs('detail', '', array('id' => (int)$r['id'])),
+            $urls[] = array('loc' => seo_abs('detail', (string)(int)$r['id']),
                 'priority' => '0.6', 'changefreq' => 'weekly',
                 'lastmod' => $lm !== '' ? str_replace(' ', 'T', $lm) . '+00:00' : gmdate('c'));
         }

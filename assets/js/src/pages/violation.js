@@ -51,7 +51,7 @@ function reasonListInline(reasons) {
 
 /** 违纪界面 / 通报详情：$mine 为真时是「你被通报了」的口吻 */
 async function paintDetail(container, id, mine) {
-  const d = await api('discipline.php', 'get', { id: id }, { silent: true });
+  const d = await api('discipline', 'get', { id: id }, { silent: true });
   const wrap = document.createElement('div');
 
   wrap.innerHTML = `
@@ -124,7 +124,7 @@ export async function renderDiscipline(container, ctx) {
 
   const list = box.querySelector('#discList');
   try {
-    const d = await api('discipline.php', 'list', { page: 1 }, { silent: true });
+    const d = await api('discipline', 'list', { page: 1 }, { silent: true });
     const items = d.items || [];
     if (!items.length) { list.innerHTML = '<div class="empty">还没有通报记录</div>'; return; }
     list.innerHTML = '';

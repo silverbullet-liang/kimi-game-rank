@@ -17,6 +17,20 @@ try {
         . '</div></body>');
 }
 
+/* 旧地址归一：/?p=detail&arg=12 与 ?chat 这类查询式地址一律 301 到普通路径，
+   让同一内容只有一个地址（对收录与分享都更干净）。 */
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+    try {
+        $__legacyUrl = seo_legacy_redirect_url();
+        if ($__legacyUrl !== '') {
+            header('Location: ' . $__legacyUrl, true, 301);
+            exit;
+        }
+    } catch (Throwable $e) {
+        app_log('legacy redirect skipped: ' . $e->getMessage());   // 绝不因归一失败而挡住站点
+    }
+}
+
 /* 违纪封禁：不再跳转 —— 被封停者仍可打开站点、甚至登录（便于看清处理结果），
    但前端会整体锁在封禁通知界面，后端所有 API 也一律拒绝（违纪界面所需接口除外）。
    管理员与副管理员永不因此受限，防止同一网络下误伤值班的人。 */
@@ -72,6 +86,9 @@ $__seo = array(
     'canonical'   => rtrim((string)cfg('site.url', ''), '/') . '/',
     'robots'      => 'index,follow', 'type' => 'website', 'image' => '', 'jsonld' => array(),
 );
+/* 站点根路径前缀：路径式路由下静态资源与接口必须用绝对地址，否则 /detail/12 会解析成 /detail/assets/… */
+$__P = seo_base_path();
+
 $__seoBody = '';
 try {
     $__seoRoute = seo_request_route();
@@ -100,12 +117,13 @@ try {
 <?php if (!empty($__seo['image'])): ?><meta property="og:image" content="<?= e($__seo['image']) ?>"><?php endif; ?>
 <?php foreach ($__seo['jsonld'] as $__ld): ?><script type="application/ld+json"><?= json_encode($__ld, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?></script><?php endforeach; ?>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%236D3BF5'/%3E%3Cpath d='M7 7h10a4 4 0 0 1 4 4v2a3 3 0 0 1-3 3h-.9a2 2 0 0 1-1.6-.8l-.5-.7a1.5 1.5 0 0 0-2.4 0l-.5.7A2 2 0 0 1 10.4 16H10a3 3 0 0 1-3-3v-2a4 4 0 0 1 4-4zm.5 3.5h-1.5v1.5H4.5v1.5h1.5v1.5h1.5v-1.5H9v-1.5H7.5V10.5zm8 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm2.2 2.6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z' fill='%23fff'/%3E%3C/svg%3E">
+<script>window.__BASE = <?= json_encode(seo_base_path()) ?>;</script>
 <script>window.__CAPTCHA = <?= json_encode($__captcha, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
 <script>window.__FESTIVAL = <?= json_encode($__festival, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
 <script>window.__BANNED = <?= (int)$__bannedId ?>;</script>
 <?php $__monUid = (isset($__ident) && is_array($__ident)) ? (int)($__ident['uid'] ?? 0) : 0; ?>
-<script>window.__MON_CFG__ = { endpoint: 'api/monitor.php', uid: <?= $__monUid ?>, version: '<?= APP_VERSION ?>' };</script>
-<script src="assets/js/monitor.js?v=<?= APP_VERSION ?>"></script>
+<script>window.__MON_CFG__ = { endpoint: '<?= e($__P) ?>/api/monitor', uid: <?= $__monUid ?>, version: '<?= APP_VERSION ?>' };</script>
+<script src="<?= e($__P) ?>/assets/js/monitor.js?v=<?= APP_VERSION ?>"></script>
 <script>
 /* 首屏前应用本机偏好（深浅色 / 设计风格 / 主题色），避免样式闪烁 */
 (function () {
@@ -134,7 +152,7 @@ try {
 ?>
 <script>
 (function () {
-  var V = <?= json_encode(APP_VERSION) ?>;
+  var V = <?= json_encode(APP_VERSION) ?>, P = <?= json_encode($__P) ?>;
   var skin = <?= json_encode($SKIN) ?>;          /* 服务端已按白名单校验过 */
   /* 当前节日由服务端（北京时间）判定，前端只负责套用 —— 规则只有 app/festival.php 一处 */
   var FEST = <?= json_encode($__festival, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
@@ -152,7 +170,7 @@ try {
 
   var file = on ? now : skin;                    /* 液态玻璃 = app.css 默认样式，无需额外文件 */
   if (file !== 'glass') {
-    document.write('<link rel="stylesheet" href="assets/css/skins/' + file + '.css?v=' + V + '">');
+    document.write('<link rel="stylesheet" href="' + P + '/assets/css/skins/' + file + '.css?v=' + V + '">');
   }
 })();
 </script>
@@ -577,7 +595,7 @@ try {
       if (!in_array($__lang, array('zh', 'en', 'ja'), true)) { $__lang = ''; } ?>
 <script>window.__LANG = <?= json_encode($__lang) ?>;</script>
 <script>window.__SITE__ = { name: <?= json_encode((string)cfg('site.name', 'Kimi游戏榜')) ?>, ver: <?= json_encode(APP_VERSION) ?>, timezone: <?= json_encode((string)cfg('site.timezone', 'Asia/Shanghai')) ?> };</script>
-<link rel="preload" as="script" href="assets/js/app.js?v=<?= APP_VERSION ?>">
-<script type="module" src="assets/js/app.js?v=<?= APP_VERSION ?>" onerror="(function(){if(window.__lgRetry)return;window.__lgRetry=1;var s=document.createElement('script');s.type='module';s.src='assets/js/app.js?v=<?= APP_VERSION ?>&r='+Date.now();document.body.appendChild(s);})()"></script>
+<link rel="preload" as="script" href="<?= e($__P) ?>/assets/js/app.js?v=<?= APP_VERSION ?>">
+<script type="module" src="<?= e($__P) ?>/assets/js/app.js?v=<?= APP_VERSION ?>" onerror="(function(){if(window.__lgRetry)return;window.__lgRetry=1;var s=document.createElement('script');s.type='module';s.src='<?= e($__P) ?>/assets/js/app.js?v=<?= APP_VERSION ?>&r='+Date.now();document.body.appendChild(s);})()"></script>
 </body>
 </html>

@@ -7,6 +7,14 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.49.0 · 2026-10-28 (Back to Basics)
+
+### Addresses
+1. **Page addresses are plain paths now**: the ranking is `/rank`, a work is `/detail/12`, a document is `/doc/…`, with no `?p=rank&arg=12` query-style addresses and no `#` needed. Cleaner to paste to someone and cleaner for search engines.
+2. **API addresses lose the `.php`**: endpoints are now `/api/works`, `/api/lobby` and so on. The old addresses ending in `.php` still work, so external scripts and caches are unaffected.
+3. **Old links keep working**: opening a legacy address (`?p=detail&arg=12`, `#/detail/12`) jumps to the matching new one, and in-site links — including those inside documents — now navigate in place instead of reloading the whole page.
+4. **Sub-directory deployments work too**: when the site lives in a sub-directory, styles, scripts and API paths pick up the prefix automatically.
+
 ## v3.48.2 · 2026-10-26 (Worthy of the Name)
 
 ### Documents

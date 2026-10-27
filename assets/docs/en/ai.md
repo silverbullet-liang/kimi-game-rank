@@ -71,7 +71,7 @@ Using the free model requires **both** of the following:
 
 - **A rejected or unstarted question**: empty content or a rate-limit rejection is not counted.
 - **The AI summary on search results**: paid for by the site, **completely unrelated** to your daily calls and tokens; it appears whether or not you are signed in and whether or not your free calls are used up (you can turn it off under "Mine → Search").
-- **Content moderation**: the three-stage automatic check before a comment or message is posted (the third stage is a 1–10 severity grading) and the image check are also paid for by the site. They **use none of your quota** and none of your free calls. The logic is published in article 9 of the [Terms of Service](?p=doc&arg=用户协议).
+- **Content moderation**: the three-stage automatic check before a comment or message is posted (the third stage is a 1–10 severity grading) and the image check are also paid for by the site. They **use none of your quota** and none of your free calls. The logic is published in article 9 of the [Terms of Service](/doc/用户协议).
 
 ### 4. When quota resets
 
@@ -105,7 +105,7 @@ Quota resets per **calendar day in UTC**, i.e. **08:00 Beijing time** each day. 
 
 ## 6. Data, privacy and records
 
-1. **Questions are sent to the model provider**: to generate an answer, your question is sent to the relevant model provider. See article 8 of the [Privacy Policy](?p=doc&arg=隐私政策). With deep thinking on, the reasoning is produced by the model provider and returned immediately; this site **saves it together with the tool cards in your conversation record** (open it again to review) and deletes it when you clear the conversation on "Mine".
+1. **Questions are sent to the model provider**: to generate an answer, your question is sent to the relevant model provider. See article 8 of the [Privacy Policy](/doc/隐私政策). With deep thinking on, the reasoning is produced by the model provider and returned immediately; this site **saves it together with the tool cards in your conversation record** (open it again to review) and deletes it when you clear the conversation on "Mine".
 2. **Do not enter sensitive information**: ID numbers, bank cards, passwords, health information and the like. You bear the consequences of submitting sensitive information yourself.
 3. **Records and clearing**: your conversations and usage are stored in your own account, visible on the "Mine" page, and can be cleared at any time.
 4. **The cache holds no personal information**: only the search summary is cached, keyed by **keyword and summary**, and contains no account information.
@@ -132,6 +132,6 @@ Quota resets per **calendar day in UTC**, i.e. **08:00 Beijing time** each day. 
 
 ---
 
-**Related documents**: [Features](?p=doc&arg=功能说明) · [Community Guidelines](?p=doc&arg=社区公约) · [Scoring Standard](?p=doc&arg=评分标准) · [Admission Rules](?p=doc&arg=入榜规则) · [Terms of Service](?p=doc&arg=用户协议) · [Privacy Policy](?p=doc&arg=隐私政策) · [Changelog](?p=doc&arg=更新日志)
+**Related documents**: [Features](/doc/功能说明) · [Community Guidelines](/doc/社区公约) · [Scoring Standard](/doc/评分标准) · [Admission Rules](/doc/入榜规则) · [Terms of Service](/doc/用户协议) · [Privacy Policy](/doc/隐私政策) · [Changelog](/doc/更新日志)
 
 > Last updated: 2026-10-22
