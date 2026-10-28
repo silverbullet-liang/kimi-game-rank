@@ -578,6 +578,58 @@ function dialog(title, text, confirmLabel = t('确定'), opts = {}) {
   });
 }
 
+/**
+ * 人机验证弹窗闸门：验证通过即 resolve(token)，取消或关闭 resolve('')。
+ * 用于投票、反馈这类「一次性写操作」—— 验证不通过就不提交，token 一次性可用。
+ */
+function captchaGate(title, tip) {
+  return new Promise(function (resolve) {
+    const scrim = document.getElementById('dialogScrim');
+    const box = document.getElementById('dialog');
+    if (!scrim || !box) { resolve(''); return; }
+    box.className = 'dialog glass';
+    box.innerHTML = `<h3>${esc(title)}</h3>`
+      + (tip ? `<p class="tiny muted">${esc(tip)}</p>` : '')
+      + `<div id="capGateHost" class="cf-box"></div>`
+      + `<div class="dialog-actions"><button class="btn-ghost" data-r="0">${t('取消')}</button></div>`;
+    scrim.hidden = false;
+
+    let done = false;
+    function finish(tok) {
+      if (done) { return; }
+      done = true;
+      scrim.hidden = true;
+      box.innerHTML = '';
+      scrim.onclick = null;
+      resolve(tok || '');
+    }
+    box.querySelector('[data-r="0"]').addEventListener('click', function () { finish(''); });
+    scrim.onclick = function (e) { if (e.target === scrim) { finish(''); } };
+
+    try {
+      /* 通过就自动往下走：用户不必再点一次「确定」 */
+      mountCaptcha(box.querySelector('#capGateHost'), function (tok) {
+        if (tok) { finish(tok); }
+      });
+    } catch (e) {
+      finish('');
+    }
+  });
+}
+
+/** 人机验证是否开启（关闭时调用方直接提交，不弹窗） */
+function captchaOn() {
+  try { return !!captchaConfig().on; } catch (e) { return false; }
+}
+
+/** 一次写操作的验证参数：开启时返回 {cap_token, cap_channel}，关闭或取消返回 null */
+async function captchaFields(tip) {
+  if (!captchaOn()) { return {}; }
+  const tok = await captchaGate(t('人机验证'), tip || t('验证通过后自动提交'));
+  if (!tok) { return null; }
+  return { cap_token: tok, cap_channel: captchaChannel() };
+}
+
 /** 输入型对话框（用于管理员密钥等），返回 Promise<string|null> */
 function prompt_(title, text, confirmLabel = t('确定'), defaultValue = '') {
   return new Promise(resolve => {
@@ -2214,6 +2266,7 @@ async function renderDetail(container, ctx) {
       <div class="tiny" style="margin-top:10px">历史峰值总分 ${d.peak_score} · 更新于 ${esc(d.updated_at)}</div>
       <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
         <button class="btn ${d.voted ? 'btn-ghost' : ''}" id="voteBtn">${d.voted ? '已点赞' : t('点赞作品')}</button>
+        <span class="tiny" id="voteCount">${d.votes == null ? '' : (t('共 ') + Number(d.votes) + t(' 票'))}</span>
         <span class="tiny">点赞计入「投票榜」，每人每作品限一次</span>
       </div>
     </div>
@@ -2248,12 +2301,27 @@ async function renderDetail(container, ctx) {
 
   // 点赞
   const voteBtn = container.querySelector('#voteBtn');
+  const voteNum = container.querySelector('#voteCount');
+
+  /* 票数跟着结果即时更新：投票与取消都会返回最新总数 */
+  function paintVote(r) {
+    voteBtn.textContent = r.voted ? '已点赞' : t('点赞作品');
+    voteBtn.classList.toggle('btn-ghost', r.voted);
+    if (voteNum) { voteNum.textContent = t('共 ') + Number(r.count || 0) + t(' 票'); }
+  }
+
   voteBtn.addEventListener('click', async () => {
     if (!canPost()) { toast('登录后才能点赞', 'err'); return; }
+    const isUndo = voteBtn.classList.contains('btn-ghost');   // 已点赞时是取消，取消不需要验证
+    const payload = { id: id };
+    if (!isUndo) {
+      const cap = await captchaFields(t('验证通过后自动提交点赞'));
+      if (cap === null) { return; }                           // 用户取消：不投票
+      Object.assign(payload, cap);
+    }
     try {
-      const r = await api('works', 'vote', { id: id });
-      voteBtn.textContent = r.voted ? '已点赞' : t('点赞作品');
-      voteBtn.classList.toggle('btn-ghost', r.voted);
+      const r = await api('works', 'vote', payload);
+      paintVote(r);
       toast(r.voted ? '已点赞' : t('已取消'));
     } catch (e) { toast(e.message, 'err'); }
   });
@@ -7978,9 +8046,16 @@ async function renderFeedback(container) {
   if (send) send.addEventListener('click', async () => {
     const text = container.querySelector('#fbText').value.trim();
     if (text.length < 2) { toast('内容太短', 'err'); return; }
+    /* 人机验证通过才提交；取消或验证失败都不发出去 */
+    const cap = await captchaFields(t('验证通过后自动提交反馈'));
+    if (cap === null) { return; }
     btnLoading(send, true);
-    try { await api('feedback', 'create', { content: text, is_public: vis }); toast('已提交'); container.querySelector('#fbText').value = ''; load(); }
-    catch (e) { toast(e.message, 'err'); }
+    try {
+      await api('feedback', 'create', Object.assign({ content: text, is_public: vis }, cap));
+      toast('已提交');
+      container.querySelector('#fbText').value = '';
+      load();
+    } catch (e) { toast(e.message, 'err'); }
     finally { btnLoading(send, false); }
   });
 

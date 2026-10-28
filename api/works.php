@@ -85,6 +85,9 @@ switch ($action) {
             $voted = false;
         } else {
             cooldown_guard('vote');   // 点赞受限；取消点赞不受限
+            /* 新增投票需过人机验证（取消投票不需要：只减不增，刷不出数据）。
+               未配置验证时 captcha_guard() 直接放行。 */
+            captcha_guard();
             // 唯一键兜底：并发下重复插入由 DB 保证
             db_exec('INSERT IGNORE INTO work_votes (work_id, user_id, created_at) VALUES (?, ?, UTC_TIMESTAMP())', array($wid, $uid));
             $voted = true;

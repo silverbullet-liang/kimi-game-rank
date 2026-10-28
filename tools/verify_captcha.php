@@ -113,5 +113,26 @@ $privacy = (string)file_get_contents(APP_ROOT . '/assets/docs/隐私政策.md');
 ck('隐私政策列出 Turnstile 主通道', strpos($privacy, 'Turnstile（主通道）') !== false);
 ck('隐私政策列出 Cap 备用通道', strpos($privacy, 'Cap 人机验证（备用通道）') !== false);
 
+/* ---------- 8. 投票与反馈：弹窗闸门 ---------- */
+$works = (string)file_get_contents(APP_ROOT . '/api/works.php');
+$fb    = (string)file_get_contents(APP_ROOT . '/api/feedback.php');
+$core  = (string)file_get_contents(APP_ROOT . '/assets/js/src/core.js');
+$detail = (string)file_get_contents(APP_ROOT . '/assets/js/src/pages/detail.js');
+$fbjs   = (string)file_get_contents(APP_ROOT . '/assets/js/src/pages/feedback.js');
+
+ck('投票接口过验证闸门', strpos($works, 'captcha_guard();') !== false);
+ck('投票：取消投票不验证（只减不增）', strpos($works, "cooldown_guard('vote')") !== false
+    && strpos($works, '取消点赞不受限') !== false);
+ck('反馈提交过验证闸门', strpos($fb, 'captcha_guard();') !== false);
+ck('前端提供验证弹窗闸门', strpos($core, 'export function captchaGate(') !== false
+    && strpos($core, 'export async function captchaFields(') !== false);
+ck('验证弹窗通过即自动提交（无需二次确认）', strpos($core, 'if (tok) { finish(tok); }') !== false);
+ck('验证弹窗可取消（取消则不提交）', strpos($core, "if (cap === null) { return; }") !== false
+    || strpos($detail, "if (cap === null) { return; }") !== false);
+ck('投票页在投票前取验证参数', strpos($detail, "captchaFields(t('验证通过后自动提交点赞'))") !== false);
+ck('反馈页在提交前取验证参数', strpos($fbjs, "captchaFields(t('验证通过后自动提交反馈'))") !== false);
+ck('作品详情返回票数', strpos((string)file_get_contents(APP_ROOT . '/app/works_list.php'), "'votes'") !== false);
+ck('作品页显示票数', strpos($detail, 'id="voteCount"') !== false && strpos($detail, 'paintVote') !== false);
+
 echo "\n通过 " . $pass . "，失败 " . $fail . "\n";
 exit($fail === 0 ? 0 : 1);

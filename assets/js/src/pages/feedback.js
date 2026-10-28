@@ -1,7 +1,7 @@
 /**
  * 反馈页：提交反馈（公开/私密）；管理员视角为「回复反馈」
  */
-import { api, state, esc, toast, dialog, btnLoading, userName, isAdminish } from '../core.js';
+import { api, state, esc, toast, dialog, btnLoading, userName, isAdminish, captchaFields } from '../core.js';
 import { navigate } from '../router.js';
 
 export async function renderFeedback(container) {
@@ -40,9 +40,16 @@ export async function renderFeedback(container) {
   if (send) send.addEventListener('click', async () => {
     const text = container.querySelector('#fbText').value.trim();
     if (text.length < 2) { toast('内容太短', 'err'); return; }
+    /* 人机验证通过才提交；取消或验证失败都不发出去 */
+    const cap = await captchaFields(t('验证通过后自动提交反馈'));
+    if (cap === null) { return; }
     btnLoading(send, true);
-    try { await api('feedback', 'create', { content: text, is_public: vis }); toast('已提交'); container.querySelector('#fbText').value = ''; load(); }
-    catch (e) { toast(e.message, 'err'); }
+    try {
+      await api('feedback', 'create', Object.assign({ content: text, is_public: vis }, cap));
+      toast('已提交');
+      container.querySelector('#fbText').value = '';
+      load();
+    } catch (e) { toast(e.message, 'err'); }
     finally { btnLoading(send, false); }
   });
 

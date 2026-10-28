@@ -1,7 +1,7 @@
 /**
  * 作品详情页：雷达图 + 六维明细 + 介绍 + 评论区
  */
-import { api, state, esc, toast, dialog, btnLoading, userName, isAdminish, isBlocked } from '../core.js';
+import { api, state, esc, toast, dialog, btnLoading, userName, isAdminish, isBlocked, captchaFields } from '../core.js';
 import { UI_PAGE } from '../config.js';
 import { setHeroDst } from '../transitions.js';
 import { navigate } from '../router.js';
@@ -87,6 +87,7 @@ export async function renderDetail(container, ctx) {
       <div class="tiny" style="margin-top:10px">历史峰值总分 ${d.peak_score} · 更新于 ${esc(d.updated_at)}</div>
       <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
         <button class="btn ${d.voted ? 'btn-ghost' : ''}" id="voteBtn">${d.voted ? '已点赞' : t('点赞作品')}</button>
+        <span class="tiny" id="voteCount">${d.votes == null ? '' : (t('共 ') + Number(d.votes) + t(' 票'))}</span>
         <span class="tiny">点赞计入「投票榜」，每人每作品限一次</span>
       </div>
     </div>
@@ -121,12 +122,27 @@ export async function renderDetail(container, ctx) {
 
   // 点赞
   const voteBtn = container.querySelector('#voteBtn');
+  const voteNum = container.querySelector('#voteCount');
+
+  /* 票数跟着结果即时更新：投票与取消都会返回最新总数 */
+  function paintVote(r) {
+    voteBtn.textContent = r.voted ? '已点赞' : t('点赞作品');
+    voteBtn.classList.toggle('btn-ghost', r.voted);
+    if (voteNum) { voteNum.textContent = t('共 ') + Number(r.count || 0) + t(' 票'); }
+  }
+
   voteBtn.addEventListener('click', async () => {
     if (!canPost()) { toast('登录后才能点赞', 'err'); return; }
+    const isUndo = voteBtn.classList.contains('btn-ghost');   // 已点赞时是取消，取消不需要验证
+    const payload = { id: id };
+    if (!isUndo) {
+      const cap = await captchaFields(t('验证通过后自动提交点赞'));
+      if (cap === null) { return; }                           // 用户取消：不投票
+      Object.assign(payload, cap);
+    }
     try {
-      const r = await api('works', 'vote', { id: id });
-      voteBtn.textContent = r.voted ? '已点赞' : t('点赞作品');
-      voteBtn.classList.toggle('btn-ghost', r.voted);
+      const r = await api('works', 'vote', payload);
+      paintVote(r);
       toast(r.voted ? '已点赞' : t('已取消'));
     } catch (e) { toast(e.message, 'err'); }
   });

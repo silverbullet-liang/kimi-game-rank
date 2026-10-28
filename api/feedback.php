@@ -56,6 +56,7 @@ switch ($action) {
         if ($len < 2) { fail(400, '内容太短'); }
         if ($len > 1000) { fail(400, '内容最长 1000 字'); }
         cooldown_guard('feedback');
+        captcha_guard();          // 反馈提交同样需要人机验证（未配置时自动放行）
 
         /* 防重复：同一用户提交过完全相同的内容就不再允许（不限时间） */
         if (dup_guard('feedback', (string)actor_uid($id), $content)) {

@@ -1,4 +1,5 @@
 import { API_BASE } from './base.js';
+import { mountCaptcha, captchaConfig, captchaChannel } from './captcha.js';
 /**
  * 核心：令牌管理、API 封装、UI 工具、启动引导
  * 信任边界：本层只负责「原样传递数据」，一切规整/校验均在后端完成。
@@ -387,6 +388,58 @@ export function dialog(title, text, confirmLabel = t('确定'), opts = {}) {
     box.querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => close(b.dataset.r === '1')));
     scrim.onclick = e => { if (e.target === scrim) close(false); };
   });
+}
+
+/**
+ * 人机验证弹窗闸门：验证通过即 resolve(token)，取消或关闭 resolve('')。
+ * 用于投票、反馈这类「一次性写操作」—— 验证不通过就不提交，token 一次性可用。
+ */
+export function captchaGate(title, tip) {
+  return new Promise(function (resolve) {
+    const scrim = document.getElementById('dialogScrim');
+    const box = document.getElementById('dialog');
+    if (!scrim || !box) { resolve(''); return; }
+    box.className = 'dialog glass';
+    box.innerHTML = `<h3>${esc(title)}</h3>`
+      + (tip ? `<p class="tiny muted">${esc(tip)}</p>` : '')
+      + `<div id="capGateHost" class="cf-box"></div>`
+      + `<div class="dialog-actions"><button class="btn-ghost" data-r="0">${t('取消')}</button></div>`;
+    scrim.hidden = false;
+
+    let done = false;
+    function finish(tok) {
+      if (done) { return; }
+      done = true;
+      scrim.hidden = true;
+      box.innerHTML = '';
+      scrim.onclick = null;
+      resolve(tok || '');
+    }
+    box.querySelector('[data-r="0"]').addEventListener('click', function () { finish(''); });
+    scrim.onclick = function (e) { if (e.target === scrim) { finish(''); } };
+
+    try {
+      /* 通过就自动往下走：用户不必再点一次「确定」 */
+      mountCaptcha(box.querySelector('#capGateHost'), function (tok) {
+        if (tok) { finish(tok); }
+      });
+    } catch (e) {
+      finish('');
+    }
+  });
+}
+
+/** 人机验证是否开启（关闭时调用方直接提交，不弹窗） */
+export function captchaOn() {
+  try { return !!captchaConfig().on; } catch (e) { return false; }
+}
+
+/** 一次写操作的验证参数：开启时返回 {cap_token, cap_channel}，关闭或取消返回 null */
+export async function captchaFields(tip) {
+  if (!captchaOn()) { return {}; }
+  const tok = await captchaGate(t('人机验证'), tip || t('验证通过后自动提交'));
+  if (!tok) { return null; }
+  return { cap_token: tok, cap_channel: captchaChannel() };
 }
 
 /** 输入型对话框（用于管理员密钥等），返回 Promise<string|null> */

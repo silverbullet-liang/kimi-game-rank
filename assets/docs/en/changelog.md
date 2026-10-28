@@ -7,6 +7,17 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.52.0 · 2026-10-28 (Measure Twice)
+
+### Human verification
+1. **Voting now requires verification**: tapping the vote button on a work opens a verification dialog; once it passes, the vote is submitted automatically — no second confirmation needed. Close the dialog or fail the check and nothing is voted.
+2. **Submitting feedback requires it too**: the same dialog appears before a feedback post goes out.
+3. **Undoing a vote does not**: removing a vote only subtracts, so it cannot be used to inflate anything and stays one tap.
+4. **Sites without verification are unaffected**: voting and feedback remain single-tap.
+
+### Vote count
+5. **The work page shows the count**: the number of votes sits next to the button and updates immediately whether you vote or undo, with no refresh needed.
+
 ## v3.51.0 · 2026-10-28 (Shore Up the Foundations)
 
 ### Uploads
