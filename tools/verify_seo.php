@@ -83,7 +83,7 @@ $m = seo_meta_for(seo_request_route());
 ok('详情：标题含作品名', strpos($m['title'], '太空射击') !== false);
 ok('详情：type=article', $m['type'] === 'article');
 ok('详情：JSON-LD 含 CreativeWork', (function ($ld) { foreach ($ld as $x) { if (($x['@type'] ?? '') === 'CreativeWork') { return true; } } return false; })($m['jsonld']));
-ok('详情：canonical 为 /detail/12', strpos(seo_meta_for(array('name'=>'detail','sub'=>'12','params'=>array('id'=>'12')))['canonical'], '/detail/12') !== false);
+ok('详情：canonical 为 /works/12', strpos(seo_meta_for(array('name'=>'detail','sub'=>'12','params'=>array('id'=>'12')))['canonical'], '/works/12') !== false);
 ok('详情：og:image 取首图', $m['image'] === 'https://img.example.com/a.png');
 
 seo_reset_get(array('p' => 'detail', 'id' => '999'));
@@ -105,7 +105,7 @@ ok('镜像：整站 noindex', seo_meta_for(seo_request_route())['robots'] === 'n
 host('kimi-game-rank.wuaze.com');
 seo_reset_get(array('p' => 'rank'));
 $b = seo_body_html(seo_request_route());
-ok('SSR 首页：含真实作品链接', strpos($b, '/detail/') !== false && strpos($b, '太空射击') !== false);
+ok('SSR 首页：含真实作品链接', strpos($b, '/works/') !== false && strpos($b, '太空射击') !== false);
 seo_reset_get(array('p' => 'detail', 'id' => '12'));
 $b = seo_body_html(seo_request_route());
 ok('SSR 详情：含简介与六维评分', strpos($b, '作品简介') !== false && strpos($b, '可玩性') !== false);
@@ -125,8 +125,8 @@ ok('文档页 SSR 非空', seo_body_html(seo_request_route()) !== '');
 host('kimi-game-rank.wuaze.com');
 $xml = seo_sitemap_xml();
 ok('sitemap：含 urlset 命名空间', strpos($xml, 'sitemaps.org/schemas/sitemap/0.9') !== false);
-ok('sitemap：含作品详情地址', strpos($xml, '/detail/') !== false);
-ok('sitemap：含文档页地址', strpos($xml, '/doc/') !== false);
+ok('sitemap：含作品详情地址', strpos($xml, '/works/') !== false);
+ok('sitemap：含文档页地址', strpos($xml, '/docs/') !== false);
 host('kimi-game-rank.byethost33.com');
 ok('sitemap：镜像为空列表', strpos(seo_sitemap_xml(), '<urlset') !== false && strpos(seo_sitemap_xml(), '<url>') === false);
 

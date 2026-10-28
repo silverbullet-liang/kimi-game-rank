@@ -64,6 +64,14 @@ let currentPage = '';
  * 敏感参数（控制面板密钥等）一律不写入 URL，只走请求体。 */
 const URL_BASE = SITE_BASE;
 
+/* 路由段映射由服务端下发（来源 app/seo.php 的 seo_route_segments / seo_doc_slugs）：
+   内部标识 rank/detail/doc… 与对外地址段 rankings/works/docs… 一一对应，前端不再硬编码路径名。 */
+const RM = (typeof window !== 'undefined' && window.__ROUTES) ? window.__ROUTES : {};
+const SEG_OF   = RM.seg || {};
+const NAME_OF  = RM.name || {};
+const DOC_SLUG = RM.docSlug || {};
+const DOC_NAME = RM.docName || {};
+
 /** 路由（#/name/arg?q）→ 地址（/name/arg?q） */
 function routeToUrl(hash) {
   const raw = String(hash || '').replace(/^#\/?/, '');
@@ -72,8 +80,12 @@ function routeToUrl(hash) {
   const sp = new URLSearchParams(query || '');
   sp.delete('p');
   sp.delete('arg');
-  let url = URL_BASE + '/' + encodeURIComponent(seg[0] || 'rank');
-  if (seg.length > 1) { url += '/' + seg.slice(1).map(encodeURIComponent).join('/'); }
+  const name = seg[0] || 'rank';
+  let arg = seg.slice(1).join('/');
+  /* 文档地址用英文短名：/docs/admission 而不是 /docs/入榜规则 */
+  if (name === 'doc' && arg) { arg = DOC_SLUG[arg] || arg; }
+  let url = URL_BASE + '/' + encodeURIComponent(SEG_OF[name] || name);
+  if (arg) { url += '/' + arg.split('/').map(encodeURIComponent).join('/'); }
   const q = sp.toString();
   return q ? url + '?' + q : url;
 }
@@ -83,7 +95,7 @@ const SENSITIVE_PAGES = ['panel'];
 
 function readRoute() {
   if (location.hash && location.hash.length > 1) { return location.hash; }   // 旧式 #/ 链接优先
-  const KNOWN = ['rank', 'detail', 'chat', 'mine', 'login', 'doc', 'feedback', 'about', 'violation', 'discipline'];
+  const KNOWN = ['rank', 'detail', 'chat', 'mine', 'login', 'submit', 'doc', 'panel', 'monitor', 'feedback', 'about', 'violation', 'discipline'];
 
   /* 主路径：/rank 、/detail/12 、/doc/入榜规则 */
   let path = location.pathname;
@@ -91,8 +103,10 @@ function readRoute() {
   const seg = path.split('/').filter(Boolean).map(s => {
     try { return decodeURIComponent(s); } catch (e) { return s; }
   });
-  let name = seg[0] || '';
+  const seg0 = seg[0] || '';
+  let name = NAME_OF[seg0] || (KNOWN.indexOf(seg0) >= 0 ? seg0 : '');   // 段 → 内部名（旧段同名亦可）
   let arg = seg.slice(1).join('/');
+  if (name === 'doc' && arg) { arg = DOC_NAME[arg] || arg; }
 
   /* 兜底：查询式旧地址（服务端已 301，这里只处理脚本内手拼的情况） */
   const qs = new URLSearchParams(location.search);
@@ -101,7 +115,7 @@ function readRoute() {
     if (!p) {
       for (let i = 0; i < KNOWN.length; i++) {
         const k = KNOWN[i];
-        if (qs.has(k)) { p = k; const v = qs.get(k) || ''; if (v) { arg = v; } break; }
+        if (qs.has(k)) { p = k; const v = qs.get(k) || ''; if (v) { arg = v; } qs.delete(k); break; }
       }
     }
     if (!p) { return ''; }

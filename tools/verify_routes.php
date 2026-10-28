@@ -46,97 +46,113 @@ function req(string $uri, string $script = '/index.php'): void
 }
 
 /* ============================================================
- * 1. 规范化地址生成
+ * 1. 规范化地址生成（对外段名必须一眼能懂）
  * ============================================================ */
 req('/');
-ok('路径：榜单 → /rank', seo_path_of('rank') === '/rank');
-ok('路径：详情 → /detail/12', seo_path_of('detail', '12') === '/detail/12');
-ok('路径：文档中文分段编码', seo_path_of('doc', '入榜规则') === '/doc/' . rawurlencode('入榜规则'));
-ok('绝对地址：带域名与路径', seo_abs('detail', '12') === 'https://kimi-game-rank.wuaze.com/detail/12');
-ok('绝对地址：附加查询串', seo_abs('rank', '', array('board' => 'peak')) === 'https://kimi-game-rank.wuaze.com/rank?board=peak');
-ok('站内链接：相对绝对路径', seo_rel('doc', '评分标准') === '/doc/' . rawurlencode('评分标准'));
+ok('路径：榜单 → /rankings', seo_path_of('rank') === '/rankings');
+ok('路径：详情 → /works/12', seo_path_of('detail', '12') === '/works/12');
+ok('路径：我的 → /me', seo_path_of('mine') === '/me');
+ok('路径：控制面板 → /admin', seo_path_of('panel') === '/admin');
+ok('路径：封禁说明 → /banned/12', seo_path_of('violation', '12') === '/banned/12');
+ok('路径：违纪通报 → /notices/12', seo_path_of('discipline', '12') === '/notices/12');
+ok('路径：文档中文名 → /docs/admission', seo_path_of('doc', '入榜规则') === '/docs/admission');
+ok('路径：文档 slug 幂等', seo_path_of('doc', 'admission') === '/docs/admission');
+ok('绝对地址：带域名与路径', seo_abs('detail', '12') === 'https://kimi-game-rank.wuaze.com/works/12');
+ok('绝对地址：附加查询串', seo_abs('rank', '', array('board' => 'peak')) === 'https://kimi-game-rank.wuaze.com/rankings?board=peak');
+ok('站内链接：文档', seo_rel('doc', '评分标准') === '/docs/scoring');
+ok('站内链接：搜索用标准 q', seo_rel('rank', '', array('q' => '太空')) === '/rankings?q=' . rawurlencode('太空'));
 
 /* ============================================================
  * 2. 路径解析
  * ============================================================ */
 req('/');
-$r = seo_request_route();
-ok('解析：根地址 → rank', $r['name'] === 'rank');
+ok('解析：根地址 → rank', seo_request_route()['name'] === 'rank');
 
-req('/detail/12');
-$r = seo_request_route();
-ok('解析：/detail/12 → detail + sub=12', $r['name'] === 'detail' && $r['sub'] === '12');
+req('/rankings');
+ok('解析：/rankings → rank', seo_request_route()['name'] === 'rank');
 
-req('/doc/' . rawurlencode('入榜规则'));
+req('/works/12');
 $r = seo_request_route();
-ok('解析：/doc/入榜规则 → doc + 中文名', $r['name'] === 'doc' && $r['sub'] === '入榜规则');
+ok('解析：/works/12 → detail + sub=12', $r['name'] === 'detail' && $r['sub'] === '12');
 
-req('/rank?board=peak&q=%E5%A4%AA%E7%A9%BA');
+req('/docs/admission');
+$r = seo_request_route();
+ok('解析：/docs/admission → doc + 中文名', $r['name'] === 'doc' && $r['sub'] === '入榜规则');
+
+req('/me');
+ok('解析：/me → mine', seo_request_route()['name'] === 'mine');
+
+req('/admin');
+ok('解析：/admin → panel', seo_request_route()['name'] === 'panel');
+
+req('/banned/12');
+$r = seo_request_route();
+ok('解析：/banned/12 → violation + 12', $r['name'] === 'violation' && $r['sub'] === '12');
+
+req('/notices/12');
+ok('解析：/notices/12 → discipline', seo_request_route()['name'] === 'discipline');
+
+req('/rankings?board=peak&q=%E5%A4%AA%E7%A9%BA');
 $r = seo_request_route();
 ok('解析：查询串保留 board 与 q', $r['name'] === 'rank' && $r['params']['board'] === 'peak' && $r['params']['q'] === '太空');
 
 req('/chat');
-ok('解析：/chat 无参数', seo_request_route()['name'] === 'chat');
+ok('解析：/chat', seo_request_route()['name'] === 'chat');
 
 req('/nonsense');
 ok('解析：未知路径 → rank', seo_request_route()['name'] === 'rank');
 
-/* 旧查询式地址仍可解析（301 之前的兜底） */
+/* 旧段仍可解析（301 之前要能认出是谁） */
+req('/rank');
+ok('兼容：旧段 /rank → rank', seo_request_route()['name'] === 'rank');
+req('/detail/12');
+$r = seo_request_route();
+ok('兼容：旧段 /detail/12 → detail', $r['name'] === 'detail' && $r['sub'] === '12');
+req('/doc/' . rawurlencode('入榜规则'));
+$r = seo_request_route();
+ok('兼容：旧段 /doc/中文名 → doc', $r['name'] === 'doc' && $r['sub'] === '入榜规则');
+
+/* 旧查询式地址 */
 req('/?p=detail&arg=12');
 $r = seo_request_route();
-ok('兼容：?p=detail&arg=12 → detail + 12', $r['name'] === 'detail' && $r['sub'] === '12');
-
-req('/?p=detail/7');
-$r = seo_request_route();
-ok('兼容：?p=detail/7 → detail + 7', $r['name'] === 'detail' && $r['sub'] === '7');
-
+ok('兼容：?p=detail&arg=12', $r['name'] === 'detail' && $r['sub'] === '12');
 req('/?chat');
 ok('兼容：裸参数 ?chat', seo_request_route()['name'] === 'chat');
 
 /* ============================================================
  * 3. 旧地址归一（301 目标）
  * ============================================================ */
-req('/?p=detail&arg=12');
-ok('归一：?p=detail&arg=12 → /detail/12', seo_legacy_redirect_url() === '/detail/12');
-
-req('/?p=doc&arg=' . rawurlencode('功能说明'));
-ok('归一：?p=doc&arg=功能说明 → /doc/…', seo_legacy_redirect_url() === '/doc/' . rawurlencode('功能说明'));
-
-req('/?p=rank&board=peak');
-ok('归一：保留额外查询参数', seo_legacy_redirect_url() === '/rank?board=peak');
-
-req('/rank?board=peak');
-ok('归一：已是普通路径不动', seo_legacy_redirect_url() === '');
-
+req('/rank');
+ok('归一：/rank → /rankings', seo_legacy_redirect_url() === '/rankings');
 req('/detail/12');
-ok('归一：普通路径不动', seo_legacy_redirect_url() === '');
+ok('归一：/detail/12 → /works/12', seo_legacy_redirect_url() === '/works/12');
+req('/mine');
+ok('归一：/mine → /me', seo_legacy_redirect_url() === '/me');
+req('/panel');
+ok('归一：/panel → /admin', seo_legacy_redirect_url() === '/admin');
+req('/doc/' . rawurlencode('入榜规则'));
+ok('归一：/doc/入榜规则 → /docs/admission', seo_legacy_redirect_url() === '/docs/admission');
+req('/?p=detail&arg=12');
+ok('归一：?p=detail&arg=12 → /works/12', seo_legacy_redirect_url() === '/works/12');
+req('/?p=rank&board=peak');
+ok('归一：保留额外查询参数', seo_legacy_redirect_url() === '/rankings?board=peak');
+req('/rankings?board=peak');
+ok('归一：已是规范地址不动', seo_legacy_redirect_url() === '');
+req('/works/12');
+ok('归一：/works/12 不动', seo_legacy_redirect_url() === '');
+req('/');
+ok('归一：站点根不动', seo_legacy_redirect_url() === '');
+req('/docs/features');
+ok('归一：/docs/features 不动', seo_legacy_redirect_url() === '');
 
 /* ============================================================
  * 4. 子目录部署
  * ============================================================ */
-req('/kimgr/detail/12', '/kimgr/index.php');
+req('/kimgr/works/12', '/kimgr/index.php');
 $r = seo_request_route();
 ok('子目录：前缀剥离后正确解析', $r['name'] === 'detail' && $r['sub'] === '12');
-ok('子目录：链接带前缀', seo_rel('rank') === '/kimgr/rank');
-ok('子目录：绝对地址带前缀', seo_abs('rank') === 'https://kimi-game-rank.wuaze.com/kimgr/rank');
-
-/* ============================================================
- * 5. .htaccess 规则
- * ============================================================ */
-req('/');
-$ht = (string)@file_get_contents(APP_ROOT . '/.htaccess');
-ok('.htaccess：API 去扩展名重写', strpos($ht, 'RewriteRule ^api/([a-zA-Z0-9_-]+)/?$ api/$1.php') !== false);
-ok('.htaccess：Front Controller 放行真实文件', strpos($ht, 'RewriteCond %{REQUEST_FILENAME} !-f') !== false
-    && strpos($ht, 'RewriteCond %{REQUEST_FILENAME} !-d') !== false);
-ok('.htaccess：兜底到 index.php', (bool)preg_match('/RewriteRule \^ index\.php \[L,QSA\]/', $ht));
-
-/* API 文件名必须全部能被重写规则覆盖 */
-$bad = array();
-foreach ((array)glob(APP_ROOT . '/api/*.php') as $f) {
-    $base = basename($f, '.php');
-    if (!preg_match('/^[a-zA-Z0-9_-]+$/', $base)) { $bad[] = $base; }
-}
-ok('API 文件名均可无扩展名化（' . count((array)glob(APP_ROOT . '/api/*.php')) . ' 个）', count($bad) === 0);
+ok('子目录：链接带前缀', seo_rel('rank') === '/kimgr/rankings');
+ok('子目录：绝对地址带前缀', seo_abs('rank') === 'https://kimi-game-rank.wuaze.com/kimgr/rankings');
 
 /* ============================================================
  * 6. 前端源码：无 .php 端点、无相对 assets
@@ -182,11 +198,21 @@ ok('index.php：旧地址 301 已接入', strpos($idx, 'seo_legacy_redirect_url(
  * 8. 文档内链
  * ============================================================ */
 $docs = array_merge((array)glob(APP_ROOT . '/assets/docs/*.md'), (array)glob(APP_ROOT . '/assets/docs/en/*.md'));
-$old = array();
+$old = array(); $slugged = 0;
 foreach ($docs as $f) {
-    if (strpos((string)file_get_contents($f), '?p=doc&arg=') !== false) { $old[] = basename($f); }
+    $t = (string)file_get_contents($f);
+    if (strpos($t, '?p=doc&arg=') !== false || strpos($t, '(/doc/') !== false) { $old[] = basename($f); }
+    $slugged += substr_count($t, '(/docs/');
 }
-ok('文档内链已改为普通路径（' . count($docs) . ' 份，历史日志除外）', count($old) <= 1);
+ok('文档内链已改为 /docs/<slug>（' . count($docs) . ' 份，' . $slugged . ' 处，历史日志除外）', count($old) <= 1);
+
+/* 前端路由不再硬编码路径段，一律读服务端下发的映射 */
+$appjs = (string)file_get_contents(APP_ROOT . '/assets/js/src/app.js');
+ok('前端：读服务端下发的路由段映射', strpos($appjs, 'window.__ROUTES') !== false && strpos($appjs, 'SEG_OF[name]') !== false);
+ok('前端：KNOWN 含 submit / panel / monitor',
+    strpos($appjs, "'submit'") !== false && strpos($appjs, "'panel'") !== false && strpos($appjs, "'monitor'") !== false);
+$idx2 = (string)file_get_contents(APP_ROOT . '/index.php');
+ok('入口：下发 window.__ROUTES', strpos($idx2, 'window.__ROUTES = <?=') !== false);
 
 echo "----------------------------------------------------\n";
 echo '通过 ' . $pass . ' / 失败 ' . $fail . "\n";

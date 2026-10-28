@@ -118,6 +118,8 @@ try {
 <?php foreach ($__seo['jsonld'] as $__ld): ?><script type="application/ld+json"><?= json_encode($__ld, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?></script><?php endforeach; ?>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%236D3BF5'/%3E%3Cpath d='M7 7h10a4 4 0 0 1 4 4v2a3 3 0 0 1-3 3h-.9a2 2 0 0 1-1.6-.8l-.5-.7a1.5 1.5 0 0 0-2.4 0l-.5.7A2 2 0 0 1 10.4 16H10a3 3 0 0 1-3-3v-2a4 4 0 0 1 4-4zm.5 3.5h-1.5v1.5H4.5v1.5h1.5v1.5h1.5v-1.5H9v-1.5H7.5V10.5zm8 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm2.2 2.6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z' fill='%23fff'/%3E%3C/svg%3E">
 <script>window.__BASE = <?= json_encode(seo_base_path()) ?>;</script>
+<?php /* 路由段映射：内部标识 ↔ 对外 URL 段（单一来源在 app/seo.php），前端不再硬编码路径名 */ ?>
+<script>window.__ROUTES = <?= json_encode(array('seg' => seo_route_segments(), 'name' => array_flip(seo_route_segments()), 'docSlug' => seo_doc_slugs(), 'docName' => array_flip(seo_doc_slugs())), JSON_UNESCAPED_UNICODE) ?>;</script>
 <script>window.__CAPTCHA = <?= json_encode($__captcha, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
 <script>window.__FESTIVAL = <?= json_encode($__festival, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
 <script>window.__BANNED = <?= (int)$__bannedId ?>;</script>

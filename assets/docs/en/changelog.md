@@ -7,6 +7,14 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.50.0 · 2026-10-28 (Names That Mean Something)
+
+### Readable addresses
+1. **Every path segment now says what it is**: the ranking is `/rankings`, a work is `/works/12`, yours is `/me`, the control panel is `/admin`, a ban notice is `/banned/12`, a violation notice is `/notices/12`, World Chat is `/chat`, submitting a work is `/submit`.
+2. **Documents use short English names**: `/docs/features`, `/docs/ai`, `/docs/community`, `/docs/scoring`, `/docs/admission`, `/docs/terms`, `/docs/privacy`, `/docs/changelog`. The Chinese name (e.g. `/docs/入榜规则`) still works and redirects to the matching address.
+3. **Search always uses `?q=`**: `/rankings?q=keyword`. Every search entry point takes that one parameter, so a copied link reproduces the same results.
+4. **The short addresses from the previous release all redirect**: `/rank`, `/detail/12`, `/doc/…`, `/mine`, `/panel`, `/violation/12` and `/discipline/12` still open — they simply jump to the new spelling.
+
 ## v3.49.0 · 2026-10-28 (Back to Basics)
 
 ### Addresses

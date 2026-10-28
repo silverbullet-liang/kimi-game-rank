@@ -10,7 +10,13 @@ let impl = function (hash) {
   const i = raw.indexOf('?');
   const seg = (i < 0 ? raw : raw.slice(0, i)).split('/').filter(Boolean);
   const q = i < 0 ? '' : raw.slice(i);
-  const path = '/' + (seg.length ? seg.map(encodeURIComponent).join('/') : 'rank');
+  const RM = (typeof window !== 'undefined' && window.__ROUTES) ? window.__ROUTES : {};
+  const SEG = RM.seg || {};
+  const DOC = RM.docSlug || {};
+  const name = seg[0] || 'rank';
+  let arg = seg.slice(1).join('/');
+  if (name === 'doc' && arg) { arg = DOC[arg] || arg; }
+  const path = '/' + encodeURIComponent(SEG[name] || name) + (arg ? '/' + arg.split('/').map(encodeURIComponent).join('/') : '');
   history.pushState({ route: String(hash) }, '', BASE + path + q);
 };
 

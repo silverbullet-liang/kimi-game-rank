@@ -88,13 +88,13 @@ A work is taken off the leaderboard when any of these applies:
 5. **Long-term unreachable**: repeated syncs fail to retrieve usable information;
 6. **Other**: removal judged reasonable by an administrator for operational or compliance reasons.
 
-> Most removals are **hide (unlist)** operations — the work stops appearing on the leaderboard but the data is not physically deleted, so it can be restored after a mistake or a successful appeal. For deleted content and data handling, see [Terms of Service](/doc/用户协议) and [Privacy Policy](/doc/隐私政策).
+> Most removals are **hide (unlist)** operations — the work stops appearing on the leaderboard but the data is not physically deleted, so it can be restored after a mistake or a successful appeal. For deleted content and data handling, see [Terms of Service](/docs/terms) and [Privacy Policy](/docs/privacy).
 
 ## 9. Corrections and appeals
 
 1. **Wrong information**: if a title, description, author or cover is wrong, report it through "Feedback" with the original link and the correct information.
 2. **As the author, asking for a change or removal**: contact us through "Feedback", ideally with **material that proves ownership** (such as a screenshot of the community work page). We will act after verification.
-3. **Disagreeing with a category or a score**: categories are decided by the rules in section 3, scores are calculated by the algorithm in [Scoring Standard](/doc/评分标准). If you believe a **rule** itself has a clear flaw, tell us — we adjust **rules**, not individual scores.
+3. **Disagreeing with a category or a score**: categories are decided by the rules in section 3, scores are calculated by the algorithm in [Scoring Standard](/docs/scoring). If you believe a **rule** itself has a clear flaw, tell us — we adjust **rules**, not individual scores.
 
 ## 10. Disclaimer
 
@@ -108,12 +108,12 @@ A work is taken off the leaderboard when any of these applies:
 1. **My work is not listed — can I submit it myself?** Yes. Signed-in users can use "Submit a Work"; collection by administrators also continues.
 2. **Why was my work put under Games?** The category follows the priority order in section 3; when nothing matches, the **fallback is Games**. If a category is clearly wrong, tell us.
 3. **Will my score change?** Depends on the scoring mode: with the default "update information only", an existing work's score is not overwritten by later updates (the site owner may still adjust it); newly listed works are always scored automatically. The Hall of Fame records the highest total ever.
-4. **Can I buy or fake scores?** No. Confirmed manipulation leads to removal and possibly action against the account; see section 10 of the [Scoring Standard](/doc/评分标准), "Anti-manipulation".
+4. **Can I buy or fake scores?** No. Confirmed manipulation leads to removal and possibly action against the account; see section 10 of the [Scoring Standard](/docs/scoring), "Anti-manipulation".
 5. **Can a removed work come back?** Most removals are **hide** operations; if it was a mistake or an appeal succeeds, the work can be shown again.
 6. **How is this site related to Kimi officially?** There is no affiliation or partnership. This is a third-party interest leaderboard; work data comes from public information on [Kimi Community](https://www.kimi.com) and does not represent its official position.
 
 ---
 
-**Related documents**: [Features](/doc/功能说明) · [Community Guidelines](/doc/社区公约) · [Scoring Standard](/doc/评分标准) · [Terms of Service](/doc/用户协议) · [Privacy Policy](/doc/隐私政策) · [Changelog](/doc/更新日志)
+**Related documents**: [Features](/docs/features) · [Community Guidelines](/docs/community) · [Scoring Standard](/docs/scoring) · [Terms of Service](/docs/terms) · [Privacy Policy](/docs/privacy) · [Changelog](/docs/changelog)
 
 > Last updated: 2026-10-22

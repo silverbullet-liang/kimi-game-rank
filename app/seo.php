@@ -54,10 +54,56 @@ function seo_is_mirror(): bool
  *   旧地址（?p=rank&arg=12、#/rank/12）继续可用，由 seo_legacy_redirect_url() 301 归一
  * ============================================================ */
 
-/** 已知界面名（新增页面必须同时加到 app.js 的 KNOWN 与这里） */
+/** 已知界面名（内部标识；新增页面必须同时加到 app.js 的 KNOWN 与这里） */
 function seo_route_names(): array
 {
-    return array('rank','detail','chat','mine','login','doc','panel','monitor','feedback','about','violation','discipline');
+    return array('rank','detail','chat','mine','login','submit','doc','panel','monitor',
+                 'feedback','about','violation','discipline');
+}
+
+/**
+ * 内部标识 → 对外 URL 段。
+ * 对外地址一律用读者一眼能懂的名词：/rankings、/works/12、/docs/admission、/me …
+ * 改这里即改全站地址（页面路由、站内链接、canonical、sitemap 同时生效）。
+ */
+function seo_route_segments(): array
+{
+    return array(
+        'rank'       => 'rankings',
+        'detail'     => 'works',
+        'chat'       => 'chat',
+        'mine'       => 'me',
+        'login'      => 'login',
+        'submit'     => 'submit',
+        'doc'        => 'docs',
+        'feedback'   => 'feedback',
+        'about'      => 'about',
+        'violation'  => 'banned',
+        'discipline' => 'notices',
+        'panel'      => 'admin',
+        'monitor'    => 'monitor',
+    );
+}
+
+/** 曾用过的 URL 段：命中即 301 到新段（旧链接、旧收录都不会失效） */
+function seo_legacy_segments(): array
+{
+    return array('rank', 'detail', 'doc', 'mine', 'violation', 'discipline', 'panel');
+}
+
+/** 文档名 ↔ URL 段（地址用英文短名，中文名仍可访问并 301 过来） */
+function seo_doc_slugs(): array
+{
+    return array(
+        '功能说明'    => 'features',
+        'AI 使用说明' => 'ai',
+        '社区公约'    => 'community',
+        '评分标准'    => 'scoring',
+        '入榜规则'    => 'admission',
+        '用户协议'    => 'terms',
+        '隐私政策'    => 'privacy',
+        '更新日志'    => 'changelog',
+    );
 }
 
 /** 站点根路径：部署在子目录时返回 /kimgr 之类的前缀，根目录部署返回空串 */
@@ -86,10 +132,19 @@ function seo_request_route(): array
 {
     $known = seo_route_names();
 
-    /* 主路径：/rank 、/detail/12 、/doc/入榜规则 */
-    $segs = seo_path_segments();
-    $name = $segs ? strtolower(trim($segs[0])) : '';
-    $arg  = count($segs) > 1 ? implode('/', array_slice($segs, 1)) : '';
+    /* 主路径：/rankings 、/works/12 、/docs/admission */
+    $segs  = seo_path_segments();
+    $seg0  = $segs ? strtolower(trim($segs[0])) : '';
+    $bySeg = array_flip(seo_route_segments());          // 段 → 内部名
+    $name  = isset($bySeg[$seg0]) ? $bySeg[$seg0] : '';
+    if ($name === '' && in_array($seg0, seo_legacy_segments(), true)) {
+        $name = $seg0;                                  // 旧段（与内部名同名），由 301 归一新段
+    }
+    $arg   = count($segs) > 1 ? implode('/', array_slice($segs, 1)) : '';
+    if ($name === 'doc' && $arg !== '') {
+        $bySlug = array_flip(seo_doc_slugs());          // 段 → 中文文档名
+        if (isset($bySlug[$arg])) { $arg = $bySlug[$arg]; }
+    }
 
     /* 兼容旧查询式地址：?p=detail&arg=12 、?p=detail/12 、?chat */
     if (!in_array($name, $known, true)) {
@@ -119,7 +174,12 @@ function seo_request_route(): array
 /** 规范化路径：/detail/12 、/doc/入榜规则（分段编码，中文原样进 URL） */
 function seo_path_of(string $name, string $arg = ''): string
 {
-    $path = '/' . rawurlencode($name);
+    $segs = seo_route_segments();
+    if ($name === 'doc' && $arg !== '') {
+        $slugs = seo_doc_slugs();
+        if (isset($slugs[$arg])) { $arg = $slugs[$arg]; }
+    }
+    $path = '/' . rawurlencode(isset($segs[$name]) ? $segs[$name] : $name);
     $arg  = trim($arg, '/');
     if ($arg !== '') {
         $path .= '/' . implode('/', array_map('rawurlencode', explode('/', $arg)));
@@ -143,29 +203,30 @@ function seo_rel(string $name, string $arg = '', array $extra = array()): string
 }
 
 /** 旧地址归一：命中查询式参数时返回 301 目标，否则返回空串（由 index.php 处理） */
+/** 旧地址归一：路径与规范地址不一致时返回 301 目标，否则返回空串（由 index.php 处理） */
 function seo_legacy_redirect_url(): string
 {
-    $known = seo_route_names();
-    $hit   = isset($_GET['p']) || isset($_GET['arg']);
-    if (!$hit) {
-        foreach ($known as $k) {
-            if (isset($_GET[$k])) { $hit = true; break; }
+    $r     = seo_request_route();
+    $canon = seo_base_path() . seo_path_of($r['name'], $r['sub']);
+    $here  = seo_base_path() . '/' . implode('/', array_map('rawurlencode', seo_path_segments()));
+    $root  = seo_base_path() . '/';
+
+    $queryStyle = isset($_GET['p']) || isset($_GET['arg']);
+    if (!$queryStyle) {
+        foreach (seo_route_names() as $k) {
+            if (isset($_GET[$k])) { $queryStyle = true; break; }
         }
     }
-    if (!$hit) { return ''; }
+    /* 已经是规范地址（或站点根）就不动，查询参数原样保留 */
+    if (!$queryStyle && ($here === $canon || $here === $root)) { return ''; }
 
-    $r     = seo_request_route();
-    $skip  = array_merge(array('p', 'arg'), $known);
+    $skip  = array_merge(array('p', 'arg'), seo_route_names());
     $extra = array();
     foreach ($_GET as $k => $v) {
         if (in_array($k, $skip, true) || !is_string($v) || $v === '') { continue; }
         $extra[$k] = $v;
     }
-    $target = seo_rel($r['name'], $r['sub'], $extra);
-    /* 当前路径已与目标路径一致且没有查询式参数残留时不必再跳，避免自循环 */
-    $here = seo_base_path() . '/' . implode('/', array_map('rawurlencode', seo_path_segments()));
-    if ($here === $target && !isset($_GET['p']) && !isset($_GET['arg'])) { return ''; }
-    return $target;
+    return $canon . (!empty($extra) ? '?' . http_build_query($extra) : '');
 }
 
 /* ============================================================
