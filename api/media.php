@@ -40,6 +40,18 @@ if ($method === 'POST') {
     if (!isset($mimeToExt[$mime])) { fail(415, '仅支持 JPG / PNG / GIF / WebP'); }
     $ext = $mimeToExt[$mime];
 
+    /* 解压炸弹：字节很小、解码后几百 MB —— 先卡尺寸再落盘 */
+    if (!upload_guard_dims_ok($info)) {
+        fail(413, '图片尺寸过大（单边不能超过 ' . UPLOAD_MAX_SIDE . ' 像素）');
+    }
+
+    /* 图片马：GIF89a + `<?php` 这类多语言文件，getimagesize 是能通过的 */
+    $badMark = upload_guard_scan($tmp);
+    if ($badMark !== '') {
+        app_log('upload rejected: script marker "' . $badMark . '" in ' . $origin);
+        fail(415, '文件内容不是纯图片');
+    }
+
     /* 原始文件名仅作展示：先净化（去路径与控制字符、限制扩展名），绝不原样落盘或回显 */
     $origin = safe_filename((string)(isset($f['name']) ? $f['name'] : ''), MEDIA_EXTS);
 
@@ -51,6 +63,17 @@ if ($method === 'POST') {
 
     $name = bin2hex(random_bytes(8)) . '.' . $ext;
     if (!@move_uploaded_file($tmp, $dir . '/' . $name)) { fail(500, '保存失败'); }
+
+    /* 落盘后再扫一次（tmp 与目标可能被主机改写过），并重编码剥离 EXIF / 尾部附加数据。
+       重编码失败不阻断（GD 未必可用），此时前面两道扫描与目录禁执行仍然成立。 */
+    $postPath = $dir . '/' . $name;
+    $badMark2 = upload_guard_scan($postPath);
+    if ($badMark2 !== '') {
+        @unlink($postPath);
+        app_log('upload rejected after save: "' . $badMark2 . '"');
+        fail(415, '文件内容不是纯图片');
+    }
+    upload_guard_reencode($postPath, $ext);
 
     /* 图片审核：先感知（OVHcloud 视觉 OCR + 违规标签）、再判断（Jev），
        任一环不可用自动切智谱视觉作备选。审核不通过就删掉文件再拒绝，

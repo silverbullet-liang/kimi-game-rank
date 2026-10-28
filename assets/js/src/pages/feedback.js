@@ -53,7 +53,7 @@ export async function renderFeedback(container) {
       const d = await api('feedback', 'list');
       list.innerHTML = '';
       if (!d.items.length) { list.innerHTML = '<div class="empty" style="padding:26px">暂无反馈</div>'; return; }
-      d.items.forEach(f => list.appendChild(fbNode(f, isAdmin, load)));
+      (d.items || []).forEach(f => list.appendChild(fbNode(f, isAdmin, load)));
     } catch (e) { list.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`; }
   }
 

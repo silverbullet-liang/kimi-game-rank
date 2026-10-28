@@ -448,7 +448,7 @@ switch ($action) {
         $plan = reclassify_plan();
         $total = count($plan['items']);
         $size  = 60;
-        $offset = max(0, param_int('offset', 0));
+        $offset = param_range('offset', 0, 1000000, 0);
         $batch = array_slice($plan['items'], $offset, $size);
 
         $n = 0;
@@ -588,7 +588,7 @@ switch ($action) {
     case 'relink': {
         require_panel();
         csrf_verify();
-        $r = works_relink_scan(param_int('limit', 8), 7);
+        $r = works_relink_scan(param_range('limit', 1, 50, 8), 7);
         ok($r, $r['scanned'] > 0
             ? ('已检查 ' . $r['scanned'] . ' 个，替换 ' . $r['changed'] . ' 个')
             : '暂无需要重新识别的作品');
@@ -853,6 +853,41 @@ switch ($action) {
     }
 
     /* ---------- 站点互通 ---------- */
+    /* ---------- 关键文件完整性（sha256 + md5） ---------- */
+    case 'integrity_state': {
+        require_panel();
+        $st  = json_decode((string)setting_get('integrity.state', ''), true);
+        $man = integrity_manifest();
+        ok(array(
+            'state'     => is_array($st) ? $st : null,
+            'manifest'  => array(
+                'at'      => isset($man['at']) ? (string)$man['at'] : '',
+                'version' => isset($man['version']) ? (string)$man['version'] : '',
+                'count'   => isset($man['files']) && is_array($man['files']) ? count($man['files']) : 0,
+            ),
+            'harden'    => array(
+                'count' => (int)setting_get('integrity.harden.count', 0),
+                'last'  => (string)setting_get('integrity.harden.last', ''),
+            ),
+            'files'     => integrity_files(),
+        ));
+        break;
+    }
+
+    case 'integrity_scan': {
+        require_panel();
+        csrf_verify();
+        $r = integrity_check();
+        setting_set('integrity.state', json_encode(array(
+            'ok' => $r['ok'], 'sig_ok' => $r['sig_ok'], 'at' => gmdate('Y-m-d H:i:s'),
+            'bad' => array_slice($r['bad'], 0, 20), 'missing' => array_slice($r['missing'], 0, 20),
+            'count' => $r['count'],
+        ), JSON_UNESCAPED_UNICODE));
+        app_log('integrity scan by panel: ' . ($r['ok'] ? 'ok' : 'mismatch'));
+        ok($r);
+        break;
+    }
+
     case 'peers_state': {
         require_panel();
         ok(array(

@@ -31,6 +31,31 @@ switch ($action) {
     /* 公开管理人员名单：「关于」页实时读取。
        刻意独立于控制面板的接口（admin.php / dashboard.php）——
        公开页面只碰这一条只读链路，且只导出用户名与角色标签。 */
+    /* 前端运行时守卫的上报口：只记录「我们自己的节点被删 / 原生 API 被替换」，
+       新增的第三方节点（下载器、翻译等扩展）根本不参与判断。
+       游客也能报（很多注入发生在登录前），按 IP 限速，只落日志与计数，不入库正文。 */
+    case 'harden': {
+        require_token();
+        cooldown_guard('harden');
+        $nodes   = param('nodes', array());
+        $natives = param('natives', array());
+        $pick = array();
+        foreach (array($nodes, $natives) as $list) {
+            if (!is_array($list)) { continue; }
+            foreach ($list as $x) {
+                if (is_string($x) && $x !== '') { $pick[] = mb_substr($x, 0, 40, 'UTF-8'); }
+                if (count($pick) >= 8) { break 2; }
+            }
+        }
+        $ua = mb_substr(param_str('ua', ''), 0, 120, 'UTF-8');
+        $cnt = (int)setting_get('integrity.harden.count', 0) + 1;
+        setting_set('integrity.harden.count', (string)$cnt);
+        setting_set('integrity.harden.last', gmdate('Y-m-d H:i:s') . ' | ' . implode(',', $pick) . ' | ' . $ua);
+        app_log('harden report: ' . implode(',', $pick));
+        ok(array('n' => $cnt));
+        break;
+    }
+
     case 'admins': {
         require_token();
         ok(array('items' => admin_public_list()));

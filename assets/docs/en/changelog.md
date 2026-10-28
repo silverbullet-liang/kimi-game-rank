@@ -7,6 +7,24 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.51.0 · 2026-10-28 (Shore Up the Foundations)
+
+### Uploads
+1. **Three gates on image uploads**: a pixel limit (12000 per side, 40 million in total) rejects images that are a few KB on disk but decode into hundreds of MB; content scanning rejects any file carrying script markers (the classic `GIF89a` header with PHP code after it); JPEG / PNG / WebP are re-encoded once, stripping metadata such as where the photo was taken along with any appended data. GIFs keep their animation and rely on scanning plus a non-executable directory.
+2. **The upload directory cannot execute scripts**: code placed there will never run.
+
+### Bounds
+3. **Request bodies are capped at 1 MB with a nesting depth of 32**: a request carrying tens of MB is refused outright instead of exhausting memory first.
+4. **Numeric inputs are clamped**: paging, offsets and batch sizes stay in sensible ranges, and batch operations have an item cap — one request cannot delete the whole site.
+
+### Authorisation and null safety (reviewed)
+5. **Every write endpoint was reviewed one by one**: each delete or edit checks "owner or administrator", administration actions require a second factor at the panel entrance, and form writes carry an anti-CSRF token. This round added the confirmation that personal settings cannot take someone else's identity, plus null-safety fallbacks on the front end — an endpoint returning an unexpected shape no longer blanks the page.
+
+### Front-end tamper protection
+6. **The entry script carries a content check (sha256)**: if the file is rewritten, the browser refuses to run it rather than running modified code.
+7. **An integrity manifest for key files (sha256 + md5, signed)**: twenty files covering the entry, front-end output and security core are compared every 10 minutes; the control panel gains a "File integrity" block that can verify on demand and list any differing file. Changing a file without the manifest, or changing the manifest without the key, is detected either way.
+8. **A runtime guard in the page**: it only counts two things — a key node of this page being removed, and a built-in browser API being replaced. Nodes added by browser extensions (image downloaders, translators, style managers) never count and are never touched, so normal extensions keep working. Findings are recorded only; nothing is blocked.
+
 ## v3.50.0 · 2026-10-28 (Names That Mean Something)
 
 ### Readable addresses

@@ -89,6 +89,14 @@ $__seo = array(
 /* 站点根路径前缀：路径式路由下静态资源与接口必须用绝对地址，否则 /detail/12 会解析成 /detail/assets/… */
 $__P = seo_base_path();
 
+/* 前端产物完整性（SRI）：实时算入口脚本的 sha256，浏览器按 base64 校验。
+   文件被改写（主机注入、扩展替换、上传不全）时浏览器直接拒绝执行，而不是带着后门跑。
+   可在 config 里用 security.sri = false 关闭。 */
+$__appPath = __DIR__ . '/assets/js/app.js';
+$__appSha  = is_file($__appPath) ? (string)hash_file('sha256', $__appPath) : '';
+$__appVer  = $__appSha !== '' ? (APP_VERSION . '.' . substr($__appSha, 0, 8)) : APP_VERSION;
+$__sri     = ($__appSha !== '' && cfg('security.sri', true)) ? 'sha256-' . base64_encode(hex2bin($__appSha)) : '';
+
 $__seoBody = '';
 try {
     $__seoRoute = seo_request_route();
@@ -597,7 +605,7 @@ try {
       if (!in_array($__lang, array('zh', 'en', 'ja'), true)) { $__lang = ''; } ?>
 <script>window.__LANG = <?= json_encode($__lang) ?>;</script>
 <script>window.__SITE__ = { name: <?= json_encode((string)cfg('site.name', 'Kimi游戏榜')) ?>, ver: <?= json_encode(APP_VERSION) ?>, timezone: <?= json_encode((string)cfg('site.timezone', 'Asia/Shanghai')) ?> };</script>
-<link rel="preload" as="script" href="<?= e($__P) ?>/assets/js/app.js?v=<?= APP_VERSION ?>">
-<script type="module" src="<?= e($__P) ?>/assets/js/app.js?v=<?= APP_VERSION ?>" onerror="(function(){if(window.__lgRetry)return;window.__lgRetry=1;var s=document.createElement('script');s.type='module';s.src='<?= e($__P) ?>/assets/js/app.js?v=<?= APP_VERSION ?>&r='+Date.now();document.body.appendChild(s);})()"></script>
+<link rel="preload" as="script" href="<?= e($__P) ?>/assets/js/app.js?v=<?= e($__appVer) ?>">
+<script type="module" src="<?= e($__P) ?>/assets/js/app.js?v=<?= e($__appVer) ?>"<?= $__sri !== '' ? ' integrity="' . e($__sri) . '"' : '' ?> onerror="(function(){if(window.__lgRetry)return;window.__lgRetry=1;var s=document.createElement('script');s.type='module';s.src='<?= e($__P) ?>/assets/js/app.js?v=<?= e($__appVer) ?>&r='+Date.now();document.body.appendChild(s);})()"></script>
 </body>
 </html>

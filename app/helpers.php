@@ -4,6 +4,9 @@
  */
 declare(strict_types=1);
 
+/** 请求体上限（JSON）：1MB，够用且能挡住内存打爆型请求 */
+if (!defined('REQ_MAX_BYTES')) { define('REQ_MAX_BYTES', 1048576); }
+
 /* ============================================================
  * 配置访问
  * ============================================================ */
@@ -82,8 +85,13 @@ function req_json(): array
 {
     static $cache = null;
     if ($cache !== null) { return $cache; }
-    $raw = file_get_contents('php://input');
-    $data = json_decode((string)$raw, true);
+    /* 体积与深度双重设限：超大 JSON 会先吃掉内存再触发 OOM，
+       深嵌套数组同样能把 json_decode 与后续递归打穿 */
+    $len = isset($_SERVER['CONTENT_LENGTH']) ? (int)$_SERVER['CONTENT_LENGTH'] : 0;
+    if ($len > REQ_MAX_BYTES) { fail(413, '请求体过大'); }
+    $raw = (string)file_get_contents('php://input');
+    if (strlen($raw) > REQ_MAX_BYTES) { fail(413, '请求体过大'); }
+    $data = json_decode($raw, true, 32);
     $cache = is_array($data) ? $data : array();
     return $cache;
 }
@@ -108,6 +116,36 @@ function param_int(string $key, int $default = 0): int
 {
     $v = param($key, $default);
     return is_numeric($v) ? (int)$v : $default;
+}
+
+/** 取整数并强制夹在 [min, max]：分页、批量数量、天数这类入参一律用它，
+    避免 (int)"999999999999" 之类的巨值把查询或扫描拖死 */
+function param_range(string $key, int $min, int $max, int $default = 0): int
+{
+    $v = param_int($key, $default);
+    return $v < $min ? $min : ($v > $max ? $max : $v);
+}
+
+/** 取正整数数组（去重 + 截断）：批量操作必须先限个数，否则一次请求能删全站 */
+function param_int_list(string $key, int $maxItems = 100): array
+{
+    $v = param($key, array());
+    if (!is_array($v)) { return array(); }
+    $seen = array();
+    foreach ($v as $x) {
+        if (is_int($x)) { $n = $x; }
+        elseif (is_string($x) && $x !== '' && ctype_digit($x)) { $n = (int)$x; }
+        else { continue; }
+        if ($n > 0) { $seen[$n] = 1; }
+        if (count($seen) >= $maxItems) { break; }
+    }
+    return array_keys($seen);
+}
+
+/** 取字符串并按字符硬性截断（多字节安全）：所有落库文本都该过这一层 */
+function param_text(string $key, int $maxChars = 2000, string $default = ''): string
+{
+    return mb_substr(param_str($key, $default), 0, $maxChars, 'UTF-8');
 }
 
 /* ============================================================

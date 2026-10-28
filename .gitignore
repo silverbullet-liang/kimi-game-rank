@@ -46,3 +46,7 @@ Thumbs.db
 
 # ---------- 本地发布/临时脚本 ----------
 _t/
+# 运行期产物
+storage/integrity.last
+storage/uploads/**
+!storage/uploads/.htaccess

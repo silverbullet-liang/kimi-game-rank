@@ -176,6 +176,7 @@
     if (XP && XP.open && XP.send) {
       var oOpen = XP.open, oSend = XP.send;
       XP.open = function (m, u) { try { this.__mu = u; this.__mm = m; this.__md = 0; } catch (e) {} return oOpen.apply(this, arguments); };
+      XP.open.__kimgr = 1;   // 自家包装标记：完整性守卫据此区分「监控埋点」与「外来 hook」
       XP.send = function () {
         var x = this;
         if (!isSelf(x.__mu)) {
@@ -195,6 +196,7 @@
         }
         return oSend.apply(this, arguments);
       };
+      XP.send.__kimgr = 1;
     }
   } catch (e) {}
   try {
@@ -210,6 +212,7 @@
         }
         return pr;
       };
+      window.fetch.__kimgr = 1;   // 自家包装标记
     }
   } catch (e) {}
 

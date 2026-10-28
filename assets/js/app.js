@@ -1738,6 +1738,98 @@ function mountCaptcha(host, onChange) {
   }, 6000);
 }
 
+/* ========== guard.js ========== */
+/**
+ * 运行时完整性守卫（v3.51.0）
+ * ------------------------------------------------------------
+ * 借鉴「反反广告」的两条经典手法，用途相反 —— 它们用 bait 与 DOM 观测抓拦截器，
+ * 这里用同样的观测能力抓「我们自己被改」：
+ *   1) 关键节点被移除 / 被替换（减法监控）；
+ *   2) 原生 API 被 hook（fetch / XHR / localStorage.setItem 不再是 native code）。
+ *
+ * 刻意**只做减法**：页面上新增的第三方节点（图片下载器、翻译、样式管理器等扩展注入）
+ * 一律不记录、不干预 —— 正常扩展照常工作，这是白名单，而不是黑名单。
+ * 命中只上报一次，不阻断任何功能：真正的权限判断始终在服务端。
+ */
+
+
+const WATCH_NODES = ['#app', '#view', '.tabbar', '#btnMenu'];
+
+const WATCH_NATIVES = [
+  ['fetch', function () { return window.fetch; }],
+  ['XMLHttpRequest.open', function () { return XMLHttpRequest.prototype.open; }],
+  ['XMLHttpRequest.send', function () { return XMLHttpRequest.prototype.send; }],
+  ['localStorage.setItem', function () { return Storage.prototype.setItem; }],
+];
+
+let reported = false;
+let timer = null;
+
+function isNative(fn) {
+  try {
+    return /\{\s*\[native code\]\s*\}[\s\S]*$/.test(Function.prototype.toString.call(fn));
+  } catch (e) {
+    return true;                     // 取不到描述就当作正常，避免误报
+  }
+}
+
+/** 扫描一次：返回 {nodes: [缺失的选择器], natives: [被替换的 API]} */
+function guardScan() {
+  const nodes = [];
+  for (let i = 0; i < WATCH_NODES.length; i++) {
+    const sel = WATCH_NODES[i];
+    if (!document.querySelector(sel)) { nodes.push(sel); }
+  }
+  const natives = [];
+  for (let i = 0; i < WATCH_NATIVES.length; i++) {
+    const pair = WATCH_NATIVES[i];
+    let fn = null;
+    try { fn = pair[1](); } catch (e) { fn = null; }
+    if (typeof fn !== 'function') { continue; }
+    /* 自家埋点（monitor.js 对 fetch / XHR 的包装）带 __kimgr 标记：区分「我们自己的包装」与「外来 hook」 */
+    if (fn.__kimgr) { continue; }
+    if (!isNative(fn)) { natives.push(pair[0]); }
+  }
+  return { nodes: nodes, natives: natives };
+}
+
+function report(hit) {
+  if (reported) { return; }
+  if (!hit.nodes.length && !hit.natives.length) { return; }
+  reported = true;
+  try {
+    const body = JSON.stringify({
+      nodes: hit.nodes.slice(0, 6),
+      natives: hit.natives.slice(0, 6),
+      ua: String(navigator.userAgent || '').slice(0, 180),
+      at: Date.now(),
+    });
+    const url = API_BASE + '/site?action=harden';
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+    } else {
+      fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true })
+        .catch(function () {});
+    }
+  } catch (e) { /* 上报失败不影响任何功能 */ }
+  try { window.__HARDEN = hit; } catch (e) {}
+}
+
+function guardStart() {
+  const once = function () {
+    const hit = guardScan();
+    report(hit);
+    if (reported && timer) { clearInterval(timer); timer = null; }
+  };
+  setTimeout(once, 1200);                                  // 等首屏渲染完再看
+  timer = setInterval(function () {
+    if (document.visibilityState === 'visible') { once(); }
+  }, 60000);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') { once(); }
+  });
+}
+
 /* ========== pages/rank.js ========== */
 /**
  * 榜单页
@@ -4321,7 +4413,7 @@ async function loadVisits(box) {
     const d = await api('profile', 'visits');
     box.innerHTML = '';
     if (!d.items.length) { box.innerHTML = '<div class="tiny" style="padding:8px 0">暂无访问记录</div>'; return; }
-    d.items.forEach(v => {
+    (d.items || []).forEach(v => {
       const el = document.createElement('div');
       el.className = 'visit-row';
       el.innerHTML = `<span>${esc(v.location || t('未知地区'))} · ${esc(v.ip)}</span><span class="tiny">${esc(v.time)}</span>`;
@@ -5144,6 +5236,7 @@ async function renderPanel(container) {
     bindBackup(container);
     loadDisc(container);
     loadPeer(container);
+    loadIntegrity(container);
     bindAiRank(container);
     startPanelPolling(container);
   } else {
@@ -5236,6 +5329,8 @@ function adminLayout() {
 
     ${discBlock()}
 
+    ${integrityBlock()}
+
     ${peerBlock()}
 
     ${commentBinBlock()}
@@ -5297,7 +5392,7 @@ async function loadCommentBin(container) {
     if (head) { head.innerHTML = '共 <b>' + Number(d.total) + '</b> 条已删除评论'; }
     if (!d.items.length) { box.innerHTML = '<div class="tiny muted">回收站是空的。</div>'; return; }
     box.innerHTML = '<table class="table"><thead><tr><th>作者</th><th>内容</th><th>所属作品</th><th>删除时间</th><th>操作</th></tr></thead><tbody>'
-      + d.items.map(c => `<tr data-cid="${Number(c.id)}">
+      + (d.items || []).map(c => `<tr data-cid="${Number(c.id)}">
         <td>${esc(c.username)} ${oidTag(c.oid)}<br><span class="tiny muted">${c.by_admin ? '管理员删除' : t('本人删除')}</span></td>
         <td style="max-width:340px;word-break:break-word">${esc(c.content).slice(0, 160)}</td>
         <td class="tiny">${esc(c.title)}</td>
@@ -5506,7 +5601,7 @@ function bindBackup(container) {
       return;
     }
     let h = '<table class="table"><thead><tr><th>文件</th><th>大小</th><th>时间</th><th>操作</th></tr></thead><tbody>';
-    d.items.forEach(function (it) {
+    (d.items || []).forEach(function (it) {
       h += '<tr><td class="tiny">' + esc(it.name) + '</td>'
         + '<td class="tiny">' + fmtBytes(it.bytes) + '</td>'
         + '<td class="tiny">' + esc(it.time) + '</td>'
@@ -6470,7 +6565,7 @@ function bindAddWork(container) {
       try {
         const d = await api('admin', 'search_works', { q: q }, { silent: true });
         if (!d.items.length) { sug.hidden = true; sug.innerHTML = ''; return; }
-        sug.innerHTML = d.items.map(w =>
+        sug.innerHTML = (d.items || []).map(w =>
           `<button type="button" data-cid="${esc(w.community_id)}"><b>${esc(w.title)}</b>
             <span class="tiny">${esc(w.author)} · ${esc(w.community_id)} · ${w.total}分</span></button>`).join('');
         sug.hidden = false;
@@ -6895,7 +6990,7 @@ async function loadWorks(container, q, readOnly, page) {
       box.innerHTML = '<div class="tiny">没有匹配的作品</div>';
     } else {
       box.innerHTML = `<table class="table"><thead><tr><th>标题</th><th>分类</th><th>总分</th><th>状态</th><th>操作</th></tr></thead><tbody>` +
-        d.items.map(w => `<tr data-id="${w.id}">
+        (d.items || []).map(w => `<tr data-id="${w.id}">
           <td>${esc(w.title)}<div class="tiny">${esc(w.community_id)} ${oidTag(w.oid)}</div></td>
           <td>${esc(catName(w.category))}</td>
           <td>${Number(w.total_score)}</td>
@@ -6997,6 +7092,72 @@ async function loadVisitsTop(container) {
  * 站点列表 + 一键互通。数据传输先压缩再用非对称加密（每站一把 64 位私钥），
  * 两边密钥对不上就同步不了；世界对话 / AI 对话等实时数据不参与。
  */
+function integrityBlock() {
+  return `
+    <div class="panel-plain">
+      <h3>文件完整性</h3>
+      <p class="tiny muted">
+        对照发布时签下的清单（<b>sha256 + md5</b>）检查入口、前端产物与安全核心是否被改动。
+        清单本身带签名，改文件不改清单、或改清单但不知密钥都能查出来。
+        校验只记录与告警，不会让站点停摆。
+      </p>
+      <div id="integrState" class="tiny muted">读取中…</div>
+      <div class="prow" style="margin-top:8px;gap:8px">
+        <button class="btn btn-sm" id="integrScan">立即校验</button>
+      </div>
+      <div id="integrHarden" class="tiny muted" style="margin-top:8px"></div>
+    </div>`;
+}
+
+async function loadIntegrity(container) {
+  const box = container.querySelector('#integrState');
+  const hard = container.querySelector('#integrHarden');
+  const btn = container.querySelector('#integrScan');
+  if (!box) { return; }
+
+  const paint = function (d) {
+    const m = (d && d.manifest) || {};
+    const st = d && d.state;
+    const lines = [];
+    lines.push('清单：' + (m.count ? (m.count + ' 个文件') : '未生成') + (m.version ? (' · 签于 ' + esc(m.version)) : '') + (m.at ? (' · ' + esc(m.at) + ' UTC') : ''));
+    if (st) {
+      const bad = (st.bad || []).join('、');
+      const miss = (st.missing || []).join('、');
+      lines.push('最近校验：' + esc(String(st.at || '')) + ' · ' + (st.ok ? '<b style="color:var(--ok,#2e7d32)">一致</b>' : '<b style="color:var(--danger,#c62a2f)">有差异</b>')
+        + (st.sig_ok === false ? '（清单签名无效）' : ''));
+      if (bad) { lines.push('被改动：' + esc(bad)); }
+      if (miss) { lines.push('文件缺失：' + esc(miss)); }
+    } else {
+      lines.push('最近校验：尚未运行（每 10 分钟自动一次）');
+    }
+    box.innerHTML = lines.join('<br>');
+    if (hard) {
+      const h = (d && d.harden) || {};
+      hard.innerHTML = '前端守卫上报：' + (h.count || 0) + ' 次'
+        + (h.last ? ('<br>最近：' + esc(String(h.last))) : '')
+        + '<br><span class="muted">只统计「本页关键节点被删 / 原生 API 被替换」；扩展新加的节点不算。</span>';
+    }
+  };
+
+  const load = async function () {
+    try { paint(await api('admin', 'integrity_state', null, { silent: true })); }
+    catch (e) { box.textContent = '读取失败'; }
+  };
+
+  if (btn) {
+    btn.addEventListener('click', async function () {
+      btn.disabled = true;
+      try {
+        const r = await api('admin', 'integrity_scan', {});
+        toast(r && r.ok ? '校验通过：文件与清单一致' : '校验发现差异，详见下方');
+      } catch (e) { toast(e && e.message ? e.message : '校验失败'); }
+      btn.disabled = false;
+      load();
+    });
+  }
+  load();
+}
+
 function peerBlock() {
   return `
     <div class="panel-plain">
@@ -7418,7 +7579,7 @@ async function loadUsers(container, q, readOnly, page) {
     const opsHead = readOnly ? '' : '<th>操作</th>';
     box.innerHTML = `<div class="tiny" style="margin-bottom:6px">可按用户名或 8 位 UID 搜索${readOnly ? ' · 只读' : ' · 点「通报」可写理由并封禁账号与 IP'}</div>
       <table class="table"><thead><tr><th>用户名</th><th>UID</th><th>注册</th><th>最近登录</th>${showIp ? '<th>最近 IP / 归属地</th>' : ''}<th>AI 用量</th>${opsHead}</tr></thead><tbody>` +
-      d.items.map(u => `<tr data-id="${u.id}" data-name="${esc(u.username)}">
+      (d.items || []).map(u => `<tr data-id="${u.id}" data-name="${esc(u.username)}">
         <td>${userName(u.username, u.role, u.reports)}</td>
         <td class="uid-cell">${esc(u.uid8 || '—')}</td>
         <td>${esc(u.created)}</td>
@@ -7511,7 +7672,7 @@ async function loadSubs(container) {
       </div>`;
     box.innerHTML = poolNote + (d.items.length
       ? `<table class="table"><thead><tr><th>用户名</th><th>UID（豹子号）</th><th>设立时间</th><th>操作</th></tr></thead><tbody>` +
-        d.items.map(s => `<tr data-id="${s.id}">
+        (d.items || []).map(s => `<tr data-id="${s.id}">
           <td>${userName(s.username, 'subadmin')}</td><td class="uid-cell">${esc(s.uid8 || '—')}</td><td>${esc(s.created)}</td>
           <td>
             <button class="btn-ghost btn-sm" data-act="demote">取消身份</button>
@@ -7830,7 +7991,7 @@ async function renderFeedback(container) {
       const d = await api('feedback', 'list');
       list.innerHTML = '';
       if (!d.items.length) { list.innerHTML = '<div class="empty" style="padding:26px">暂无反馈</div>'; return; }
-      d.items.forEach(f => list.appendChild(fbNode(f, isAdmin, load)));
+      (d.items || []).forEach(f => list.appendChild(fbNode(f, isAdmin, load)));
     } catch (e) { list.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`; }
   }
 
@@ -8304,6 +8465,7 @@ async function renderDiscipline(container, ctx) {
 /**
  * 应用入口：启动引导、路由、底栏、抽屉、搜索、通知轮询
  */
+
 
 
 
@@ -9074,6 +9236,7 @@ async function main() {
   await route();
   maybeNameFix();          // 存量用户名待更新：提醒并引导改名（不阻断功能）
   startPolling();
+  guardStart();            // 运行时完整性守卫：只记录、不干预（扩展注入一律放行）
 
   // 首次交互时请求通知权限
   bindToTop();   // 通知权限改为在「我的 → 设置」中显式开启

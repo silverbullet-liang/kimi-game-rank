@@ -531,7 +531,7 @@ async function loadVisits(box) {
     const d = await api('profile', 'visits');
     box.innerHTML = '';
     if (!d.items.length) { box.innerHTML = '<div class="tiny" style="padding:8px 0">暂无访问记录</div>'; return; }
-    d.items.forEach(v => {
+    (d.items || []).forEach(v => {
       const el = document.createElement('div');
       el.className = 'visit-row';
       el.innerHTML = `<span>${esc(v.location || t('未知地区'))} · ${esc(v.ip)}</span><span class="tiny">${esc(v.time)}</span>`;

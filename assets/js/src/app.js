@@ -6,6 +6,7 @@ import { i18nInit, t, applyI18nDom, applyI18nText, watchI18n } from './i18n.js';
 import { boot, state, api, toast, dialog, prompt_, setToken, setUnauthorizedHandler, notify, getPrefs, setPrefs, $, on, askNotifyPermission, esc, showBanLock, hideBanLock, maybeDiscPopup, readBanCache, readBanCacheAsync, saveBanCache } from './core.js';
 import { applyTheme, saveTheme, initSystemWatcher, ACCENTS } from './theme.js';
 import { setNavigate } from './router.js';
+import { guardStart } from './guard.js';
 import { cacheGet, cacheSet, cacheTouch, cachePrev, runTransition, enablePredictiveBack, setNavAnim } from './transitions.js';
 
 import { renderRank, PAGE_SIZE } from './pages/rank.js';
@@ -774,6 +775,7 @@ async function main() {
   await route();
   maybeNameFix();          // 存量用户名待更新：提醒并引导改名（不阻断功能）
   startPolling();
+  guardStart();            // 运行时完整性守卫：只记录、不干预（扩展注入一律放行）
 
   // 首次交互时请求通知权限
   bindToTop();   // 通知权限改为在「我的 → 设置」中显式开启

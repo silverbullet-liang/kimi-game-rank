@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '3.50.0');
+define('APP_VERSION', '3.51.0');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);
@@ -77,6 +77,8 @@ require_once APP_ROOT . '/app/link_smart.php';
 require_once APP_ROOT . '/app/relink.php';
 require_once APP_ROOT . '/app/score_recalc.php';
 require_once APP_ROOT . '/app/link_guard.php';
+require_once APP_ROOT . '/app/upload_guard.php';
+require_once APP_ROOT . '/app/integrity.php';
 require_once APP_ROOT . '/app/siteinfo.php';
 require_once APP_ROOT . '/app/works_list.php';
 require_once APP_ROOT . '/app/seo.php';
@@ -160,6 +162,12 @@ try { if (function_exists('works_relink_tick')) { works_relink_tick(); } } catch
 
 /* ---------- 评分体系自动重算（评分版本变更后自动全量重算；未变更时零开销） ---------- */
 try { if (function_exists('score_recalc_tick_if_due')) { score_recalc_tick_if_due(); } } catch (Throwable $e) {}
+
+/* ---------- 关键文件完整性：低频抽样校验（默认 10 分钟一次） ----------
+   只记录与告警：文件被改动不会让站点停摆，但会在日志与控制面板上立刻可见。 */
+if (php_sapi_name() !== 'cli' && function_exists('integrity_tick')) {
+    try { integrity_tick(); } catch (Throwable $e) {}
+}
 
 /* ---------- 会话（仅用于管理面板二次认证等短状态） ---------- */
 if (session_status() !== PHP_SESSION_ACTIVE && php_sapi_name() !== 'cli') {
