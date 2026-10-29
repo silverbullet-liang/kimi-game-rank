@@ -2,11 +2,12 @@ import { SITE_BASE } from './base.js';
 /**
  * 应用入口：启动引导、路由、底栏、抽屉、搜索、通知轮询
  */
-import { i18nInit, t, applyI18nDom, applyI18nText, watchI18n } from './i18n.js';
+import { i18nInit, t, festName, applyI18nDom, applyI18nText, watchI18n } from './i18n.js';
 import { boot, state, api, toast, dialog, prompt_, setToken, setUnauthorizedHandler, notify, getPrefs, setPrefs, $, on, askNotifyPermission, esc, showBanLock, hideBanLock, maybeDiscPopup, maybeFestivalPopup, readBanCache, readBanCacheAsync, saveBanCache } from './core.js';
 import { applyTheme, saveTheme, initSystemWatcher, ACCENTS } from './theme.js';
 import { setNavigate } from './router.js';
 import { guardStart } from './guard.js';
+import { startEggs } from './eggs.js';
 import { cacheGet, cacheSet, cacheTouch, cachePrev, runTransition, enablePredictiveBack, setNavAnim } from './transitions.js';
 
 import { renderRank, PAGE_SIZE } from './pages/rank.js';
@@ -321,7 +322,7 @@ function drawerItems() {
   const festToday = (typeof window !== 'undefined' && window.__FESTIVAL && Array.isArray(window.__FESTIVAL.today))
     ? window.__FESTIVAL.today : [];
   if (festToday.length) {
-    items.push({ k: 'today', label: t('关于今天') + '：' + festToday.map(function (x) { return t(x.name); }).join('·'),
+    items.push({ k: 'today', label: t('关于今天') + '：' + festToday.map(function (x) { return festName(x); }).join('·'),
       ic: I.info, go: '#/today' });
   }
   const base = [
@@ -786,9 +787,10 @@ async function main() {
   await route();
   maybeNameFix();          // 存量用户名待更新：提醒并引导改名（不阻断功能）
   startPolling();
-  guardStart();
+  guardStart();            // 运行时完整性守卫：只记录、不干预
+  startEggs();             // 五个彩蛋：不打扰、每个只触发一次
   maybeFestivalPopup();    // 当天有节日主题：提示一次（同一天只弹一次）
-  document.addEventListener('kimgr:navigate', function (e) { navigate(e.detail); });            // 运行时完整性守卫：只记录、不干预（扩展注入一律放行）
+  document.addEventListener('kimgr:navigate', function (e) { navigate(e.detail); });
 
   // 首次交互时请求通知权限
   bindToTop();   // 通知权限改为在「我的 → 设置」中显式开启

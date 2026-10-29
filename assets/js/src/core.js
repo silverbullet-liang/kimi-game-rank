@@ -1,5 +1,6 @@
 import { API_BASE } from './base.js';
 import { mountCaptcha, captchaConfig, captchaChannel } from './captcha.js';
+import { festName } from './i18n.js';
 /**
  * 核心：令牌管理、API 封装、UI 工具、启动引导
  * 信任边界：本层只负责「原样传递数据」，一切规整/校验均在后端完成。
@@ -896,7 +897,7 @@ export function maybeFestivalPopup() {
   const sig = String(fest.date || '') + '|' + fest.today.map(function (x) { return x.key; }).join(',');
   try { if (localStorage.getItem('kimgr_fest_pop') === sig) { return; } } catch (e) {}
 
-  const names = fest.today.map(function (x) { return t(x.name); }).join(' · ');
+  const names = fest.today.map(function (x) { return festName(x); }).join(' · ');
   const theme = fest.today.map(function (x) { return t(x.desc); }).join(' ／ ');
 
   const scrim = document.getElementById('dialogScrim');

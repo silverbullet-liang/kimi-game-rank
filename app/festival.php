@@ -294,6 +294,15 @@ function festival_catalog(): array
             'dark' => false,
             'lunar' => array(9, 9),
         ),
+        'longmarch' => array(
+            'name' => '长征胜利',
+            'desc' => '雪山与一条向北的路 · 10 月 22 日',
+            'dark' => false,
+            'day' => array(10, 22),
+            /* 名称带周年数：1936 年 10 月 22 日红军三大主力会师，标志长征结束。
+               每年自动计算「N 周年」，中英日三份模板各写一份。 */
+            'anniv' => array(1936, '长征胜利 %d 周年', '%d Years Since the Long March', '長征勝利 %d 周年'),
+        ),
         'journalist' => array(
             'name' => '记者节',
             'desc' => '铅字与朱批 · 11 月 8 日',
@@ -407,6 +416,28 @@ function festival_now(): string
     return festival_key_for_date((int)gmdate('Y', $t), (int)gmdate('n', $t), (int)gmdate('j', $t));
 }
 
+/**
+ * 节日的三语名称：带 anniv 的按年份算出周年数（如「长征胜利 90 周年」）。
+ * 返回 array('name' => 中文, 'nameEn' => 英文, 'nameJa' => 日文)。
+ */
+function festival_names(array $f, int $y): array
+{
+    $base = (string)$f['name'];
+    if (!isset($f['anniv']) || !is_array($f['anniv'])) {
+        return array('name' => $base, 'nameEn' => $base, 'nameJa' => $base);
+    }
+    $since = (int)$f['anniv'][0];
+    $n     = $y - $since;
+    if ($n <= 0) {                                   // 早于起始年不给周年数
+        return array('name' => $base, 'nameEn' => $base, 'nameJa' => $base);
+    }
+    return array(
+        'name'   => sprintf((string)$f['anniv'][1], $n),
+        'nameEn' => sprintf((string)$f['anniv'][2], $n),
+        'nameJa' => sprintf((string)$f['anniv'][3], $n),
+    );
+}
+
 /** 下发给前端的节日数据（供 theme.js / index.php 的首屏脚本使用） */
 function festival_client(): array
 {
@@ -417,17 +448,29 @@ function festival_client(): array
     $today = array();
     foreach ($keys as $k) {
         if (!isset($cat[$k])) { continue; }
+        $nm = festival_names($cat[$k], $y);
         $today[] = array(
-            'key'  => $k,
-            'name' => (string)$cat[$k]['name'],
-            'desc' => (string)$cat[$k]['desc'],
-            'dark' => !empty($cat[$k]['dark']),
+            'key'    => $k,
+            'name'   => $nm['name'],
+            'nameEn' => $nm['nameEn'],
+            'nameJa' => $nm['nameJa'],
+            'desc'   => (string)$cat[$k]['desc'],
+            'dark'   => !empty($cat[$k]['dark']),
         );
+    }
+    /* 皮肤列表同样补上三种名称（外观设置里显示的是这一份） */
+    $list = array();
+    foreach ($cat as $k => $f) {
+        $nm = festival_names($f, $y);
+        $f['name']   = $nm['name'];
+        $f['nameEn'] = $nm['nameEn'];
+        $f['nameJa'] = $nm['nameJa'];
+        $list[$k] = $f;
     }
     return array(
         'now'   => festival_now(),
         'date'  => gmdate('Y-m-d', $t),
         'today' => $today,
-        'list'  => $cat,
+        'list'  => $list,
     );
 }

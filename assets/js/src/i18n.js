@@ -74,6 +74,14 @@ export function t(s) {
   return (v == null || v === '') ? s : v;
 }
 
+/** 节日名称：带周年数的节日（如长征胜利 N 周年）服务端已算好三种语言，按界面语言取 */
+export function festName(x) {
+  if (!x) { return ''; }
+  if (I18N.lang === 'en') { return String(x.nameEn || x.name || ''); }
+  if (I18N.lang === 'ja') { return String(x.nameJa || x.nameEn || x.name || ''); }
+  return String(x.name || '');
+}
+
 /** 文档页应加载哪种语言的文档 */
 export function docLangOf(lang) {
   return (lang || I18N.lang) === 'zh' ? 'zh' : 'en';

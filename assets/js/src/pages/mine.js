@@ -2,7 +2,7 @@
  * 我的页：个人信息 / AI 用量 / IP 与访问记录 / 设置 / 控制面板入口
  */
 import { api, state, esc, toast, dialog, setToken, askNotifyPermission, userName, isAdminish, getPrefs, setPrefs } from '../core.js';
-import { LANGS, I18N, setLang } from '../i18n.js';
+import { LANGS, I18N, setLang, festName } from '../i18n.js';
 import { navigate } from '../router.js';
 import { saveTheme, ACCENTS, SKINS, hexToHsl, FESTIVAL_KEYS, festivalNow } from '../theme.js';
 import { setNavAnim } from '../transitions.js';
@@ -362,7 +362,7 @@ function mountAppearance(box) {
       <div class="skin-row" id="skinRow">
         ${skinKeys().map(k => `<button class="skin-card ${skin === k ? 'on' : ''}" data-s="${k}">
           <span class="skin-prev p-${k}" aria-hidden="true"></span>
-          <b>${esc(t(SKINS[k].name))}</b>
+          <b>${esc(festName(SKINS[k]))}</b>
           <span class="tiny">${esc(t(SKINS[k].desc))}</span>
         </button>`).join('')}
       </div>

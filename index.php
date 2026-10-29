@@ -264,6 +264,10 @@ try {
 <!-- 节日装饰层：各节日的装饰都放在这里，由皮肤 CSS 决定显示哪一组
      （默认 display:none；pointer-events:none，绝不拦截任何交互） -->
 <div class="festival-deco" aria-hidden="true">
+  <!-- 长征胜利：雪山轮廓 + 向北的路 + 风雪 -->
+  <span class="fd-lm-ridge"></span>
+  <span class="fd-lm-road"></span>
+  <span class="fd-lm-snow"></span>
   <!-- 国庆：灯笼 + 缓落星点 -->
   <span class="fd-lantern fd-lantern--l"><i></i></span>
   <span class="fd-lantern fd-lantern--r"><i></i></span>

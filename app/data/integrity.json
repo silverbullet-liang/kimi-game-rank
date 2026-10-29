@@ -1,12 +1,12 @@
 {
-    "version": "3.53.0",
-    "at": "2026-10-28 23:57:47",
+    "version": "3.54.0",
+    "at": "2026-10-29 09:25:11",
     "algo": "sha256+md5",
     "files": {
         "index.php": {
-            "sha256": "462772b77ce3dd5d06922dfc8db07c2a5fb224cd76ecf979fcde5ba36f46b1ed",
-            "md5": "c8ac87771aacb7457a6f9869e606f21f",
-            "size": 31605
+            "sha256": "ee9ce40f6adaad826b37cd3ad116786fb6855b93eeb506e5d6ca4f9bb089cb5b",
+            "md5": "92ea63dd99ff964cf19ac2e71351f527",
+            "size": 31774
         },
         ".htaccess": {
             "sha256": "852b08277eab43e4c5e8af6d08565a1db2be71fd3c1fe614691f7db81c25f763",
@@ -14,9 +14,9 @@
             "size": 4023
         },
         "assets/js/app.js": {
-            "sha256": "4cd94b01b4a0ddeae4ae92f097433152031bee4af03c6deed8b521368662dd78",
-            "md5": "6c31e8c20024a9a97317d39e95c7c3fe",
-            "size": 440022
+            "sha256": "8b14cce15abb7411d061272ad58da99dd04a77c285e58607b1033f9021b806e1",
+            "md5": "4f7435510ac6ed49201680b8fbc8e104",
+            "size": 448800
         },
         "assets/js/monitor.js": {
             "sha256": "d9265e397e087c86cd6922605e6bfc4552afd143ad17b0a3e2da770232ae7ce5",
@@ -29,8 +29,8 @@
             "size": 91113
         },
         "app/bootstrap.php": {
-            "sha256": "7b0bcfdc47a99d5f2ab29590ac51ae1eb5c5be122bc1c8f9c5789beb297ac82e",
-            "md5": "637694fb41708c6cc2e136c18d48ca3e",
+            "sha256": "6f43fb2cdd225d9239df3ec2f40926acd4e6ca4a6df3cbb537320b628dc0c2d0",
+            "md5": "77ef2d0c1b0d3ee76256a02b43159b0f",
             "size": 9004
         },
         "app/helpers.php": {
@@ -104,5 +104,5 @@
             "size": 52652
         }
     },
-    "sig": "e9729b94832b00e4f0dd90b12884623dfad435c35b4dc9fbc0bf6cd9bfccff78"
+    "sig": "b5be92226cd7857ba60f1ae37cb677e0781f4be9a5bd4e983cb6381fe38eb27a"
 }

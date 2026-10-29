@@ -7,6 +7,21 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.54.0 · 2026-10-29 (Ever Renewed)
+
+### Festivals
+1. **Long March Victory Day (22 October) added**: on this day in 1936 the Second and First Front Armies met at Jiangtaibao and the Long March ended. The name **counts the years automatically** — 2026 shows "90 Years Since the Long March", phrased naturally in Chinese, English and Japanese rather than by dropping a number into a template.
+2. **A matching theme**: the snow mountains are outlines only with a pale snow line along the ridge, and a diagonal band widening from the bottom of the page runs into the distance for the column heading north. A single dark red note appears once; there is no festive colour, and drifting snow is the only motion.
+
+### Five easter eggs
+3. **Opening the developer tools** points out that the site is AGPL-3.0 and gives the repository. It only mentions it — nothing is blocked and nothing fights back.
+4. **A console note**: version, licence and repository.
+5. **Arrow-key password**: ↑↑↓↓←→←→BA scatters a burst of stars.
+6. **Tap the site name seven times**: tells you the version and leaves a note from development.
+7. **Visiting between midnight and 5 a.m.**: one line suggesting you get some sleep, once a day.
+
+Each egg fires once per device and stays out of the way; on mobile the tap-based ones work without a keyboard.
+
 ## v3.53.0 · 2026-10-29 (In Due Season)
 
 ### Fix

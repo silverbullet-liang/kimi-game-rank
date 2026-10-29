@@ -7,7 +7,7 @@
  * 同一天可能命中两个节日 —— 按目录顺序逐块渲染。
  */
 import { esc, toast } from '../core.js';
-import { I18N, t } from '../i18n.js';
+import { I18N, t, festName } from '../i18n.js';
 import { mdToHtml } from '../md.js';
 import { ASSET_BASE } from '../base.js';
 
@@ -47,14 +47,14 @@ export async function renderToday(container) {
   const dateText = String(fest.date || '');
   let html = `<div class="card">
     <div class="card-title">${esc(t('关于今天'))}</div>
-    <p class="tiny muted">${esc(dateText)} · ${esc(list.map(function (x) { return t(x.name); }).join(' · '))}</p>
+    <p class="tiny muted">${esc(dateText)} · ${esc(list.map(function (x) { return festName(x); }).join(' · '))}</p>
   </div>`;
 
   for (let i = 0; i < list.length; i++) {
     const it = list[i];
     const got = await fetchDoc(it.key);
     const head = `<div class="card doc">
-      <div class="doc-head"><div class="doc-title">${esc(t(it.name))}</div>
+      <div class="doc-head"><div class="doc-title">${esc(festName(it))}</div>
         <div class="doc-lang"><span>${got ? (got.dir === 'zh' ? '中文' : (got.dir === 'ja' ? '日本語' : 'English')) : ''}</span></div>
       </div>`;
     if (!got) {
