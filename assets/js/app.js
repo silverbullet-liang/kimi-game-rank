@@ -1074,6 +1074,44 @@ function hideBanLock() {
 
 const DISC_SEEN_KEY = 'kimgr_disc_seen';
 
+/**
+ * 节日弹窗：当天有节日主题时提示一次（同一天只弹一次）。
+ * 内容只说「今天是什么节、启用了哪套主题」，详情走「关于今天」页面。
+ */
+function maybeFestivalPopup() {
+  const fest = (typeof window !== 'undefined' && window.__FESTIVAL) ? window.__FESTIVAL : null;
+  if (!fest || !Array.isArray(fest.today) || !fest.today.length) { return; }
+  const sig = String(fest.date || '') + '|' + fest.today.map(function (x) { return x.key; }).join(',');
+  try { if (localStorage.getItem('kimgr_fest_pop') === sig) { return; } } catch (e) {}
+
+  const names = fest.today.map(function (x) { return t(x.name); }).join(' · ');
+  const theme = fest.today.map(function (x) { return t(x.desc); }).join(' ／ ');
+
+  const scrim = document.getElementById('dialogScrim');
+  const box = document.getElementById('dialog');
+  if (!scrim || !box) { return; }
+  box.className = 'dialog glass';
+  box.innerHTML = `<h3>${esc(t('今天是') + t('：') + names)}</h3>`
+    + `<p class="tiny muted">${esc(theme)}</p>`
+    + `<div class="dialog-actions">`
+    + `<button class="btn-ghost" data-r="0">${esc(t('知道了'))}</button>`
+    + `<button class="btn" data-r="1">${esc(t('看看这个节日'))}</button>`
+    + `</div>`;
+  scrim.hidden = false;
+  const close = function (go) {
+    scrim.hidden = true;
+    box.innerHTML = '';
+    scrim.onclick = null;
+    if (go) { document.dispatchEvent(new CustomEvent('kimgr:navigate', { detail: '#/today' })); }
+  };
+  box.querySelectorAll('[data-r]').forEach(function (b) {
+    b.addEventListener('click', function () { close(b.dataset.r === '1'); });
+  });
+  scrim.onclick = function (e) { if (e.target === scrim) { close(false); } };
+
+  try { localStorage.setItem('kimgr_fest_pop', sig); } catch (e) {}
+}
+
 /** 最新通报弹窗（可关闭）。$item 来自 start.php 的 disc。 */
 function showDiscPopup(item) {
   const it = item || {};
@@ -1231,6 +1269,12 @@ const FESTIVAL_KEYS = Object.keys(FESTIVALS);
 
 /** 当前生效的节日 key；无则空串 */
 function festivalNow() { return String(FEST.now || ''); }
+
+/** 今天命中的全部节日（可能两个），每项 {key,name,desc,dark} */
+function festivalToday() {
+  const t = FEST.today;
+  return Array.isArray(t) ? t : [];
+}
 
 /** 是否处于节日窗口内：节日皮肤是限时项，只在窗口内出现在外观设置里 */
 function festivalInWindow() { return festivalNow() !== ''; }
@@ -8536,10 +8580,81 @@ async function renderDiscipline(container, ctx) {
   }
 }
 
+/* ========== pages/today.js ========== */
+/**
+ * 「关于今天」：当天命中的节日的介绍
+ * ------------------------------------------------------------
+ * 内容来自站内 Markdown（assets/docs/festivals/<语言>/<节日>.md），
+ * 中 / 英 / 日 三份各有完整正文（简介、由来、习俗、故事）；
+ * 某语言缺文件时回退英文，再缺则提示，不阻断页面。
+ * 同一天可能命中两个节日 —— 按目录顺序逐块渲染。
+ */
+
+
+
+
+
+/** 语言目录：中文用 zh，其余按界面语言；缺失回退 en */
+const DOC_DIR = { zh: 'zh', en: 'en', ja: 'ja' };
+
+function docDirs() {
+  const first = DOC_DIR[I18N.lang] || 'en';
+  return first === 'en' ? ['en'] : [first, 'en'];
+}
+
+async function fetchDoc(key) {
+  const dirs = docDirs();
+  for (let i = 0; i < dirs.length; i++) {
+    const url = ASSET_BASE + '/docs/festivals/' + dirs[i] + '/' + encodeURIComponent(key) + '.md';
+    try {
+      const r = await fetch(url, { cache: 'no-cache' });
+      if (r.ok) { return { text: await r.text(), dir: dirs[i] }; }
+    } catch (e) { /* 换下一个语言再试 */ }
+  }
+  return null;
+}
+
+async function renderToday(container) {
+  container.innerHTML = '<div class="skeleton" style="height:80px"></div><div class="skeleton"></div>';
+  const fest = (typeof window !== 'undefined' && window.__FESTIVAL) ? window.__FESTIVAL : {};
+  const list = Array.isArray(fest.today) ? fest.today : [];
+
+  if (!list.length) {
+    container.innerHTML = `<div class="card">
+      <div class="card-title">${esc(t('今天没有节日主题'))}</div>
+      <p class="tiny muted">${esc(t('站点在节日当天会自动换上对应主题，这里会显示那个节日的介绍、由来、习俗与故事。'))}</p>
+    </div>`;
+    return;
+  }
+
+  const dateText = String(fest.date || '');
+  let html = `<div class="card">
+    <div class="card-title">${esc(t('关于今天'))}</div>
+    <p class="tiny muted">${esc(dateText)} · ${esc(list.map(function (x) { return t(x.name); }).join(' · '))}</p>
+  </div>`;
+
+  for (let i = 0; i < list.length; i++) {
+    const it = list[i];
+    const got = await fetchDoc(it.key);
+    const head = `<div class="card doc">
+      <div class="doc-head"><div class="doc-title">${esc(t(it.name))}</div>
+        <div class="doc-lang"><span>${got ? (got.dir === 'zh' ? '中文' : (got.dir === 'ja' ? '日本語' : 'English')) : ''}</span></div>
+      </div>`;
+    if (!got) {
+      html += head + `<p class="tiny muted">${esc(t('这个节日的介绍还没准备好。'))}</p></div>`;
+      continue;
+    }
+    html += head + `<div class="doc-body">${mdToHtml(got.text)}</div></div>`;
+  }
+
+  container.innerHTML = html;
+}
+
 /* ========== app.js ========== */
 /**
  * 应用入口：启动引导、路由、底栏、抽屉、搜索、通知轮询
  */
+
 
 
 
@@ -8592,6 +8707,7 @@ const routes = {
   about: renderAbout,
   violation: renderViolation,
   discipline: renderDiscipline,
+  today: renderToday,
 };
 
 let currentPage = '';
@@ -8634,7 +8750,7 @@ const SENSITIVE_PAGES = ['panel'];
 
 function readRoute() {
   if (location.hash && location.hash.length > 1) { return location.hash; }   // 旧式 #/ 链接优先
-  const KNOWN = ['rank', 'detail', 'chat', 'mine', 'login', 'submit', 'doc', 'panel', 'monitor', 'feedback', 'about', 'violation', 'discipline'];
+  const KNOWN = ['rank', 'detail', 'chat', 'mine', 'login', 'submit', 'doc', 'panel', 'monitor', 'feedback', 'about', 'violation', 'discipline', 'today'];
 
   /* 主路径：/rank 、/detail/12 、/doc/入榜规则 */
   let path = location.pathname;
@@ -8852,7 +8968,15 @@ const I = {
 
 function drawerItems() {
   const isAdmin = state.role === 'admin' || state.role === 'subadmin';
-  const items = [
+  const items = [];
+  /* 当天有节日主题时，抽屉顶部给一个入口 —— 介绍、由来、习俗、故事都在里面 */
+  const festToday = (typeof window !== 'undefined' && window.__FESTIVAL && Array.isArray(window.__FESTIVAL.today))
+    ? window.__FESTIVAL.today : [];
+  if (festToday.length) {
+    items.push({ k: 'today', label: t('关于今天') + '：' + festToday.map(function (x) { return t(x.name); }).join('·'),
+      ic: I.info, go: '#/today' });
+  }
+  const base = [
     { k: 'total', label: t('总排行榜'), ic: I.rank, go: '#/rank' },
     { k: 'search', label: t('搜索作品'), ic: I.search, act: 'search' },
     { k: 'submit', label: t('提交作品'), ic: I.list, go: '#/submit' },
@@ -8873,6 +8997,7 @@ function drawerItems() {
     { k: 'admins', label: t('管理者名单'), ic: I.users, go: '#/about' },
     { k: 'about', label: t('关于'), ic: I.info, go: '#/about' },
   ];
+  base.forEach(function (x) { items.push(x); });
   if (state.role === 'user' || state.role === 'guest') {
     items.push({ k: 'auth', label: t('用户登录 / 注册'), ic: I.login, go: '#/login' });
   } else {
@@ -9311,7 +9436,9 @@ async function main() {
   await route();
   maybeNameFix();          // 存量用户名待更新：提醒并引导改名（不阻断功能）
   startPolling();
-  guardStart();            // 运行时完整性守卫：只记录、不干预（扩展注入一律放行）
+  guardStart();
+  maybeFestivalPopup();    // 当天有节日主题：提示一次（同一天只弹一次）
+  document.addEventListener('kimgr:navigate', function (e) { navigate(e.detail); });            // 运行时完整性守卫：只记录、不干预（扩展注入一律放行）
 
   // 首次交互时请求通知权限
   bindToTop();   // 通知权限改为在「我的 → 设置」中显式开启

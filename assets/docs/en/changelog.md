@@ -7,6 +7,16 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.53.0 · 2026-10-29 (In Due Season)
+
+### Fix
+1. **Lunar festivals no longer leak across years**: deciding "is today a lunar festival" used to compare only month and day, so last year's date for the same lunar day could be taken for today when the month and day happened to match. The clearest case was Chongyang: in 2025 it fell on 29 October, which made the Chongyang theme appear again on 29 October 2026 — while this year's Chongyang was actually 18 October. The check now compares the full date, and the year-crossing cases in the 12th and 1st lunar months still resolve correctly.
+
+### New
+2. **A note on the day itself**: opening the site on a festival day now says which festival it is and which theme is active, with a way into the full write-up; it appears once per day only.
+3. **"About today"**: a new entry at the top of the drawer (only shown when a festival falls today) with the festival's **overview, origins, customs and story**. If two festivals share the day, both are shown in turn.
+4. **All three languages**: each of the 48 festival themes has a document in Chinese, English and Japanese, section for section.
+
 ## v3.52.0 · 2026-10-28 (Measure Twice)
 
 ### Human verification

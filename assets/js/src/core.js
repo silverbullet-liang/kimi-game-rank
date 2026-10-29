@@ -886,6 +886,44 @@ export function hideBanLock() {
 
 const DISC_SEEN_KEY = 'kimgr_disc_seen';
 
+/**
+ * 节日弹窗：当天有节日主题时提示一次（同一天只弹一次）。
+ * 内容只说「今天是什么节、启用了哪套主题」，详情走「关于今天」页面。
+ */
+export function maybeFestivalPopup() {
+  const fest = (typeof window !== 'undefined' && window.__FESTIVAL) ? window.__FESTIVAL : null;
+  if (!fest || !Array.isArray(fest.today) || !fest.today.length) { return; }
+  const sig = String(fest.date || '') + '|' + fest.today.map(function (x) { return x.key; }).join(',');
+  try { if (localStorage.getItem('kimgr_fest_pop') === sig) { return; } } catch (e) {}
+
+  const names = fest.today.map(function (x) { return t(x.name); }).join(' · ');
+  const theme = fest.today.map(function (x) { return t(x.desc); }).join(' ／ ');
+
+  const scrim = document.getElementById('dialogScrim');
+  const box = document.getElementById('dialog');
+  if (!scrim || !box) { return; }
+  box.className = 'dialog glass';
+  box.innerHTML = `<h3>${esc(t('今天是') + t('：') + names)}</h3>`
+    + `<p class="tiny muted">${esc(theme)}</p>`
+    + `<div class="dialog-actions">`
+    + `<button class="btn-ghost" data-r="0">${esc(t('知道了'))}</button>`
+    + `<button class="btn" data-r="1">${esc(t('看看这个节日'))}</button>`
+    + `</div>`;
+  scrim.hidden = false;
+  const close = function (go) {
+    scrim.hidden = true;
+    box.innerHTML = '';
+    scrim.onclick = null;
+    if (go) { document.dispatchEvent(new CustomEvent('kimgr:navigate', { detail: '#/today' })); }
+  };
+  box.querySelectorAll('[data-r]').forEach(function (b) {
+    b.addEventListener('click', function () { close(b.dataset.r === '1'); });
+  });
+  scrim.onclick = function (e) { if (e.target === scrim) { close(false); } };
+
+  try { localStorage.setItem('kimgr_fest_pop', sig); } catch (e) {}
+}
+
 /** 最新通报弹窗（可关闭）。$item 来自 start.php 的 disc。 */
 export function showDiscPopup(item) {
   const it = item || {};

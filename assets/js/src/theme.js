@@ -18,6 +18,12 @@ export const FESTIVAL_KEYS = Object.keys(FESTIVALS);
 /** 当前生效的节日 key；无则空串 */
 export function festivalNow() { return String(FEST.now || ''); }
 
+/** 今天命中的全部节日（可能两个），每项 {key,name,desc,dark} */
+export function festivalToday() {
+  const t = FEST.today;
+  return Array.isArray(t) ? t : [];
+}
+
 /** 是否处于节日窗口内：节日皮肤是限时项，只在窗口内出现在外观设置里 */
 export function festivalInWindow() { return festivalNow() !== ''; }
 

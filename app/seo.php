@@ -58,7 +58,7 @@ function seo_is_mirror(): bool
 function seo_route_names(): array
 {
     return array('rank','detail','chat','mine','login','submit','doc','panel','monitor',
-                 'feedback','about','violation','discipline');
+                 'feedback','about','violation','discipline','today');
 }
 
 /**
@@ -82,6 +82,7 @@ function seo_route_segments(): array
         'discipline' => 'notices',
         'panel'      => 'admin',
         'monitor'    => 'monitor',
+        'today'      => 'today',
     );
 }
 

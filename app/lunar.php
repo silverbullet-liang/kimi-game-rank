@@ -99,7 +99,19 @@ function lunar_to_solar(int $y, int $m, int $d)
     return gmmktime(0, 0, 0, 1, 31, 1900) + $days * 86400;
 }
 
-/** 农历（$y 年 $m 月 $d 日）在公历里是几月几日；返回 array(月, 日)，超范围返回空数组 */
+/**
+ * 农历（$y 年 $m 月 $d 日）对应的完整公历日期 [年, 月, 日]；超范围返回空数组。
+ * 判断「今天是不是某个农历节日」必须用它 —— 只比月日会把去年同一天误判成今天。
+ */
+function lunar_to_solar_ymd(int $y, int $m, int $d): array
+{
+    $ts = lunar_to_solar($y, $m, $d);
+    if ($ts === null) { return array(); }
+    return array((int)gmdate('Y', $ts), (int)gmdate('n', $ts), (int)gmdate('j', $ts));
+}
+
+/** 农历（$y 年 $m 月 $d 日）在公历里是几月几日；返回 array(月, 日)，超范围返回空数组。
+    仅用于展示（「农历初九 ≈ 10 月 18 日」这类），判定节日请用 lunar_to_solar_ymd()。 */
 function lunar_to_solar_md(int $y, int $m, int $d): array
 {
     $ts = lunar_to_solar($y, $m, $d);

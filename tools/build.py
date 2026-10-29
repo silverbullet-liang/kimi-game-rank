@@ -34,7 +34,7 @@ ORDER = [
     'core.js', 'md.js', 'theme.js', 'transitions.js', 'captcha.js', 'guard.js',
     'pages/rank.js', 'pages/detail.js', 'pages/lobby.js', 'pages/mine.js',
     'pages/login.js', 'pages/monitor.js', 'pages/panel.js', 'pages/doc.js', 'pages/feedback.js', 'pages/submit.js',
-    'pages/violation.js',
+    'pages/violation.js', 'pages/today.js',
     'app.js',
 ]
 

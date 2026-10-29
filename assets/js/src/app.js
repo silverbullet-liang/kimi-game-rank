@@ -3,13 +3,14 @@ import { SITE_BASE } from './base.js';
  * 应用入口：启动引导、路由、底栏、抽屉、搜索、通知轮询
  */
 import { i18nInit, t, applyI18nDom, applyI18nText, watchI18n } from './i18n.js';
-import { boot, state, api, toast, dialog, prompt_, setToken, setUnauthorizedHandler, notify, getPrefs, setPrefs, $, on, askNotifyPermission, esc, showBanLock, hideBanLock, maybeDiscPopup, readBanCache, readBanCacheAsync, saveBanCache } from './core.js';
+import { boot, state, api, toast, dialog, prompt_, setToken, setUnauthorizedHandler, notify, getPrefs, setPrefs, $, on, askNotifyPermission, esc, showBanLock, hideBanLock, maybeDiscPopup, maybeFestivalPopup, readBanCache, readBanCacheAsync, saveBanCache } from './core.js';
 import { applyTheme, saveTheme, initSystemWatcher, ACCENTS } from './theme.js';
 import { setNavigate } from './router.js';
 import { guardStart } from './guard.js';
 import { cacheGet, cacheSet, cacheTouch, cachePrev, runTransition, enablePredictiveBack, setNavAnim } from './transitions.js';
 
 import { renderRank, PAGE_SIZE } from './pages/rank.js';
+import { renderToday } from './pages/today.js';
 import { renderDetail } from './pages/detail.js';
 import { renderLobby } from './pages/lobby.js';
 import { renderMine } from './pages/mine.js';
@@ -54,6 +55,7 @@ const routes = {
   about: renderAbout,
   violation: renderViolation,
   discipline: renderDiscipline,
+  today: renderToday,
 };
 
 let currentPage = '';
@@ -96,7 +98,7 @@ const SENSITIVE_PAGES = ['panel'];
 
 function readRoute() {
   if (location.hash && location.hash.length > 1) { return location.hash; }   // 旧式 #/ 链接优先
-  const KNOWN = ['rank', 'detail', 'chat', 'mine', 'login', 'submit', 'doc', 'panel', 'monitor', 'feedback', 'about', 'violation', 'discipline'];
+  const KNOWN = ['rank', 'detail', 'chat', 'mine', 'login', 'submit', 'doc', 'panel', 'monitor', 'feedback', 'about', 'violation', 'discipline', 'today'];
 
   /* 主路径：/rank 、/detail/12 、/doc/入榜规则 */
   let path = location.pathname;
@@ -314,7 +316,15 @@ const I = {
 
 function drawerItems() {
   const isAdmin = state.role === 'admin' || state.role === 'subadmin';
-  const items = [
+  const items = [];
+  /* 当天有节日主题时，抽屉顶部给一个入口 —— 介绍、由来、习俗、故事都在里面 */
+  const festToday = (typeof window !== 'undefined' && window.__FESTIVAL && Array.isArray(window.__FESTIVAL.today))
+    ? window.__FESTIVAL.today : [];
+  if (festToday.length) {
+    items.push({ k: 'today', label: t('关于今天') + '：' + festToday.map(function (x) { return t(x.name); }).join('·'),
+      ic: I.info, go: '#/today' });
+  }
+  const base = [
     { k: 'total', label: t('总排行榜'), ic: I.rank, go: '#/rank' },
     { k: 'search', label: t('搜索作品'), ic: I.search, act: 'search' },
     { k: 'submit', label: t('提交作品'), ic: I.list, go: '#/submit' },
@@ -335,6 +345,7 @@ function drawerItems() {
     { k: 'admins', label: t('管理者名单'), ic: I.users, go: '#/about' },
     { k: 'about', label: t('关于'), ic: I.info, go: '#/about' },
   ];
+  base.forEach(function (x) { items.push(x); });
   if (state.role === 'user' || state.role === 'guest') {
     items.push({ k: 'auth', label: t('用户登录 / 注册'), ic: I.login, go: '#/login' });
   } else {
@@ -775,7 +786,9 @@ async function main() {
   await route();
   maybeNameFix();          // 存量用户名待更新：提醒并引导改名（不阻断功能）
   startPolling();
-  guardStart();            // 运行时完整性守卫：只记录、不干预（扩展注入一律放行）
+  guardStart();
+  maybeFestivalPopup();    // 当天有节日主题：提示一次（同一天只弹一次）
+  document.addEventListener('kimgr:navigate', function (e) { navigate(e.detail); });            // 运行时完整性守卫：只记录、不干预（扩展注入一律放行）
 
   // 首次交互时请求通知权限
   bindToTop();   // 通知权限改为在「我的 → 设置」中显式开启

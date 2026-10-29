@@ -334,64 +334,70 @@ function festival_nth_weekday_md(int $y, int $month, int $weekday, int $nth)
  * 给定公历（北京时间的 年/月/日）落在哪个节日窗口；没有则空串。抽出来便于单测。
  * 年份只在农历节日里用得到（需要先算出那一年九月初九是公历几号）。
  */
+/** 某一天命中的全部节日（按目录顺序）：同一天可能有两个节日 */
+function festival_keys_for_date(int $y, int $m, int $d): array
+{
+    $single = array(); $ranged = array();
+    foreach (festival_catalog() as $key => $f) {
+        if (!festival_match_date($key, $f, $y, $m, $d)) { continue; }
+        $isWindow = isset($f['from']) || (isset($f['lunar']) && isset($f['span']));
+        if ($isWindow) { $ranged[] = $key; } else { $single[] = $key; }
+    }
+    /* 单日节日优先于跨日窗口：9/30 显示烈士纪念而不是国庆首日 */
+    return $single ? $single : $ranged;
+}
+
+/** 皮肤用：一天只取一个（目录顺序第一个） */
 function festival_key_for_date(int $y, int $m, int $d): string
+{
+    $keys = festival_keys_for_date($y, $m, $d);
+    return $keys ? (string)$keys[0] : '';
+}
+
+/** 单个节日是否命中该公历日 */
+function festival_match_date(string $key, array $f, int $y, int $m, int $d): bool
 {
     $md = $m * 100 + $d;
 
-    /* 分组：单日（固定日 / 农历日 / 农历月末 / 某月第 N 个星期 X）先判，跨日窗口后判。
-       理由：国庆是 9 天窗口，而重阳、烈士纪念日在某些年份会落进这个窗口 ——
-       那几天应当显示单日节日，而不是被长假盖住。 */
-    $single = array(); $ranged = array();
-    foreach (festival_catalog() as $key => $f) {
-        $isWindow = isset($f['from']) || (isset($f['lunar']) && isset($f['span']));
-        if ($isWindow) { $ranged[$key] = $f; } else { $single[$key] = $f; }
+    /* 公历固定日 */
+    if (isset($f['day'])) {
+        return $md === (int)$f['day'][0] * 100 + (int)$f['day'][1];
     }
-
-    foreach (array($single, $ranged) as $group) {
-        foreach ($group as $key => $f) {
-            /* 公历固定日 */
-            if (isset($f['day'])) {
-                if ($md === (int)$f['day'][0] * 100 + (int)$f['day'][1]) { return $key; }
-                continue;
-            }
-            /* 「某月第 N 个星期 X」：母亲节、父亲节、感恩节 */
-            if (isset($f['nth'])) {
-                $nd = festival_nth_weekday_md($y, (int)$f['nth'][0], (int)$f['nth'][1], (int)$f['nth'][2]);
-                if ($nd && $nd[0] === $m && $nd[1] === $d) { return $key; }
-                continue;
-            }
-            /* 农历日 / 农历月末 / 农历起 + span。
-               农历年跨公历年：腊月与正月的日子会落在公历 1~2 月，属于上一个农历年，
-               所以两个年份都试一遍，命中即返回。 */
-            if (isset($f['lunar']) || isset($f['lunar_end'])) {
-                $lmMonth = isset($f['lunar_end']) ? (int)$f['lunar_end'] : (int)$f['lunar'][0];
-                $span    = isset($f['span']) ? max(1, (int)$f['span']) : 1;
-                foreach (array($y, $y - 1) as $ly) {
-                    $lday = isset($f['lunar_end']) ? lunar_month_days($ly, $lmMonth) : (int)$f['lunar'][1];
-                    $lm   = lunar_to_solar_md($ly, $lmMonth, $lday);
-                    if (!$lm) { continue; }
-                    if ($span > 1) {
-                        $start = gmmktime(0, 0, 0, (int)$lm[0], (int)$lm[1], $ly);
-                        $cur   = gmmktime(0, 0, 0, $m, $d, $y);
-                        $diff  = (int)round(($cur - $start) / 86400);
-                        if ($diff >= 0 && $diff < $span) { return $key; }
-                    } elseif ((int)$lm[0] === $m && (int)$lm[1] === $d) {
-                        return $key;
-                    }
-                }
-                continue;
-            }
-            /* 公历跨日窗口（国庆） */
-            $from = (int)$f['from'][0] * 100 + (int)$f['from'][1];
-            $to   = (int)$f['to'][0]   * 100 + (int)$f['to'][1];
-            if ($from <= $to) {
-                if ($md >= $from && $md <= $to) { return $key; }
-            } else {
-                if ($md >= $from || $md <= $to) { return $key; }
+    /* 「某月第 N 个星期 X」：母亲节、父亲节、感恩节 */
+    if (isset($f['nth'])) {
+        $nd = festival_nth_weekday_md($y, (int)$f['nth'][0], (int)$f['nth'][1], (int)$f['nth'][2]);
+        return $nd && $nd[0] === $m && $nd[1] === $d;
+    }
+    /* 农历日 / 农历月末 / 农历起 + span。
+       农历跨公历年：腊月与正月的日子会落在公历 1~2 月，属上一个农历年，两个年份都试。
+       但必须比**完整日期** —— 只比月日会把「去年同一农历日恰好同月同日」当成今天
+       （2025 年九月初九是 10-29，会让 2026-10-29 误显示重阳主题）。 */
+    if (isset($f['lunar']) || isset($f['lunar_end'])) {
+        $lmMonth = isset($f['lunar_end']) ? (int)$f['lunar_end'] : (int)$f['lunar'][0];
+        $span    = isset($f['span']) ? max(1, (int)$f['span']) : 1;
+        foreach (array($y, $y - 1) as $ly) {
+            $lday = isset($f['lunar_end']) ? lunar_month_days($ly, $lmMonth) : (int)$f['lunar'][1];
+            $sd   = lunar_to_solar_ymd($ly, $lmMonth, $lday);
+            if (!$sd) { continue; }
+            if ($span > 1) {
+                $start = gmmktime(0, 0, 0, (int)$sd[1], (int)$sd[2], (int)$sd[0]);
+                $cur   = gmmktime(0, 0, 0, $m, $d, $y);
+                $diff  = (int)round(($cur - $start) / 86400);
+                if ($diff >= 0 && $diff < $span) { return true; }
+            } elseif ((int)$sd[0] === $y && (int)$sd[1] === $m && (int)$sd[2] === $d) {
+                return true;
             }
         }
+        return false;
     }
-    return '';
+    /* 公历跨日窗口（国庆 9/30–10/8） */
+    if (isset($f['from']) && isset($f['to'])) {
+        $from = (int)$f['from'][0] * 100 + (int)$f['from'][1];
+        $to   = (int)$f['to'][0]   * 100 + (int)$f['to'][1];
+        if ($from <= $to) { return $md >= $from && $md <= $to; }
+        return $md >= $from || $md <= $to;
+    }
+    return false;
 }
 
 /** 当前生效的节日 key（北京时间）；没有则空串 */
@@ -404,5 +410,24 @@ function festival_now(): string
 /** 下发给前端的节日数据（供 theme.js / index.php 的首屏脚本使用） */
 function festival_client(): array
 {
-    return array('now' => festival_now(), 'list' => festival_catalog());
+    $t    = time() + 8 * 3600;                       // 北京时间
+    $y    = (int)gmdate('Y', $t); $m = (int)gmdate('n', $t); $d = (int)gmdate('j', $t);
+    $keys = festival_keys_for_date($y, $m, $d);
+    $cat  = festival_catalog();
+    $today = array();
+    foreach ($keys as $k) {
+        if (!isset($cat[$k])) { continue; }
+        $today[] = array(
+            'key'  => $k,
+            'name' => (string)$cat[$k]['name'],
+            'desc' => (string)$cat[$k]['desc'],
+            'dark' => !empty($cat[$k]['dark']),
+        );
+    }
+    return array(
+        'now'   => festival_now(),
+        'date'  => gmdate('Y-m-d', $t),
+        'today' => $today,
+        'list'  => $cat,
+    );
 }
