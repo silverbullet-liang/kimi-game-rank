@@ -23,6 +23,7 @@ apk/libs/*.jar
 *.jks
 
 # ---------- 存储与日志 ----------
+storage/mail_quiet.json
 storage/cache/*
 storage/logs/*
 storage/uploads/*

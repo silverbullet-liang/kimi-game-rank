@@ -342,3 +342,68 @@ function jev_care(string $text)
     return $care;
 }
 
+/**
+ * 通用标签分类：给一组标签，返回最贴切的哪一个与置信度。
+ * 与 jev_classify() 共用同一通道与冷却（同为 classifier.dev，免 Key、按 IP 限速）。
+ * 不带 dimensions —— 那是「在有序档位里定位」用的，这里是「在互斥类别里选一个」。
+ *
+ * @param string $text   待分类文本
+ * @param array  $labels 互斥标签原文数组（2–100 条）
+ * @return array ok|label|index|conf|scores|reason
+ */
+function jev_labels_classify(string $text, array $labels, string $channel = 'jev'): array
+{
+    $text = trim($text);
+    if ($text === '') { return array('ok' => false, 'reason' => 'empty'); }
+    if (count($labels) < 2) { return array('ok' => false, 'reason' => 'too_few_labels'); }
+    if (net_channel_cooling($channel)) { return array('ok' => false, 'reason' => 'jev_cooling'); }
+    if (!function_exists('curl_init')) { return array('ok' => false, 'reason' => 'no_curl'); }
+
+    $payload = json_encode(array(
+        'input'  => mb_substr($text, 0, 4000, 'UTF-8'),
+        'labels' => array_values($labels),
+    ), JSON_UNESCAPED_UNICODE);
+
+    $ch = curl_init(jev_endpoint());
+    curl_setopt_array($ch, array(
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_HTTPHEADER     => array('Content-Type: application/json'),
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 6,
+        CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_SSL_VERIFYPEER => true,
+    ));
+    $resp = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = (int)curl_errno($ch);
+    curl_close($ch);
+
+    if ($code === 429) {
+        net_channel_cool($channel, 60);
+        return array('ok' => false, 'reason' => 'jev_rate_limited');
+    }
+    if (!is_string($resp) || $code !== 200) {
+        if ($err !== 0 || $code === 0) { net_channel_cool($channel, 30); }
+        return array('ok' => false, 'reason' => 'jev_unavailable:' . $code);
+    }
+
+    $j = json_decode($resp, true);
+    $r = (is_array($j) && isset($j['results'][0]) && is_array($j['results'][0])) ? $j['results'][0] : null;
+    if ($r === null) { return array('ok' => false, 'reason' => 'jev_bad_body'); }
+
+    $label  = isset($r['label']) ? (string)$r['label'] : '';
+    $conf   = isset($r['confidence']) && $r['confidence'] !== null ? (float)$r['confidence'] : 0.0;
+    $scores = isset($r['scores']) && is_array($r['scores']) ? $r['scores'] : array();
+    if ($label === '') { return array('ok' => false, 'reason' => 'jev_no_label'); }
+
+    $idx = array_search($label, array_values($labels), true);
+    return array(
+        'ok'     => true,
+        'label'  => $label,
+        'index'  => ($idx === false ? -1 : (int)$idx),
+        'conf'   => round($conf, 4),
+        'scores' => $scores,
+        'reason' => 'jev_labels',
+    );
+}

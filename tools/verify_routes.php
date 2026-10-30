@@ -214,6 +214,24 @@ ok('前端：KNOWN 含 submit / panel / monitor',
 $idx2 = (string)file_get_contents(APP_ROOT . '/index.php');
 ok('入口：下发 window.__ROUTES', strpos($idx2, 'window.__ROUTES = <?=') !== false);
 
+/* 敏感目录拦截不能与界面对外段撞名：docs 既是文档页段名，也曾在拦截名单里，
+   结果 /docs/scoring 被 mod_alias 直接 404，ErrorDocument 兜底成「页面不见了」。 */
+$ht = (string)file_get_contents(APP_ROOT . '/.htaccess');
+preg_match('/RedirectMatch\s+404\s+\^\/\(([^)]*)\)\/\.\*\$/', $ht, $m);
+$blocked = isset($m[1]) ? explode('|', $m[1]) : array();
+$uiSegs  = array_values(seo_route_segments());
+ok('.htaccess 的敏感目录拦截与界面段名无交集（' . implode('/', $blocked) . '）',
+    count($blocked) > 0 && count(array_intersect($blocked, $uiSegs)) === 0);
+
+/* 每个文档 slug（含大写写法）都要能反查回中文名 —— 地址段是 slug，文档本体按中文名索引 */
+$slugRound = 0; $slugBad = array();
+foreach (seo_doc_slugs() as $docName => $slug) {
+    foreach (array($slug, strtoupper($slug), ucfirst($slug)) as $v) {
+        if (seo_doc_name($v) !== $docName) { $slugBad[] = $v; } else { $slugRound++; }
+    }
+}
+ok('文档 slug 双向可解析（' . $slugRound . ' 种写法，' . count($slugBad) . ' 处失败）', count($slugBad) === 0);
+
 echo "----------------------------------------------------\n";
 echo '通过 ' . $pass . ' / 失败 ' . $fail . "\n";
 exit($fail > 0 ? 1 : 0);

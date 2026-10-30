@@ -7,7 +7,8 @@ import { applyTheme } from '../theme.js';
 import { mountCaptcha, resetCaptcha, captchaToken, captchaChannel, captchaConfig } from '../captcha.js';
 
 export async function renderLogin(container) {
-  let tab = 'password';   // password | guest
+  /* ?tab=code 可直接落到验证码登录（邮件里给的入口、或用户从地址栏直达） */
+  let tab = (/[?&]tab=code\b/.test(location.search)) ? 'code' : 'password';   // password | code | guest
   let sub = 'login';      // login | register
   let agreed = false;
 
@@ -20,6 +21,7 @@ export async function renderLogin(container) {
         <div class="card">
           <div class="seg" style="margin-bottom:14px">
             <button data-tab="password" class="${tab === 'password' ? 'on' : ''}">密码登录</button>
+            <button data-tab="code" class="${tab === 'code' ? 'on' : ''}">${t('验证码登录')}</button>
             <button data-tab="guest" class="${tab === 'guest' ? 'on' : ''}">游客模式</button>
           </div>
           <div id="pane"></div>
@@ -45,7 +47,84 @@ export async function renderLogin(container) {
     });
     const pane = container.querySelector('#pane');
     if (tab === 'password') paintPassword(pane);
+    else if (tab === 'code') paintCode(pane);
     else paintGuest(pane);
+  }
+
+  /* 邮箱验证码登录：先在「我的」里绑定过邮箱，这里才能收到码 */
+  function paintCode(pane) {
+    pane.innerHTML = `
+      <div class="field">
+        <label>${t('邮箱')}</label>
+        <input class="input" id="cMail" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label>${t('验证码')}</label>
+        <div class="input-wrap">
+          <input class="input" id="cCode" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6 位数字">
+          <button class="icon-btn" id="sendCode" type="button" style="width:auto;padding:0 12px;font-size:13px;white-space:nowrap">${t('获取验证码')}</button>
+        </div>
+      </div>
+      <div class="tiny" style="margin:-4px 0 12px">两分钟有效，只能用一次。没收到先看垃圾邮件；还没绑邮箱的，请到「我的」里绑定后再用这条通道。</div>
+      <div id="capBox" style="margin-bottom:12px"></div>
+      <button class="btn" id="submitBtn" style="width:100%">登录</button>`;
+
+    const mail = pane.querySelector('#cMail');
+    const code = pane.querySelector('#cCode');
+    const sendBtn = pane.querySelector('#sendCode');
+    const capBox = pane.querySelector('#capBox');
+    let left = 0, timer = null;
+    resetCaptcha(capBox);
+
+    function rest(n) {
+      left = n;
+      clearInterval(timer);
+      const tick = function () {
+        if (left <= 0) { clearInterval(timer); sendBtn.disabled = false; sendBtn.textContent = t('获取验证码'); return; }
+        sendBtn.disabled = true;
+        sendBtn.textContent = left + ' 秒';
+        left--;
+      };
+      tick();
+      timer = setInterval(tick, 1000);
+    }
+
+    sendBtn.addEventListener('click', async function () {
+      const v = (mail.value || '').trim();
+      if (!v) { toast(t('请填写邮箱'), 'err'); mail.focus(); return; }
+      sendBtn.disabled = true;
+      try {
+        await api('auth', 'login_send', { email: v, lang: (function () {
+          try { return localStorage.getItem('kimgr_lang') || 'zh'; } catch (e) { return 'zh'; }
+        })() });
+        toast(t('验证码已发送'));
+        rest(60);
+        code.focus();
+      } catch (e) {
+        toast(e.message, 'err');
+        sendBtn.disabled = false;
+      }
+    });
+
+    pane.querySelector('#submitBtn').addEventListener('click', async function () {
+      const v = (mail.value || '').trim();
+      const c = (code.value || '').replace(/\D/g, '');
+      if (!v || c.length !== 6) { toast(t('请输入 6 位验证码'), 'err'); return; }
+      if (captchaConfig().enabled && !captchaToken()) { toast('请先完成人机验证', 'err'); return; }
+      const btn = this;
+      btnLoading(btn, true);
+      try {
+        const d = await api('auth', 'login_code', {
+          email: v, code: c,
+          cap_token: captchaToken(), cap_channel: captchaChannel(),
+        });
+        await finishLogin(d);
+      } catch (e) {
+        toast(e.message, 'err');
+        btnLoading(btn, false);
+        resetCaptcha(capBox);
+      }
+    });
   }
 
   function paintPassword(pane) {
@@ -55,9 +134,9 @@ export async function renderLogin(container) {
         <button data-sub="register" class="${sub === 'register' ? 'on' : ''}">注册</button>
       </div>
       <div class="field">
-        <label>用户名${sub === 'register' ? '（即昵称，全站展示，注册后不可更改）' : ''}</label>
+        <label>${sub === 'register' ? '用户名（即昵称，全站展示，注册后不可更改）' : 'UID / 用户名 / 邮箱'}</label>
         <input class="input" id="uName" type="text" autocomplete="username"
-               placeholder="${sub === 'register' ? t('2-64 位，中文、字母、数字或符号均可') : t('请输入用户名')}">
+               placeholder="${sub === 'register' ? t('2-64 位，中文、字母、数字或符号均可') : 'UID、用户名或已绑定的邮箱'}">
       </div>
       <div class="field">
         <label>密码${sub === 'register' ? '（8-64 位，建议同时包含数字和字母）' : ''}</label>
@@ -106,13 +185,13 @@ export async function renderLogin(container) {
       if (btn.disabled) { return; }          // 防重复提交
       const name = pane.querySelector('#uName').value;
       const pwd = pane.querySelector('#uPwd').value;
-      if (!name || !pwd) { toast('请填写用户名与密码', 'err'); return; }
+      if (!name || !pwd) { toast(sub === 'register' ? '请填写用户名与密码' : '请填写账号与密码', 'err'); return; }
       if (!agreed) { toast('请先勾选同意协议', 'err'); return; }
       if (captchaConfig().on && !captchaToken()) { toast('请先完成人机验证', 'err'); return; }
       btnLoading(btn, true);
       try {
         const d = await api('auth', sub === 'register' ? 'register' : 'login', {
-          username: name, password: pwd,
+          username: name, identifier: name, password: pwd,
           cap_token: captchaToken(), cap_channel: captchaChannel(),
         });
         await finishLogin(d);

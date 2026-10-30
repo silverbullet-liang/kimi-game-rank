@@ -340,45 +340,14 @@ function user_rename_self(int $uid, string $raw): array
     return array('username' => $clean, 'old' => (string)$u['username'], 'changed' => true);
 }
 
-function user_login(string $username, string $password): array
+/** 登录成功后的统一收尾：自动解封、记登录、发令牌 */
+function login_finish(array $u): array
 {
-    $norm = norm_username($username);
-    $ip = client_ip();
-    if (login_locked($norm)) {
-        timing_delay();
-        fail(429, '登录尝试过于频繁，请稍后再试');
-    }
-
-    // 管理员统一通道：用户名规整后为 admin 时走独立库验证
-    if ($norm === 'admin') {
-        $ok = admin_verify($password);
-        login_mark($ip, $ok, 'admin');
-        if (!$ok) { timing_delay(); fail(401, '用户名或密码错误'); }
-        stats_bump('logins');
-        return array('uid' => 0, 'role' => 'admin', 'token' => issue_admin_token(), 'username' => 'admin');
-    }
-
-    /* 普通用户与副管理员同一通道：同一张表、同一套密码链路。
-       副管理员仅是 users.role 标记，登录凭证与其原密码完全一致；
-       只有总管理员（admin）的凭证存放在独立数据库。 */
-    $u = db_one('SELECT * FROM users WHERE username_norm = ? LIMIT 1', array($norm));
-    if ($u === null) {
-        // 恒定路径：用哑值跑完整链路，避免用户存在性时序泄露
-        password_chain($password, '1970-01-01 00:00:00', str_repeat('0', 32));
-        login_mark($ip, false, $norm);
-        timing_delay();
-        fail(401, '用户名或密码错误');
-    }
-    $ok = password_verify_chain($password, (string)$u['registered_at'], (string)$u['salt'], (string)$u['password_hash']);
-    login_mark($ip, $ok, $norm);
-    if (!$ok) { timing_delay(); fail(401, '用户名或密码错误'); }
     /* 被封停的账号**允许登录**：登进来才看得到「全屏封禁说明」（处理原因、封禁天数、
-       解封时间，以及「切换账号登录」），其余功能由 bootstrap 的封禁守卫统一拒绝。
-       此前这里直接 fail(403)，人会卡在登录页，只弹一句报错 —— 与全屏说明的设计冲突。 */
+       解封时间，以及「切换账号登录」），其余功能由 bootstrap 的封禁守卫统一拒绝。 */
     if ((int)$u['is_banned'] === 1 && function_exists('discipline_auto_unban')) {
         discipline_auto_unban((int)$u['id']);     // 已到期就顺手解除，不必等人工
     }
-
     db_exec('UPDATE users SET last_login_at = UTC_TIMESTAMP() WHERE id = ?', array((int)$u['id']));
     stats_bump('logins');
     record_visit((int)$u['id']);
@@ -388,6 +357,44 @@ function user_login(string $username, string $password): array
             'username' => (string)$u['username']);
     }
     return array('uid' => (int)$u['id'], 'role' => 'user', 'token' => issue_user_token((int)$u['id']), 'username' => (string)$u['username']);
+}
+
+function user_login(string $identifier, string $password): array
+{
+    $raw = trim($identifier);
+    $ip  = client_ip();
+    /* 限速键：邮箱按归一邮箱计，其余按用户名规整值计 —— 同一账号换写法也落进同一个桶 */
+    $key = (strpos($raw, '@') !== false) ? mail_norm($raw) : norm_username($raw);
+    if (login_locked($key)) {
+        timing_delay();
+        fail(429, '登录尝试过于频繁，请稍后再试');
+    }
+
+    // 管理员统一通道：用户名规整后为 admin 时走独立库验证
+    if (norm_username($raw) === 'admin') {
+        $ok = admin_verify($password);
+        login_mark($ip, $ok, 'admin');
+        if (!$ok) { timing_delay(); fail(401, '用户名或密码错误'); }
+        stats_bump('logins');
+        return array('uid' => 0, 'role' => 'admin', 'token' => issue_admin_token(), 'username' => 'admin');
+    }
+
+    /* 普通用户与副管理员同一通道：同一张表、同一套密码链路。
+       副管理员仅是 users.role 标记，登录凭证与其原密码完全一致；
+       只有总管理员（admin）的凭证存放在独立数据库。
+       账号写法支持 UID / 用户名 / 邮箱三种。 */
+    $u = user_row_by_identifier($raw);
+    if ($u === null) {
+        // 恒定路径：用哑值跑完整链路，避免用户存在性时序泄露
+        password_chain($password, '1970-01-01 00:00:00', str_repeat('0', 32));
+        login_mark($ip, false, $key);
+        timing_delay();
+        fail(401, '用户名或密码错误');
+    }
+    $ok = password_verify_chain($password, (string)$u['registered_at'], (string)$u['salt'], (string)$u['password_hash']);
+    login_mark($ip, $ok, $key);
+    if (!$ok) { timing_delay(); fail(401, '用户名或密码错误'); }
+    return login_finish($u);
 }
 
 function guest_enter(): array

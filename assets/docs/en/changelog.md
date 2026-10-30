@@ -7,6 +7,20 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.55.0 · 2026-10-31 (Worthy of the Name)
+
+### Account
+1. **Email can now be linked**: in "Me", click "Bind email" — enter the address on top, request a code and type it below. The code is valid for two minutes; once it checks out the address is linked, and changing it uses the same dialog.
+2. **One address belongs to one account**: an address already linked to another account is refused outright; each account holds exactly one address, so linking again simply replaces it.
+3. **Sign in with any of three forms**: UID, username, or email — all with the password.
+4. **Sign in with an email code**: the sign-in page has a new "Code sign-in" tab. Enter the address, request a code, sign in — no password to remember. If nothing arrives, check the spam folder first; accounts without a linked address can link one in "Me" and use this path right away.
+
+### Categories
+5. **Categories are now decided by content**: most feeds carry no category at all, so nearly everything used to land in "Games". Works are now sorted into Games / Tools / Literature / Derivative by **title and description**, and existing works are being re-classified in batches.
+
+### Fixes
+6. **Document URLs no longer 404**: paths such as `/docs/scoring` were being caught by a server rule meant for private directories and rendered "Page not found". They open normally now, and uppercase spellings are accepted too.
+
 ## v3.54.0 · 2026-10-29 (Ever Renewed)
 
 ### Festivals

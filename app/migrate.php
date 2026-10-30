@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 30);
+define('SCHEMA_VERSION', 31);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -1083,6 +1083,52 @@ function run_migrations(bool $force = false)
             setting_set('schema_version', '30');
         } catch (Throwable $e) {
             app_log('migrate v30 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v31：账号邮箱 / 邮箱验证码 / 分类判定来源 ----------
+       邮箱只存两列：展示原样 + 归一值（小写去空格）。唯一索引压在归一值上，
+       一个邮箱只能绑一个账号；email_at 为验证通过时间，未验证一律为 NULL。 */
+    if ($cur < 31) {
+        try {
+            if (table_exists('users')) {
+                if (!column_exists('users', 'email')) {
+                    db_exec("ALTER TABLE `users` ADD COLUMN `email` VARCHAR(190) NULL COMMENT '绑定邮箱（原样展示）'");
+                }
+                if (!column_exists('users', 'email_norm')) {
+                    db_exec("ALTER TABLE `users` ADD COLUMN `email_norm` VARCHAR(190) NULL COMMENT '小写归一邮箱（唯一）'");
+                }
+                if (!column_exists('users', 'email_at')) {
+                    db_exec("ALTER TABLE `users` ADD COLUMN `email_at` DATETIME NULL COMMENT '邮箱验证通过时间 UTC'");
+                }
+                try {
+                    $idx = db_all("SHOW INDEX FROM `users` WHERE Key_name = 'uk_email_norm'");
+                    if (!$idx) { db_exec("ALTER TABLE `users` ADD UNIQUE KEY `uk_email_norm` (`email_norm`)"); }
+                } catch (Throwable $e) { app_log('uk_email_norm: ' . $e->getMessage()); }
+                table_columns('users', true);
+            }
+            db_exec("CREATE TABLE IF NOT EXISTS `email_codes` (
+                `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `email_norm`  VARCHAR(190) NOT NULL,
+                `purpose`     VARCHAR(8)   NOT NULL DEFAULT 'bind' COMMENT 'bind 绑定 / login 登录',
+                `code_hash`   CHAR(64)     NOT NULL COMMENT 'sha256(code + 站点盐)',
+                `user_id`     INT UNSIGNED NOT NULL DEFAULT 0,
+                `tries`       TINYINT UNSIGNED NOT NULL DEFAULT 0,
+                `ip_hash`     CHAR(64)     NOT NULL DEFAULT '',
+                `created_at`  DATETIME     NOT NULL,
+                `expires_at`  DATETIME     NOT NULL,
+                PRIMARY KEY (`id`),
+                KEY `idx_email_purpose` (`email_norm`, `purpose`),
+                KEY `idx_expires` (`expires_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='邮箱验证码'");
+            if (table_exists('works') && !column_exists('works', 'cat_src')) {
+                db_exec("ALTER TABLE `works` ADD COLUMN `cat_src` VARCHAR(8) NOT NULL DEFAULT '' COMMENT '分类来源 api/jev/manual'");
+                table_columns('works', true);
+            }
+            app_log('schema migrated to v31（账号邮箱 / 邮箱验证码 / 分类来源）');
+            setting_set('schema_version', '31');
+        } catch (Throwable $e) {
+            app_log('migrate v31 failed: ' . $e->getMessage());
         }
     }
 

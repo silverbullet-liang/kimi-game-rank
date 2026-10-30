@@ -5,8 +5,16 @@ import { ASSET_BASE } from '../base.js';
 import { esc, toast } from '../core.js';
 import { I18N, docLangOf } from '../i18n.js';
 
-const ALLOWED = [t('功能说明'), t('AI 使用说明'), t('社区公约'), t('评分标准'), t('入榜规则'),
-  t('用户协议'), t('隐私政策'), t('更新日志')];
+/* 中文文档名 → 英文文件名（assets/docs/en/<slug>.md） */
+const SLUG = {
+  '功能说明': 'features', 'AI 使用说明': 'ai', '社区公约': 'community',
+  '评分标准': 'scoring', '入榜规则': 'admission', '用户协议': 'terms',
+  '隐私政策': 'privacy', '更新日志': 'changelog'
+};
+/* 地址里的段是英文 slug（/docs/scoring），而文档本体按中文名索引。
+   这里一次性建反向表，两种写法都能认。 */
+const NAME_BY_SLUG = Object.keys(SLUG).reduce((m, k) => { m[SLUG[k]] = k; return m; }, {});
+const ALLOWED = Object.keys(SLUG);
 
 /* 文档里的 B站视频：单独一段的 BV 号或视频链接 → 内嵌播放器。
    mdToHtml 全量转义，所以这里只在渲染结果上做定点替换，替换进 DOM 的只有
@@ -21,12 +29,6 @@ function biliEmbed(html) {
     .replace(/<p>\s*(BV[0-9A-Za-z]{10})\s*<\/p>/g, (m, bv) => player(bv));
 }
 
-/* 中文文档名 → 英文文件名（assets/docs/en/<slug>.md） */
-const SLUG = {
-  '功能说明': 'features', 'AI 使用说明': 'ai', '社区公约': 'community',
-  '评分标准': 'scoring', '入榜规则': 'admission', '用户协议': 'terms',
-  '隐私政策': 'privacy', '更新日志': 'changelog'
-};
 /* 文档语言跟随界面语言：中文看中文文档，英文与日文都看英文文档 */
 function docLang() {
   return docLangOf(I18N.lang);
@@ -37,9 +39,11 @@ function langBar() {
 }
 
 export async function renderDoc(container, ctx) {
-  const name = decodeURIComponent((ctx.sub || '').trim()) || '评分标准';
+  const raw = decodeURIComponent((ctx.sub || '').trim());
+  /* 地址里给的是 slug（/docs/scoring）或中文名（/docs/评分标准），统一归一成中文名 */
+  const name = NAME_BY_SLUG[raw.toLowerCase()] || raw || '评分标准';
   if (ALLOWED.indexOf(name) === -1) {
-    container.innerHTML = '<div class="empty"><p>文档不存在</p></div>';
+    container.innerHTML = '<div class="empty"><p>' + esc(t('文档不存在')) + '</p></div>';
     return;
   }
   container.innerHTML = '<div class="skeleton" style="height:200px"></div>';
@@ -58,7 +62,7 @@ export async function renderDoc(container, ctx) {
     html = '<div class="doc-head">' + langBar() + '</div>' + html;
 
     /* 更新日志页：顶部标出当前站点版本，便于对照是否已部署到最新 */
-    if (name === t('更新日志')) {
+    if (name === '更新日志') {
       const v = (window.__SITE__ && window.__SITE__.ver) ? String(window.__SITE__.ver) : '';
       const latest = (md.match(/^##\s*v([0-9]+\.[0-9]+\.[0-9]+)/m) || [])[1] || '';
       const same = v !== '' && latest.indexOf(v) >= 0;

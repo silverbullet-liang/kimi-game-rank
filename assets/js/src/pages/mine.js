@@ -1,7 +1,7 @@
 /**
  * 我的页：个人信息 / AI 用量 / IP 与访问记录 / 设置 / 控制面板入口
  */
-import { api, state, esc, toast, dialog, setToken, askNotifyPermission, userName, isAdminish, getPrefs, setPrefs } from '../core.js';
+import { api, state, esc, toast, dialog, btnLoading, setToken, askNotifyPermission, userName, isAdminish, getPrefs, setPrefs } from '../core.js';
 import { LANGS, I18N, setLang, festName } from '../i18n.js';
 import { navigate } from '../router.js';
 import { saveTheme, ACCENTS, SKINS, hexToHsl, FESTIVAL_KEYS, festivalNow } from '../theme.js';
@@ -71,6 +71,14 @@ export async function renderMine(container) {
         <button class="btn-ghost btn-sm" id="copyUid">复制</button>
       </div>
       <div class="tiny" style="margin-top:6px">由账号经可逆算法唯一生成${d.uid8_babao ? ' · 管理身份专用豹子号' : ''}，可据此反查账号</div>
+      <div class="uid-row" style="margin-top:12px">
+        <div class="uid-left">
+          <div class="tiny">${t('绑定邮箱')}</div>
+          <div class="uid8" id="emailVal" style="font-size:16px;letter-spacing:0">未绑定</div>
+        </div>
+        <button class="btn-ghost btn-sm" id="bindEmail">绑定邮箱</button>
+      </div>
+      <div class="tiny" style="margin-top:6px">绑定后可用「邮箱 + 验证码」登录，也可用邮箱 + 密码登录；一个邮箱只能绑定一个账号。</div>
       ${isAdmin ? '<div class="adm-actions">'
         + '<button type="button" class="adm-btn" id="panelBtn">'
         +   '<svg viewBox="0 0 24 24" class="ic"><path d="' + G_ICON + '"/></svg><span>控制面板</span>'
@@ -188,8 +196,108 @@ export async function renderMine(container) {
         toast('UID：' + v);
       }
     });
+    /* 邮箱：拉一次状态，按是否已绑定决定按钮文案 */
+    (function () {
+      const val = container.querySelector('#emailVal');
+      const btn = container.querySelector('#bindEmail');
+      if (!val || !btn) { return; }
+      let bound = '';
+      const paint = function () {
+        val.textContent = bound || t('未绑定');
+        val.style.opacity = bound ? '1' : '.6';
+        btn.textContent = bound ? t('更换') : t('绑定邮箱');
+      };
+      api('account', 'email_state').then(function (r) {
+        bound = (r && r.masked) || '';
+        if (r && r.ready === false) { btn.disabled = true; btn.textContent = '暂未开放'; }
+        paint();
+      }).catch(function () { paint(); });
+      btn.addEventListener('click', function () {
+        bindEmailDialog(!!bound, function (masked) { bound = masked || ''; paint(); });
+      });
+    })();
     loadTop3(container.querySelector('#top3'));
   }
+
+/* 绑定 / 更换邮箱：弹窗上方填邮箱，下方获取并填验证码，通过即绑定 */
+function bindEmailDialog(hasBound, done) {
+  const scrim = document.getElementById('dialogScrim');
+  const box = document.getElementById('dialog');
+  if (!scrim || !box) { return; }
+  box.className = 'dialog glass';
+  box.innerHTML = '<h3>' + (hasBound ? t('更换绑定邮箱') : t('绑定邮箱')) + '</h3>'
+    + '<p class="tiny muted">验证码两分钟内有效，只能用一次。绑定后这个邮箱可以用于登录。</p>'
+    + '<div class="field"><label>' + t('邮箱') + '</label>'
+    + '<input class="input" id="bdMail" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com"></div>'
+    + '<div class="field"><label>' + t('验证码') + '</label><div class="input-wrap">'
+    + '<input class="input" id="bdCode" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6 位数字">'
+    + '<button class="icon-btn" id="bdSend" type="button" style="width:auto;padding:0 12px;font-size:13px;white-space:nowrap">' + t('获取验证码') + '</button>'
+    + '</div></div>'
+    + '<div class="dialog-actions"><button class="btn-ghost" data-r="0">取消</button>'
+    + '<button class="btn" data-r="1">绑定</button></div>';
+  scrim.hidden = false;
+
+  const mail = box.querySelector('#bdMail');
+  const code = box.querySelector('#bdCode');
+  const send = box.querySelector('#bdSend');
+  const okBtn = box.querySelector('[data-r="1"]');
+  let timer = null, left = 0;
+
+  function close() {
+    clearInterval(timer);
+    scrim.hidden = true;
+    box.innerHTML = '';
+    scrim.onclick = null;
+  }
+  function wait(n) {
+    left = n;
+    clearInterval(timer);
+    const tick = function () {
+      if (left <= 0) { clearInterval(timer); send.disabled = false; send.textContent = t('获取验证码'); return; }
+      send.disabled = true;
+      send.textContent = left + ' 秒';
+      left--;
+    };
+    tick();
+    timer = setInterval(tick, 1000);
+  }
+
+  box.querySelector('[data-r="0"]').addEventListener('click', close);
+  scrim.onclick = function (e) { if (e.target === scrim) { close(); } };
+
+  send.addEventListener('click', async function () {
+    const v = (mail.value || '').trim();
+    if (!v) { toast(t('请填写邮箱'), 'err'); mail.focus(); return; }
+    send.disabled = true;
+    try {
+      const lang = (function () { try { return localStorage.getItem('kimgr_lang') || 'zh'; } catch (e) { return 'zh'; } })();
+      await api('account', 'email_send', { email: v, lang: lang });
+      toast(t('验证码已发送'));
+      wait(60);
+      code.focus();
+    } catch (e) {
+      toast(e.message, 'err');
+      send.disabled = false;
+    }
+  });
+
+  okBtn.addEventListener('click', async function () {
+    const v = (mail.value || '').trim();
+    const c = (code.value || '').replace(/\D/g, '');
+    if (!v) { toast('请填写邮箱', 'err'); return; }
+    if (c.length !== 6) { toast('请输入 6 位验证码', 'err'); return; }
+    btnLoading(okBtn, true);
+    try {
+      const r = await api('account', 'email_bind', { email: v, code: c });
+      toast(r && r.old ? t('邮箱已更换') : t('邮箱已绑定'));
+      close();
+      if (done) { done((r && r.masked) || ''); }
+    } catch (e) {
+      toast(e.message, 'err');
+      btnLoading(okBtn, false);
+    }
+  });
+}
 
   const swIp = container.querySelector('#swIp');
   if (swIp) swIp.addEventListener('click', async () => {

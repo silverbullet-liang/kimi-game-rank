@@ -144,7 +144,8 @@ function seo_request_route(): array
     $arg   = count($segs) > 1 ? implode('/', array_slice($segs, 1)) : '';
     if ($name === 'doc' && $arg !== '') {
         $bySlug = array_flip(seo_doc_slugs());          // 段 → 中文文档名
-        if (isset($bySlug[$arg])) { $arg = $bySlug[$arg]; }
+        $sk = strtolower($arg);
+        if (isset($bySlug[$sk])) { $arg = $bySlug[$sk]; }
     }
 
     /* 兼容旧查询式地址：?p=detail&arg=12 、?p=detail/12 、?chat */
@@ -547,7 +548,10 @@ function seo_doc_names(): array
 function seo_doc_name(string $sub): string
 {
     $sub = trim(urldecode($sub));
-    return in_array($sub, seo_doc_names(), true) ? $sub : '评分标准';
+    if (in_array($sub, seo_doc_names(), true)) { return $sub; }
+    $bySlug = array_flip(seo_doc_slugs());          // slug → 中文名
+    $k = strtolower($sub);
+    return isset($bySlug[$k]) ? $bySlug[$k] : '评分标准';
 }
 
 /** 读取并粗略去 Markdown，得到纯文本（供 description 与 SSR 段落） */

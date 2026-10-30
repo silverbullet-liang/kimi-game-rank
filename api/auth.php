@@ -38,11 +38,33 @@ switch ($action) {
         ok(array('token' => $r['token'], 'role' => 'user', 'uid' => $r['uid'], 'username' => $r['username']));
         break;
 
-    /* 登录（管理员与普通用户统一通道） */
+    /* 登录（管理员与普通用户统一通道）：UID / 用户名 / 邮箱 + 密码 */
     case 'login':
         csrf_verify();
         captcha_guard();          // 人机验证：登录与注册都要过这道门
-        $r = user_login(param_str('username'), param_str('password'));
+        $ident = param_str('identifier', '');
+        if ($ident === '') { $ident = param_str('username', ''); }   // 旧客户端字段名
+        $r = user_login($ident, param_str('password'));
+        ok(array('token' => $r['token'], 'role' => $r['role'], 'uid' => $r['uid'], 'username' => $r['username']));
+        break;
+
+    /* 邮箱验证码登录 · 第一步：发码 */
+    case 'login_send':
+        csrf_verify();
+        /* 发码不设人机验证：同 IP 每 30 分钟 10 次、同邮箱 60 秒一条已足够拦住刷量，
+           而一次验证码登录要多过一次验证太折腾。真正换令牌的 login_code 仍然要过。 */
+        if (!rate_limit('mail_login_' . ip_hash(client_ip()), 10, 1800)) { fail(429, '请求过于频繁，请稍后再试'); }
+        $sent = email_code_send(param_str('email'), 'login', 0, param_str('lang', 'zh'));
+        /* 不区分「邮箱未注册」与「已发送」：统一措辞，避免被拿来探测账号 */
+        ok(array('ttl' => isset($sent['ttl']) ? (int)$sent['ttl'] : email_code_ttl()),
+           '如果该邮箱已绑定账号，验证码已发出');
+        break;
+
+    /* 邮箱验证码登录 · 第二步：用码换令牌 */
+    case 'login_code':
+        csrf_verify();
+        captcha_guard();
+        $r = user_login_by_code(param_str('email'), param_str('code'));
         ok(array('token' => $r['token'], 'role' => $r['role'], 'uid' => $r['uid'], 'username' => $r['username']));
         break;
 

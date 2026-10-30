@@ -4274,6 +4274,14 @@ async function renderMine(container) {
         <button class="btn-ghost btn-sm" id="copyUid">复制</button>
       </div>
       <div class="tiny" style="margin-top:6px">由账号经可逆算法唯一生成${d.uid8_babao ? ' · 管理身份专用豹子号' : ''}，可据此反查账号</div>
+      <div class="uid-row" style="margin-top:12px">
+        <div class="uid-left">
+          <div class="tiny">${t('绑定邮箱')}</div>
+          <div class="uid8" id="emailVal" style="font-size:16px;letter-spacing:0">未绑定</div>
+        </div>
+        <button class="btn-ghost btn-sm" id="bindEmail">绑定邮箱</button>
+      </div>
+      <div class="tiny" style="margin-top:6px">绑定后可用「邮箱 + 验证码」登录，也可用邮箱 + 密码登录；一个邮箱只能绑定一个账号。</div>
       ${isAdmin ? '<div class="adm-actions">'
         + '<button type="button" class="adm-btn" id="panelBtn">'
         +   '<svg viewBox="0 0 24 24" class="ic"><path d="' + G_ICON + '"/></svg><span>控制面板</span>'
@@ -4391,8 +4399,108 @@ async function renderMine(container) {
         toast('UID：' + v);
       }
     });
+    /* 邮箱：拉一次状态，按是否已绑定决定按钮文案 */
+    (function () {
+      const val = container.querySelector('#emailVal');
+      const btn = container.querySelector('#bindEmail');
+      if (!val || !btn) { return; }
+      let bound = '';
+      const paint = function () {
+        val.textContent = bound || t('未绑定');
+        val.style.opacity = bound ? '1' : '.6';
+        btn.textContent = bound ? t('更换') : t('绑定邮箱');
+      };
+      api('account', 'email_state').then(function (r) {
+        bound = (r && r.masked) || '';
+        if (r && r.ready === false) { btn.disabled = true; btn.textContent = '暂未开放'; }
+        paint();
+      }).catch(function () { paint(); });
+      btn.addEventListener('click', function () {
+        bindEmailDialog(!!bound, function (masked) { bound = masked || ''; paint(); });
+      });
+    })();
     loadTop3(container.querySelector('#top3'));
   }
+
+/* 绑定 / 更换邮箱：弹窗上方填邮箱，下方获取并填验证码，通过即绑定 */
+function bindEmailDialog(hasBound, done) {
+  const scrim = document.getElementById('dialogScrim');
+  const box = document.getElementById('dialog');
+  if (!scrim || !box) { return; }
+  box.className = 'dialog glass';
+  box.innerHTML = '<h3>' + (hasBound ? t('更换绑定邮箱') : t('绑定邮箱')) + '</h3>'
+    + '<p class="tiny muted">验证码两分钟内有效，只能用一次。绑定后这个邮箱可以用于登录。</p>'
+    + '<div class="field"><label>' + t('邮箱') + '</label>'
+    + '<input class="input" id="bdMail" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com"></div>'
+    + '<div class="field"><label>' + t('验证码') + '</label><div class="input-wrap">'
+    + '<input class="input" id="bdCode" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6 位数字">'
+    + '<button class="icon-btn" id="bdSend" type="button" style="width:auto;padding:0 12px;font-size:13px;white-space:nowrap">' + t('获取验证码') + '</button>'
+    + '</div></div>'
+    + '<div class="dialog-actions"><button class="btn-ghost" data-r="0">取消</button>'
+    + '<button class="btn" data-r="1">绑定</button></div>';
+  scrim.hidden = false;
+
+  const mail = box.querySelector('#bdMail');
+  const code = box.querySelector('#bdCode');
+  const send = box.querySelector('#bdSend');
+  const okBtn = box.querySelector('[data-r="1"]');
+  let timer = null, left = 0;
+
+  function close() {
+    clearInterval(timer);
+    scrim.hidden = true;
+    box.innerHTML = '';
+    scrim.onclick = null;
+  }
+  function wait(n) {
+    left = n;
+    clearInterval(timer);
+    const tick = function () {
+      if (left <= 0) { clearInterval(timer); send.disabled = false; send.textContent = t('获取验证码'); return; }
+      send.disabled = true;
+      send.textContent = left + ' 秒';
+      left--;
+    };
+    tick();
+    timer = setInterval(tick, 1000);
+  }
+
+  box.querySelector('[data-r="0"]').addEventListener('click', close);
+  scrim.onclick = function (e) { if (e.target === scrim) { close(); } };
+
+  send.addEventListener('click', async function () {
+    const v = (mail.value || '').trim();
+    if (!v) { toast(t('请填写邮箱'), 'err'); mail.focus(); return; }
+    send.disabled = true;
+    try {
+      const lang = (function () { try { return localStorage.getItem('kimgr_lang') || 'zh'; } catch (e) { return 'zh'; } })();
+      await api('account', 'email_send', { email: v, lang: lang });
+      toast(t('验证码已发送'));
+      wait(60);
+      code.focus();
+    } catch (e) {
+      toast(e.message, 'err');
+      send.disabled = false;
+    }
+  });
+
+  okBtn.addEventListener('click', async function () {
+    const v = (mail.value || '').trim();
+    const c = (code.value || '').replace(/\D/g, '');
+    if (!v) { toast('请填写邮箱', 'err'); return; }
+    if (c.length !== 6) { toast('请输入 6 位验证码', 'err'); return; }
+    btnLoading(okBtn, true);
+    try {
+      const r = await api('account', 'email_bind', { email: v, code: c });
+      toast(r && r.old ? t('邮箱已更换') : t('邮箱已绑定'));
+      close();
+      if (done) { done((r && r.masked) || ''); }
+    } catch (e) {
+      toast(e.message, 'err');
+      btnLoading(okBtn, false);
+    }
+  });
+}
 
   const swIp = container.querySelector('#swIp');
   if (swIp) swIp.addEventListener('click', async () => {
@@ -4776,7 +4884,8 @@ function simpleAvatar(seed) {
 
 
 async function renderLogin(container) {
-  let tab = 'password';   // password | guest
+  /* ?tab=code 可直接落到验证码登录（邮件里给的入口、或用户从地址栏直达） */
+  let tab = (/[?&]tab=code\b/.test(location.search)) ? 'code' : 'password';   // password | code | guest
   let sub = 'login';      // login | register
   let agreed = false;
 
@@ -4789,6 +4898,7 @@ async function renderLogin(container) {
         <div class="card">
           <div class="seg" style="margin-bottom:14px">
             <button data-tab="password" class="${tab === 'password' ? 'on' : ''}">密码登录</button>
+            <button data-tab="code" class="${tab === 'code' ? 'on' : ''}">${t('验证码登录')}</button>
             <button data-tab="guest" class="${tab === 'guest' ? 'on' : ''}">游客模式</button>
           </div>
           <div id="pane"></div>
@@ -4814,7 +4924,84 @@ async function renderLogin(container) {
     });
     const pane = container.querySelector('#pane');
     if (tab === 'password') paintPassword(pane);
+    else if (tab === 'code') paintCode(pane);
     else paintGuest(pane);
+  }
+
+  /* 邮箱验证码登录：先在「我的」里绑定过邮箱，这里才能收到码 */
+  function paintCode(pane) {
+    pane.innerHTML = `
+      <div class="field">
+        <label>${t('邮箱')}</label>
+        <input class="input" id="cMail" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label>${t('验证码')}</label>
+        <div class="input-wrap">
+          <input class="input" id="cCode" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6 位数字">
+          <button class="icon-btn" id="sendCode" type="button" style="width:auto;padding:0 12px;font-size:13px;white-space:nowrap">${t('获取验证码')}</button>
+        </div>
+      </div>
+      <div class="tiny" style="margin:-4px 0 12px">两分钟有效，只能用一次。没收到先看垃圾邮件；还没绑邮箱的，请到「我的」里绑定后再用这条通道。</div>
+      <div id="capBox" style="margin-bottom:12px"></div>
+      <button class="btn" id="submitBtn" style="width:100%">登录</button>`;
+
+    const mail = pane.querySelector('#cMail');
+    const code = pane.querySelector('#cCode');
+    const sendBtn = pane.querySelector('#sendCode');
+    const capBox = pane.querySelector('#capBox');
+    let left = 0, timer = null;
+    resetCaptcha(capBox);
+
+    function rest(n) {
+      left = n;
+      clearInterval(timer);
+      const tick = function () {
+        if (left <= 0) { clearInterval(timer); sendBtn.disabled = false; sendBtn.textContent = t('获取验证码'); return; }
+        sendBtn.disabled = true;
+        sendBtn.textContent = left + ' 秒';
+        left--;
+      };
+      tick();
+      timer = setInterval(tick, 1000);
+    }
+
+    sendBtn.addEventListener('click', async function () {
+      const v = (mail.value || '').trim();
+      if (!v) { toast(t('请填写邮箱'), 'err'); mail.focus(); return; }
+      sendBtn.disabled = true;
+      try {
+        await api('auth', 'login_send', { email: v, lang: (function () {
+          try { return localStorage.getItem('kimgr_lang') || 'zh'; } catch (e) { return 'zh'; }
+        })() });
+        toast(t('验证码已发送'));
+        rest(60);
+        code.focus();
+      } catch (e) {
+        toast(e.message, 'err');
+        sendBtn.disabled = false;
+      }
+    });
+
+    pane.querySelector('#submitBtn').addEventListener('click', async function () {
+      const v = (mail.value || '').trim();
+      const c = (code.value || '').replace(/\D/g, '');
+      if (!v || c.length !== 6) { toast(t('请输入 6 位验证码'), 'err'); return; }
+      if (captchaConfig().enabled && !captchaToken()) { toast('请先完成人机验证', 'err'); return; }
+      const btn = this;
+      btnLoading(btn, true);
+      try {
+        const d = await api('auth', 'login_code', {
+          email: v, code: c,
+          cap_token: captchaToken(), cap_channel: captchaChannel(),
+        });
+        await finishLogin(d);
+      } catch (e) {
+        toast(e.message, 'err');
+        btnLoading(btn, false);
+        resetCaptcha(capBox);
+      }
+    });
   }
 
   function paintPassword(pane) {
@@ -4824,9 +5011,9 @@ async function renderLogin(container) {
         <button data-sub="register" class="${sub === 'register' ? 'on' : ''}">注册</button>
       </div>
       <div class="field">
-        <label>用户名${sub === 'register' ? '（即昵称，全站展示，注册后不可更改）' : ''}</label>
+        <label>${sub === 'register' ? '用户名（即昵称，全站展示，注册后不可更改）' : 'UID / 用户名 / 邮箱'}</label>
         <input class="input" id="uName" type="text" autocomplete="username"
-               placeholder="${sub === 'register' ? t('2-64 位，中文、字母、数字或符号均可') : t('请输入用户名')}">
+               placeholder="${sub === 'register' ? t('2-64 位，中文、字母、数字或符号均可') : 'UID、用户名或已绑定的邮箱'}">
       </div>
       <div class="field">
         <label>密码${sub === 'register' ? '（8-64 位，建议同时包含数字和字母）' : ''}</label>
@@ -4875,13 +5062,13 @@ async function renderLogin(container) {
       if (btn.disabled) { return; }          // 防重复提交
       const name = pane.querySelector('#uName').value;
       const pwd = pane.querySelector('#uPwd').value;
-      if (!name || !pwd) { toast('请填写用户名与密码', 'err'); return; }
+      if (!name || !pwd) { toast(sub === 'register' ? '请填写用户名与密码' : '请填写账号与密码', 'err'); return; }
       if (!agreed) { toast('请先勾选同意协议', 'err'); return; }
       if (captchaConfig().on && !captchaToken()) { toast('请先完成人机验证', 'err'); return; }
       btnLoading(btn, true);
       try {
         const d = await api('auth', sub === 'register' ? 'register' : 'login', {
-          username: name, password: pwd,
+          username: name, identifier: name, password: pwd,
           cap_token: captchaToken(), cap_channel: captchaChannel(),
         });
         await finishLogin(d);
@@ -8135,8 +8322,16 @@ function startPanelPolling(container) {
 
 
 
-const ALLOWED = [t('功能说明'), t('AI 使用说明'), t('社区公约'), t('评分标准'), t('入榜规则'),
-  t('用户协议'), t('隐私政策'), t('更新日志')];
+/* 中文文档名 → 英文文件名（assets/docs/en/<slug>.md） */
+const SLUG = {
+  '功能说明': 'features', 'AI 使用说明': 'ai', '社区公约': 'community',
+  '评分标准': 'scoring', '入榜规则': 'admission', '用户协议': 'terms',
+  '隐私政策': 'privacy', '更新日志': 'changelog'
+};
+/* 地址里的段是英文 slug（/docs/scoring），而文档本体按中文名索引。
+   这里一次性建反向表，两种写法都能认。 */
+const NAME_BY_SLUG = Object.keys(SLUG).reduce((m, k) => { m[SLUG[k]] = k; return m; }, {});
+const ALLOWED = Object.keys(SLUG);
 
 /* 文档里的 B站视频：单独一段的 BV 号或视频链接 → 内嵌播放器。
    mdToHtml 全量转义，所以这里只在渲染结果上做定点替换，替换进 DOM 的只有
@@ -8151,12 +8346,6 @@ function biliEmbed(html) {
     .replace(/<p>\s*(BV[0-9A-Za-z]{10})\s*<\/p>/g, (m, bv) => player(bv));
 }
 
-/* 中文文档名 → 英文文件名（assets/docs/en/<slug>.md） */
-const SLUG = {
-  '功能说明': 'features', 'AI 使用说明': 'ai', '社区公约': 'community',
-  '评分标准': 'scoring', '入榜规则': 'admission', '用户协议': 'terms',
-  '隐私政策': 'privacy', '更新日志': 'changelog'
-};
 /* 文档语言跟随界面语言：中文看中文文档，英文与日文都看英文文档 */
 function docLang() {
   return docLangOf(I18N.lang);
@@ -8167,9 +8356,11 @@ function langBar() {
 }
 
 async function renderDoc(container, ctx) {
-  const name = decodeURIComponent((ctx.sub || '').trim()) || '评分标准';
+  const raw = decodeURIComponent((ctx.sub || '').trim());
+  /* 地址里给的是 slug（/docs/scoring）或中文名（/docs/评分标准），统一归一成中文名 */
+  const name = NAME_BY_SLUG[raw.toLowerCase()] || raw || '评分标准';
   if (ALLOWED.indexOf(name) === -1) {
-    container.innerHTML = '<div class="empty"><p>文档不存在</p></div>';
+    container.innerHTML = '<div class="empty"><p>' + esc(t('文档不存在')) + '</p></div>';
     return;
   }
   container.innerHTML = '<div class="skeleton" style="height:200px"></div>';
@@ -8188,7 +8379,7 @@ async function renderDoc(container, ctx) {
     html = '<div class="doc-head">' + langBar() + '</div>' + html;
 
     /* 更新日志页：顶部标出当前站点版本，便于对照是否已部署到最新 */
-    if (name === t('更新日志')) {
+    if (name === '更新日志') {
       const v = (window.__SITE__ && window.__SITE__.ver) ? String(window.__SITE__.ver) : '';
       const latest = (md.match(/^##\s*v([0-9]+\.[0-9]+\.[0-9]+)/m) || [])[1] || '';
       const same = v !== '' && latest.indexOf(v) >= 0;

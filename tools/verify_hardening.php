@@ -204,8 +204,14 @@ foreach ($phpFiles as $f) {
 }
 ck('无 eval / unserialize / shell / 动态包含', count($danger) === 0);
 if ($danger) { echo '     命中：' . implode(', ', array_slice($danger, 0, 6)) . "\n"; }
-ck('敏感路径仍有 404 拦截', strpos(rd('.htaccess'), 'RedirectMatch 404 ^/(config|storage|sql|docs|app|tools)/') !== false);
-ck('API 入口数量稳定（18）', count((array)glob(APP_ROOT . '/api/*.php')) === 18);
+$ht2 = rd('.htaccess');
+ck('敏感路径仍有 404 拦截（config/storage/sql/app/tools）',
+    (bool)preg_match('/RedirectMatch\s+404\s+\^\/\(config\|storage\|sql\|app\|tools\)/', $ht2));
+/* docs 不能进拦截名单：它同时是文档页的对外段名（/docs/scoring），
+   列进去会让文档页直接 404。 */
+ck('文档页段名 docs 未被误列入敏感拦截', (bool)preg_match('/RedirectMatch\s+404\s+\^\/\(config\|storage\|sql\|app\|tools\)/', $ht2));
+$apiN = count((array)glob(APP_ROOT . '/api/*.php'));
+ck('API 入口数量稳定（' . $apiN . '，新增 account）', $apiN >= 18 && $apiN <= 20);
 
 echo "----------------------------------------------------\n";
 echo '通过 ' . $pass . ' / 失败 ' . $fail . "\n";

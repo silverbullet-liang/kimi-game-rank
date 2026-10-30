@@ -31,6 +31,9 @@ try {
         require_once ROOT . '/tools/fetch_emoji.php';
         $r = fetch_emoji_pack();
         echo json_encode(array('code' => 0, 'msg' => 'ok', 'data' => $r), JSON_UNESCAPED_UNICODE);
+    } elseif ($task === 'recat') {
+        $r = works_recat_batch(5);
+        echo json_encode(array('code' => 0, 'msg' => 'ok', 'data' => $r), JSON_UNESCAPED_UNICODE);
     } elseif ($task === 'relink') {
         $r = works_relink_scan(20, 7);
         echo json_encode(array('code' => 0, 'msg' => 'ok', 'data' => $r), JSON_UNESCAPED_UNICODE);

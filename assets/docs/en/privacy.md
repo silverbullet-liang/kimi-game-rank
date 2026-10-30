@@ -25,6 +25,7 @@ We follow the **principle of minimum necessity** and collect only what is needed
 | Category | Details | How it is collected | Purpose |
 | --- | --- | --- | --- |
 | Account information | Username, password digest (irreversible), account ID, registration time, role | Provided by you | Identification, sign-in verification, permission control |
+| Email (optional) | The address you choose to link, and when it was linked | Provided by you | Code-based sign-in; used to reach you only when you ask us to |
 | Preferences | Interface style, accent colour, notification switches, visit-history switch, blocked words | Set by you | Remembering and syncing your interface and feature preferences |
 | Access information | **Masked form** of your IP, access time, region (country / province / city), carrier | Collected automatically | Security, rate limiting, troubleshooting, access statistics |
 | Interaction content | Comments, World Chat messages, feedback, likes, uploaded images | Provided by you | Community features and content display |
@@ -32,7 +33,9 @@ We follow the **principle of minimum necessity** and collect only what is needed
 | Log information | Error logs, API call results, page performance and diagnostics (including the site version at the time; no sensitive content) | Collected automatically | Troubleshooting, performance tuning, security auditing |
 | Location (optional) | The browser's **approximate location** (only when you actively authorise it to avoid collateral blocking on a shared network; coordinates are not stored in plain text, only the resulting regional decision) | Authorised by you | Judging whether an access origin belongs to the same person, so unrelated people on a shared network are not affected |
 
-**We do not collect**: real names, identity document numbers, phone numbers, email addresses, contacts, precise location (**location is obtained only with your active authorisation, only for the regional decision, and coordinates are not kept**), device identifiers (IMEI/IDFA and similar), biometric information, health or financial account information.
+**We do not collect**: real names, identity document numbers, phone numbers, contacts, precise location (**location is obtained only with your active authorisation, only for the regional decision, and coordinates are not kept**), device identifiers (IMEI/IDFA and similar), biometric information, health or financial account information.
+
+**About email**: an address is not required to register; it is collected only when you start linking one in "Me". The code itself is stored as an irreversible digest only — it expires after two minutes and is void once used, and the plaintext is never written to disk. You may change it at any time, and it is used only as a working contact channel, never for marketing.
 
 > Note: **do not** submit such sensitive personal information in comments, chat or feedback. You bear the consequences of doing so voluntarily.
 
@@ -109,7 +112,8 @@ We **never sell** your personal information. We share it only in the following *
 | OpenRouter | [openrouter.ai](https://openrouter.ai) | Question content in AI conversations (only when using its free model) | Generating AI answers (free-model gateway) |
 | Cloudflare Turnstile (primary) | [cloudflare.com](https://www.cloudflare.com/products/turnstile/) | Your access IP and browser environment signals | Human verification for sign-in and registration |
 | Cap human verification (fallback) | [trycap.dev](https://trycap.dev) | Your access IP | Human verification (used automatically when the primary is unavailable) |
-| classifier.dev (Jev classifier) | [classifier.dev](https://classifier.dev) | Comments and messages awaiting publication | Model judgement for content moderation |
+| classifier.dev (Jev classifier) | [classifier.dev](https://classifier.dev) | Comments and messages awaiting publication; work titles and descriptions | Model judgement for content moderation and category assignment |
+| quiet-mail (anonymous delivery) | [quiet-mail.com](https://quiet-mail.com) | The address you linked, and the code email body | Delivering the verification code needed for sign-in and linking |
 | OVHcloud AI Endpoints | [OVHcloud AI Endpoints](https://www.ovhcloud.com/en/public-cloud/ai-endpoints/) | Images you upload | Image moderation (reading text in the image and detecting prohibited imagery) |
 | MyMemory translation | [mymemory.translated.net](https://mymemory.translated.net) | Comments and messages awaiting publication (first 300 characters) | Translating to English for profanity detection |
 | PurgoMalum | [purgomalum.com](https://www.purgomalum.com) | The English rendering above | English profanity detection |

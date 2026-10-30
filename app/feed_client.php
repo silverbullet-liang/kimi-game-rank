@@ -409,13 +409,16 @@ function work_upsert(array $item, string $html = '', $autoScore = null): array
     if ($existing === null) {
         /* peak_score 是迁移新增列，未就绪时省掉它，插入照常成功 */
         $hasPeak = col_ok('works', 'peak_score');
+        /* 分类：接口给了合法值就沿用；信息流大多不带分类，此时按「作品名 + 简介」判定 */
+        $catPair = works_cat_for_new_pair(isset($item['category']) ? $item['category'] : '',
+            (string)$item['title'], (string)$item['intro']);
         $cols = 'community_id, title, intro, author_name, author_avatar, category, share_link, html_url,'
               . ' like_num, comment_num, collect_num, images, score, total_score'
               . ($hasPeak ? ', peak_score' : '')
               . ', heat_score, rating, has_html, added_by, created_at, updated_at';
         $vals = array(
             $item['community_id'], $item['title'], $item['intro'], $item['author_name'], $item['author_avatar'],
-            isset($item['category']) ? $item['category'] : 'game',
+            $catPair[0],
             $item['chat_share_id'] !== '' ? 'https://www.kimi.com/share/' . $item['chat_share_id'] : '',
             $item['html_url'],
             $item['like_num'], $item['comment_num'], $item['collect_num'],
@@ -426,6 +429,7 @@ function work_upsert(array $item, string $html = '', $autoScore = null): array
         array_push($vals, $scores['heat'], $scores['rating'],
             $item['html_url'] !== '' ? 1 : 0, 1, $now, $now);
 
+        if (col_ok('works', 'cat_src') && $catPair[1] !== '') { $cols .= ', cat_src'; $vals[] = $catPair[1]; }
         if (oid_ready('works')) { $cols .= ', oid'; $vals[] = oid_new('works'); }
         /* 链接已在本轮识别过：记下时间，避免刚入库就被重识别任务重复抓取 */
         if (col_ok('works', 'link_checked_at')) { $cols .= ', link_checked_at'; $vals[] = $now; }

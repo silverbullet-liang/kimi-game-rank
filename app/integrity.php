@@ -38,6 +38,10 @@ function integrity_files(): array
         'api/lobby.php',
         'api/media.php',
         'api/admin.php',
+        'api/account.php',
+        'app/email.php',
+        'app/email_code.php',
+        'app/works_cat.php',
     );
 }
 
