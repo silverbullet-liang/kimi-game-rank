@@ -34,8 +34,18 @@ switch ($action) {
         captcha_guard();          // 人机验证：登录与注册都要过这道门
         if (!rate_limit('reg_' . ip_hash(client_ip()), 10, 3600)) { fail(429, '注册过于频繁，请稍后再试'); }
         cooldown_guard('register');
-        $r = user_register(param_str('username'), param_str('password'));
-        ok(array('token' => $r['token'], 'role' => 'user', 'uid' => $r['uid'], 'username' => $r['username']));
+        $r = user_register(param_str('username'), param_str('password'), param_str('email', ''), param_str('code', ''));
+        ok(array('token' => $r['token'], 'role' => 'user', 'uid' => $r['uid'], 'username' => $r['username'],
+                 'email' => $r['email']),
+           $r['email'] !== '' ? '注册成功，邮箱已绑定' : '注册成功');
+        break;
+
+    /* 注册前给邮箱发码（此时还没有账号，因此不带令牌；限速比登录更严） */
+    case 'reg_send':
+        csrf_verify();
+        if (!rate_limit('mail_reg_' . ip_hash(client_ip()), 8, 3600)) { fail(429, '请求过于频繁，请稍后再试'); }
+        $sent = email_code_send(param_str('email'), 'bind', 0, param_str('lang', 'zh'));
+        ok(array('ttl' => isset($sent['ttl']) ? (int)$sent['ttl'] : email_code_ttl()), '验证码已发送');
         break;
 
     /* 登录（管理员与普通用户统一通道）：UID / 用户名 / 邮箱 + 密码 */
@@ -45,8 +55,17 @@ switch ($action) {
         $ident = param_str('identifier', '');
         if ($ident === '') { $ident = param_str('username', ''); }   // 旧客户端字段名
         $r = user_login($ident, param_str('password'));
+        /* 开启双重验证的账号：密码通过只是第一步，令牌要等邮件验证码回来才发 */
+        if (!empty($r['twofa'])) { ok($r, '请输入邮箱验证码'); break; }
         ok(array('token' => $r['token'], 'role' => $r['role'], 'uid' => $r['uid'], 'username' => $r['username']));
         break;
+
+    /* 双重验证第二步：票据 + 验证码 → 令牌 */
+    case 'login_2fa':
+        csrf_verify();
+        captcha_guard();
+        $r = user_login_2fa(param_str('ticket'), param_str('code'));
+        ok(array('token' => $r['token'], 'role' => $r['role'], 'uid' => $r['uid'], 'username' => $r['username']));
 
     /* 邮箱验证码登录 · 第一步：发码 */
     case 'login_send':

@@ -4282,6 +4282,14 @@ async function renderMine(container) {
         <button class="btn-ghost btn-sm" id="bindEmail">绑定邮箱</button>
       </div>
       <div class="tiny" style="margin-top:6px">绑定后可用「邮箱 + 验证码」登录，也可用邮箱 + 密码登录；一个邮箱只能绑定一个账号。</div>
+      <div class="uid-row" style="margin-top:12px">
+        <div class="uid-left">
+          <div class="tiny">${t('登录双重验证')}</div>
+          <div class="uid8" id="twofaVal" style="font-size:16px;letter-spacing:0">未开启</div>
+        </div>
+        <button class="btn-ghost btn-sm" id="twofaBtn">开启</button>
+      </div>
+      <div class="tiny" style="margin-top:6px">开启后登录要多一步：密码通过之后还要输入邮箱验证码。需要先绑定邮箱。</div>
       ${isAdmin ? '<div class="adm-actions">'
         + '<button type="button" class="adm-btn" id="panelBtn">'
         +   '<svg viewBox="0 0 24 24" class="ic"><path d="' + G_ICON + '"/></svg><span>控制面板</span>'
@@ -4418,9 +4426,63 @@ async function renderMine(container) {
       btn.addEventListener('click', function () {
         bindEmailDialog(!!bound, function (masked) { bound = masked || ''; paint(); });
       });
+
+      /* 双重验证开关：与邮箱联动 —— 没绑邮箱时按钮直接指向绑定 */
+      const tfVal = container.querySelector('#twofaVal');
+      const tfBtn = container.querySelector('#twofaBtn');
+      let tfOn = false;
+      const paintTf = function () {
+        tfVal.textContent = tfOn ? t('已开启') : t('未开启');
+        tfVal.style.opacity = tfOn ? '1' : '.6';
+        tfBtn.textContent = tfOn ? t('关闭') : t('开启');
+      };
+      api('account', 'twofa_state').then(function (r) {
+        tfOn = !!(r && r.enabled);
+        paintTf();
+      }).catch(function () { paintTf(); });
+      tfBtn.addEventListener('click', function () {
+        if (!tfOn && !bound) { toast(t('请先绑定邮箱，再开启双重验证'), 'err'); return; }
+        twofaDialog(tfOn, function (on) { tfOn = on; paintTf(); });
+      });
     })();
     loadTop3(container.querySelector('#top3'));
   }
+
+/* 开启 / 关闭登录双重验证：需要输入当前密码确认 */
+function twofaDialog(enabled, done) {
+  const scrim = document.getElementById('dialogScrim');
+  const box = document.getElementById('dialog');
+  if (!scrim || !box) { return; }
+  box.className = 'dialog glass';
+  box.innerHTML = '<h3>' + (enabled ? '关闭登录双重验证' : '开启登录双重验证') + '</h3>'
+    + '<p class="tiny muted">' + (enabled ? '关闭后登录只需密码，安全性会随之降低。'
+        : '开启后登录要多一步：密码通过后还需输入邮箱验证码。') + '请输入当前密码确认。</p>'
+    + '<div class="field"><label>' + t('密码') + '</label>'
+    + '<input class="input" id="tfPwd" type="password" autocomplete="current-password" placeholder="请输入当前密码"></div>'
+    + '<div class="dialog-actions"><button class="btn-ghost" data-r="0">取消</button>'
+    + '<button class="btn" data-r="1">' + (enabled ? '关闭' : '开启') + '</button></div>';
+  scrim.hidden = false;
+  const close = function () { scrim.hidden = true; box.innerHTML = ''; scrim.onclick = null; };
+  box.querySelector('[data-r="0"]').addEventListener('click', close);
+  scrim.onclick = function (e) { if (e.target === scrim) { close(); } };
+  const pwd = box.querySelector('#tfPwd');
+  const okBtn = box.querySelector('[data-r="1"]');
+  if (pwd) { pwd.focus(); }
+  okBtn.addEventListener('click', async function () {
+    const v = (pwd.value || '');
+    if (!v) { toast(t('请输入密码'), 'err'); return; }
+    btnLoading(okBtn, true);
+    try {
+      const r = await api('account', 'twofa_set', { on: enabled ? 0 : 1, password: v });
+      toast(r && r.enabled ? '已开启登录双重验证' : '已关闭登录双重验证');
+      close();
+      if (done) { done(!!(r && r.enabled)); }
+    } catch (e) {
+      toast(e.message, 'err');
+      btnLoading(okBtn, false);
+    }
+  });
+}
 
 /* 绑定 / 更换邮箱：弹窗上方填邮箱，下方获取并填验证码，通过即绑定 */
 function bindEmailDialog(hasBound, done) {
@@ -4928,6 +4990,42 @@ async function renderLogin(container) {
     else paintGuest(pane);
   }
 
+  /* 双重验证第二步：密码已通过，等服务端发出的邮件验证码回来换令牌 */
+  function paintTwofa(pane, d) {
+    pane.innerHTML = `
+      <div class="tiny" style="margin-bottom:10px">已向 ${esc(d.masked || '')} 发送验证码，${Math.round((d.ttl || 120) / 60)} 分钟内有效。</div>
+      <div class="field">
+        <label>${t('验证码')}</label>
+        <input class="input" id="tCode" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="${t('6 位数字')}">
+      </div>
+      <div id="capBox" style="margin-bottom:12px"></div>
+      <button class="btn" id="tSubmit" style="width:100%">验证并登录</button>
+      <div class="tiny" style="text-align:center;margin-top:10px">收不到？<span class="link" id="tBack">重新登录</span></div>`;
+    const capBox = pane.querySelector('#capBox');
+    resetCaptcha(capBox);
+    pane.querySelector('#tBack').addEventListener('click', () => { sub = 'login'; paintPassword(pane); });
+    pane.querySelector('#tSubmit').addEventListener('click', async function () {
+      const c = (pane.querySelector('#tCode').value || '').replace(/\D/g, '');
+      if (c.length !== 6) { toast(t('请输入 6 位验证码'), 'err'); return; }
+      if (captchaConfig().on && !captchaToken()) { toast('请先完成人机验证', 'err'); return; }
+      const btn = this;
+      btnLoading(btn, true);
+      try {
+        const r = await api('auth', 'login_2fa', {
+          ticket: d.ticket, code: c,
+          cap_token: captchaToken(), cap_channel: captchaChannel(),
+        });
+        await finishLogin(r);
+      } catch (e) {
+        toast(e.message, 'err');
+        btnLoading(btn, false);
+        resetCaptcha(capBox);
+      }
+    });
+    const first = pane.querySelector('#tCode');
+    if (first) { first.focus(); }
+  }
+
   /* 邮箱验证码登录：先在「我的」里绑定过邮箱，这里才能收到码 */
   function paintCode(pane) {
     pane.innerHTML = `
@@ -5028,6 +5126,18 @@ async function renderLogin(container) {
         <span class="box ${agreed ? 'on' : ''}" id="agreeBox"><svg viewBox="0 0 24 24" class="ic"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></span>
         <span>我已阅读并同意<span class="link" data-doc="用户协议">《用户协议》</span>${t('与')}<span class="link" data-doc="隐私政策">《隐私政策》</span>（本站为个人兴趣分享，请文明互动）</span>
       </div>
+      ${sub === 'register' ? `
+      <div class="field">
+        <label>邮箱（可选，绑定后可用于验证码登录）</label>
+        <div class="input-wrap">
+          <input class="input" id="rMail" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com">
+          <button class="icon-btn" id="rSend" type="button" style="width:auto;padding:0 12px;font-size:13px;white-space:nowrap">${t('获取验证码')}</button>
+        </div>
+      </div>
+      <div class="field" id="rCodeWrap" style="display:none">
+        <label>${t('验证码')}</label>
+        <input class="input" id="rCode" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="${t('6 位数字')}">
+      </div>` : ''}
       <div id="capBox" style="margin-bottom:12px"></div>
       <button class="btn" id="submitBtn" style="width:100%">${sub === 'register' ? '注册并登录' : t('登录')}</button>
       <div class="tiny" style="text-align:center;margin-top:10px">${sub === 'register' ? '密码登录的账号可浏览榜单并参与投票' : t('忘记密码请联系管理员')}</div>
@@ -5057,6 +5167,41 @@ async function renderLogin(container) {
     const capBox = pane.querySelector('#capBox');
     mountCaptcha(capBox, () => { /* token 变化时无需额外动作，提交时统一读取 */ });
 
+    /* 注册时的可选邮箱：点了「获取验证码」才展开验证码输入框 */
+    const rSend = pane.querySelector('#rSend');
+    if (rSend) {
+      let rtimer = null, rleft = 0;
+      pane.querySelector('#rMail').addEventListener('input', () => {
+        const v = (pane.querySelector('#rMail').value || '').trim();
+        pane.querySelector('#rCodeWrap').style.display = v ? '' : 'none';
+      });
+      rSend.addEventListener('click', async () => {
+        const v = (pane.querySelector('#rMail').value || '').trim();
+        if (!v) { toast(t('请填写邮箱'), 'err'); pane.querySelector('#rMail').focus(); return; }
+        rSend.disabled = true;
+        try {
+          const lang = (function () { try { return localStorage.getItem('kimgr_lang') || 'zh'; } catch (e) { return 'zh'; } })();
+          await api('auth', 'reg_send', { email: v, lang: lang });
+          toast(t('验证码已发送'));
+          pane.querySelector('#rCodeWrap').style.display = '';
+          rleft = 60;
+          clearInterval(rtimer);
+          const tick = function () {
+            if (rleft <= 0) { clearInterval(rtimer); rSend.disabled = false; rSend.textContent = t('获取验证码'); return; }
+            rSend.disabled = true;
+            rSend.textContent = rleft + ' 秒';
+            rleft--;
+          };
+          tick();
+          rtimer = setInterval(tick, 1000);
+          pane.querySelector('#rCode').focus();
+        } catch (e) {
+          toast(e.message, 'err');
+          rSend.disabled = false;
+        }
+      });
+    }
+
     pane.querySelector('#submitBtn').addEventListener('click', async () => {
       const btn = pane.querySelector('#submitBtn');
       if (btn.disabled) { return; }          // 防重复提交
@@ -5064,13 +5209,24 @@ async function renderLogin(container) {
       const pwd = pane.querySelector('#uPwd').value;
       if (!name || !pwd) { toast(sub === 'register' ? '请填写用户名与密码' : '请填写账号与密码', 'err'); return; }
       if (!agreed) { toast('请先勾选同意协议', 'err'); return; }
+      const payload = {
+        username: name, identifier: name, password: pwd,
+        cap_token: captchaToken(), cap_channel: captchaChannel(),
+      };
+      if (sub === 'register') {
+        const rm = (pane.querySelector('#rMail').value || '').trim();
+        const rc = (pane.querySelector('#rCode').value || '').replace(/\D/g, '');
+        if (rm !== '') {
+          if (rc.length !== 6) { toast(t('请输入 6 位验证码'), 'err'); return; }
+          payload.email = rm;
+          payload.code = rc;
+        }
+      }
       if (captchaConfig().on && !captchaToken()) { toast('请先完成人机验证', 'err'); return; }
       btnLoading(btn, true);
       try {
-        const d = await api('auth', sub === 'register' ? 'register' : 'login', {
-          username: name, identifier: name, password: pwd,
-          cap_token: captchaToken(), cap_channel: captchaChannel(),
-        });
+        const d = await api('auth', sub === 'register' ? 'register' : 'login', payload);
+        if (d && d.twofa) { paintTwofa(pane, d); return; }
         await finishLogin(d);
       } catch (e) {
         toast(e.message, 'err');

@@ -7,6 +7,13 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.56.0 · 2026-10-31 (Prepared for the Worst)
+
+### Account
+1. **Link an email while registering**: the sign-up form has an optional email field — fill it, request a code, type the code; leave it empty and registration works exactly as before, just without the email-based ways in.
+2. **Two-factor sign-in**: a switch in "Mine" turns it on. Once on, signing in takes one more step — after the password, type the code sent to your email. It requires a linked address first, and flipping the switch asks for your current password.
+3. **Code sign-in and two-factor do not stack**: the "email plus code" path already uses two factors, so it will not ask for another code.
+
 ## v3.55.0 · 2026-10-31 (Worthy of the Name)
 
 ### Account

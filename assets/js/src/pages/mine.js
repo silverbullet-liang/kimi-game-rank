@@ -79,6 +79,14 @@ export async function renderMine(container) {
         <button class="btn-ghost btn-sm" id="bindEmail">绑定邮箱</button>
       </div>
       <div class="tiny" style="margin-top:6px">绑定后可用「邮箱 + 验证码」登录，也可用邮箱 + 密码登录；一个邮箱只能绑定一个账号。</div>
+      <div class="uid-row" style="margin-top:12px">
+        <div class="uid-left">
+          <div class="tiny">${t('登录双重验证')}</div>
+          <div class="uid8" id="twofaVal" style="font-size:16px;letter-spacing:0">未开启</div>
+        </div>
+        <button class="btn-ghost btn-sm" id="twofaBtn">开启</button>
+      </div>
+      <div class="tiny" style="margin-top:6px">开启后登录要多一步：密码通过之后还要输入邮箱验证码。需要先绑定邮箱。</div>
       ${isAdmin ? '<div class="adm-actions">'
         + '<button type="button" class="adm-btn" id="panelBtn">'
         +   '<svg viewBox="0 0 24 24" class="ic"><path d="' + G_ICON + '"/></svg><span>控制面板</span>'
@@ -215,9 +223,63 @@ export async function renderMine(container) {
       btn.addEventListener('click', function () {
         bindEmailDialog(!!bound, function (masked) { bound = masked || ''; paint(); });
       });
+
+      /* 双重验证开关：与邮箱联动 —— 没绑邮箱时按钮直接指向绑定 */
+      const tfVal = container.querySelector('#twofaVal');
+      const tfBtn = container.querySelector('#twofaBtn');
+      let tfOn = false;
+      const paintTf = function () {
+        tfVal.textContent = tfOn ? t('已开启') : t('未开启');
+        tfVal.style.opacity = tfOn ? '1' : '.6';
+        tfBtn.textContent = tfOn ? t('关闭') : t('开启');
+      };
+      api('account', 'twofa_state').then(function (r) {
+        tfOn = !!(r && r.enabled);
+        paintTf();
+      }).catch(function () { paintTf(); });
+      tfBtn.addEventListener('click', function () {
+        if (!tfOn && !bound) { toast(t('请先绑定邮箱，再开启双重验证'), 'err'); return; }
+        twofaDialog(tfOn, function (on) { tfOn = on; paintTf(); });
+      });
     })();
     loadTop3(container.querySelector('#top3'));
   }
+
+/* 开启 / 关闭登录双重验证：需要输入当前密码确认 */
+function twofaDialog(enabled, done) {
+  const scrim = document.getElementById('dialogScrim');
+  const box = document.getElementById('dialog');
+  if (!scrim || !box) { return; }
+  box.className = 'dialog glass';
+  box.innerHTML = '<h3>' + (enabled ? '关闭登录双重验证' : '开启登录双重验证') + '</h3>'
+    + '<p class="tiny muted">' + (enabled ? '关闭后登录只需密码，安全性会随之降低。'
+        : '开启后登录要多一步：密码通过后还需输入邮箱验证码。') + '请输入当前密码确认。</p>'
+    + '<div class="field"><label>' + t('密码') + '</label>'
+    + '<input class="input" id="tfPwd" type="password" autocomplete="current-password" placeholder="请输入当前密码"></div>'
+    + '<div class="dialog-actions"><button class="btn-ghost" data-r="0">取消</button>'
+    + '<button class="btn" data-r="1">' + (enabled ? '关闭' : '开启') + '</button></div>';
+  scrim.hidden = false;
+  const close = function () { scrim.hidden = true; box.innerHTML = ''; scrim.onclick = null; };
+  box.querySelector('[data-r="0"]').addEventListener('click', close);
+  scrim.onclick = function (e) { if (e.target === scrim) { close(); } };
+  const pwd = box.querySelector('#tfPwd');
+  const okBtn = box.querySelector('[data-r="1"]');
+  if (pwd) { pwd.focus(); }
+  okBtn.addEventListener('click', async function () {
+    const v = (pwd.value || '');
+    if (!v) { toast(t('请输入密码'), 'err'); return; }
+    btnLoading(okBtn, true);
+    try {
+      const r = await api('account', 'twofa_set', { on: enabled ? 0 : 1, password: v });
+      toast(r && r.enabled ? '已开启登录双重验证' : '已关闭登录双重验证');
+      close();
+      if (done) { done(!!(r && r.enabled)); }
+    } catch (e) {
+      toast(e.message, 'err');
+      btnLoading(okBtn, false);
+    }
+  });
+}
 
 /* 绑定 / 更换邮箱：弹窗上方填邮箱，下方获取并填验证码，通过即绑定 */
 function bindEmailDialog(hasBound, done) {

@@ -268,6 +268,56 @@ $GLOBALS['CFG']['feed.auto_cat'] = 0;
 ck('关闭自动判定时回落 game 且来源为空', works_cat_for_new_pair('', '标题', '简介') === array('game', ''));
 $GLOBALS['CFG']['feed.auto_cat'] = 1;
 
+/* ---------- 八、双重验证票据 ---------- */
+ck('票据摘要与码摘要不同（不会互相冒充）',
+    email_code_ticket_hash('abc') !== email_code_hash('123456', 'abc'));
+ck('同一票据摘要稳定', email_code_ticket_hash('t1') === email_code_ticket_hash('t1'));
+ck('不同票据摘要不同', email_code_ticket_hash('t1') !== email_code_ticket_hash('t2'));
+
+$GLOBALS['MAILED'] = array(); $GLOBALS['SQL'] = array();
+$GLOBALS['ONE_CODE'] = null;
+try {
+    $tk = email_code_issue_ticket(7, 'a@b.com', 'zh');
+    ck('票据 32 位十六进制', (bool)preg_match('/^[0-9a-f]{32}$/', $tk['ticket']));
+    ck('票据下发 ttl 与脱敏邮箱', (int)$tk['ttl'] === 120 && $tk['masked'] === 'a***@b.com');
+    ck('双重验证码邮件已发出且含 6 位码',
+        count($GLOBALS['MAILED']) === 1 && (bool)preg_match('/\b\d{6}\b/', $GLOBALS['MAILED'][0]['text']));
+    $ins = last_sql('ins');
+    ck('同时写入码摘要与票据摘要（两者都不为 NULL）',
+        $ins !== null && strlen($ins[2][2]) === 64 && strlen($ins[2][3]) === 64 && $ins[2][1] === '2fa');
+} catch (FailEx $e) {
+    ck('双重验证票据签发', false);
+}
+
+$GLOBALS['ONE_CODE'] = null;
+ck('没有票据时 reason=no_ticket', email_code_check_ticket('deadbeef', '123456')['reason'] === 'no_ticket');
+
+$tkRow = array('id' => 9, 'email_norm' => 'a@b.com', 'purpose' => '2fa',
+    'code_hash' => email_code_hash('112233', 'a@b.com'),
+    'ticket_hash' => email_code_ticket_hash('ffff'),
+    'tries' => 0, 'user_id' => 7,
+    'expires_at' => gmdate('Y-m-d H:i:s', time() + 120));
+$GLOBALS['ONE_CODE'] = $tkRow;
+ck('票据 + 正确码通过', !empty(email_code_check_ticket('ffff', '112233')['ok']));
+$GLOBALS['ONE_CODE'] = $tkRow;
+ck('票据 + 错误码不通过', email_code_check_ticket('ffff', '000000')['reason'] === 'wrong_code');
+$GLOBALS['ONE_CODE'] = array_merge($tkRow, array('expires_at' => gmdate('Y-m-d H:i:s', time() - 5)));
+ck('过期票据被拒', email_code_check_ticket('ffff', '112233')['reason'] === 'expired');
+$GLOBALS['ONE_CODE'] = array_merge($tkRow, array('tries' => 5));
+ck('错满 5 次的票据被拒', email_code_check_ticket('ffff', '112233')['reason'] === 'too_many_tries');
+$GLOBALS['ONE_CODE'] = $tkRow;
+ck('码长不足直接拒', email_code_check_ticket('ffff', '11')['reason'] === 'bad_code');
+
+/* 源码闸门：这几处改动必须真的落在代码里 */
+$authSrc = (string)file_get_contents(APP_ROOT . '/app/auth.php');
+ck('登录收尾接入双重验证（login_finish 检查 user_twofa_enabled）',
+    strpos($authSrc, 'user_twofa_enabled($u)') !== false && strpos($authSrc, "purpose = '2fa'") === false);
+ck('注册支持可选邮箱（user_register 带 email 与 code）',
+    strpos($authSrc, 'function user_register(string $username, string $password, string $email') !== false);
+$acctSrc = (string)file_get_contents(APP_ROOT . '/app/email_code.php');
+ck('票据校验按摘要等值查询（不扫表）',
+    strpos($acctSrc, "WHERE purpose = '2fa' AND ticket_hash = ?") !== false);
+
 echo "----------------------------------------------------\n";
 echo '通过 ' . $pass . ' / 失败 ' . $fail . "\n";
 exit($fail > 0 ? 1 : 0);

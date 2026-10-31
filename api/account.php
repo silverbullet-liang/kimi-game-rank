@@ -59,6 +59,24 @@ switch ($action) {
         break;
     }
 
+    /* 双重验证：状态 + 开关（开关需要密码确认；开启前必须先绑邮箱） */
+    case 'twofa_state': {
+        $u = db_one('SELECT * FROM users WHERE id = ? LIMIT 1', array($uid));
+        $s = user_settings($u);
+        ok(array('enabled' => !empty($s['twofa']), 'email' => user_email_of($uid),
+                 'ready' => email_ready() && user_email_of($uid) !== ''));
+        break;
+    }
+
+    case 'twofa_set': {
+        csrf_verify();
+        if (!rate_limit('twofa_' . $uid, 10, 3600)) { fail(429, '操作过于频繁，请稍后再试'); }
+        $on = (int)param_str('on', '0') === 1;
+        $r = user_twofa_set($uid, $on, param_str('password', ''));
+        ok($r, $on ? '已开启登录双重验证' : '已关闭登录双重验证');
+        break;
+    }
+
     default:
         fail(400, '未知操作');
 }

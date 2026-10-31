@@ -890,5 +890,9 @@
   "邮箱已更换": "Email updated",
   "请填写邮箱": "Enter your email",
   "更换绑定邮箱": "Change linked email",
-  "两分钟有效，只能用一次": "Valid for 2 minutes, single use"
+  "两分钟有效，只能用一次": "Valid for 2 minutes, single use",
+  "登录双重验证": "Two-factor sign-in",
+  "已开启": "On",
+  "未开启": "Off",
+  "请先绑定邮箱，再开启双重验证": "Link an email first, then turn on two-factor"
 }

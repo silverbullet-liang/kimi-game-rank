@@ -262,3 +262,83 @@ function user_login_by_code(string $email, string $code): array
     app_log('login by email code uid=' . (int)$u['id'] . ' ' . mail_mask($email));
     return login_finish($u);
 }
+
+/* ============================================================
+ *  登录双重验证：一次性票据 + 验证码
+ *  与普通验证码的区别只有一点：多一列 ticket_hash。
+ *  密码通过后服务端发码，把票据明文交给该用户的浏览器，
+ *  换令牌时必须同时拿出「票据 + 验证码」—— 光知道邮箱试不出码。
+ * ============================================================ */
+
+function email_code_ticket_hash(string $ticket): string
+{
+    /* 票据本身是 128 位随机值，不可枚举，因此摘要里不需要再掺邮箱 ——
+       这样校验时可以按摘要直接等值查询，不必扫表。 */
+    return hash('sha256', 't|' . $ticket . '|' . (string)cfg('secrets.cron_key', 'kimgr'));
+}
+
+/**
+ * 发出双重验证码，返回票据。
+ * @return array ticket|ttl|masked
+ */
+function email_code_issue_ticket(int $uid, string $email, string $lang = 'zh'): array
+{
+    if (!email_ready()) { fail(503, '邮箱功能暂未开放'); }
+    $email = trim($email);
+    if (!mail_valid($email)) { fail(400, '邮箱格式不正确'); }
+    $norm = mail_norm($email);
+
+    /* 同一账号同时只有一张有效票据：新的一次把旧的顶掉 */
+    db_exec('DELETE FROM email_codes WHERE user_id = ? AND purpose = ?', array($uid, '2fa'));
+
+    $code   = (string)random_int(100000, 999999);
+    $ticket = bin2hex(random_bytes(16));
+    $now    = now_utc();
+    $exp    = gmdate('Y-m-d H:i:s', time() + email_code_ttl());
+
+    db_insert('INSERT INTO email_codes (email_norm, purpose, code_hash, ticket_hash, user_id, tries, ip_hash, created_at, expires_at)
+               VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)',
+        array($norm, '2fa', email_code_hash($code, $norm), email_code_ticket_hash($ticket),
+              $uid, ip_hash(client_ip()), $now, $exp));
+
+    $ttlMin = (int)ceil(email_code_ttl() / 60);
+    list($subject, $lead, $tail) = email_code_body($lang, 'login', $code, $ttlMin);
+    $text = $subject . "\n\n" . $lead . "\n\n    " . $code . "\n\n" . $tail . "\n\n" . email_site_name();
+    $html = mail_html(email_site_name(), $subject, $lead, $code, $tail);
+    $r = mail_send($email, $subject, $text, $html);
+    if (empty($r['ok'])) {
+        db_exec('DELETE FROM email_codes WHERE user_id = ? AND purpose = ?', array($uid, '2fa'));
+        app_log('2fa send failed: ' . $r['reason']);
+        fail(502, '验证码邮件发送失败，请稍后再试');
+    }
+    return array('ticket' => $ticket, 'ttl' => email_code_ttl(), 'masked' => mail_mask($email));
+}
+
+/**
+ * 校验票据 + 验证码。
+ * @return array ok|reason|row
+ */
+function email_code_check_ticket(string $ticket, string $code): array
+{
+    $code = preg_replace('/\D/', '', $code);
+    $ticket = trim($ticket);
+    if ($ticket === '' || strlen($code) !== email_code_len()) { return array('ok' => false, 'reason' => 'bad_code'); }
+    if (!email_ready()) { return array('ok' => false, 'reason' => 'not_ready'); }
+
+    $row = db_one("SELECT * FROM email_codes WHERE purpose = '2fa' AND ticket_hash = ? ORDER BY id DESC LIMIT 1",
+        array(email_code_ticket_hash($ticket)));
+    if ($row === null) { return array('ok' => false, 'reason' => 'no_ticket'); }
+    if (strtotime((string)$row['expires_at'] . ' UTC') < time()) {
+        db_exec('DELETE FROM email_codes WHERE id = ?', array((int)$row['id']));
+        return array('ok' => false, 'reason' => 'expired');
+    }
+    if ((int)$row['tries'] >= 5) {
+        db_exec('DELETE FROM email_codes WHERE id = ?', array((int)$row['id']));
+        return array('ok' => false, 'reason' => 'too_many_tries');
+    }
+    if (!hash_equals((string)$row['code_hash'], email_code_hash($code, (string)$row['email_norm']))) {
+        db_exec('UPDATE email_codes SET tries = tries + 1 WHERE id = ?', array((int)$row['id']));
+        return array('ok' => false, 'reason' => 'wrong_code');
+    }
+    return array('ok' => true, 'reason' => 'ok', 'row' => $row);
+}

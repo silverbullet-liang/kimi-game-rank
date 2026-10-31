@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 31);
+define('SCHEMA_VERSION', 32);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -1129,6 +1129,22 @@ function run_migrations(bool $force = false)
             setting_set('schema_version', '31');
         } catch (Throwable $e) {
             app_log('migrate v31 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v32：登录双重验证的一次性票据 ----------
+       开启双重验证后，密码通过只是第一步：服务端再发一封验证码邮件，并把
+       随机票据（32 hex）的摘要写在这一列。前端拿票据 + 验证码换令牌，
+       因此「知道账号邮箱」并不能拿去试码。 */
+    if ($cur < 32) {
+        try {
+            if (table_exists('email_codes') && !column_exists('email_codes', 'ticket_hash')) {
+                db_exec("ALTER TABLE `email_codes` ADD COLUMN `ticket_hash` CHAR(64) NULL COMMENT '双重验证票据摘要'");
+            }
+            app_log('schema migrated to v32（双重验证票据）');
+            setting_set('schema_version', '32');
+        } catch (Throwable $e) {
+            app_log('migrate v32 failed: ' . $e->getMessage());
         }
     }
 

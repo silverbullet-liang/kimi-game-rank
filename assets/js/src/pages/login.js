@@ -51,6 +51,42 @@ export async function renderLogin(container) {
     else paintGuest(pane);
   }
 
+  /* 双重验证第二步：密码已通过，等服务端发出的邮件验证码回来换令牌 */
+  function paintTwofa(pane, d) {
+    pane.innerHTML = `
+      <div class="tiny" style="margin-bottom:10px">已向 ${esc(d.masked || '')} 发送验证码，${Math.round((d.ttl || 120) / 60)} 分钟内有效。</div>
+      <div class="field">
+        <label>${t('验证码')}</label>
+        <input class="input" id="tCode" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="${t('6 位数字')}">
+      </div>
+      <div id="capBox" style="margin-bottom:12px"></div>
+      <button class="btn" id="tSubmit" style="width:100%">验证并登录</button>
+      <div class="tiny" style="text-align:center;margin-top:10px">收不到？<span class="link" id="tBack">重新登录</span></div>`;
+    const capBox = pane.querySelector('#capBox');
+    resetCaptcha(capBox);
+    pane.querySelector('#tBack').addEventListener('click', () => { sub = 'login'; paintPassword(pane); });
+    pane.querySelector('#tSubmit').addEventListener('click', async function () {
+      const c = (pane.querySelector('#tCode').value || '').replace(/\D/g, '');
+      if (c.length !== 6) { toast(t('请输入 6 位验证码'), 'err'); return; }
+      if (captchaConfig().on && !captchaToken()) { toast('请先完成人机验证', 'err'); return; }
+      const btn = this;
+      btnLoading(btn, true);
+      try {
+        const r = await api('auth', 'login_2fa', {
+          ticket: d.ticket, code: c,
+          cap_token: captchaToken(), cap_channel: captchaChannel(),
+        });
+        await finishLogin(r);
+      } catch (e) {
+        toast(e.message, 'err');
+        btnLoading(btn, false);
+        resetCaptcha(capBox);
+      }
+    });
+    const first = pane.querySelector('#tCode');
+    if (first) { first.focus(); }
+  }
+
   /* 邮箱验证码登录：先在「我的」里绑定过邮箱，这里才能收到码 */
   function paintCode(pane) {
     pane.innerHTML = `
@@ -151,6 +187,18 @@ export async function renderLogin(container) {
         <span class="box ${agreed ? 'on' : ''}" id="agreeBox"><svg viewBox="0 0 24 24" class="ic"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></span>
         <span>我已阅读并同意<span class="link" data-doc="用户协议">《用户协议》</span>${t('与')}<span class="link" data-doc="隐私政策">《隐私政策》</span>（本站为个人兴趣分享，请文明互动）</span>
       </div>
+      ${sub === 'register' ? `
+      <div class="field">
+        <label>邮箱（可选，绑定后可用于验证码登录）</label>
+        <div class="input-wrap">
+          <input class="input" id="rMail" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com">
+          <button class="icon-btn" id="rSend" type="button" style="width:auto;padding:0 12px;font-size:13px;white-space:nowrap">${t('获取验证码')}</button>
+        </div>
+      </div>
+      <div class="field" id="rCodeWrap" style="display:none">
+        <label>${t('验证码')}</label>
+        <input class="input" id="rCode" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="${t('6 位数字')}">
+      </div>` : ''}
       <div id="capBox" style="margin-bottom:12px"></div>
       <button class="btn" id="submitBtn" style="width:100%">${sub === 'register' ? '注册并登录' : t('登录')}</button>
       <div class="tiny" style="text-align:center;margin-top:10px">${sub === 'register' ? '密码登录的账号可浏览榜单并参与投票' : t('忘记密码请联系管理员')}</div>
@@ -180,6 +228,41 @@ export async function renderLogin(container) {
     const capBox = pane.querySelector('#capBox');
     mountCaptcha(capBox, () => { /* token 变化时无需额外动作，提交时统一读取 */ });
 
+    /* 注册时的可选邮箱：点了「获取验证码」才展开验证码输入框 */
+    const rSend = pane.querySelector('#rSend');
+    if (rSend) {
+      let rtimer = null, rleft = 0;
+      pane.querySelector('#rMail').addEventListener('input', () => {
+        const v = (pane.querySelector('#rMail').value || '').trim();
+        pane.querySelector('#rCodeWrap').style.display = v ? '' : 'none';
+      });
+      rSend.addEventListener('click', async () => {
+        const v = (pane.querySelector('#rMail').value || '').trim();
+        if (!v) { toast(t('请填写邮箱'), 'err'); pane.querySelector('#rMail').focus(); return; }
+        rSend.disabled = true;
+        try {
+          const lang = (function () { try { return localStorage.getItem('kimgr_lang') || 'zh'; } catch (e) { return 'zh'; } })();
+          await api('auth', 'reg_send', { email: v, lang: lang });
+          toast(t('验证码已发送'));
+          pane.querySelector('#rCodeWrap').style.display = '';
+          rleft = 60;
+          clearInterval(rtimer);
+          const tick = function () {
+            if (rleft <= 0) { clearInterval(rtimer); rSend.disabled = false; rSend.textContent = t('获取验证码'); return; }
+            rSend.disabled = true;
+            rSend.textContent = rleft + ' 秒';
+            rleft--;
+          };
+          tick();
+          rtimer = setInterval(tick, 1000);
+          pane.querySelector('#rCode').focus();
+        } catch (e) {
+          toast(e.message, 'err');
+          rSend.disabled = false;
+        }
+      });
+    }
+
     pane.querySelector('#submitBtn').addEventListener('click', async () => {
       const btn = pane.querySelector('#submitBtn');
       if (btn.disabled) { return; }          // 防重复提交
@@ -187,13 +270,24 @@ export async function renderLogin(container) {
       const pwd = pane.querySelector('#uPwd').value;
       if (!name || !pwd) { toast(sub === 'register' ? '请填写用户名与密码' : '请填写账号与密码', 'err'); return; }
       if (!agreed) { toast('请先勾选同意协议', 'err'); return; }
+      const payload = {
+        username: name, identifier: name, password: pwd,
+        cap_token: captchaToken(), cap_channel: captchaChannel(),
+      };
+      if (sub === 'register') {
+        const rm = (pane.querySelector('#rMail').value || '').trim();
+        const rc = (pane.querySelector('#rCode').value || '').replace(/\D/g, '');
+        if (rm !== '') {
+          if (rc.length !== 6) { toast(t('请输入 6 位验证码'), 'err'); return; }
+          payload.email = rm;
+          payload.code = rc;
+        }
+      }
       if (captchaConfig().on && !captchaToken()) { toast('请先完成人机验证', 'err'); return; }
       btnLoading(btn, true);
       try {
-        const d = await api('auth', sub === 'register' ? 'register' : 'login', {
-          username: name, identifier: name, password: pwd,
-          cap_token: captchaToken(), cap_channel: captchaChannel(),
-        });
+        const d = await api('auth', sub === 'register' ? 'register' : 'login', payload);
+        if (d && d.twofa) { paintTwofa(pane, d); return; }
         await finishLogin(d);
       } catch (e) {
         toast(e.message, 'err');

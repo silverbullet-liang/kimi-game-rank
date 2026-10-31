@@ -269,7 +269,7 @@ function login_mark(string $ip, bool $success, string $norm = '')
 /* ============================================================
  * 注册 / 登录 / 游客 / 退出
  * ============================================================ */
-function user_register(string $username, string $password): array
+function user_register(string $username, string $password, string $email = '', string $code = ''): array
 {
     $raw = $username;
     $nfc = nfc_normalize($raw);
@@ -293,6 +293,20 @@ function user_register(string $username, string $password): array
     $mv = moderate_text($clean, 'username', 0);
     if (empty($mv['ok'])) { fail(400, '该用户名未通过内容审核，请更换'); }
 
+    /* 注册时可选绑定邮箱：码先校验（不消费），账号建成后再落邮箱 ——
+       免得出现「号建好了，邮箱却绑不上」的半截状态。 */
+    $bindEmail = '';
+    if (trim($email) !== '') {
+        if (!mail_valid($email)) { fail(400, '邮箱格式不正确'); }
+        $normMail = mail_norm($email);
+        if (db_val('SELECT id FROM users WHERE email_norm = ? LIMIT 1', array($normMail))) {
+            fail(409, '这个邮箱已被其他账号绑定');
+        }
+        $chk = email_code_check($email, 'bind', $code);
+        if (empty($chk['ok'])) { fail(400, '邮箱验证码不正确或已过期'); }
+        $bindEmail = trim($email);
+    }
+
     $registeredAt = now_utc();
     $salt = password_make_salt();
     $hash = password_chain($password, $registeredAt, $salt);
@@ -305,7 +319,19 @@ function user_register(string $username, string $password): array
     uid_of_user(array('id' => $uid, 'role' => 'user', 'uid8' => ''), 0);   // 注册即分配 8 位 UID
     stats_bump('signups');
     record_visit($uid);
-    return array('uid' => $uid, 'token' => issue_user_token($uid), 'username' => $clean);
+
+    $boundMail = '';
+    if ($bindEmail !== '') {
+        try {
+            email_bind_apply($uid, $bindEmail);
+            email_code_consume($bindEmail, 'bind');
+            $boundMail = $bindEmail;
+        } catch (Throwable $e) {
+            /* 并发下被别人抢先绑走：账号照常可用，提示稍后在「我的」里重试 */
+            app_log('register bind failed: ' . $e->getMessage());
+        }
+    }
+    return array('uid' => $uid, 'token' => issue_user_token($uid), 'username' => $clean, 'email' => $boundMail);
 }
 
 /**
@@ -340,9 +366,51 @@ function user_rename_self(int $uid, string $raw): array
     return array('username' => $clean, 'old' => (string)$u['username'], 'changed' => true);
 }
 
-/** 登录成功后的统一收尾：自动解封、记登录、发令牌 */
-function login_finish(array $u): array
+/**
+ * 账号是否开启了登录双重验证。
+ * 只有绑定了邮箱才可能开启（没有第二因子就无从验证）。
+ */
+function user_twofa_enabled($u): bool
 {
+    if (!is_array($u)) { return false; }
+    $s = user_settings($u);
+    if (empty($s['twofa'])) { return false; }
+    return function_exists('user_email_of') ? (user_email_of((int)$u['id']) !== '') : false;
+}
+
+/**
+ * 开关双重验证：需要密码确认。
+ * 开启的前提是已绑定邮箱；关闭也走同一入口。
+ */
+function user_twofa_set(int $uid, bool $on, string $password): array
+{
+    $u = db_one('SELECT * FROM users WHERE id = ? LIMIT 1', array($uid));
+    if ($u === null) { fail(404, '账号不存在'); }
+    if (!password_verify_chain($password, (string)$u['registered_at'], (string)$u['salt'], (string)$u['password_hash'])) {
+        timing_delay();
+        fail(400, '密码不正确');
+    }
+    if ($on && user_email_of($uid) === '') { fail(400, '请先绑定邮箱，再开启双重验证'); }
+    $s = user_settings($u);
+    $s['twofa'] = $on ? 1 : 0;
+    db_exec('UPDATE users SET settings = ? WHERE id = ?', array(json_encode($s, JSON_UNESCAPED_UNICODE), $uid));
+    app_log('twofa ' . ($on ? 'on' : 'off') . ' uid=' . $uid);
+    return array('enabled' => $on);
+}
+
+/** 登录成功后的统一收尾：自动解封、记登录、发令牌 */
+function login_finish(array $u, bool $skipTwofa = false): array
+{
+    /* 双重验证：密码只是第一步。这里不直接发令牌，而是把票据交给浏览器，
+       等它拿「票据 + 邮件验证码」回来换。发信失败一律拒绝（不允许绕过）。 */
+    if (!$skipTwofa && user_twofa_enabled($u)) {
+        $em = user_email_of((int)$u['id']);
+        if ($em !== '') {
+            $t = email_code_issue_ticket((int)$u['id'], $em, 'zh');
+            return array('twofa' => true, 'ticket' => $t['ticket'], 'ttl' => (int)$t['ttl'],
+                         'masked' => $t['masked'], 'username' => (string)$u['username']);
+        }
+    }
     /* 被封停的账号**允许登录**：登进来才看得到「全屏封禁说明」（处理原因、封禁天数、
        解封时间，以及「切换账号登录」），其余功能由 bootstrap 的封禁守卫统一拒绝。 */
     if ((int)$u['is_banned'] === 1 && function_exists('discipline_auto_unban')) {
@@ -357,6 +425,33 @@ function login_finish(array $u): array
             'username' => (string)$u['username']);
     }
     return array('uid' => (int)$u['id'], 'role' => 'user', 'token' => issue_user_token((int)$u['id']), 'username' => (string)$u['username']);
+}
+
+/**
+ * 双重验证第二步：票据 + 验证码换令牌。
+ * 票据一次性，用过即删；错 5 次整张作废。
+ */
+function user_login_2fa(string $ticket, string $code): array
+{
+    $ip = client_ip();
+    $chk = email_code_check_ticket($ticket, $code);
+    if (empty($chk['ok'])) {
+        login_mark($ip, false, '2fa');
+        timing_delay();
+        $map = array('expired' => '验证码已过期，请重新登录',
+            'too_many_tries' => '错误次数过多，请重新登录',
+            'no_ticket' => '验证已失效，请重新登录',
+            'bad_code' => '请输入 6 位验证码',
+            'wrong_code' => '验证码不正确');
+        fail(401, isset($map[$chk['reason']]) ? $map[$chk['reason']] : '验证码不正确');
+    }
+    $uid = (int)$chk['row']['user_id'];
+    $u = db_one('SELECT * FROM users WHERE id = ? LIMIT 1', array($uid));
+    if ($u === null) { fail(401, '验证码不正确'); }
+    db_exec('DELETE FROM email_codes WHERE id = ?', array((int)$chk['row']['id']));
+    login_mark($ip, true, '2fa');
+    app_log('2fa passed uid=' . $uid);
+    return login_finish($u, true);
 }
 
 function user_login(string $identifier, string $password): array
