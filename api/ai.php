@@ -311,7 +311,7 @@ switch ($action) {
 
         $model = ai_pick_model(param_str('model'));
         $think = param_int('think', 0) === 1;      // 深度思考开关
-        $thinkModel = $think ? (string)cfg('ai_limits.think_model', 'glm-4.5-air') : '';
+        $thinkModel = $think ? (string)cfg('ai_limits.think_model', '') : '';
         ai_gate($isAdmin, $uid, $model !== '', $text, $isReplay);
 
         $hist = db_all('SELECT role, content FROM ai_messages WHERE user_id = ? ORDER BY id DESC LIMIT 20', array($uid));
@@ -383,7 +383,7 @@ if (mb_strlen($text, 'UTF-8') > 2000) { fail(400, '内容过长'); }
 /* 配额闸门：免费模型按次数，自有模型按 token（管理员放行） */
 $model = ai_pick_model(param_str('model'));
 $think = param_int('think', 0) === 1;          // 深度思考开关
-$thinkModel = $think ? (string)cfg('ai_limits.think_model', 'glm-4.5-air') : '';
+$thinkModel = $think ? (string)cfg('ai_limits.think_model', '') : '';
 ai_gate($isAdmin, $uid, $model !== '', $text);
 
 /* 取最近历史（先于本条用户消息，避免重复） */

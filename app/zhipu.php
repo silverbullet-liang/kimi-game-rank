@@ -87,6 +87,27 @@ function zhipu_cool_seconds(int $code, bool $isNet = false): int
 }
 
 /** 标记某 key 失败进入冷却；$sec=0 时按配置默认值 */
+/**
+ * 兜底模型：付费/思考模型「无可用资源」时降到这里。
+ * 实测（2026-10-31）本站 key 池：glm-4-flash 免费可用；glm-4.5-air / glm-4-air /
+ * glm-4-plus / glm-4.5 / glm-4.6 一律返回 429 且错误码 1113「余额不足或无可用资源包」。
+ * 因此配置里写错模型、或思考模型没有额度时，不能让它把整条对话打死。
+ */
+function zhipu_fallback_model(): string
+{
+    $m = (string)cfg('ai_limits.fallback_model', 'glm-4-flash');
+    return $m !== '' ? $m : 'glm-4-flash';
+}
+
+/** 上游是否在说「这个模型没资源/没额度」（智谱 code 1113），或干脆 429/400 */
+function zhipu_model_exhausted(string $body, int $code): bool
+{
+    if ($code === 429 || $code === 400) { return true; }
+    if (strpos($body, '"1113"') !== false) { return true; }
+    if (strpos($body, '余额不足') !== false || strpos($body, '资源包') !== false) { return true; }
+    return false;
+}
+
 function zhipu_key_fail(string $key, int $sec = 0)
 {
     $cfg = zhipu_config();
@@ -129,10 +150,14 @@ function zhipu_chat(array $messages, string $model = '', bool $thinking = false)
     $tries = min(6, max(3, count($keys) * 2));
     $lastErr = 'AI 服务不可用';
     $noThink = false;      // 模型不支持 thinking → 去掉参数重试一次
+    /* 模型降级：主模型无资源时换兜底免费模型再试一次（全局只降一次） */
+    $fbModel  = zhipu_fallback_model();
+    $curModel = $model;
+    $fell     = false;
 
     for ($i = 0; $i < $tries; $i++) {
         $key = zhipu_pick_key();
-        $payload = zhipu_payload($messages, $model, $thinking && !$noThink);
+        $payload = zhipu_payload($messages, $curModel, $thinking && !$noThink);
         if (!function_exists('curl_init')) { $lastErr = 'AI 服务不可用（缺少 curl 扩展）'; continue; }
         $ch = curl_init((string)$cfg['endpoint']);
         curl_setopt_array($ch, array(
@@ -167,7 +192,14 @@ function zhipu_chat(array $messages, string $model = '', bool $thinking = false)
             /* 该模型不接受 thinking 参数：去掉它重试，别让整个请求失败 */
             $noThink = true; $i--; continue;
         }
-        $lastErr = 'AI 接口 HTTP ' . $code;
+        if (!$fell && $curModel !== $fbModel && zhipu_model_exhausted((string)$resp, $code)) {
+            /* 主模型没资源（如思考模型没有额度）：降到兜底免费模型，并去掉 thinking */
+            app_log('zhipu: model ' . $curModel . ' exhausted (HTTP ' . $code . '), falling back to ' . $fbModel);
+            $fell = true; $curModel = $fbModel; $noThink = true; $i--; continue;
+        }
+        $lastErr = zhipu_model_exhausted((string)$resp, $code)
+            ? 'AI 接口 HTTP ' . $code . '（模型暂无可用额度，已自动尝试兜底模型）'
+            : ('AI 接口 HTTP ' . $code);
         zhipu_key_fail($key, zhipu_cool_seconds($code));
     }
     throw new RuntimeException($lastErr);
@@ -185,10 +217,13 @@ function zhipu_chat_stream(array $messages, callable $onDelta, bool $thinking = 
     $tries = min(6, max(3, count($keys) * 2));
     $lastErr = 'AI 服务不可用';
     $noThink = false;      // 不支持 thinking 的模型：去掉参数重试一次
+    $fbModel  = zhipu_fallback_model();
+    $curModel = $model;
+    $fell     = false;
 
     for ($i = 0; $i < $tries; $i++) {
         $key = zhipu_pick_key();
-        $payload = zhipu_payload($messages, $model, $thinking && !$noThink);
+        $payload = zhipu_payload($messages, $curModel, $thinking && !$noThink);
         $payload['stream'] = true;
         $payload['stream_options'] = array('include_usage' => true);
         $usage = array();
@@ -241,7 +276,15 @@ function zhipu_chat_stream(array $messages, callable $onDelta, bool $thinking = 
             /* 该模型不接受 thinking：去掉参数重试（此时尚无内容下发，重试安全） */
             $noThink = true; $i--; continue;
         }
-        $lastErr = ($httpCode === 200) ? 'AI 未返回内容' : ('AI 接口 HTTP ' . $httpCode . ($cerr !== '' ? ' / ' . $cerr : ''));
+        if (!$fell && $curModel !== $fbModel && $httpCode !== 200 && zhipu_model_exhausted((string)$buffer, $httpCode)) {
+            /* 流式只在「尚未产出任何内容」时降级：已经吐过字的不能重来，否则正文会重复 */
+            app_log('zhipu_stream: model ' . $curModel . ' exhausted (HTTP ' . $httpCode . '), falling back to ' . $fbModel);
+            $fell = true; $curModel = $fbModel; $noThink = true; $i--; continue;
+        }
+        $lastErr = ($httpCode === 200) ? 'AI 未返回内容'
+            : (zhipu_model_exhausted((string)$buffer, $httpCode)
+                ? 'AI 接口 HTTP ' . $httpCode . '（模型暂无可用额度，已自动尝试兜底模型）'
+                : 'AI 接口 HTTP ' . $httpCode . ($cerr !== '' ? ' / ' . $cerr : ''));
         zhipu_key_fail($key, zhipu_cool_seconds($httpCode, $httpCode === 0 || $cerr !== ''));
     }
     throw new RuntimeException($lastErr);

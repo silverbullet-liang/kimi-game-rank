@@ -7,6 +7,11 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.56.3 · 2026-10-31 (Right Remedy)
+
+### Fixes
+1. **The personal assistant always failed with "AI HTTP 429"**: the shared lobby AI stayed healthy because it always uses the free model; the personal assistant fell back to the *thinking* model when a model was unavailable, and the thinking model — like every other paid tier on this site — currently has **no quota**, so upstream answered 429 with "insufficient balance or no resource pack". Whatever model you picked, the fallback landed on that same dead model. A model fallback is now in place: when the primary (or thinking) model has no quota, the request retries once on the free model with thinking switched off. Streaming only falls back before any text has been emitted, so the answer never repeats. The error message now says what actually happened.
+
 ## v3.56.2 · 2026-10-31 (Set Right)
 
 ### Fixes

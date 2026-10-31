@@ -77,7 +77,8 @@ return array(
            需确保你的 API Key 有该模型权限；不支持时系统会自动去掉思考参数重试。 */
         'lobby_tool_rounds' => 1,   // 世界对话 @官方AI 的工具轮次上限（0 = 不调用工具）
         'lobby_tool_max'    => 2,   // 世界对话每轮最多执行的工具数
-        'think_model'    => 'glm-4.5-air',
+        'think_model'    => 'glm-4-flash',
+        'fallback_model' => 'glm-4-flash',
     ),
 
     /* ---------- 操作频次 ---------- */
