@@ -7,6 +7,11 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.56.2 · 2026-10-31 (Set Right)
+
+### Fixes
+1. **"Unlink" did nothing**: the button rendered, but its click handler had been attached to a different dialog, so pressing it neither reported an error nor unlinked anything. The handler now sits where it belongs, and the unlink request uses the same submission style as the other write actions.
+
 ## v3.56.1 · 2026-10-31 (Gaps Filled)
 
 ### Fixes

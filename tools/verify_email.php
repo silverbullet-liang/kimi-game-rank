@@ -329,6 +329,17 @@ ck('账号接口提供解绑邮箱（且不需要验证码）',
     && strpos(substr($acctApi, (int)strpos($acctApi, "case 'email_unbind'"), 1200), 'email_code_check') === false);
 ck('解绑会一并关闭双重验证（避免没有第二因子还留着开关）',
     strpos($acctApi, "\$st['twofa'] = 0;") !== false);
+/* 前端闸门：解绑按钮的监听必须落在 bindEmailDialog 里。
+   曾经因为用「同款片段」做 replace，把这段监听插进了 twofaDialog ——
+   于是解绑按钮渲染出来了却没有监听，点下去毫无反应。 */
+$mineJs = (string)file_get_contents(APP_ROOT . '/assets/js/src/pages/mine.js');
+$bdPos  = strpos($mineJs, 'function bindEmailDialog');
+$bdBody = $bdPos === false ? '' : substr($mineJs, $bdPos, 5000);
+ck('解绑监听挂在 bindEmailDialog 内（而非别的弹窗）',
+    strpos($bdBody, 'email_unbind') !== false && strpos($bdBody, 'data-r="2"') !== false);
+$tfPos  = strpos($mineJs, 'function twofaDialog');
+$tfBody = $tfPos === false ? '' : substr($mineJs, $tfPos, (int)$bdPos - (int)$tfPos);
+ck('双重验证弹窗里没有误插的 unBtn 代码', strpos($tfBody, 'unBtn') === false);
 $acctSrc = (string)file_get_contents(APP_ROOT . '/app/email_code.php');
 ck('票据校验按摘要等值查询（不扫表）',
     strpos($acctSrc, "WHERE purpose = '2fa' AND ticket_hash = ?") !== false);

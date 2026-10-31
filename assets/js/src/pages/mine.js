@@ -271,22 +271,6 @@ function twofaDialog(enabled, done) {
   box.querySelector('[data-r="0"]').addEventListener('click', close);
   scrim.onclick = function (e) { if (e.target === scrim) { close(); } };
 
-  /* 解绑：不需要验证码，点一下就解；若开着双重验证会一并关闭 */
-  const unBtn = box.querySelector('[data-r="2"]');
-  if (unBtn) {
-    unBtn.addEventListener('click', async function () {
-      unBtn.disabled = true;
-      try {
-        const r = await api('account', 'email_unbind');
-        toast(r && r.twofa_off ? t('邮箱已解绑，双重验证已关闭') : t('邮箱已解绑'));
-        close();
-        if (done) { done(''); }
-      } catch (e) {
-        toast(e.message, 'err');
-        unBtn.disabled = false;
-      }
-    });
-  }
   const pwd = box.querySelector('#tfPwd');
   const okBtn = box.querySelector('[data-r="1"]');
   if (pwd) { pwd.focus(); }
@@ -330,6 +314,23 @@ function bindEmailDialog(hasBound, done) {
   const send = box.querySelector('#bdSend');
   const okBtn = box.querySelector('[data-r="1"]');
   let timer = null, left = 0;
+
+  /* 解绑：不需要验证码，点一下就解；若开着双重验证会一并关闭 */
+  const unBtn = box.querySelector('[data-r="2"]');
+  if (unBtn) {
+    unBtn.addEventListener('click', async function () {
+      unBtn.disabled = true;
+      try {
+        const r = await api('account', 'email_unbind', {});
+        toast(r && r.twofa_off ? t('邮箱已解绑，双重验证已关闭') : t('邮箱已解绑'));
+        close();
+        if (done) { done(''); }
+      } catch (e) {
+        toast(e.message, 'err');
+        unBtn.disabled = false;
+      }
+    });
+  }
 
   function close() {
     clearInterval(timer);
