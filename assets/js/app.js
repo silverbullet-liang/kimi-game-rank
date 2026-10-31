@@ -4424,7 +4424,15 @@ async function renderMine(container) {
         paint();
       }).catch(function () { paint(); });
       btn.addEventListener('click', function () {
-        bindEmailDialog(!!bound, function (masked) { bound = masked || ''; paint(); });
+        bindEmailDialog(!!bound, function (masked) {
+          bound = masked || '';
+          paint();
+          /* 解绑会强制关闭双重验证，这里把开关状态重新对齐 */
+          api('account', 'twofa_state').then(function (r) {
+            tfOn = !!(r && r.enabled);
+            paintTf();
+          }).catch(function () {});
+        });
       });
 
       /* 双重验证开关：与邮箱联动 —— 没绑邮箱时按钮直接指向绑定 */
@@ -4465,6 +4473,23 @@ function twofaDialog(enabled, done) {
   const close = function () { scrim.hidden = true; box.innerHTML = ''; scrim.onclick = null; };
   box.querySelector('[data-r="0"]').addEventListener('click', close);
   scrim.onclick = function (e) { if (e.target === scrim) { close(); } };
+
+  /* 解绑：不需要验证码，点一下就解；若开着双重验证会一并关闭 */
+  const unBtn = box.querySelector('[data-r="2"]');
+  if (unBtn) {
+    unBtn.addEventListener('click', async function () {
+      unBtn.disabled = true;
+      try {
+        const r = await api('account', 'email_unbind');
+        toast(r && r.twofa_off ? t('邮箱已解绑，双重验证已关闭') : t('邮箱已解绑'));
+        close();
+        if (done) { done(''); }
+      } catch (e) {
+        toast(e.message, 'err');
+        unBtn.disabled = false;
+      }
+    });
+  }
   const pwd = box.querySelector('#tfPwd');
   const okBtn = box.querySelector('[data-r="1"]');
   if (pwd) { pwd.focus(); }
@@ -4499,6 +4524,7 @@ function bindEmailDialog(hasBound, done) {
     + '<button class="icon-btn" id="bdSend" type="button" style="width:auto;padding:0 12px;font-size:13px;white-space:nowrap">' + t('获取验证码') + '</button>'
     + '</div></div>'
     + '<div class="dialog-actions"><button class="btn-ghost" data-r="0">取消</button>'
+    + (hasBound ? '<button class="btn-ghost" data-r="2">' + t('解绑') + '</button>' : '')
     + '<button class="btn" data-r="1">绑定</button></div>';
   scrim.hidden = false;
 

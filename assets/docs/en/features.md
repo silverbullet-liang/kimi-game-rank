@@ -103,7 +103,7 @@ How to use it:
 
 1. **Register and sign in**: username plus password, with a **human check** (primary: Cloudflare Turnstile, usually a single tap or none at all; if the primary is unavailable a fallback channel is used automatically). The username is your display name, **shown site-wide and not changeable after registration** (no line breaks or decorative special characters, and it must pass content review); contact an administrator if you forget your password.
 2. **Three ways to identify yourself**: UID, username, or a linked email — all with the password. The sign-in page also has a "Code sign-in" tab: enter the address, receive a code, done — no password to remember. An email can also be linked during registration (optional, one code to confirm).
-3. **Two-factor sign-in**: with a linked address you can turn it on in "Mine". Password sign-in then sends a code to that address and only issues the credential once the code matches. The switch asks for your current password.
+3. **Two-factor sign-in**: with a linked address you can turn it on in "Mine". Password sign-in then sends a code to that address and only issues the credential once the code matches. The switch asks for your current password, and it applies to administrator accounts as well.
 3. **Guest mode**: browse without registering; signing in unlocks voting, comments and the AI chat.
 5. The "Mine" page contains:
    - **Check-in**: a daily check-in adds AI quota, and consecutive days give extra bonuses (the page shows the exact amounts);

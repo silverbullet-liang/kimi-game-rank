@@ -7,6 +7,13 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.56.1 · 2026-10-31 (Gaps Filled)
+
+### Fixes
+1. **"Please sign in" while already signed in**: the email-linking endpoint only admitted "user" and "sub-admin" roles, so an administrator — who is a perfectly signed-in account — was turned away by a role check and shown "please sign in" when requesting a code. Everyone except guests can use it now.
+2. **Email can be unlinked**: a linked account gets an "Unlink" button in the same dialog — one click, no code needed. Unlinking also turns two-factor off, since without an address there is no second factor to receive.
+3. **Two-factor now covers administrators**: administrator passwords are verified on a separate path that skipped two-factor entirely. If the account row has a linked address and the switch is on, an administrator must pass the email code too.
+
 ## v3.56.0 · 2026-10-31 (Prepared for the Worst)
 
 ### Account

@@ -13,8 +13,11 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 
 $action = param_str('action', 'email_state');
 $id = require_token();
-if ($id['role'] !== 'user' && $id['role'] !== 'subadmin') { fail(403, '请登录后再操作'); }
-$uid = (int)$id['uid'];
+/* 只拦游客。管理员与副管理员同样可以绑邮箱、开双重验证 ——
+   他们在 users 表里各有一行，actor_uid() 会把 admin 的 uid=0 映射到那一行。 */
+if ((string)$id['role'] === 'guest') { fail(403, '请登录后再操作'); }
+$uid = actor_uid($id);
+if ($uid <= 0) { fail(403, '该账号暂不支持邮箱功能'); }
 
 switch ($action) {
 
@@ -56,6 +59,30 @@ switch ($action) {
         $res = email_bind_apply($uid, $email);
         email_code_consume($email, 'bind');
         ok($res, '邮箱已绑定');
+        break;
+    }
+
+    /* 解绑邮箱：不需要验证码（按用户要求）。解绑会顺手关掉登录双重验证 ——
+       没有第二因子时开关必须失效，否则下一步登录就会把自己锁在门外。 */
+    case 'email_unbind': {
+        csrf_verify();
+        $cur = user_email_of($uid);
+        if ($cur === '') { ok(array('email' => '', 'twofa' => false, 'twofa_off' => false), '当前未绑定邮箱'); break; }
+        db_exec('UPDATE users SET email = NULL, email_norm = NULL, email_at = NULL WHERE id = ?', array($uid));
+        $u = db_one('SELECT * FROM users WHERE id = ? LIMIT 1', array($uid));
+        $st = user_settings($u);
+        $off = false;
+        if (!empty($st['twofa'])) {
+            $st['twofa'] = 0;
+            db_exec('UPDATE users SET settings = ? WHERE id = ?',
+                array(json_encode($st, JSON_UNESCAPED_UNICODE), $uid));
+            $off = true;
+        }
+        /* 该账号的未用验证码与票据一并作废 */
+        db_exec('DELETE FROM email_codes WHERE user_id = ?', array($uid));
+        app_log('email unbound uid=' . $uid . ($off ? ' (twofa off)' : ''));
+        ok(array('email' => '', 'twofa' => false, 'twofa_off' => $off),
+           $off ? '邮箱已解绑，登录双重验证已关闭' : '邮箱已解绑');
         break;
     }
 

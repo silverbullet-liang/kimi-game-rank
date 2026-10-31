@@ -314,6 +314,21 @@ ck('登录收尾接入双重验证（login_finish 检查 user_twofa_enabled）',
     strpos($authSrc, 'user_twofa_enabled($u)') !== false && strpos($authSrc, "purpose = '2fa'") === false);
 ck('注册支持可选邮箱（user_register 带 email 与 code）',
     strpos($authSrc, 'function user_register(string $username, string $password, string $email') !== false);
+/* 账号接口不能用角色白名单把管理员挡在外面（admin token 的 uid 是 0，
+   必须用 actor_uid() 映射到 users 里那一行）—— 曾因此让站长绑邮箱时收到「请登录」。 */
+$acctApi = (string)file_get_contents(APP_ROOT . '/api/account.php');
+ck('账号接口用 actor_uid 映射身份（不再按角色白名单拦 admin）',
+    strpos($acctApi, 'actor_uid($id)') !== false && strpos($acctApi, "!== 'subadmin'") === false);
+ck('账号接口只拦游客', strpos($acctApi, "=== 'guest'") !== false);
+$auth2 = (string)file_get_contents(APP_ROOT . '/app/auth.php');
+ck('管理员登录也走 login_finish（双重验证对管理员生效）',
+    strpos($auth2, "if ((string)\$u['role'] === 'admin')") !== false
+    && strpos($auth2, "\$aRow['role'] = 'admin';") !== false);
+ck('账号接口提供解绑邮箱（且不需要验证码）',
+    strpos($acctApi, "case 'email_unbind'") !== false
+    && strpos(substr($acctApi, (int)strpos($acctApi, "case 'email_unbind'"), 1200), 'email_code_check') === false);
+ck('解绑会一并关闭双重验证（避免没有第二因子还留着开关）',
+    strpos($acctApi, "\$st['twofa'] = 0;") !== false);
 $acctSrc = (string)file_get_contents(APP_ROOT . '/app/email_code.php');
 ck('票据校验按摘要等值查询（不扫表）',
     strpos($acctSrc, "WHERE purpose = '2fa' AND ticket_hash = ?") !== false);

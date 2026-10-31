@@ -411,6 +411,15 @@ function login_finish(array $u, bool $skipTwofa = false): array
                          'masked' => $t['masked'], 'username' => (string)$u['username']);
         }
     }
+    /* 管理员：users 里那一行只用来承载邮箱与设置，身份仍是 admin（凭证在独立库）。
+       令牌必须按 admin 签发，否则会变成一个没有后台权限的普通用户。 */
+    if ((string)$u['role'] === 'admin') {
+        db_exec('UPDATE users SET last_login_at = UTC_TIMESTAMP() WHERE id = ?', array((int)$u['id']));
+        stats_bump('logins');
+        record_visit((int)$u['id']);
+        return array('uid' => 0, 'role' => 'admin', 'token' => issue_admin_token(), 'username' => 'admin');
+    }
+
     /* 被封停的账号**允许登录**：登进来才看得到「全屏封禁说明」（处理原因、封禁天数、
        解封时间，以及「切换账号登录」），其余功能由 bootstrap 的封禁守卫统一拒绝。 */
     if ((int)$u['is_banned'] === 1 && function_exists('discipline_auto_unban')) {
@@ -470,6 +479,14 @@ function user_login(string $identifier, string $password): array
         $ok = admin_verify($password);
         login_mark($ip, $ok, 'admin');
         if (!$ok) { timing_delay(); fail(401, '用户名或密码错误'); }
+        /* 管理员在 users 表里也有一行（承载邮箱与设置）：有这一行就统一走登录收尾，
+           这样双重验证对管理员同样生效；没有则退回「只验密码」。 */
+        $aUid = admin_uid();
+        $aRow = $aUid > 0 ? db_one('SELECT * FROM users WHERE id = ? LIMIT 1', array($aUid)) : null;
+        if ($aRow !== null) {
+            $aRow['role'] = 'admin';
+            return login_finish($aRow);
+        }
         stats_bump('logins');
         return array('uid' => 0, 'role' => 'admin', 'token' => issue_admin_token(), 'username' => 'admin');
     }

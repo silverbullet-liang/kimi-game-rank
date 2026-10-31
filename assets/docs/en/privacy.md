@@ -35,7 +35,7 @@ We follow the **principle of minimum necessity** and collect only what is needed
 
 **We do not collect**: real names, identity document numbers, phone numbers, contacts, precise location (**location is obtained only with your active authorisation, only for the regional decision, and coordinates are not kept**), device identifiers (IMEI/IDFA and similar), biometric information, health or financial account information.
 
-**About email**: an address is not required to register; it is collected only when you start linking one in "Me". The code itself is stored as an irreversible digest only — it expires after two minutes and is void once used, and the plaintext is never written to disk. You may change it at any time, and it is used only as a working contact channel, never for marketing. If you enable two-factor sign-in, each password sign-in sends a code to that address, again stored only as an irreversible digest.
+**About email**: an address is not required to register; it is collected only when you start linking one in "Me". The code itself is stored as an irreversible digest only — it expires after two minutes and is void once used, and the plaintext is never written to disk. You may change it at any time, and it is used only as a working contact channel, never for marketing. If you enable two-factor sign-in, each password sign-in sends a code to that address, again stored only as an irreversible digest. Unlinking clears the address and its link time from the account record at once, and voids any unused code or ticket.
 
 > Note: **do not** submit such sensitive personal information in comments, chat or feedback. You bear the consequences of doing so voluntarily.
 

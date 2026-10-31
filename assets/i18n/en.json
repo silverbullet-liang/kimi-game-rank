@@ -894,5 +894,8 @@
   "登录双重验证": "Two-factor sign-in",
   "已开启": "On",
   "未开启": "Off",
-  "请先绑定邮箱，再开启双重验证": "Link an email first, then turn on two-factor"
+  "请先绑定邮箱，再开启双重验证": "Link an email first, then turn on two-factor",
+  "解绑": "Unlink",
+  "邮箱已解绑": "Email unlinked",
+  "邮箱已解绑，双重验证已关闭": "Email unlinked; two-factor turned off"
 }
