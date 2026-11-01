@@ -7,6 +7,11 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.56.4 · 2026-11-02 (Clouds Part)
+
+### Fixed
+1. **Submitting a work always failed**: clicking "Submit a work" returned nothing but "服务器内部错误" (internal server error) — for everyone, with any work. A new work has to be categorised before it is stored, and that step read its cache with an incomplete set of arguments. The resulting error had no fallback, so a single internal failure aborted the whole submission and all the user saw was that one line. This is fixed, and every step of the submission path now has a fallback: if the review service itself errors the submission proceeds and the error is logged, reading the work fails with a readable message, and a storage error is no longer swallowed whole — the cause is written to the log so the next occurrence can be traced to a specific step.
+
 ## v3.56.3 · 2026-10-31 (Right Remedy)
 
 ### Fixes

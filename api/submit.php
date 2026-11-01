@@ -210,8 +210,13 @@ if ($action === 'submit') {
         fail(409, !empty($exist['is_hidden']) ? '该作品已被收录（当前已下架）' : '该作品已在榜，无需重复提交');
     }
 
-    /* 名称审核 */
-    $verdict = moderate_text($name, 'message', 0);
+    /* 名称审核：审核环节自身出错时放行并记日志——社区不该被第三方服务或代码缺陷堵死 */
+    try {
+        $verdict = moderate_text($name, 'message', 0);
+    } catch (Throwable $e) {
+        app_log('submit moderate failed: ' . get_class($e) . ' ' . $e->getMessage());
+        $verdict = array('ok' => true, 'flag' => '');
+    }
     if (empty($verdict['ok'])) {
         moderate_reject($verdict);
     }
@@ -219,8 +224,10 @@ if ($action === 'submit') {
     /* 抓取 + 入库 */
     try {
         $item = find_work_by_id($token, $workId);
-    } catch (Exception $e) {
-        fail(400, $e->getMessage());
+    } catch (Throwable $e) {
+        app_log('submit find_work failed: ' . get_class($e) . ' ' . $e->getMessage());
+        /* 业务异常（未找到作品 / 登录态失效）直接展示；代码或网络故障不把内部细节抛给用户 */
+        fail(400, $e instanceof RuntimeException ? $e->getMessage() : '读取作品失败，请稍后重试');
     }
     if ($name !== '') { $item['title'] = $name; }
     if ($cover !== '') {
@@ -231,8 +238,11 @@ if ($action === 'submit') {
 
     try {
         $res = work_upsert($item);
-    } catch (Exception $e) {
-        fail(500, '入库失败：' . $e->getMessage());
+    } catch (Throwable $e) {
+        /* catch(Throwable) 而非 catch(Exception)：漏掉 Error 会让前端只看到「服务器内部错误」，无从排查 */
+        app_log('submit upsert failed: ' . get_class($e) . ' ' . $e->getMessage()
+              . ' @ ' . $e->getFile() . ':' . $e->getLine());
+        fail(500, '入库失败，请稍后重试（已记录）');
     }
 
     /* 记下提交者：既是来源标记，也是「一人一天一次」的统计依据 */

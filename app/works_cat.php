@@ -77,7 +77,8 @@ function works_cat_classify(string $title, string $intro): array
     if (!works_cat_enabled()) { return array('cat' => '', 'conf' => 0.0, 'via' => 'offline', 'scores' => array()); }
 
     $ck = 'wcat_' . md5($text);
-    $hit = cache_get($ck);
+    /* 与下方 cache_set 的 7 天一致；ttl 是必填参数，漏传会抛 ArgumentCountError */
+    $hit = cache_get($ck, 604800);
     if (is_array($hit)) { return $hit; }
 
     $labels = works_cat_labels();
