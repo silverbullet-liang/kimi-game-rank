@@ -1,6 +1,6 @@
 {
-    "version": "3.56.4",
-    "at": "2026-11-01 23:37:54",
+    "version": "3.57.0",
+    "at": "2026-11-02 09:24:33",
     "algo": "sha256+md5",
     "files": {
         "index.php": {
@@ -14,9 +14,9 @@
             "size": 4294
         },
         "assets/js/app.js": {
-            "sha256": "8a62decba4c1d4f820535adbe739a792a9a0734ae70b117840f12158671f58c2",
-            "md5": "eb1064657996b09c7c1bb5998e577d4d",
-            "size": 466170
+            "sha256": "f8486f3a6f6b89a5c80cfd5cb2cf1bef697a317c5fb910f47139ac28c10f98b6",
+            "md5": "c00ea58020355bef8ae5569ee716432b",
+            "size": 474108
         },
         "assets/js/monitor.js": {
             "sha256": "d9265e397e087c86cd6922605e6bfc4552afd143ad17b0a3e2da770232ae7ce5",
@@ -29,9 +29,9 @@
             "size": 91113
         },
         "app/bootstrap.php": {
-            "sha256": "95fcc39fab3a11c8a4f5acaaac074aee024bc91539593c036948c4c59f238e94",
-            "md5": "7a966b81dc43956cb0732be78d0bfdf8",
-            "size": 9181
+            "sha256": "8a28c92e3173243bebc512510055e1d434736e46598f8aa555062f6290810f06",
+            "md5": "fa51849c26a4f8d41317f4c98270cf43",
+            "size": 9294
         },
         "app/helpers.php": {
             "sha256": "c811983028886e1197487dbf628d237e7ecf87251a4a04b2ead4479bb2e6899c",
@@ -54,9 +54,9 @@
             "size": 30302
         },
         "app/integrity.php": {
-            "sha256": "8972f4406add4349dd2bd0971a0026ef1f39e949f2ff866aa50fe264f2d74419",
-            "md5": "099ca2f4a5a3a0e5a04c3e24ee8005cf",
-            "size": 5862
+            "sha256": "0c55864b2423b477f64a377d8c59756ba88cf69cbb21ce63d3be62dcaf983afd",
+            "md5": "c7f9a841b18a7cba267d6ca65abaa1c0",
+            "size": 5941
         },
         "app/upload_guard.php": {
             "sha256": "86e5345cd9412001d9ca2174444a4ad5b87e0b08c9f92247af02d6f7f0a3d495",
@@ -99,9 +99,9 @@
             "size": 6916
         },
         "api/admin.php": {
-            "sha256": "e65635ec2b1dbe7014055210b00ab07ad178569ca2ff0e05b73d9dc3683cfc42",
-            "md5": "0d3531ca3a5f196c7933cd1423386bba",
-            "size": 52652
+            "sha256": "ef27f685c5fe936d665504d0f77c833f69c9ab4e5817ee204df0972ea248e4f1",
+            "md5": "91da96b4459221c4c7e66b3566eef50d",
+            "size": 54888
         },
         "api/account.php": {
             "sha256": "063348423896caab3b66c20fd23e5c8bd665db9cf276099b202986bfe55ddef5",
@@ -109,9 +109,9 @@
             "size": 4847
         },
         "app/email.php": {
-            "sha256": "f766135b6ab3d663acb946da90c2b536f697f2fdc8c85d9c0e404398ea1f478a",
-            "md5": "243aba582dfb5d32c99dca69b9655bec",
-            "size": 21398
+            "sha256": "fbbf1e52e6e86241d0e2c654c2585a32519a6005186461aba4f113d398d88991",
+            "md5": "c8529850a2e99316256dac2b552bbe59",
+            "size": 24860
         },
         "app/email_code.php": {
             "sha256": "7f5988f028015e76d2a2a6402b2be88e615be40e0a4205c0b61c3d7faf71a5f1",
@@ -119,10 +119,25 @@
             "size": 16904
         },
         "app/works_cat.php": {
-            "sha256": "c306d4bd12ae010c3254260874778695737b18abca6db68a7c6c507d00a0583c",
-            "md5": "2e9492645683ad0e28caa42bcb74f55b",
-            "size": 6267
+            "sha256": "5eabd0d6aa5108da274868906a03a4604e82e9ea2cf196a12992750544ef802c",
+            "md5": "27273ec3d4a4c767b0185ed5cbd186e4",
+            "size": 7853
+        },
+        "app/reclassify.php": {
+            "sha256": "36b3228aa18eb5b4ddd9abf167a976f7cac456e68cfa2c95d591916776e2c589",
+            "md5": "9b4d73eb32d8bce4c656727665ef5068",
+            "size": 5934
+        },
+        "app/jev.php": {
+            "sha256": "e765338bf2f04b88cfca3f2965f05073264c049628bd43fbbe816f7a8693ed1a",
+            "md5": "2ce46e7acb0d9b4c0346580c5e25b510",
+            "size": 17963
+        },
+        "api/submit.php": {
+            "sha256": "00403bfaa8ea67d346a43fe9b5c6a1f97c66da05de54c9fd2592b4e270a8a4c7",
+            "md5": "38deeadffb111303bbd8ea5550e7ce2a",
+            "size": 12400
         }
     },
-    "sig": "32204f6ba0eb8f29d01fda258f0fc501c363e110fa9c615b1a144d33b0c05f38"
+    "sig": "1d54d63d08aac33c6553eccb4fd1af56343a2527211f115be6991cfe03b4f0e8"
 }

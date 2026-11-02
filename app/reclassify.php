@@ -73,18 +73,30 @@ function reclassify_label(string $cat): string
  * 返回 array(items => array(array(id,title,from,to)) 全部待变更项, counts => array)
  * 只读，不写库 —— 供预览与执行共用，保证「预览所见 = 执行所做」。
  */
-function reclassify_plan(): array
+function reclassify_plan(int $offset = 0, int $limit = 0): array
 {
+    $offset = max(0, $offset);
+    $limit  = ($limit > 0) ? min(60, $limit) : 0;   /* 0 = 全量 */
     $rows = db_all('SELECT id, title, intro, category FROM works WHERE is_hidden = 0 ORDER BY id ASC');
     $items = array();
-    $counts = array('total' => 0, 'changed' => 0, 'keep' => 0, 'default_game' => 0);
+    $counts = array('total' => 0, 'changed' => 0, 'keep' => 0, 'default_game' => 0, 'jev' => 0, 'rule' => 0, 'low' => 0);
+    $i = 0;
 
     foreach ($rows as $r) {
         $counts['total']++;
-        $from = (string)$r['category'];
-        $to = reclassify_guess((string)$r['title'], (string)$r['intro']);
+        if ($limit > 0 && $i < $offset) { $i++; continue; }
+        if ($limit > 0 && $i >= $offset + $limit) { break; }
+        $i++;
 
-        if ($to === 'game' && $from !== 'game') { $counts['default_game']++; }   // 靠兜底归入游戏
+        $from = (string)$r['category'];
+        $judge = reclassify_judge((string)$r['title'], (string)$r['intro']);
+        $to = (string)$judge['cat'];
+        if ($judge['via'] === 'jev') { $counts['jev']++; }
+        elseif ($judge['via'] === 'rule') { $counts['rule']++; }
+        else { $counts['low']++; }
+
+        if ($to === '') { $counts['keep']++; continue; }               /* 判不出来：不动 */
+        if ($to === 'game' && $from !== 'game') { $counts['default_game']++; }
         if ($to === $from) { $counts['keep']++; continue; }
 
         $counts['changed']++;
@@ -95,7 +107,36 @@ function reclassify_plan(): array
             'to'    => $to,
             'from_label' => reclassify_label($from),
             'to_label'   => reclassify_label($to),
+            'via'   => (string)$judge['via'],
+            'conf'  => (float)$judge['conf'],
         );
     }
-    return array('items' => $items, 'counts' => $counts);
+    return array('items' => $items, 'counts' => $counts, 'offset' => $offset,
+                 'scanned' => $i, 'total_rows' => count($rows));
+}
+
+/**
+ * 单件作品的分区判定。
+ * 主判定是 Jev 零样本分类（app/works_cat.php）；模型不可用时回退关键词规则，
+ * 并把来源标成 rule —— 面板上逐条标出「这条是模型判的、那条是规则兜底的」。
+ * @return array cat|conf|via(jev|rule|low|offline)
+ */
+function reclassify_judge(string $title, string $intro): array
+{
+    $out = array('cat' => '', 'conf' => 0.0, 'via' => 'offline');
+    if (works_cat_enabled()) {
+        $j = works_cat_classify($title, $intro);
+        $out['cat']  = (string)$j['cat'];
+        $out['conf'] = (float)$j['conf'];
+        $out['via']  = (string)$j['via'];
+        if ($out['cat'] !== '') { return $out; }
+        /* low：模型自己也不确定 —— 保留原分类，不用规则去覆盖模型的犹豫 */
+        if ($out['via'] === 'low') { return $out; }
+    }
+    $g = reclassify_guess($title, $intro);
+    if ($g !== '') {
+        $out['cat'] = $g;
+        $out['via'] = 'rule';
+    }
+    return $out;
 }

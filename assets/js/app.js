@@ -5923,6 +5923,8 @@ async function renderPanel(container) {
     bindAnnounce(container);
     bindRefresh(container);
     bindReclassify(container);
+    bindCatState(container);
+    bindMail(container);
     bindDb(container);
     bindBackup(container);
     loadDisc(container);
@@ -6004,6 +6006,8 @@ function adminLayout() {
     ${linkBlock()}
     ${refreshBlock()}
     ${reclassifyBlock()}
+    ${catStateBlock()}
+    ${mailBlock()}
     ${dbBlock()}
     ${backupBlock()}
     ${workListBlock(true)}
@@ -6734,9 +6738,10 @@ function reclassifyBlock() {
     <div class="panel-plain">
       <h3>一键更换分区</h3>
       <p class="tiny muted">
-        按标题与简介自动判定分区，优先级为 <b>二创 ＞ 文学 ＞ 工具 ＞ 其余归游戏</b>。
-        游戏不单独判定，是兜底分区——以上三类都不命中就归游戏。
+        由 AI 模型读作品的标题与简介，判断它更接近 <b>游戏 / 工具 / 文学 / 二创</b> 中的哪一类。
+        模型把握不大时保持原分区不动；模型不可用时回退关键词规则，每条都会标出判定来源。
       </p>
+      <p class="tiny muted" id="rcChannel" style="margin-top:6px"></p>
       <div class="prog" id="rcProg" hidden><div class="prog-bar"><i style="width:0%"></i></div><span class="tiny" id="rcText"></span></div>
       <div class="row-gap">
         <button class="btn btn-sm" id="rcPreviewBtn">预览变更</button>
@@ -7310,74 +7315,105 @@ function bindReclassify(container) {
   if (!pBtn) { return; }
 
   const catName = c => ({ game: t('游戏'), tool: t('工具'), literature: t('文学'), fanart: t('二创') }[c] || c);
+  const viaName = v => ({ jev: t('模型判定'), rule: t('规则兜底'), low: t('模型不确定'), offline: t('模型不可用') }[v] || v);
 
-  /* ---------- 预览 ---------- */
+  const showChannel = c => {
+    const line = container.querySelector('#rcChannel');
+    if (!line) { return; }
+    if (!c) { line.textContent = ''; return; }
+    const head = t('判定通道：') + '<b>' + (c.ok ? t('可用') : t('不可用')) + '</b>';
+    const why = c.ok ? (t('最近一次判定：') + viaName(c.reason)) : (t('最近一次失败：') + (c.reason || ''));
+    line.innerHTML = head + ' · ' + esc(why) + (c.at ? ' · ' + esc(c.at) : '');
+  };
+
+  /* ---------- 预览：逐批判定，逐批累加 ---------- */
   pBtn.addEventListener('click', async () => {
     pBtn.disabled = true;
+    aBtn.disabled = true;
     box.hidden = false;
     box.innerHTML = '<div class="skeleton" style="height:64px"></div>';
+    prog.hidden = false;
     try {
-      const d = await api('admin', 'reclassify_preview', {});
-      const c = d.counts;
+      let off = 0, total = 0, changed = 0, keep = 0, jev = 0, rule = 0, low = 0, all = [], rules = null;
+      while (true) {
+        const d = await api('admin', 'reclassify_preview', { offset: off, limit: 30 }, { timeout: 90000, silent: true });
+        rules = d.rules || rules;
+        showChannel(d.channel);
+        total = d.total_rows;
+        changed += d.counts.changed; keep += d.counts.keep;
+        jev += d.counts.jev; rule += d.counts.rule; low += d.counts.low;
+        all = all.concat(d.items);
+        const done = Math.min(off + 30, total);
+        const pct = total ? Math.round(done / total * 100) : 100;
+        bar.style.width = pct + '%';
+        text.textContent = pct + '%（' + done + '/' + total + '）· 需要变更 ' + changed + ' 件';
+        off += 30;
+        if (!d.has_more) { break; }
+      }
+
       let html = '<div class="tiny" style="line-height:1.9">'
-        + '共扫描 <b>' + c.total + '</b> 件 · 需要变更 <b>' + c.changed + '</b> 件 · '
-        + '判定一致 ' + c.keep + ' 件'
-        + (c.default_game ? ' · 其中靠默认归入游戏 ' + c.default_game + ' 件' : '')
+        + '共扫描 <b>' + total + '</b> 件 · 需要变更 <b>' + changed + '</b> 件 · '
+        + '判定一致 ' + keep + ' 件'
+        + '<br>判定来源：模型判定 <b>' + jev + '</b> 件 · 规则兜底 <b>' + rule + '</b> 件 · 模型不确定 <b>' + low + '</b> 件'
         + '</div>';
 
-      if (d.sample && d.sample.length) {
+      if (all.length) {
+        const show = all.slice(0, 40);
         html += '<div style="margin-top:10px;max-height:260px;overflow:auto">'
-          + '<table class="table"><thead><tr><th>作品</th><th>现在</th><th>将改为</th></tr></thead><tbody>'
-          + d.sample.map(x => '<tr><td>' + esc(x.title) + '</td><td>' + catName(x.from) + '</td><td><b>' + catName(x.to) + '</b></td></tr>').join('')
+          + '<table class="table"><thead><tr><th>作品</th><th>现在</th><th>将改为</th><th>依据</th></tr></thead><tbody>'
+          + show.map(x => '<tr><td>' + esc(x.title) + '</td><td>' + catName(x.from) + '</td><td><b>' + catName(x.to) + '</b></td><td>' + viaName(x.via) + '</td></tr>').join('')
           + '</tbody></table></div>';
-        if (c.changed > d.sample.length) {
-          html += '<div class="tiny muted" style="margin-top:6px">仅列出前 ' + d.sample.length + ' 条，执行时会处理全部。</div>';
+        if (all.length > show.length) {
+          html += '<div class="tiny muted" style="margin-top:6px">仅列出前 ' + show.length + ' 条，执行时会处理全部。</div>';
         }
       } else {
         html += '<div class="tiny muted" style="margin-top:8px">没有需要变更的作品。</div>';
       }
 
-      html += '<details style="margin-top:12px"><summary class="tiny" style="cursor:pointer">判定规则</summary>'
-        + '<div class="tiny muted" style="line-height:1.9;margin-top:6px">'
-        + Object.keys(d.rules).map(k => '<div><b>' + esc(k) + '</b>：' + esc(d.rules[k]) + '</div>').join('')
-        + '</div></details>';
+      if (rules) {
+        html += '<details style="margin-top:12px"><summary class="tiny" style="cursor:pointer">判定规则</summary>'
+          + '<div class="tiny muted" style="line-height:1.9;margin-top:6px">'
+          + Object.keys(rules).map(k => '<div><b>' + esc(k) + '</b>：' + esc(rules[k]) + '</div>').join('')
+          + '</div></details>';
+      }
 
       box.innerHTML = html;
-      aBtn.disabled = c.changed === 0;
+      aBtn.disabled = changed === 0;
     } catch (e) {
       box.innerHTML = '<div class="tiny" style="color:var(--danger)">' + esc(e.message) + '</div>';
     }
     pBtn.disabled = false;
   });
 
-  /* ---------- 执行（分批） ---------- */
+  /* ---------- 执行（逐批判定并写回） ---------- */
   let running = false;
   aBtn.addEventListener('click', async () => {
     if (running) { return; }
     if (!(await dialog(t('执行分区变更'), t('将按预览结果修改作品分区，确定继续？'), t('执行')))) { return; }
     running = true; aBtn.disabled = true; pBtn.disabled = true;
     prog.hidden = false;
-    let offset = 0, applied = 0;
+    let offset = 0, applied = 0, total = 0;
 
     while (true) {
       let r;
-      try { r = await api('admin', 'reclassify_apply', { offset: offset }, { timeout: 90000, silent: true }); }
+      try { r = await api('admin', 'reclassify_apply', { offset: offset, limit: 30 }, { timeout: 90000, silent: true }); }
       catch (e) { text.textContent = t('中断：') + e.message; break; }
 
       applied += r.applied;
-      const pct = r.total > 0 ? Math.round(r.done / r.total * 100) : 100;
+      total = r.total_rows;
+      const pct = total ? Math.round(Math.min(r.scanned, total) / total * 100) : 100;
       bar.style.width = pct + '%';
-      text.textContent = pct + '%（' + r.done + '/' + r.total + '）· 已变更 ' + applied + ' 件';
+      text.textContent = pct + '%（' + Math.min(r.scanned, total) + '/' + total + '）· 已变更 ' + applied + ' 件';
+      showChannel(r.channel);
 
-      if (r.finished || r.done <= offset) {
-        if (r.finished) { text.textContent += ' · 完成'; toast('分区变更完成，共 ' + applied + ' 件'); }
-        break;
-      }
-      offset = r.done;
+      if (r.finished) { text.textContent += ' · 完成'; toast('分区变更完成，共 ' + applied + ' 件'); break; }
+      if (r.scanned <= 0) { break; }
+      offset = r.scanned;
       await sleep(200);
     }
     running = false; aBtn.disabled = false; pBtn.disabled = false;
     loadWorks(container, container.querySelector('#wq').value.trim(), false);
+    bindCatState(container);
   });
 
   /* ---------- 手工批量迁移 ---------- */
@@ -7411,6 +7447,133 @@ function bindReclassify(container) {
         loadWorks(container, container.querySelector('#wq').value.trim(), false);
       } catch (e) { toast(e.message, 'err'); }
       mvBtn.disabled = false;
+    });
+  }
+}
+
+/* ============================================================
+ * 分类判定状态：通道可用性、各分区数量、每条作品的判定来源
+ * ============================================================ */
+function catStateBlock() {
+  return `
+    <div class="panel-plain">
+      <h3>分类判定状态</h3>
+      <p class="tiny muted">分区由 AI 模型按标题与简介判定。下面显示判定通道是否可用、各分区有多少件，以及每件作品的判定来源。</p>
+      <div id="catState"><div class="skeleton" style="height:70px"></div></div>
+    </div>`;
+}
+
+function bindCatState(container) {
+  const box = container.querySelector('#catState');
+  if (!box) { return; }
+  const viaName = v => ({ jev: t('模型判定'), rule: t('规则兜底'), api: t('接口给的'), low: t('模型不确定'), offline: t('模型不可用') }[v] || v);
+  const catName = c => ({ game: t('游戏'), tool: t('工具'), literature: t('文学'), fanart: t('二创') }[c] || c);
+  (async () => {
+    try {
+      const d = await api('admin', 'cat_state');
+      const ch = d.channel || {};
+      const src = d.src || {}, cat = d.category || {};
+      let html = '<div class="tiny" style="line-height:1.9">'
+        + t('判定通道：') + '<b>' + (ch.ok ? t('可用') : t('不可用')) + '</b>'
+        + (ch.ok ? ' · ' + esc(t('最近一次判定：') + viaName(ch.reason)) : ' · ' + esc(t('最近一次失败：') + (ch.reason || '')))
+        + (ch.at ? ' · ' + esc(ch.at) : '')
+        + '<br>' + t('作品总数：') + d.total + ' 件 · ' + t('待判定：') + d.pending + ' 件'
+        + '</div>';
+      const srcKeys = Object.keys(src);
+      if (srcKeys.length) {
+        html += '<div class="tiny" style="margin-top:6px">' + t('判定来源：')
+          + srcKeys.map(k => esc(viaName(k)) + ' ' + src[k] + ' 件').join(' · ') + '</div>';
+      }
+      const catKeys = Object.keys(cat);
+      if (catKeys.length) {
+        html += '<div class="tiny" style="margin-top:6px">' + t('分区分布：')
+          + catKeys.map(k => esc(catName(k)) + ' ' + cat[k] + ' 件').join(' · ') + '</div>';
+      }
+      if (!ch.ok) {
+        html += '<div class="tiny" style="margin-top:8px;color:var(--warn)">'
+          + t('判定模型当前不可用，模型判定会退化为关键词规则；恢复后重新预览即可。') + '</div>';
+      }
+      box.innerHTML = html;
+    } catch (e) {
+      box.innerHTML = '<div class="tiny" style="color:var(--danger)">' + esc(e.message) + '</div>';
+    }
+  })();
+}
+
+/* ============================================================
+ * 邮件通道：各通道状态、最近失败原因、测试发送
+ * ============================================================ */
+function mailBlock() {
+  return `
+    <div class="panel-plain">
+      <h3>邮件通道</h3>
+      <p class="tiny muted">验证码邮件按下列顺序尝试各通道。某个通道失败会自动换下一个，并做有限次重试；匿名通道在额度用尽时会自动换一个发信账号。</p>
+      <div id="mailState"><div class="skeleton" style="height:70px"></div></div>
+      <div class="prow" style="margin-top:10px">
+        <input class="input" id="mailTo" placeholder="测试收件邮箱" autocomplete="off">
+        <button class="btn btn-sm" id="mailTestBtn">发送测试邮件</button>
+        <button class="btn-ghost btn-sm" id="mailReloadBtn">刷新状态</button>
+      </div>
+      <p class="tiny muted" id="mailNote" style="margin-top:6px"></p>
+    </div>`;
+}
+
+function bindMail(container) {
+  const box = container.querySelector('#mailState');
+  const note = container.querySelector('#mailNote');
+  const toEl = container.querySelector('#mailTo');
+  const testBtn = container.querySelector('#mailTestBtn');
+  const reloadBtn = container.querySelector('#mailReloadBtn');
+  if (!box) { return; }
+
+  const load = async () => {
+    try {
+      const d = await api('admin', 'mail_status');
+      const chans = d.channels || [];
+      let html = '<div class="tiny" style="line-height:1.9">';
+      chans.forEach(c => {
+        const ok = c.ok;
+        html += '<div>' + esc(c.channel) + ' · <b style="color:' + (ok ? 'var(--ok,#1a7f37)' : 'var(--danger)') + '">'
+          + esc(ok ? t('可用') : t('不可用')) + '</b> · ' + esc(c.note || '') + '</div>';
+      });
+      html += '</div>';
+      if (d.last_ok_at) {
+        html += '<div class="tiny muted" style="margin-top:6px">' + t('最近一次成功：') + esc(d.last_ok_at)
+          + (d.last_via ? ' · ' + esc(d.last_via) : '') + '</div>';
+      }
+      if (d.last_error) {
+        html += '<div class="tiny" style="margin-top:6px;color:var(--danger)">' + t('最近一次失败：') + esc(d.last_error)
+          + (d.last_error_at ? ' · ' + esc(d.last_error_at) : '') + '</div>';
+      }
+      if (d.agent_email) {
+        html += '<div class="tiny muted" style="margin-top:6px">' + t('当前发信账号：') + esc(d.agent_email)
+          + (d.agent_fixed ? ' · ' + t('（固定账号）') : '') + '</div>';
+      }
+      box.innerHTML = html;
+    } catch (e) {
+      box.innerHTML = '<div class="tiny" style="color:var(--danger)">' + esc(e.message) + '</div>';
+    }
+  };
+  load();
+
+  if (reloadBtn) { reloadBtn.addEventListener('click', load); }
+  if (testBtn) {
+    testBtn.addEventListener('click', async () => {
+      const to = (toEl ? toEl.value : '').trim();
+      if (!to) { toast(t('请填写收件邮箱'), 'err'); return; }
+      testBtn.disabled = true;
+      if (note) { note.textContent = t('发送中…'); }
+      try {
+        const r = await api('admin', 'mail_test', { to: to });
+        if (note) { note.innerHTML = t('测试邮件已发出，通道：') + '<b>' + esc(r.via) + '</b>'; }
+        toast(t('测试邮件已发出'));
+        load();
+      } catch (e) {
+        if (note) { note.innerHTML = '<span style="color:var(--danger)">' + esc(e.message) + '</span>'; }
+        toast(e.message, 'err');
+        load();
+      }
+      testBtn.disabled = false;
     });
   }
 }

@@ -79,11 +79,16 @@ function works_cat_classify(string $title, string $intro): array
     $ck = 'wcat_' . md5($text);
     /* 与下方 cache_set 的 7 天一致；ttl 是必填参数，漏传会抛 ArgumentCountError */
     $hit = cache_get($ck, 604800);
-    if (is_array($hit)) { return $hit; }
+    if (is_array($hit)) {
+        /* 命中缓存说明通道此前是通的：顺手刷新通道状态，面板才不会显示过期信息 */
+        works_cat_channel_note(true, 'cached', (string)(isset($hit['cat']) ? $hit['cat'] : ''));
+        return $hit;
+    }
 
     $labels = works_cat_labels();
     $r = jev_labels_classify($text, array_values($labels));
     if (empty($r['ok'])) {
+        works_cat_channel_note(false, (string)$r['reason']);
         return array('cat' => '', 'conf' => 0.0, 'via' => 'offline', 'scores' => array());
     }
 
@@ -112,9 +117,46 @@ function works_cat_classify(string $title, string $intro): array
     $via = ($cat !== '' && ($conf <= 0 || $conf >= works_cat_min_conf())) ? 'jev' : 'low';
     $out = array('cat' => ($via === 'jev' ? $cat : ''), 'conf' => round($conf, 3), 'via' => $via,
                  'scores' => $scores);
+    works_cat_channel_note(true, $via, $cat);
     /* 判定结果缓存 7 天：批量重判与人工复核会重复问同一段文本 */
     cache_set($ck, $out, 604800);
     return $out;
+}
+
+/**
+ * 记录最近一次 Jev 判定结果（面板「分类判定」区块显示用）。
+ * 判定失败时也要记，否则面板只能看到「什么都没发生」。
+ */
+function works_cat_channel_note(bool $ok, string $reason, string $cat = '')
+{
+    try {
+        cache_set('works_cat_last', array(
+            'ok'     => $ok ? 1 : 0,
+            'reason' => $reason,
+            'cat'    => $cat,
+            'at'     => now_utc(),
+        ), 3600);
+    } catch (Throwable $e) { /* 记不住不影响判定 */ }
+}
+
+/** Jev 判定通道状态（面板用）：最近一次判定的成败、时间与原因 */
+function works_cat_channel_state(): array
+{
+    $last = cache_get('works_cat_last', 3600);
+    $state = array(
+        'enabled' => works_cat_enabled() ? 1 : 0,
+        'ok'      => 0,
+        'reason'  => 'never_used',
+        'cat'     => '',
+        'at'      => '',
+    );
+    if (is_array($last)) {
+        $state['ok']     = isset($last['ok']) ? (int)$last['ok'] : 0;
+        $state['reason'] = isset($last['reason']) ? (string)$last['reason'] : '';
+        $state['cat']    = isset($last['cat']) ? (string)$last['cat'] : '';
+        $state['at']     = isset($last['at']) ? (string)$last['at'] : '';
+    }
+    return $state;
 }
 
 /**

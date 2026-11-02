@@ -7,6 +7,15 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.57.0 · 2026-11-02 (New Way Round)
+
+### Fixed
+1. **Verification mails stopped arriving**: linking an address, code sign-in and two-factor sign-in all depend on mail getting there. The first few went out, then deliveries kept failing and nothing was retried — the anonymous delivery channel has a quota of its own, and once that quota was used up every attempt failed. Now a failed delivery is retried automatically and tried across the delivery channels in turn; when the anonymous channel is out of quota, a different sending account is picked up automatically, so nobody has to click twice.
+2. **Categories were never actually decided by the model**: the "re-categorise" area in the control panel still ran an old keyword rule set, which did not match how the site actually decides, and the model's own answers were never written back. The preview and the run now both use the model, falling back to keyword rules only when the model is unavailable; every entry is marked with its source, and works the model is unsure about keep their current category.
+
+### Added
+3. **Two new control-panel areas**: "Mail channels" shows each channel's current state, the reason the last attempt failed and the sending account in use, and can send a test mail to any address you type in; "Category judgement" shows whether the model is available, how many works sit in each of the four categories, and where each work's category came from (model / rule fallback / from the API / not judged).
+
 ## v3.56.4 · 2026-11-02 (Clouds Part)
 
 ### Fixed

@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '3.56.4');
+define('APP_VERSION', '3.57.0');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);
@@ -71,6 +71,7 @@ require_once APP_ROOT . '/app/email.php';
 require_once APP_ROOT . '/app/email_code.php';
 require_once APP_ROOT . '/app/works_cat.php';
 require_once APP_ROOT . '/app/recat.php';
+require_once APP_ROOT . '/app/reclassify.php';   /* 分区判定：面板预览与批量重判共用同一套 */
 require_once APP_ROOT . '/app/moderation.php';
 require_once APP_ROOT . '/app/lunar.php';
 require_once APP_ROOT . '/app/festival.php';

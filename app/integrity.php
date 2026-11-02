@@ -42,6 +42,9 @@ function integrity_files(): array
         'app/email.php',
         'app/email_code.php',
         'app/works_cat.php',
+        'app/reclassify.php',
+        'app/jev.php',
+        'api/submit.php',
     );
 }
 

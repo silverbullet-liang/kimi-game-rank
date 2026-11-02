@@ -21,9 +21,7 @@ A work must meet **all** of the following:
 
 ## 3. Category rules
 
-Works are grouped into four leaderboards. The decision has a **strict priority order**:
-
-**Fan work > Literature > Tools > Games**
+Works are grouped into four leaderboards. The decision is made by a **classification model** reading the title and description of each work:
 
 | Category | Works it covers |
 |:---:|---|
@@ -32,15 +30,14 @@ Works are grouped into four leaderboards. The decision has a **strict priority o
 | 🔧 Tools | Utilities, productivity tools, plugins, scripts, generators |
 | 🎮 Games | Playable game works |
 
-**How the decision is made** (from the wording of the title and description):
+**How the decision is made**: the title and description are handed to the classification model, which picks the one category that fits best. **Games is judged directly like any other category** — it is not a "fallback for whatever the others miss": a work with real gameplay is clearly judged as a game, and a narrative-driven one as literature.
 
-- **Fan work**: phrasing such as "adapted from / original author / fan fiction / derivative / side story / spin-off / setting collection / parallel world / tribute".
-- **Literature**: phrasing such as "novel / literature / prose / poetry / serialised / short story / chapter / collection / essay".
-- **Tools / Games**: their own keyword sets (tool / plugin / script / assistant / generator; game / gameplay / level / battle / puzzle).
+**When the model is unsure or unavailable**:
 
-**Fallback rule**: when none of the above matches, the work **goes to the Games leaderboard**. Games are the main section of this site, so the fallback keeps misclassification to a minimum; a work that "does not obviously fit anywhere" appearing under Games is therefore a **normal outcome, not an error**.
+- If the model returns a category but is not confident about it, the **existing category is kept** and nothing is rewritten;
+- If the model service is unavailable, the decision **falls back to keyword rules** (a category is only applied when the title or description clearly says so — "adapted from", "fan fiction", "novel", "tool", "game").
 
-**Why this order**: "a fan game adapted from a novel" is first of all a fan work, not a game. Reversing the order would push a large number of derivative works into Games.
+Every decision is marked with its source — "model" or "rule fallback" — and administrators can inspect them one by one in the control panel.
 
 > Administrators can preview how a re-categorisation would turn out before applying it; **the preview and the actual run use the same logic, so what you see is what you get**.
 

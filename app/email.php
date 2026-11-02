@@ -207,25 +207,42 @@ function mail_quiet_agent(): array
     return mail_quiet_create();
 }
 
+/**
+ * quiet-mail 发送：带自愈的重试。
+ * 匿名 agent 有自身的额度与频次上限，用着用着就会从 2xx 变成 402/429/5xx。
+ * 这里的做法是：失败后丢掉当前凭据，重新开户换一个 agent 再发，
+ * 最多换 2 次。参数错误（400）这类重试无意义的错误直接返回。
+ */
 function mail_via_quietmail(string $to, string $subject, string $text, string $html): array
 {
-    $a = mail_quiet_agent();
-    if (!$a) { return array(false, 'agent_create_failed'); }
-    $payload = json_encode(array(
-        'to'      => $to,
-        'subject' => mail_hdr($subject),
-        'text'    => $text,
-        'html'    => $html !== '' ? $html : null,
-    ), JSON_UNESCAPED_UNICODE);
-    list($code, $body) = mail_http(mail_quiet_base() . '/agents/' . rawurlencode($a['id']) . '/send', 'POST',
-        array('Authorization' => 'Bearer ' . $a['key']), $payload, 20);
-    if ($code >= 200 && $code < 300) { return array(true, 'quietmail'); }
-    /* 401/403：凭据失效（被封或 key 丢失）——丢掉本地凭据，下轮自动重新开户 */
-    if ($code === 401 || $code === 403) {
-        if (is_file(mail_quiet_store_path())) { @unlink(mail_quiet_store_path()); }
-        return array(false, 'quietmail_cred:' . $code);
+    $last = 'quietmail_unknown';
+    for ($attempt = 0; $attempt < 3; $attempt++) {
+        $a = mail_quiet_agent();
+        if (!$a) { return array(false, $attempt === 0 ? 'agent_create_failed' : $last); }
+        $payload = json_encode(array(
+            'to'      => $to,
+            'subject' => mail_hdr($subject),
+            'text'    => $text,
+            'html'    => $html !== '' ? $html : null,
+        ), JSON_UNESCAPED_UNICODE);
+        list($code, $body) = mail_http(mail_quiet_base() . '/agents/' . rawurlencode($a['id']) . '/send', 'POST',
+            array('Authorization' => 'Bearer ' . $a['key']), $payload, 20);
+        if ($code >= 200 && $code < 300) {
+            app_log('mail: quiet-mail sent via agent ' . $a['id'] . ' (try ' . ($attempt + 1) . ')');
+            return array(true, 'quietmail');
+        }
+        $last = 'quietmail:' . $code;
+        /* 401/403：凭据失效；402/429/5xx：这个 agent 的额度或状态已经不行——
+           两种都丢掉本地凭据，下一轮自动重新开户换一个 agent 再试。 */
+        if ($code === 401 || $code === 403 || $code === 402 || $code === 429 || $code >= 500) {
+            if (is_file(mail_quiet_store_path())) { @unlink(mail_quiet_store_path()); }
+            app_log('mail: quiet-mail failed ' . $code . ', rotating agent (try ' . ($attempt + 1) . ')');
+            usleep(700000);
+            continue;
+        }
+        return array(false, $last);
     }
-    return array(false, 'quietmail:' . $code);
+    return array(false, $last);
 }
 
 /* ============================================================
@@ -419,21 +436,76 @@ function mail_send(string $to, string $subject, string $text, string $html = '')
     foreach ($chans as $c) {
         if (net_channel_cooling('mail_' . $c)) { $tried[$c] = 'cooling'; continue; }
         $r = array(false, 'unknown');
-        if ($c === 'quietmail') { $r = mail_via_quietmail($to, $subject, $text, $html); }
-        elseif ($c === 'smtp')    { $r = mail_via_smtp($to, $subject, $text, $html); }
-        elseif ($c === 'resend')  { $r = mail_via_resend($to, $subject, $text, $html); }
-        elseif ($c === 'brevo')   { $r = mail_via_brevo($to, $subject, $text, $html); }
-        elseif ($c === 'mailjet') { $r = mail_via_mailjet($to, $subject, $text, $html); }
-        elseif ($c === 'direct')  { $r = mail_via_direct($to, $subject, $text, $html); }
+        /* 每个通道内部再试一次：网络抖动、临时 5xx 这类故障重试一次往往就成了 */
+        for ($try = 0; $try < 2; $try++) {
+            if ($c === 'quietmail') { $r = mail_via_quietmail($to, $subject, $text, $html); }
+            elseif ($c === 'smtp')    { $r = mail_via_smtp($to, $subject, $text, $html); }
+            elseif ($c === 'resend')  { $r = mail_via_resend($to, $subject, $text, $html); }
+            elseif ($c === 'brevo')   { $r = mail_via_brevo($to, $subject, $text, $html); }
+            elseif ($c === 'mailjet') { $r = mail_via_mailjet($to, $subject, $text, $html); }
+            elseif ($c === 'direct')  { $r = mail_via_direct($to, $subject, $text, $html); }
+            if (!empty($r[0])) { break; }
+            if ($try === 0) { usleep(600000); }
+        }
         $tried[$c] = $r[1];
-        if ($r[0]) {
+        if (!empty($r[0])) {
             app_log('mail sent via ' . $c . ' to ' . mail_mask($to));
+            mail_state_save(true, $c, '');
             return array('ok' => true, 'via' => $c, 'reason' => 'ok', 'tried' => $tried);
         }
-        net_channel_cool('mail_' . $c, 300);
+        /* 冷却 60 秒就够：冷却太久会让人以为「彻底坏了」，其实过一会儿就好了 */
+        net_channel_cool('mail_' . $c, 60);
     }
+    $why = 'all_channels_failed';
     app_log('mail failed: ' . json_encode($tried, JSON_UNESCAPED_UNICODE));
-    return array('ok' => false, 'via' => '', 'reason' => 'all_channels_failed', 'tried' => $tried);
+    mail_state_save(false, '', $why . ' ' . json_encode($tried, JSON_UNESCAPED_UNICODE));
+    return array('ok' => false, 'via' => '', 'reason' => $why, 'tried' => $tried);
+}
+
+/** 记录最近一次发信结果（面板显示用；写失败不影响主流程） */
+function mail_state_save(bool $ok, string $via, string $err)
+{
+    try {
+        if ($ok) {
+            setting_set('mail_last_ok_at', now_utc());
+            setting_set('mail_last_via', $via);
+            setting_set('mail_last_error', '');
+        } else {
+            setting_set('mail_last_error_at', now_utc());
+            setting_set('mail_last_error', $err);
+        }
+    } catch (Throwable $e) { /* 记不住就算了，不影响发信 */ }
+}
+
+/** 发信状态总览（面板用）：通道体检 + 最近一次成败 + 当前匿名发信账号 */
+function mail_status(): array
+{
+    $probe = mail_probe();
+    $a = mail_quiet_load();
+    $cfgd = (string)mail_cfg('quiet_agent', '');
+    return array(
+        'channels'    => $probe,
+        'last_ok_at'  => (string)setting_get('mail_last_ok_at', ''),
+        'last_via'    => (string)setting_get('mail_last_via', ''),
+        'last_error'  => (string)setting_get('mail_last_error', ''),
+        'last_error_at' => (string)setting_get('mail_last_error_at', ''),
+        'agent_email' => $cfgd !== '' ? ($cfgd . '@quiet-mail.com') : (isset($a['email']) ? (string)$a['email'] : ''),
+        'agent_at'    => isset($a['at']) ? (string)$a['at'] : '',
+        'agent_fixed' => $cfgd !== '',
+        'retry'       => (int)cfg('mail.retry', 2),
+    );
+}
+
+/** 面板「测试发送」：真发一封信到指定地址，返回各通道尝试结果 */
+function mail_test_send(string $to): array
+{
+    $to = trim($to);
+    if (!mail_valid($to)) { return array('ok' => false, 'reason' => 'bad_address'); }
+    $t = now_utc();
+    $r = mail_send($to, '[' . mail_site_name() . '] 邮件通道测试',
+        '这是一封测试邮件，收到即表示发送通道正常。发送时间：' . $t, '');
+    return array('ok' => !empty($r['ok']), 'via' => (string)$r['via'],
+                 'reason' => (string)$r['reason'], 'tried' => $r['tried']);
 }
 
 /** 通道体检（面板用）：只做连通性探测，不发信 */

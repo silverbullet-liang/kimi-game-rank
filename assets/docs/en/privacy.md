@@ -113,7 +113,7 @@ We **never sell** your personal information. We share it only in the following *
 | Cloudflare Turnstile (primary) | [cloudflare.com](https://www.cloudflare.com/products/turnstile/) | Your access IP and browser environment signals | Human verification for sign-in and registration |
 | Cap human verification (fallback) | [trycap.dev](https://trycap.dev) | Your access IP | Human verification (used automatically when the primary is unavailable) |
 | classifier.dev (Jev classifier) | [classifier.dev](https://classifier.dev) | Comments and messages awaiting publication; work titles and descriptions | Model judgement for content moderation and category assignment |
-| quiet-mail (anonymous delivery) | [quiet-mail.com](https://quiet-mail.com) | The address you linked, and the code email body | Delivering the verification code needed for sign-in and linking |
+| quiet-mail (anonymous delivery) | [quiet-mail.com](https://quiet-mail.com) | The address you linked, and the code email body | Delivering the verification code needed for sign-in and linking (on failure a different anonymous sending account is used for the retry; what is shared does not change) |
 | OVHcloud AI Endpoints | [OVHcloud AI Endpoints](https://www.ovhcloud.com/en/public-cloud/ai-endpoints/) | Images you upload | Image moderation (reading text in the image and detecting prohibited imagery) |
 | MyMemory translation | [mymemory.translated.net](https://mymemory.translated.net) | Comments and messages awaiting publication (first 300 characters) | Translating to English for profanity detection |
 | PurgoMalum | [purgomalum.com](https://www.purgomalum.com) | The English rendering above | English profanity detection |

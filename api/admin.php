@@ -425,17 +425,25 @@ switch ($action) {
        这样「点错了」不会直接改动线上数据。 */
     case 'reclassify_preview': {
         require_panel();
-        $plan = reclassify_plan();
-        $sample = array_slice($plan['items'], 0, 40);
+        $offset = param_range('offset', 0, 100000, 0);
+        $limit  = param_range('limit', 30, 60, 30);
+        $plan = reclassify_plan($offset, $limit);
         ok(array(
-            'counts' => $plan['counts'],
-            'sample' => $sample,
-            'rules'  => array(
-                '二创类'   => '标题或简介出现「改编自 / 原作者是 / 同人 / 二创 / 番外 / 衍生 / 平行世界 / 设定集」等从属或二次创作表述',
-                '文学类'   => '出现「小说 / 文学 / 散文 / 诗歌 / 连载 / 短篇 / 章节 / 文集 / 随笔」等以文字叙事为主体的表述',
-                '工具类'   => '出现「工具 / 插件 / 脚本 / 助手 / 自动化 / 生成器 / 面板 / 一键 / 软件」等实用向表述',
-                '游戏类'   => '不单独判定，作为兜底：以上三类都不命中即归游戏',
-                '优先级'   => '二创 ＞ 文学 ＞ 工具 ＞ 其余归游戏（「改编自某小说的同人游戏」会归入二创）',
+            'counts'   => $plan['counts'],
+            'items'    => $plan['items'],
+            'sample'   => array_slice($plan['items'], 0, 40),
+            'offset'   => $plan['offset'],
+            'scanned'  => $plan['scanned'],
+            'total_rows' => $plan['total_rows'],
+            'has_more' => ($plan['offset'] + $limit) < $plan['total_rows'],
+            'channel'  => works_cat_channel_state(),
+            'rules'    => array(
+                'game'       => '游戏类：可操作、有规则与进度的小游戏或互动体验（模型直接判定的一类，不是兜底）',
+                'tool'       => '工具类：解决具体问题的实用工具，如计算器、转换器、生成器、脚本、面板',
+                'literature' => '文学类：以文字叙事为主体的作品，如小说、散文、诗歌、剧本、世界观设定集',
+                'fanart'     => '二创类：基于已有作品或 IP 的二次创作，如同人图、同人文、改编、联动',
+                '判定方式'   => '主判定为 Jev 零样本分类（classifier.dev）；模型不可用时回退关键词规则，每条都会标注判定来源',
+                '模型不确定' => '模型给出但把握不大时不改分区，保留原判定',
             ),
         ));
         break;
@@ -445,24 +453,62 @@ switch ($action) {
     case 'reclassify_apply': {
         require_panel();
         csrf_verify();
-        $plan = reclassify_plan();
-        $total = count($plan['items']);
-        $size  = 60;
-        $offset = param_range('offset', 0, 1000000, 0);
-        $batch = array_slice($plan['items'], $offset, $size);
-
+        $offset = param_range('offset', 0, 100000, 0);
+        $limit  = param_range('limit', 30, 60, 30);
+        $plan = reclassify_plan($offset, $limit);
         $n = 0;
-        foreach ($batch as $it) {
-            db_exec('UPDATE works SET category = ?, updated_at = UTC_TIMESTAMP() WHERE id = ?',
-                array($it['to'], (int)$it['id']));
+        foreach ($plan['items'] as $it) {
+            /* 来源一并写回：jev = 模型判定，rule = 关键词规则兜底 */
+            db_exec('UPDATE works SET category = ?, cat_src = ?, updated_at = UTC_TIMESTAMP() WHERE id = ?',
+                array($it['to'], $it['via'] === 'jev' ? 'jev' : 'rule', (int)$it['id']));
             $n++;
         }
-        $doneN = $offset + count($batch);
+        $done = $plan['offset'] + $plan['scanned'];
         ok(array(
-            'total'    => $total,
-            'done'     => $doneN,
-            'applied'  => $n,
-            'finished' => $doneN >= $total,
+            'scanned'   => $plan['scanned'],
+            'total_rows' => $plan['total_rows'],
+            'applied'   => $n,
+            'finished'  => ($plan['offset'] + $limit) >= $plan['total_rows'],
+            'channel'   => works_cat_channel_state(),
+        ));
+        break;
+    }
+
+    /* ---------- 邮件通道：状态与测试发送 ---------- */
+    case 'mail_status': {
+        require_panel();
+        ok(mail_status());
+        break;
+    }
+
+    case 'mail_test': {
+        require_panel();
+        csrf_verify();
+        $to = trim(param_str('to', ''));
+        $r = mail_test_send($to);
+        if (empty($r['ok'])) {
+            app_log('mail test failed: ' . $to . ' ' . json_encode($r, JSON_UNESCAPED_UNICODE));
+            fail(502, '测试发送失败：' . (string)$r['reason']);
+        }
+        ok(array('via' => $r['via'], 'tried' => $r['tried']), '测试邮件已发出：' . $r['via']);
+        break;
+    }
+
+    /* ---------- 分类判定：通道状态与分布 ---------- */
+    case 'cat_state': {
+        require_panel();
+        $rows = db_all('SELECT COALESCE(cat_src, \'\') AS src, COUNT(*) AS c FROM works WHERE is_hidden = 0 GROUP BY src');
+        $srcs = array();
+        foreach ($rows as $r) { $srcs[(string)$r['src']] = (int)$r['c']; }
+        $cats = db_all('SELECT category, COUNT(*) AS c FROM works WHERE is_hidden = 0 GROUP BY category');
+        $dist = array();
+        foreach ($cats as $r) { $dist[(string)$r['category']] = (int)$r['c']; }
+        ok(array(
+            'channel'  => works_cat_channel_state(),
+            'src'      => $srcs,
+            'category' => $dist,
+            'pending'  => works_recat_pending(),
+            'total'    => (int)db_val('SELECT COUNT(*) FROM works WHERE is_hidden = 0', array(), 0),
         ));
         break;
     }

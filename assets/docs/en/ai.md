@@ -105,6 +105,9 @@ Quota resets per **calendar day in UTC**, i.e. **08:00 Beijing time** each day. 
 
 ## 6. Data, privacy and records
 
+> Besides what this section lists, **category judgement** (Games / Tools / Literature / Fan Work) also sends the title and description of a work to the classification model, which returns the closest category; when the model is unavailable a local rule is used instead and nothing is sent.
+
+
 1. **Questions are sent to the model provider**: to generate an answer, your question is sent to the relevant model provider. See article 8 of the [Privacy Policy](/docs/privacy). With deep thinking on, the reasoning is produced by the model provider and returned immediately; this site **saves it together with the tool cards in your conversation record** (open it again to review) and deletes it when you clear the conversation on "Mine".
 2. **Do not enter sensitive information**: ID numbers, bank cards, passwords, health information and the like. You bear the consequences of submitting sensitive information yourself.
 3. **Records and clearing**: your conversations and usage are stored in your own account, visible on the "Mine" page, and can be cleared at any time.
