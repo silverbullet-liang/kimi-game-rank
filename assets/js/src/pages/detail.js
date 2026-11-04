@@ -423,24 +423,58 @@ export async function renderComments(container, workId, targetType) {
     }
   }
 
-  /* ---------- 自动轮询：仅在"有新评论"时重绘，且不打断正在输入 ---------- */
-  window.__addPageTimer(setInterval(() => {
-    if (document.hidden || !listBox.isConnected) { return; }
+  /* ---------- 自动轮询：仅在"有新评论"时重绘，且不打断正在输入 ----------
+     免费主机按「入口进程」计额度：每个请求占一个进程，后台定时刷新是最容易踩线的地方
+     （访客不多也会把额度打满）。所以这里不按固定间隔打请求，而是按需要打：
+     · 页面不可见 → 直接不打；切回来立刻补一次，并把间隔重置回最短档
+     · 连续两轮没有新评论 → 间隔翻倍（45s → 90s → 180s）
+     · 一旦有新评论 → 立刻回到 45s
+     · 三分钟没有任何操作 → 视为挂着没人看，退到最慢档 */
+  let pollMs = 45000;
+  let pollTimer = 0;
+  let lastAct = Date.now();
+  const bumpAct = () => { lastAct = Date.now(); };
+  ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (ev) {
+    document.addEventListener(ev, bumpAct, { passive: true });
+  });
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { return; }
+    lastAct = Date.now();
+    pollMs = 45000;
+    schedulePoll(0);
+  });
+
+  function schedulePoll(delay) {
+    clearTimeout(pollTimer);
+    pollTimer = window.__addPageTimer(setTimeout(pollOnce, typeof delay === 'number' ? delay : pollMs));
+  }
+
+  function pollOnce() {
+    if (!listBox.isConnected) { return; }
+    if (document.hidden) { schedulePoll(); return; }
     const ae = document.activeElement;
-    if (ae && (ae.id === 'cmtText' || ae.id === 'rpText')) { return; }
+    if (ae && (ae.id === 'cmtText' || ae.id === 'rpText')) { schedulePoll(); return; }
     const scrim = document.getElementById('dialogScrim');
-    if (scrim && !scrim.hidden) { return; }
+    if (scrim && !scrim.hidden) { schedulePoll(); return; }
+    if (Date.now() - lastAct > 180000) { pollMs = 180000; }
     api('comments', 'list', { work_id: workId, target_type: ttype }, { silent: true, tries: 1 })
       .then(d => {
-        if (Number(d.total || 0) === st.total) { return; }   // 无新评论 → 不重绘
+        if (Number(d.total || 0) === st.total) {          // 无新评论 → 不重绘，放慢节奏
+          pollMs = Math.min(180000, pollMs * 2);
+          return;
+        }
         st.roots = d.comments || [];
         st.total = Number(d.total || 0);
         paint();
         const tot = container.querySelector('#cmtTotal');
         if (tot) { tot.textContent = st.total; }
+        pollMs = 45000;
       })
-      .catch(() => {});
-  }, 25000));
+      .catch(() => { pollMs = Math.min(180000, pollMs * 2); })
+      .then(() => { schedulePoll(); });
+  }
+
+  schedulePoll();
 
   await refresh(true);
 }

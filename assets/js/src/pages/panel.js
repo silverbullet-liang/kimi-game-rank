@@ -2781,5 +2781,8 @@ function startPanelPolling(container) {
       loadVisitsTop(container);
     } catch (e) { /* 静默：下一轮再试 */ }
   };
-  window.__addPageTimer(setInterval(tick, 30000));
+  /* 刷新节奏 60s：这一轮要打七个接口（概览、统计、作品、用户、副管理员、访问、分区状态），
+     免费主机按「入口进程」计额度，30s 一轮相当于每分钟十四个进程，纯属浪费。
+     面板数据没有秒级时效性，60s 足够，且仍然在标签页不可见 / 正在输入 / 弹窗打开时跳过。 */
+  window.__addPageTimer(setInterval(tick, 60000));
 }

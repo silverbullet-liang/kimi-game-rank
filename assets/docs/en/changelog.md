@@ -7,6 +7,24 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.58.0 · 2026-11-04 (Light on Its Feet)
+
+### Improvements
+
+1. **Work pages no longer poll comments on a fixed beat**: previously the page asked "any new comments?" on a timer whether or not you were watching. The hosting this site runs on caps how many requests may run at the same moment; background polling like that eats into the allowance when traffic picks up, and the symptom is an occasional whole-site failure. It is now on demand — leave the page and it stops; after several checks in a row with nothing new it slows down step by step (45s → 90s → 180s); a new comment brings it straight back; long stretches without any activity slow it down too. New comments still appear on their own.
+
+2. **Dashboard refresh went from 30 to 60 seconds**: dashboard figures are not second-sensitive, so this simply halves the requests.
+
+3. **Public docs are cached per version**: unchanged version, straight from local cache — no redownload every time you open a page.
+
+4. **Crawl rule fixed**: a rule used to exclude the whole path segment that public docs live under, which effectively kept those docs out of search results. It is narrowed now, so the docs can be crawled, while maintenance scripts — which have no reason to be indexed — stay excluded.
+
+### Changes
+
+5. The "Making" credit on the About page now lists deepseek-v4-flash and MiniMax-M3.1-Flash.
+
+6. The v3.56.3 entry below embeds its video, so it can be watched right there.
+
 ## v3.57.0 · 2026-11-02 (New Way Round)
 
 ### Fixed
@@ -25,6 +43,10 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ### Fixes
 1. **The personal assistant always failed with "AI HTTP 429"**: the shared lobby AI stayed healthy because it always uses the free model; the personal assistant fell back to the *thinking* model when a model was unavailable, and the thinking model — like every other paid tier on this site — currently has **no quota**, so upstream answered 429 with "insufficient balance or no resource pack". Whatever model you picked, the fallback landed on that same dead model. A model fallback is now in place: when the primary (or thinking) model has no quota, the request retries once on the free model with thinking switched off. Streaming only falls back before any text has been emitted, so the answer never repeats. The error message now says what actually happened.
+
+The story behind this release, in video form:
+
+BV1cTx46CEhX
 
 ## v3.56.2 · 2026-10-31 (Set Right)
 

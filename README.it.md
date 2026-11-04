@@ -2,9 +2,19 @@
 
 [English](README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · **Italiano** · [Français](README.fr.md)
 
+![Kimi Game Rank 六维综合评分排行榜](.github/preview.png)
+
 Una classifica a punteggio su sei dimensioni per la **community di Kimi**. PHP + MySQL, frontend senza build (HTML / CSS / JavaScript puri).
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/silverbullet-liang/kimi-game-rank?color=007AFF&label=release)](https://github.com/silverbullet-liang/kimi-game-rank/releases)
+[![Stars](https://img.shields.io/github/stars/silverbullet-liang/kimi-game-rank?color=007AFF)](https://github.com/silverbullet-liang/kimi-game-rank/stargazers)
+[![Forks](https://img.shields.io/github/forks/silverbullet-liang/kimi-game-rank?color=007AFF)](https://github.com/silverbullet-liang/kimi-game-rank/forks)
+[![CI](https://github.com/silverbullet-liang/kimi-game-rank/actions/workflows/ci.yml/badge.svg)](https://github.com/silverbullet-liang/kimi-game-rank/actions/workflows/ci.yml)
+[![PHP](https://img.shields.io/badge/PHP-7.0%2B-777BB4)](https://www.php.net/)
+[![MySQL](https://img.shields.io/badge/MySQL-5.7%2B-4479A1)](https://www.mysql.com/)
+
+**Sito**: [kimi-game-rank.wuaze.com](https://kimi-game-rank.wuaze.com) · **Mirror**: [kimi-game-rank.byethost33.com](https://kimi-game-rank.byethost33.com)
 
 > Questo è un **progetto non ufficiale**. Non ha alcun legame con Kimi o Moonshot AI.
 
@@ -170,6 +180,8 @@ Sei libero di usarlo, modificarlo e distribuirlo, con due vincoli fondamentali:
 ## Contribuire
 
 Vedi [CONTRIBUTING.md](CONTRIBUTING.md). Prima di inviare, assicurati di **non aver incluso chiavi, connessioni al database o liste di moderazione**.
+
+Se ti è utile, **una star** aiuta altre persone a trovarlo.
 
 ## Esclusione di responsabilità
 

@@ -2,9 +2,19 @@
 
 [English](README.md) · **简体中文** · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Italiano](README.it.md) · [Français](README.fr.md)
 
+![Kimi Game Rank 六维综合评分排行榜](.github/preview.png)
+
 面向 **Kimi 社区**的六维综合评分排行榜。PHP + MySQL，前端零构建（原生 HTML / CSS / JavaScript）。
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/silverbullet-liang/kimi-game-rank?color=007AFF&label=release)](https://github.com/silverbullet-liang/kimi-game-rank/releases)
+[![Stars](https://img.shields.io/github/stars/silverbullet-liang/kimi-game-rank?color=007AFF)](https://github.com/silverbullet-liang/kimi-game-rank/stargazers)
+[![Forks](https://img.shields.io/github/forks/silverbullet-liang/kimi-game-rank?color=007AFF)](https://github.com/silverbullet-liang/kimi-game-rank/forks)
+[![CI](https://github.com/silverbullet-liang/kimi-game-rank/actions/workflows/ci.yml/badge.svg)](https://github.com/silverbullet-liang/kimi-game-rank/actions/workflows/ci.yml)
+[![PHP](https://img.shields.io/badge/PHP-7.0%2B-777BB4)](https://www.php.net/)
+[![MySQL](https://img.shields.io/badge/MySQL-5.7%2B-4479A1)](https://www.mysql.com/)
+
+**在线站点**: [kimi-game-rank.wuaze.com](https://kimi-game-rank.wuaze.com) · **镜像站**: [kimi-game-rank.byethost33.com](https://kimi-game-rank.byethost33.com)
 
 > 本项目**非 Kimi 官方项目**，与月之暗面（Moonshot AI）无从属关系。
 
@@ -170,6 +180,8 @@ python3 tools/repo_check.py     # 泄漏自检（密钥 / 词库 / 数据库连�
 ## 参与贡献
 
 见 [CONTRIBUTING.md](CONTRIBUTING.md)。提交前请确认：**没有夹带任何密钥、数据库连接或审核词库**。
+
+如果它对你有用，**点一个 star** 就能让更多人看到——这就是这里全部的推广预算。
 
 ## 免责声明
 

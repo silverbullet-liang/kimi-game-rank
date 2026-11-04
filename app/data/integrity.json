@@ -1,6 +1,6 @@
 {
-    "version": "3.57.0",
-    "at": "2026-11-02 09:24:33",
+    "version": "3.58.0",
+    "at": "2026-11-04 00:49:22",
     "algo": "sha256+md5",
     "files": {
         "index.php": {
@@ -9,14 +9,14 @@
             "size": 31774
         },
         ".htaccess": {
-            "sha256": "88384094157295e67d757152e5465302e90bf4f181a86b348f973b3109d7f9d5",
-            "md5": "91551929448ccaf1a3afcc59b1e14f27",
-            "size": 4294
+            "sha256": "5080ff579269b9b4bd305bdee40a71d25f155af9178c1745122cf98d4fadc5e9",
+            "md5": "d3a9f061e7725f66b9c612e72e1530b6",
+            "size": 4653
         },
         "assets/js/app.js": {
-            "sha256": "f8486f3a6f6b89a5c80cfd5cb2cf1bef697a317c5fb910f47139ac28c10f98b6",
-            "md5": "c00ea58020355bef8ae5569ee716432b",
-            "size": 474108
+            "sha256": "2e18bb35a15321a53a3886d0a8b087b8453375d79b26ce3af34f94b8b7ff802e",
+            "md5": "e6b7af050e4c7c032dd5cd1a61896d58",
+            "size": 476364
         },
         "assets/js/monitor.js": {
             "sha256": "d9265e397e087c86cd6922605e6bfc4552afd143ad17b0a3e2da770232ae7ce5",
@@ -29,8 +29,8 @@
             "size": 91113
         },
         "app/bootstrap.php": {
-            "sha256": "8a28c92e3173243bebc512510055e1d434736e46598f8aa555062f6290810f06",
-            "md5": "fa51849c26a4f8d41317f4c98270cf43",
+            "sha256": "efc61344d6823e3c5d37f82d912f3ee7c6ef4cb148186cb3c83ca7e6517561f0",
+            "md5": "027bf4578898cc8fa8febd0a29948d61",
             "size": 9294
         },
         "app/helpers.php": {
@@ -49,9 +49,9 @@
             "size": 6021
         },
         "app/seo.php": {
-            "sha256": "253b222356d3985e70e013eca935e6dddec6eb45e543e34d0c585cebf43512ff",
-            "md5": "55113dd05b8c2cf4e1088a9132c21c70",
-            "size": 30302
+            "sha256": "2b93df1f289699b97f87fa51e770c5afa8cd096b337322db32c38c90bcc66131",
+            "md5": "2476b136aab70a76cd7d7487365a2c1a",
+            "size": 30635
         },
         "app/integrity.php": {
             "sha256": "0c55864b2423b477f64a377d8c59756ba88cf69cbb21ce63d3be62dcaf983afd",
@@ -139,5 +139,5 @@
             "size": 12400
         }
     },
-    "sig": "1d54d63d08aac33c6553eccb4fd1af56343a2527211f115be6991cfe03b4f0e8"
+    "sig": "a586da57cef0aeebcdac82c40d73a1e056bfd0baaf708960bf5494ce9f09ee5e"
 }

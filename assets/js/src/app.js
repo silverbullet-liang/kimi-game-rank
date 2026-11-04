@@ -565,7 +565,7 @@ function renderAbout(container) {
     <div class="card">
       <div class="card-title">${icon(I.rule)}${t('规划和制作')}</div>
       <div class="credit-row"><span class="credit-k">${t('规划')}</span><span class="credit-v">银色子弹-silver、glm-5.3-flash</span></div>
-      <div class="credit-row"><span class="credit-k">${t('制作')}</span><span class="credit-v">deepseek-v4.1-flash、glm-5.3-flash</span></div>
+      <div class="credit-row"><span class="credit-k">${t('制作')}</span><span class="credit-v">deepseek-v4.1-flash、deepseek-v4-flash、MiniMax-M3.1-Flash、glm-5.3-flash</span></div>
     </div>
 
     <div class="card">

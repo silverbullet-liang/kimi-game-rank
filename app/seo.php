@@ -628,7 +628,14 @@ function seo_robots_txt(): string
     if (seo_is_mirror()) { return "User-agent: *\nDisallow: /\n"; }
     $t  = "User-agent: *\n";
     $t .= "Allow: /\n";
-    foreach (array('/api/', '/app/', '/config/', '/sql/', '/storage/', '/tools/', '/docs/', '/standalone/') as $d) {
+    /* 注意：不能挡 /docs/ —— 文档页的地址就是 /docs/评分标准 这种形态，
+       挡住等于把全部公开文档排除在收录之外。 */
+    $paths = array(
+        '/api/', '/app/', '/config/', '/sql/', '/storage/', '/tools/', '/standalone/',
+        '/check.php', '/selfcheck.php', '/mimecheck.php', '/diag.php', '/install.php',
+        '/cron.php', '/jump.zip', '/changelog.zip',
+    );
+    foreach ($paths as $d) {
         $t .= 'Disallow: ' . $d . "\n";
     }
     $t .= "\nSitemap: " . seo_canonical_base() . "/sitemap.xml\n";

@@ -52,7 +52,10 @@ export async function renderDoc(container, ctx) {
     const path = (lang === 'en')
       ? ASSET_BASE + '/docs/en/' + (SLUG[name] || 'features') + '.md'
       : ASSET_BASE + '/docs/' + encodeURIComponent(name) + '.md';
-    const resp = await fetch(path, { cache: 'no-cache' });
+    /* 文档按版本号带 query：版本不变时浏览器直接用缓存，连请求都不发（省 hits 也省
+       入口进程）；发版后 __SITE__.ver 变化，缓存自动失效，不会出现「文档还是旧的」。 */
+    const ver = (window.__SITE__ && window.__SITE__.ver) ? String(window.__SITE__.ver) : '';
+    const resp = await fetch(path + (ver ? '?v=' + encodeURIComponent(ver) : ''), { cache: 'default' });
     if (!resp.ok) throw new Error(lang === 'en' ? 'English version of this document is not available yet' : '文档加载失败');
     const md = await resp.text();
     const box = document.createElement('div');

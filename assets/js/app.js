@@ -2855,24 +2855,58 @@ async function renderComments(container, workId, targetType) {
     }
   }
 
-  /* ---------- 自动轮询：仅在"有新评论"时重绘，且不打断正在输入 ---------- */
-  window.__addPageTimer(setInterval(() => {
-    if (document.hidden || !listBox.isConnected) { return; }
+  /* ---------- 自动轮询：仅在"有新评论"时重绘，且不打断正在输入 ----------
+     免费主机按「入口进程」计额度：每个请求占一个进程，后台定时刷新是最容易踩线的地方
+     （访客不多也会把额度打满）。所以这里不按固定间隔打请求，而是按需要打：
+     · 页面不可见 → 直接不打；切回来立刻补一次，并把间隔重置回最短档
+     · 连续两轮没有新评论 → 间隔翻倍（45s → 90s → 180s）
+     · 一旦有新评论 → 立刻回到 45s
+     · 三分钟没有任何操作 → 视为挂着没人看，退到最慢档 */
+  let pollMs = 45000;
+  let pollTimer = 0;
+  let lastAct = Date.now();
+  const bumpAct = () => { lastAct = Date.now(); };
+  ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (ev) {
+    document.addEventListener(ev, bumpAct, { passive: true });
+  });
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { return; }
+    lastAct = Date.now();
+    pollMs = 45000;
+    schedulePoll(0);
+  });
+
+  function schedulePoll(delay) {
+    clearTimeout(pollTimer);
+    pollTimer = window.__addPageTimer(setTimeout(pollOnce, typeof delay === 'number' ? delay : pollMs));
+  }
+
+  function pollOnce() {
+    if (!listBox.isConnected) { return; }
+    if (document.hidden) { schedulePoll(); return; }
     const ae = document.activeElement;
-    if (ae && (ae.id === 'cmtText' || ae.id === 'rpText')) { return; }
+    if (ae && (ae.id === 'cmtText' || ae.id === 'rpText')) { schedulePoll(); return; }
     const scrim = document.getElementById('dialogScrim');
-    if (scrim && !scrim.hidden) { return; }
+    if (scrim && !scrim.hidden) { schedulePoll(); return; }
+    if (Date.now() - lastAct > 180000) { pollMs = 180000; }
     api('comments', 'list', { work_id: workId, target_type: ttype }, { silent: true, tries: 1 })
       .then(d => {
-        if (Number(d.total || 0) === st.total) { return; }   // 无新评论 → 不重绘
+        if (Number(d.total || 0) === st.total) {          // 无新评论 → 不重绘，放慢节奏
+          pollMs = Math.min(180000, pollMs * 2);
+          return;
+        }
         st.roots = d.comments || [];
         st.total = Number(d.total || 0);
         paint();
         const tot = container.querySelector('#cmtTotal');
         if (tot) { tot.textContent = st.total; }
+        pollMs = 45000;
       })
-      .catch(() => {});
-  }, 25000));
+      .catch(() => { pollMs = Math.min(180000, pollMs * 2); })
+      .then(() => { schedulePoll(); });
+  }
+
+  schedulePoll();
 
   await refresh(true);
 }
@@ -8658,7 +8692,10 @@ function startPanelPolling(container) {
       loadVisitsTop(container);
     } catch (e) { /* 静默：下一轮再试 */ }
   };
-  window.__addPageTimer(setInterval(tick, 30000));
+  /* 刷新节奏 60s：这一轮要打七个接口（概览、统计、作品、用户、副管理员、访问、分区状态），
+     免费主机按「入口进程」计额度，30s 一轮相当于每分钟十四个进程，纯属浪费。
+     面板数据没有秒级时效性，60s 足够，且仍然在标签页不可见 / 正在输入 / 弹窗打开时跳过。 */
+  window.__addPageTimer(setInterval(tick, 60000));
 }
 
 /* ========== pages/doc.js ========== */
@@ -8715,7 +8752,10 @@ async function renderDoc(container, ctx) {
     const path = (lang === 'en')
       ? ASSET_BASE + '/docs/en/' + (SLUG[name] || 'features') + '.md'
       : ASSET_BASE + '/docs/' + encodeURIComponent(name) + '.md';
-    const resp = await fetch(path, { cache: 'no-cache' });
+    /* 文档按版本号带 query：版本不变时浏览器直接用缓存，连请求都不发（省 hits 也省
+       入口进程）；发版后 __SITE__.ver 变化，缓存自动失效，不会出现「文档还是旧的」。 */
+    const ver = (window.__SITE__ && window.__SITE__.ver) ? String(window.__SITE__.ver) : '';
+    const resp = await fetch(path + (ver ? '?v=' + encodeURIComponent(ver) : ''), { cache: 'default' });
     if (!resp.ok) throw new Error(lang === 'en' ? 'English version of this document is not available yet' : '文档加载失败');
     const md = await resp.text();
     const box = document.createElement('div');
@@ -9963,7 +10003,7 @@ function renderAbout(container) {
     <div class="card">
       <div class="card-title">${icon(I.rule)}${t('规划和制作')}</div>
       <div class="credit-row"><span class="credit-k">${t('规划')}</span><span class="credit-v">银色子弹-silver、glm-5.3-flash</span></div>
-      <div class="credit-row"><span class="credit-k">${t('制作')}</span><span class="credit-v">deepseek-v4.1-flash、glm-5.3-flash</span></div>
+      <div class="credit-row"><span class="credit-k">${t('制作')}</span><span class="credit-v">deepseek-v4.1-flash、deepseek-v4-flash、MiniMax-M3.1-Flash、glm-5.3-flash</span></div>
     </div>
 
     <div class="card">
