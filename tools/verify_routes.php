@@ -243,10 +243,15 @@ foreach (explode("\n", str_replace("\r", '', $htTxt)) as $line) {
     if ($docLine === '' && strpos($line, 'docs/(features|') !== false) { $docLine = $line; }
 }
 $allowSegs = array();
-if ($segLine !== '' && ($p1 = strpos($segLine, '(rankings|')) !== false) {
-    $p2 = strpos($segLine, ')(', $p1);
-    if ($p2 !== false) {
-        $allowSegs = explode('|', substr($segLine, $p1 + 1, $p2 - $p1 - 1));
+if ($segLine !== '' && ($pk = strpos($segLine, '|rankings|')) !== false) {
+    /* 白名单括号从「rankings 之前最近的一个 (」开始，到紧接的 )( 结束；
+       首个元素可能是空串（^(|rankings… 形式），过滤掉。 */
+    $p0 = strrpos(substr($segLine, 0, $pk), '(');
+    $p2 = $p0 === false ? false : strpos($segLine, ')(', $p0);
+    if ($p0 !== false && $p2 !== false) {
+        foreach (explode('|', substr($segLine, $p0 + 1, $p2 - $p0 - 1)) as $sg) {
+            if ($sg !== '') { $allowSegs[] = $sg; }
+        }
     }
 }
 $missSegs = array();

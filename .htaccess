@@ -37,35 +37,32 @@ AddDefaultCharset UTF-8
     # 共享主机按 PHP 请求计「入口进程」，只要一条 URL 落到 index.php，就要跑一遍
     # 后端才给出 404。/probe/0 … /probe/24 那种批量扫描消耗入口进程正是靠这一点。
     # 目标：静态就能判定「不存在」的路径，一律由 ErrorDocument 输出纯静态 404.html。
+    # 下面全部用相对路径匹配（per-dir 会自动去掉子目录前缀），部署在子目录也成立。
 
     # 1) 目录请求（URI 以 / 结尾，如 /docs/ 、/storage/ 、/assets/）：
     #    站点没有任何合法的目录地址，一律静态 404。用 URI 形态判定而不是 -d，
     #    因为子目录里的 .htaccess（storage 的 Require all denied）会抢先给 403，
     #    而 403 同样要走一次错误页。
-    RewriteCond %{REQUEST_URI} /$
-    RewriteCond %{REQUEST_URI} !^/$
-    RewriteRule ^ - [R=404,L]
+    RewriteRule .+/$ - [R=404,L]
 
     # 2) 文档页：只认这 8 个 slug 与它们的中文名，其余 /docs/xxx 一律静态 404。
-    #    注意 %{REQUEST_URI} 里的中文是解码后的 UTF-8，正则必须写中文而不是 %XX；
-    #    「AI 使用说明」中间的空格用 \x20 表示，避免被 RewriteCond 当分隔符。
+    #    「AI 使用说明」中间的空格用 \x20 表示，避免被当成分隔符。
     RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_URI} ^/docs/(features|ai|community|scoring|admission|terms|privacy|changelog|功能说明|AI\x20使用说明|社区公约|评分标准|入榜规则|用户协议|隐私政策|更新日志)(/|$|\?)
-    RewriteRule ^ index.php [L,QSA]
+    RewriteRule ^docs/(features|ai|community|scoring|admission|terms|privacy|changelog|功能说明|AI\x20使用说明|社区公约|评分标准|入榜规则|用户协议|隐私政策|更新日志)(/|$) index.php [L,QSA]
 
-    # 3) 其余非文件、非目录路径：不在前端路由白名单里 → 不做重写，
-    #    Apache 直接 404，不进 PHP。白名单与 app/seo.php 的
-    #    seo_route_segments() + seo_legacy_segments() 一一对应，
-    #    新增对外路由段时必须同步这里，否则该页面会变成 404。
+    # 3) 首段不在前端路由白名单里 → 不做任何重写，Apache 直接 404，
+    #    全程不进入 PHP。白名单与 app/seo.php 的 seo_route_segments() +
+    #    seo_legacy_segments() 一一对应，新增对外路由段时必须同步这里，
+    #    tools/verify_routes.php 会守住这条。
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_URI} !^/($|\?|(rankings|works|world|me|login|submit|feedback|about|banned|notices|admin|monitor|today|history|incident|rank|detail|doc|mine|violation|discipline|panel)(/|$|\?))
-    RewriteRule ^ - [L]
+    RewriteRule !^(|rankings|works|world|me|login|submit|feedback|about|banned|notices|admin|monitor|today|history|incident|rank|detail|doc|mine|violation|discipline|panel)(/|$) - [L]
 
     # 4) 白名单内的前端路由交给入口
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^ index.php [L,QSA]
+
 </IfModule>
 
 # ---------- 传输压缩 ----------
