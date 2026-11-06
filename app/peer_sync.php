@@ -157,12 +157,48 @@ function sync_export(string $table, int $offset, int $limit): array
 }
 
 /** 导入：把跨站文档写回本库（gid → 本地外键，缺失的引用置 0 并跳过该行） */
+/**
+ * 同步行安全裁剪。
+ * 对端数据只当「参考资料」，不能直接落成本地事实：
+ *  - 角色一律降为普通用户（提权只能在本地做）
+ *  - 管理员那一行不接受覆盖
+ *  - 口令哈希不跨站同步（各站独立）
+ *  - 公告长度、作品隐藏状态以本地规则为准
+ */
+function sync_scrub_row(string $table, array $data): array
+{
+    if ($table === 'users') {
+        if (isset($data['username_norm']) && (string)$data['username_norm'] === 'admin') {
+            return array();
+        }
+        $data['role'] = 'user';
+        unset($data['password_hash'], $data['salt'], $data['registered_at']);
+    }
+    if ($table === 'announcements') {
+        $c = isset($data['content']) ? (string)$data['content'] : '';
+        $data['content'] = mb_substr($c, 0, 512, 'UTF-8');
+    }
+    if ($table === 'works' && isset($data['is_hidden'])) {
+        $data['is_hidden'] = 0;
+    }
+    return $data;
+}
+
 function sync_apply(string $table, array $docs): array
 {
     if (!sync_table_ok($table)) { return array('applied' => 0, 'skipped' => count($docs)); }
     $p = sync_plan()[$table];
     $refs = isset($p['refs']) ? $p['refs'] : array();
     $applied = 0; $skipped = 0; $failed = 0;
+
+    /* 先裁剪，再落库 */
+    $clean = array();
+    foreach ($docs as $d) {
+        $row = sync_scrub_row($table, is_array($d) ? $d : array());
+        if (!$row) { $skipped++; continue; }
+        $clean[] = $row;
+    }
+    $docs = $clean;
 
     foreach ($docs as $doc) {
         if (!is_array($doc)) { continue; }

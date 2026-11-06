@@ -382,6 +382,16 @@ function user_twofa_enabled($u): bool
  * 开关双重验证：需要密码确认。
  * 开启的前提是已绑定邮箱；关闭也走同一入口。
  */
+/** 校验当前账号密码（敏感操作前置） */
+function user_password_ok(int $uid, string $password): bool
+{
+    if ($password === '') { return false; }
+    $u = db_one('SELECT registered_at, salt, password_hash FROM users WHERE id = ? LIMIT 1', array($uid));
+    if ($u === null) { return false; }
+    return password_verify_chain($password, (string)$u['registered_at'],
+                                 (string)$u['salt'], (string)$u['password_hash']);
+}
+
 function user_twofa_set(int $uid, bool $on, string $password): array
 {
     $u = db_one('SELECT * FROM users WHERE id = ? LIMIT 1', array($uid));
@@ -395,12 +405,18 @@ function user_twofa_set(int $uid, bool $on, string $password): array
     $s['twofa'] = $on ? 1 : 0;
     db_exec('UPDATE users SET settings = ? WHERE id = ?', array(json_encode($s, JSON_UNESCAPED_UNICODE), $uid));
     app_log('twofa ' . ($on ? 'on' : 'off') . ' uid=' . $uid);
+    if (function_exists('access_log_put')) {
+        access_log_put('twofa_set', 'user:' . $uid, $on ? 'enable' : 'disable', 'ok');
+    }
     return array('enabled' => $on);
 }
 
 /** 登录成功后的统一收尾：自动解封、记登录、发令牌 */
 function login_finish(array $u, bool $skipTwofa = false): array
 {
+    if (function_exists('access_log_put')) {
+        access_log_put('login', 'user:' . (int)$u['id'], 'role=' . (string)$u['role'], 'ok');
+    }
     /* 双重验证：密码只是第一步。这里不直接发令牌，而是把票据交给浏览器，
        等它拿「票据 + 邮件验证码」回来换。发信失败一律拒绝（不允许绕过）。 */
     if (!$skipTwofa && user_twofa_enabled($u)) {

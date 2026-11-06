@@ -22,9 +22,13 @@ export function mdToHtml(md, inlineExtra) {
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
       .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>')
       .replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (m, text, href) {
-        /* 站内链接（/ 或 # 开头）原地跳转，外链才新开标签 */
-        var inside = /^(\/|#)/.test(href);
-        return '<a href="' + href + '"' + (inside ? '' : ' target="_blank" rel="noopener"') + '>' + text + '</a>';
+        /* 协议白名单：站内相对路径、http(s)、mailto 之外一律降级为纯文本。
+           否则 [点我](javascript:...) 会变成一个能执行脚本的链接。 */
+        var h = String(href).trim();
+        var inside = /^(\/|#|\.\/|\.\.\/)/.test(h);
+        var safe = inside || /^(https?:\/\/|mailto:)/i.test(h);
+        if (!safe) return text;
+        return '<a href="' + h + '"' + (inside ? '' : ' target="_blank" rel="noopener noreferrer"') + '>' + text + '</a>';
       });
     return (typeof inlineExtra === 'function') ? inlineExtra(h) : h;
   };

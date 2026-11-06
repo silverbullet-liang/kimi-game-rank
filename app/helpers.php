@@ -405,8 +405,27 @@ function now_utc(): string { return gmdate('Y-m-d H:i:s'); }
 
 function app_log(string $msg)
 {
+    /* 目录不存在时自建。此前 storage/logs 缺失导致 @file_put_contents 静默失败，
+       全站等于没有日志 —— 运维排障与入侵取证都无从下手。 */
+    static $dir = null;
+    if ($dir === null) {
+        $dir = APP_ROOT . '/storage/logs';
+        if (!is_dir($dir)) { @mkdir($dir, 0755, true); }
+        if (!is_dir($dir)) { $dir = ''; }
+    }
+    if ($dir === '') { return; }
+
+    $file = $dir . '/app.log';
     $line = '[' . now_utc() . '] ' . $msg . "\n";
-    @file_put_contents(APP_ROOT . '/storage/logs/app.log', $line, FILE_APPEND);
+    if (@file_put_contents($file, $line, FILE_APPEND | LOCK_EX) === false) { return; }
+
+    /* 4MB 轮转：共享主机空间有限，日志不能无限增长 */
+    if (mt_rand(1, 300) === 1) {
+        $sz = @filesize($file);
+        if ($sz !== false && $sz > 4194304) {
+            @rename($file, $dir . '/app-' . gmdate('Ymd-His') . '.log');
+        }
+    }
 }
 
 function setting_get(string $k, $default = '')

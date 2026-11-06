@@ -25,6 +25,8 @@ if ($action === 'panel_auth') {
     if ($ident['role'] === 'subadmin') {
         // 副管理员登录即已用密钥验证，无需二次确认
         $_SESSION['panel_ok'] = time();
+        $_SESSION['panel_fp'] = panel_fp();
+        access_log_put('panel_auth', 'session', 'subadmin', 'ok');
         ok(array('role' => 'subadmin'), '已进入控制面板');
     }
     csrf_verify();
@@ -33,6 +35,8 @@ if ($action === 'panel_auth') {
         fail(401, '管理员密钥错误');
     }
     $_SESSION['panel_ok'] = time();
+    $_SESSION['panel_fp'] = panel_fp();
+    access_log_put('panel_auth', 'session', 'admin', 'ok');
     ok(array('role' => 'admin'), '验证通过，已进入控制面板');
 }
 
@@ -52,6 +56,19 @@ if ($IS_SUB && !in_array($action, $SUB_ALLOWED, true)) {
     fail(403, '副管理员无权执行该操作');
 }
 
+/**
+ * 控制面板会话指纹。
+ * 只记「验过一次密钥」不足以约束会话：一条被搬走的会话在有效期内可以继续开面板。
+ * 这里把面板授权绑定到发起验证时的网络与浏览器特征上。
+ */
+function panel_fp(): string
+{
+    $ip = function_exists('client_ip') ? (string)client_ip() : '';
+    $ua = isset($_SERVER['HTTP_USER_AGENT']) ? (string)$_SERVER['HTTP_USER_AGENT'] : '';
+    $salt = (string)cfg('secrets.cron_key', 'kimgr');
+    return substr(hash('sha256', $salt . '|' . $ip . '|' . $ua), 0, 32);
+}
+
 /* 控制面板写操作需已二次认证（副管理员登录即视为已认证） */
 function require_panel()
 {
@@ -59,6 +76,12 @@ function require_panel()
     if ($ident && $ident['role'] === 'subadmin') { return; }
     $t = isset($_SESSION['panel_ok']) ? (int)$_SESSION['panel_ok'] : 0;
     if ($t <= 0 || time() - $t > 3600) { fail(403, '请先在控制面板完成密钥验证'); }
+    $fp = isset($_SESSION['panel_fp']) ? (string)$_SESSION['panel_fp'] : '';
+    if ($fp === '' || !hash_equals($fp, panel_fp())) {
+        unset($_SESSION['panel_ok'], $_SESSION['panel_fp']);
+        access_log_put('panel_deny', 'session', 'fingerprint mismatch', 'deny');
+        fail(403, '请先在控制面板完成密钥验证');
+    }
 }
 
 /** 抓取用社区凭证的存储键：副管理员独立，互不共用 */
@@ -326,6 +349,7 @@ switch ($action) {
         require_panel();
         csrf_verify();
         $wid = param_int('id', 0);
+        access_log_put('work_delete', 'work:' . $wid, '', 'ok');
         db_exec('DELETE FROM comments WHERE work_id = ?', array($wid));
         db_exec('DELETE FROM work_votes WHERE work_id = ?', array($wid));
         db_exec('DELETE FROM work_score_history WHERE work_id = ?', array($wid));
@@ -769,6 +793,7 @@ switch ($action) {
         require_panel();
         csrf_verify();
         $uid = param_int('id', 0);
+        access_log_put('user_delete', 'user:' . $uid, '', 'ok');
         if ($uid <= 0) { fail(400, '参数错误'); }
         $u = db_one('SELECT id, username, role FROM users WHERE id = ?', array($uid));
         if ($u === null) { fail(404, '用户不存在'); }
@@ -1010,6 +1035,7 @@ switch ($action) {
             db_exec('DELETE FROM announcements WHERE id <> ?', array((int)$id));   // 只保留一条，避免读取歧义
         }
         setting_set('announcement', $c);
+        access_log_put('announce_set', 'announcement', mb_substr($c, 0, 120, 'UTF-8'), 'ok');
         ok(null, '公告已更新');
         break;
     }

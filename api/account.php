@@ -62,10 +62,17 @@ switch ($action) {
         break;
     }
 
-    /* 解绑邮箱：不需要验证码（按用户要求）。解绑会顺手关掉登录双重验证 ——
-       没有第二因子时开关必须失效，否则下一步登录就会把自己锁在门外。 */
+    /* 解绑邮箱：必须确认当前密码。
+       早期为省事不做任何校验，结果是「拿到一条登录凭证即可解绑，并顺手关掉双重验证」，
+       还会连带清空该账号的验证码记录 —— 等于给接管者递上抹痕工具。 */
     case 'email_unbind': {
         csrf_verify();
+        if (!rate_limit('unbind_' . $uid, 5, 3600)) { fail(429, '操作过于频繁，请稍后再试'); }
+        if (!user_password_ok($uid, param_str('password', ''))) {
+            timing_delay();
+            access_log_put('email_unbind', 'user:' . $uid, 'password mismatch', 'deny');
+            fail(403, '密码不正确');
+        }
         $cur = user_email_of($uid);
         if ($cur === '') { ok(array('email' => '', 'twofa' => false, 'twofa_off' => false), '当前未绑定邮箱'); break; }
         db_exec('UPDATE users SET email = NULL, email_norm = NULL, email_at = NULL WHERE id = ?', array($uid));
@@ -80,7 +87,8 @@ switch ($action) {
         }
         /* 该账号的未用验证码与票据一并作废 */
         db_exec('DELETE FROM email_codes WHERE user_id = ?', array($uid));
-        app_log('email unbound uid=' . $uid . ($off ? ' (twofa off)' : ''));
+        access_log_put('email_unbind', 'user:' . $uid,
+            'twofa_off=' . ($off ? '1' : '0') . ' email_set=1', 'ok');
         ok(array('email' => '', 'twofa' => false, 'twofa_off' => $off),
            $off ? '邮箱已解绑，登录双重验证已关闭' : '邮箱已解绑');
         break;

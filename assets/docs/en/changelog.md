@@ -7,6 +7,29 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.59.0 · 2026-11-06 (Mend the Fold)
+
+### Security
+
+- Unbinding an email now requires the current password; previously any signed-in session could do it
+- Unbinding an email no longer silently disables two-factor sign-in as a side effect
+- Control-panel authorisation is now bound to the session environment: changing network or browser requires the admin key again
+- Links inside comments, chat and work descriptions are limited to in-site paths, http(s) and mailto; anything else is rendered as plain text
+- Site sync accepts ordinary user data only: roles and password material are never overwritten across sites, and the admin row is never replaced
+- Requesting a verification code before signing up no longer reveals whether an email address is already in use
+
+### Fixed
+
+- Key actions (sign-in, announcement edits, work and account deletion, email bind/unbind, entering the control panel) are now recorded and traceable
+- Runtime logging creates its own directory when missing instead of failing silently; files rotate above 4 MB
+- Backend credentials no longer keep a plaintext copy; existing ones are cleared during upgrade
+
+### Note
+
+Almost everything in this release comes from reviewing one incident. Some of it is invisible to users, but it decides whether the next one can be investigated at all.
+
+---
+
 ## v3.58.0 · 2026-11-04 (Light on Its Feet)
 
 ### Improvements

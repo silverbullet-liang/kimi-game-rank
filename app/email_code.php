@@ -97,7 +97,14 @@ function email_code_send(string $email, string $purpose, int $uid = 0, string $l
     /* 绑定：邮箱已被别人占用就直接说清楚（这条不算账号枚举——对方必须已经绑过才成立） */
     if ($purpose === 'bind') {
         $owner = db_one('SELECT id FROM users WHERE email_norm = ? LIMIT 1', array($norm));
-        if ($owner !== null && (int)(isset($owner['id']) ? $owner['id'] : 0) !== $uid) { fail(409, '这个邮箱已被其他账号绑定'); }
+        if ($owner !== null && (int)(isset($owner['id']) ? $owner['id'] : 0) !== $uid) {
+            if ($uid > 0) {
+                /* 已登录：明确告知，他需要知道该换哪个邮箱 */
+                fail(409, '这个邮箱已被其他账号绑定');
+            }
+            /* 未登录（注册流程）：与登录发码保持同一口径，不暴露该邮箱是否已注册 */
+            return array('ok' => true, 'ttl' => email_code_ttl(), 'sent' => false);
+        }
     } else {
         /* 登录：邮箱没绑过任何账号就不发信，但对外一律回同一句话（不暴露账号是否存在） */
         $owner = db_one('SELECT id FROM users WHERE email_norm = ? LIMIT 1', array($norm));

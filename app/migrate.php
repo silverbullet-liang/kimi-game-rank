@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 32);
+define('SCHEMA_VERSION', 33);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -1150,6 +1150,59 @@ function run_migrations(bool $force = false)
 
     /* 只有结构确认完整才写版本号、落锁：
        否则锁会把「半成品」永久固定下来，此后所有请求都被短路，再也修不回来。 */
+    /* ---------- v33：审计日志 + 陷阱命中记录 ---------- */
+    if ($cur < 33) {
+        try {
+            if (!table_exists('audit_log')) {
+                db_exec("CREATE TABLE IF NOT EXISTS `audit_log` (
+                    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    `created_at` DATETIME NOT NULL,
+                    `actor_uid` INT UNSIGNED NOT NULL DEFAULT 0,
+                    `actor_role` VARCHAR(16) NOT NULL DEFAULT '',
+                    `action` VARCHAR(48) NOT NULL,
+                    `target` VARCHAR(96) NOT NULL DEFAULT '',
+                    `detail` VARCHAR(512) NOT NULL DEFAULT '',
+                    `ip_hash` CHAR(64) NOT NULL DEFAULT '',
+                    `ua` VARCHAR(176) NOT NULL DEFAULT '',
+                    `result` VARCHAR(16) NOT NULL DEFAULT 'ok',
+                    PRIMARY KEY (`id`),
+                    KEY `idx_created` (`created_at`),
+                    KEY `idx_action` (`action`),
+                    KEY `idx_actor` (`actor_uid`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='关键操作审计'");
+            }
+            if (!table_exists('access_log')) {
+                db_exec("CREATE TABLE IF NOT EXISTS `access_log` (
+                    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    `created_at` DATETIME NOT NULL,
+                    `surface` VARCHAR(32) NOT NULL DEFAULT '',
+                    `note` VARCHAR(32) NOT NULL DEFAULT '',
+                    `method` VARCHAR(8) NOT NULL DEFAULT '',
+                    `path` VARCHAR(512) NOT NULL DEFAULT '',
+                    `referer` VARCHAR(255) NOT NULL DEFAULT '',
+                    `body` VARCHAR(512) NOT NULL DEFAULT '',
+                    `ua` VARCHAR(176) NOT NULL DEFAULT '',
+                    `auth_len` SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+                    `has_cookie` TINYINT(1) NOT NULL DEFAULT 0,
+                    `ip_hash` CHAR(64) NOT NULL DEFAULT '',
+                    `ip_masked` VARCHAR(64) NOT NULL DEFAULT '',
+                    PRIMARY KEY (`id`),
+                    KEY `idx_created` (`created_at`),
+                    KEY `idx_surface` (`surface`),
+                    KEY `idx_ip` (`ip_hash`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='受限入口访问记录'");
+            }
+            /* 兼容列下线：明文凭据不再保留 */
+            if (table_exists('admin_credentials') && column_exists('admin_credentials', 'secret_plaintext')) {
+                db_exec("UPDATE `admin_credentials` SET `secret_plaintext` = NULL WHERE `secret_plaintext` IS NOT NULL");
+            }
+            app_log('schema migrated to v33（审计日志 / 陷阱记录 / 明文凭据清理）');
+            setting_set('schema_version', '33');
+        } catch (Throwable $e) {
+            app_log('migrate v33 failed: ' . $e->getMessage());
+        }
+    }
+
     $ok = true;
     foreach (array('comments', 'feedback') as $t) {
         if (table_exists($t) && !column_exists($t, 'content_norm')) { $ok = false; }
@@ -1180,6 +1233,8 @@ function run_migrations(bool $force = false)
     if (table_exists('banned_ips') && !column_exists('banned_ips', 'geo_lat')) { $ok = false; }
     if (table_exists('works') && !column_exists('works', 'link_checked_at')) { $ok = false; }
     if (table_exists('works') && !column_exists('works', 'feat')) { $ok = false; }
+    if (!table_exists('audit_log')) { $ok = false; }
+    if (!table_exists('access_log')) { $ok = false; }
     if ($ok) {
         setting_set('schema_version', (string)SCHEMA_VERSION);
         @file_put_contents(migration_lock_path(), gmdate('c'));

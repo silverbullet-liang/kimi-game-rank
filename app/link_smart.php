@@ -516,23 +516,99 @@ function smart_link_abs(string $url, string $baseUrl): string
 }
 
 /** 抓取文本资源（外部脚本）。限 256KB、6 秒；失败返回空串 */
+/**
+ * 目标地址是否可抓取。
+ * 只允许公网 http(s)：回环、内网、链路本地、保留段一律拒绝。
+ * DNS 解析失败也拒绝 —— 抓不到总比抓到自家内网强。
+ */
+function smart_link_url_safe(string $url): bool
+{
+    $p = parse_url($url);
+    if (!is_array($p) || empty($p['host'])) { return false; }
+    $scheme = strtolower((string)(isset($p['scheme']) ? $p['scheme'] : ''));
+    if ($scheme !== 'http' && $scheme !== 'https') { return false; }
+
+    $host = strtolower(trim((string)$p['host'], "[]"));
+    if ($host === 'localhost' || substr($host, -6) === '.local' || substr($host, -10) === '.localhost') {
+        return false;
+    }
+
+    $ips = array();
+    if (filter_var($host, FILTER_VALIDATE_IP) !== false) {
+        $ips[] = $host;
+    } else {
+        $v4 = @gethostbynamel($host);
+        if (is_array($v4)) { $ips = $v4; }
+        $a6 = @dns_get_record($host, DNS_AAAA);
+        if (is_array($a6)) {
+            foreach ($a6 as $rec) { if (!empty($rec['ipv6'])) { $ips[] = (string)$rec['ipv6']; } }
+        }
+    }
+    if (!$ips) { return false; }
+
+    foreach ($ips as $ip) {
+        if (filter_var($ip, FILTER_VALIDATE_IP,
+                FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * 抓取页面正文。
+ * 手动跟随跳转：每一跳都重新校验目标，避免「入口合法、跳转进内网」。
+ */
 function smart_link_fetch_text(string $url): string
 {
-    if (!function_exists('curl_init') || !preg_match('#^https?://#i', $url)) { return ''; }
-    $ch = curl_init($url);
-    curl_setopt_array($ch, array(
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 6,
-        CURLOPT_CONNECTTIMEOUT => 3,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_MAXREDIRS      => 3,
-        CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; KimiRankBot/1.0)',
-    ));
-    $body = curl_exec($ch);
-    curl_close($ch);
-    if (!is_string($body)) { return ''; }
-    if (strlen($body) > 262144) { $body = substr($body, 0, 262144); }
-    return $body;
+    if (!function_exists('curl_init')) { return ''; }
+
+    $cur = $url;
+    for ($hop = 0; $hop < 3; $hop++) {
+        if (!preg_match('#^https?://#i', $cur)) { return ''; }
+        if (!smart_link_url_safe($cur)) {
+            app_log('fetch blocked (non-public target): ' . substr($cur, 0, 160));
+            return '';
+        }
+        $ch = curl_init($cur);
+        $opts = array(
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HEADER         => true,
+            CURLOPT_TIMEOUT        => 6,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; KimiRankBot/1.0)',
+        );
+        if (defined('CURLPROTO_HTTP') && defined('CURLPROTO_HTTPS')) {
+            $opts[CURLOPT_PROTOCOLS] = CURLPROTO_HTTP | CURLPROTO_HTTPS;
+        }
+        curl_setopt_array($ch, $opts);
+        $raw  = curl_exec($ch);
+        $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $hs   = (int)curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+        curl_close($ch);
+        if (!is_string($raw)) { return ''; }
+
+        $head = substr($raw, 0, $hs);
+        $body = substr($raw, $hs);
+
+        if ($code >= 300 && $code < 400 && preg_match('/^location:\s*(\S+)/im', $head, $m)) {
+            $next = trim($m[1]);
+            if (strpos($next, '//') === 0) {
+                $next = 'https:' . $next;
+            } elseif (strpos($next, '/') === 0) {
+                $base = parse_url($cur);
+                $next = (isset($base['scheme']) ? $base['scheme'] : 'https') . '://' .
+                        (isset($base['host']) ? $base['host'] : '') . $next;
+            }
+            $cur = $next;
+            continue;
+        }
+
+        if (strlen($body) > 262144) { $body = substr($body, 0, 262144); }
+        return $body;
+    }
+    return '';
 }
 
 /* ============================================================
