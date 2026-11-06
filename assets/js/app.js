@@ -2748,15 +2748,29 @@ async function onCommentClick(ev) {
   }
 }
 
+/* 评论区骨架：调用方给一个容器就能用。缺 #cmtForm / #cmtList 时在这里补齐——
+   否则空壳容器会让 form 为 null，renderComments 一写 innerHTML 就整页失败。 */
+function cmtSlot(container, id) {
+  let el = container.querySelector('#' + id);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = id;
+    if (id === 'cmtList') { el.style.marginTop = '12px'; }
+    container.appendChild(el);
+  }
+  return el;
+}
+
 async function renderComments(container, workId, targetType) {
+  if (!container) { return; }
   /* 目标类型三选一，与后端 comment_target_type() 的白名单一致。
      切勿把 discipline_list 降级成 work：列表区固定在 work_id=0，降级后必被后端判为参数错误。 */
   const ttype = ['discipline', 'discipline_list', 'incident'].indexOf(targetType) >= 0 ? targetType : 'work';
-  const form = container.querySelector('#cmtForm');
-  const listBox = container.querySelector('#cmtList');
+  const form = cmtSlot(container, 'cmtForm');
+  const listBox = cmtSlot(container, 'cmtList');
 
   /* 事件委托只挂一次（列表重建时元素本身不变） */
-  if (listBox && !listBox.dataset.delBound) {
+  if (!listBox.dataset.delBound) {
     listBox.dataset.delBound = '1';
     listBox.addEventListener('click', onCommentClick);
   }
@@ -9501,7 +9515,8 @@ async function renderIncident(container, ctx) {
     </div>
     <div class="inc-doc" id="incDoc"></div>
     <div class="card" style="margin-top:18px">
-      <div id="incCmt"></div>
+      <h3 style="margin-top:0">讨论 <span class="tiny muted" id="cmtTotal">0</span></h3>
+      <div id="incCmt"><div id="cmtForm"></div><div id="cmtList" style="margin-top:12px"></div></div>
     </div>`;
 
   const doc = container.querySelector('#incDoc');

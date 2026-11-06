@@ -7,6 +7,15 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.60.2 · 2026-11-06 (Follow the Thread)
+
+### Fixed
+
+- The History detail page failed to load: the discussion area was missing its container, so rendering stopped at the comments step
+- The discussion count and the thread of an entry now display correctly
+
+---
+
 ## v3.60.1 · 2026-11-06 (Set It Right)
 
 ### Fixed

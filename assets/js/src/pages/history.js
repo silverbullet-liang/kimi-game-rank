@@ -128,7 +128,8 @@ export async function renderIncident(container, ctx) {
     </div>
     <div class="inc-doc" id="incDoc"></div>
     <div class="card" style="margin-top:18px">
-      <div id="incCmt"></div>
+      <h3 style="margin-top:0">讨论 <span class="tiny muted" id="cmtTotal">0</span></h3>
+      <div id="incCmt"><div id="cmtForm"></div><div id="cmtList" style="margin-top:12px"></div></div>
     </div>`;
 
   const doc = container.querySelector('#incDoc');
