@@ -7,6 +7,15 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.60.4 · 2026-11-06 (Full Disclosure)
+
+### Updated
+
+- The 11·3 entry under "History" is now the full technical report: request-level evidence, every attacker action mapped to its record, a comparison of the two sites' versions, the relevant legal provisions and sentencing ranges, and queries anyone can re-run
+- The source code is already published under AGPL-3.0, so these technical details add no new exposure
+
+---
+
 ## v3.60.3 · 2026-11-06 (Iron-Clad Record)
 
 ### Updated
