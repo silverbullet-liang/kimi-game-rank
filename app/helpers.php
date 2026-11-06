@@ -1007,14 +1007,17 @@ function sanitize_block_words(string $raw): string
 
 function clamp01(float $x): float { return max(0.0, min(1.0, $x)); }
 
-/** 请求速率限制（通用，基于文件计数） */
-function rate_limit(string $bucket, int $max, int $windowSec): bool
+/** 请求速率限制（通用，基于文件计数）。
+ *  $inc > 1 时按「本次消耗的单位数」计数：用于按条数而非按请求数限流
+ *  （埋点上报单次可带几十条，只数请求次数会被放大几十倍）。 */
+function rate_limit(string $bucket, int $max, int $windowSec, int $inc = 1): bool
 {
+    $inc = max(1, $inc);
     $dir = APP_ROOT . '/storage/cache';
     if (!is_dir($dir)) { @mkdir($dir, 0775, true); }
     $file = $dir . '/rl_' . preg_replace('/[^a-z0-9_]/i', '', $bucket) . '_' . floor(time() / $windowSec) . '.txt';
     $count = file_exists($file) ? (int)file_get_contents($file) : 0;
-    if ($count >= $max) { return false; }
-    @file_put_contents($file, (string)($count + 1), LOCK_EX);
+    if ($count + $inc > $max) { return false; }
+    @file_put_contents($file, (string)($count + $inc), LOCK_EX);
     return true;
 }

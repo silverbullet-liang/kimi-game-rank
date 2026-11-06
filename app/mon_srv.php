@@ -56,7 +56,15 @@ function mon_srv_cfg(): array
 /** 路由是否值得采集（监测接口自身除外，避免自激） */
 function mon_srv_route_ok(string $route): bool
 {
-    return $route !== '' && strpos($route, 'monitor.php') === false;
+    if ($route === '') { return false; }
+    /* 上报接口本身必须可见：11·3 的灌库洪峰就打在 monitor.php?action=collect，
+       而这里原先把整个 monitor.php 排除，导致事发时请求级面板一片空白。
+       只排除面板的查询类动作，避免自己刷自己。 */
+    if (strpos($route, 'monitor.php') !== false) {
+        $a = isset($_GET['action']) ? (string)$_GET['action'] : '';
+        return $a === '' || $a === 'collect';
+    }
+    return true;
 }
 
 /** 是否采集本请求 */

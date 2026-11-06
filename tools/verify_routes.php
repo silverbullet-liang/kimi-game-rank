@@ -97,7 +97,7 @@ $r = seo_request_route();
 ok('解析：查询串保留 board 与 q', $r['name'] === 'rank' && $r['params']['board'] === 'peak' && $r['params']['q'] === '太空');
 
 req('/chat');
-ok('解析：/chat', seo_request_route()['name'] === 'chat');
+ok('解析：/chat（已停用，回退榜单）', seo_request_route()['name'] === 'rank');
 
 req('/nonsense');
 ok('解析：未知路径 → rank', seo_request_route()['name'] === 'rank');
@@ -231,6 +231,41 @@ foreach (seo_doc_slugs() as $docName => $slug) {
     }
 }
 ok('文档 slug 双向可解析（' . $slugRound . ' 种写法，' . count($slugBad) . ' 处失败）', count($slugBad) === 0);
+
+/* 零后端 404 的放行白名单必须与对外路由一一对应：
+   漏一个段名或文档名，那个页面就会被静态 404 吞掉。
+   这条闸门专门防「新增路由忘了同步 .htaccess」。 */
+$htTxt   = (string)@file_get_contents(APP_ROOT . '/.htaccess');
+$segLine = ''; $docLine = '';
+/* 只按 \n 切分：\R 会把中文 UTF-8 里的 0x85 字节当成换行，行会被腰斩 */
+foreach (explode("\n", str_replace("\r", '', $htTxt)) as $line) {
+    if ($segLine === '' && strpos($line, 'rankings|works|') !== false) { $segLine = $line; }
+    if ($docLine === '' && strpos($line, 'docs/(features|') !== false) { $docLine = $line; }
+}
+$allowSegs = array();
+if ($segLine !== '' && ($p1 = strpos($segLine, '(rankings|')) !== false) {
+    $p2 = strpos($segLine, ')(', $p1);
+    if ($p2 !== false) {
+        $allowSegs = explode('|', substr($segLine, $p1 + 1, $p2 - $p1 - 1));
+    }
+}
+$missSegs = array();
+/* docs 由独立规则放行（只认 8 个 slug），不参与段名比对 */
+foreach (array_diff(array_merge(array_values(seo_route_segments()), seo_legacy_segments()), array('docs')) as $sg) {
+    if (!in_array($sg, $allowSegs, true)) { $missSegs[] = $sg; }
+}
+ok('.htaccess 零后端 404 放行全部对外段名（缺 ' . (count($missSegs) ? implode('/', $missSegs) : '无') . '）',
+    count($allowSegs) > 0 && count($missSegs) === 0);
+
+/* 文档名的正则里空格写成 \x20（避免被 RewriteCond 当分隔符），比对时还原 */
+$docFlat = str_replace('\x20', ' ', $docLine);
+$missDocs = array();
+foreach (seo_doc_slugs() as $docName => $slug) {
+    if (strpos($docFlat, $slug) === false) { $missDocs[] = $slug; }
+    if (strpos($docFlat, $docName) === false) { $missDocs[] = $docName; }
+}
+ok('.htaccess 零后端 404 放行全部文档名（缺 ' . (count($missDocs) ? implode('/', $missDocs) : '无') . '）',
+    $docLine !== '' && count($missDocs) === 0);
 
 echo "----------------------------------------------------\n";
 echo '通过 ' . $pass . ' / 失败 ' . $fail . "\n";

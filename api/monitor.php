@@ -39,28 +39,58 @@ if ($action === 'collect') {
         $now     = now_utc();
         $allowed = array('js' => 1, 'api' => 1, 'resource' => 1, 'perf' => 1, 'pv' => 1, 'custom' => 1, 'error' => 1);
 
-        $ins = 0;
+        /* 先清洗成行，再按块批量写入。
+           逐条 INSERT 会把「一次请求 80 条」放大成 80 次数据库往返，
+           11·3 那 14.5 万条事件正是这么写进来的。 */
+        $rows = array();
         foreach (array_slice($p['events'], 0, 80) as $e) {
             if (!is_array($e)) { continue; }
             $kind = (string)($e['kind'] ?? 'js');
             if (!isset($allowed[$kind])) { $kind = 'js'; }
             $level = (string)($e['level'] ?? 'error');
             if (!in_array($level, array('info', 'warn', 'error'), true)) { $level = 'error'; }
+            $rows[] = array(
+                $kind, $level,
+                mb_substr(mon_clean((string)($e['name'] ?? $page)), 0, 191, 'UTF-8'),
+                $page, $ver,
+                mb_substr(mon_clean((string)($e['msg'] ?? '')), 0, 255, 'UTF-8'),
+                mb_substr((string)($e['stack'] ?? ''), 0, 2000, 'UTF-8'),
+                (int)($e['v1'] ?? 0), (int)($e['v2'] ?? 0),
+                mb_substr(mon_clean((string)($e['status'] ?? '')), 0, 16, 'UTF-8'),
+                $browser, $os, $screen, $net, $sid, $uid, $ipHash, $now,
+            );
+        }
+        if (!$rows) { ok(array('n' => 0)); }
+
+        /* 额度按「条」计，不按「次」计：
+           第一道锁单个来源每小时总量，第二道是全站每分钟熔断（多 IP 轮换的兜底）。 */
+        list($capIp, $capAll) = mon_collect_caps();
+        $want = count($rows);
+        if (!rate_limit('mon_ev_ip_' . substr($ipHash, 0, 16), $capIp, 3600, $want)) {
+            mon_alert('mon_quota_ip', 'warn', '同一来源上报条数超限，整批丢弃', $want, $capIp);
+            ok(array('n' => 0));
+        }
+        if (!rate_limit('mon_ev_all_' . (int)floor(time() / 60), $capAll, 60, $want)) {
+            mon_alert('mon_quota_all', 'warn', '全站上报条数触顶，整批丢弃', $want, $capAll);
+            ok(array('n' => 0));
+        }
+
+        $ph  = '(' . implode(',', array_fill(0, 18, '?')) . ')';
+        $one = 'INSERT INTO web_events (kind, level, name, page, version, msg, stack, v1, v2, status, browser, os, screen, net, sid, uid, ip_hash, created_at) VALUES ' . $ph;
+        $ins = 0;
+        foreach (array_chunk($rows, 40) as $chunk) {
+            $flat = array();
+            foreach ($chunk as $r) { foreach ($r as $v) { $flat[] = $v; } }
             try {
-                db_exec('INSERT INTO web_events (kind, level, name, page, version, msg, stack, v1, v2, status, browser, os, screen, net, sid, uid, ip_hash, created_at)
-                         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-                    array(
-                        $kind, $level,
-                        mb_substr(mon_clean((string)($e['name'] ?? $page)), 0, 191, 'UTF-8'),
-                        $page, $ver,
-                        mb_substr(mon_clean((string)($e['msg'] ?? '')), 0, 255, 'UTF-8'),
-                        mb_substr((string)($e['stack'] ?? ''), 0, 2000, 'UTF-8'),
-                        (int)($e['v1'] ?? 0), (int)($e['v2'] ?? 0),
-                        mb_substr(mon_clean((string)($e['status'] ?? '')), 0, 16, 'UTF-8'),
-                        $browser, $os, $screen, $net, $sid, $uid, $ipHash, $now,
-                    ));
-                $ins++;
-            } catch (Throwable $ex) { /* 单条失败不影响其余 */ }
+                db_exec('INSERT INTO web_events (kind, level, name, page, version, msg, stack, v1, v2, status, browser, os, screen, net, sid, uid, ip_hash, created_at) VALUES '
+                    . implode(',', array_fill(0, count($chunk), $ph)), $flat);
+                $ins += count($chunk);
+            } catch (Throwable $ex) {
+                /* 整块失败逐行重试：一条脏数据不该带走同批的其余 39 条 */
+                foreach ($chunk as $r) {
+                    try { db_exec($one, $r); $ins++; } catch (Throwable $e2) { /* 单条失败忽略 */ }
+                }
+            }
         }
         ok(array('n' => $ins));
     } catch (Throwable $e) {

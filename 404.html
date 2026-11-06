@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>页面不存在 · Kimi 游戏榜</title>
+<meta name="robots" content="noindex"/>
+<meta name="color-scheme" content="light dark"/>
+<style>
+:root{
+  --accent:#7C3AED; --accent-2:#A855F7;
+  --bg-1:#eef0f5; --bg-2:#e6e9f2;
+  --surface:rgba(255,255,255,.62); --border:rgba(255,255,255,.7);
+  --text:#17171e; --text-2:#5c5f6b; --text-3:#9aa0ae;
+  --shadow:0 18px 50px rgba(30,25,80,.12);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg-1:#131318; --bg-2:#0d0d11;
+    --surface:rgba(38,38,48,.6); --border:rgba(255,255,255,.12);
+    --text:#f2f2f5; --text-2:#b3b6c2; --text-3:#7c8194;
+    --shadow:0 18px 50px rgba(0,0,0,.5);
+  }
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; display:grid; place-items:center; padding:24px;
+  color:var(--text); -webkit-font-smoothing:antialiased;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:
+    radial-gradient(1300px 820px at 6% -12%, rgba(124,58,237,.34), transparent 62%),
+    radial-gradient(1100px 700px at 96% -4%, rgba(80,120,255,.24), transparent 64%),
+    radial-gradient(1000px 620px at 72% 108%, rgba(168,85,247,.20), transparent 66%),
+    linear-gradient(160deg,var(--bg-1),var(--bg-2) 70%);
+  background-attachment:fixed;
+}
+.card{
+  width:100%; max-width:420px; padding:34px 30px 28px; text-align:center;
+  border-radius:22px; border:1px solid var(--border);
+  background:var(--surface); box-shadow:inset 0 1px 0 rgba(255,255,255,.55),var(--shadow);
+  -webkit-backdrop-filter:blur(22px) saturate(170%);
+  backdrop-filter:blur(22px) saturate(170%);
+}
+.logo{
+  width:44px; height:44px; margin:0 auto 16px; border-radius:13px; display:grid; place-items:center;
+  background:linear-gradient(140deg,var(--accent),var(--accent-2));
+  box-shadow:0 6px 18px rgba(124,58,237,.35);
+}
+.logo svg{width:26px; height:26px; fill:#fff}
+.code{
+  font-size:60px; font-weight:800; line-height:1; letter-spacing:-.03em; margin:0 0 10px;
+  background:linear-gradient(92deg,var(--accent),var(--accent-2));
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+h1{font-size:16px; font-weight:700; margin:0 0 8px}
+p{font-size:13.5px; line-height:1.65; color:var(--text-2); margin:0 0 22px}
+p.sub{font-size:12px; color:var(--text-3); margin:16px 0 0}
+.acts{display:flex; gap:10px; justify-content:center; flex-wrap:wrap}
+a.btn{
+  display:inline-block; padding:10px 20px; border-radius:12px; font-size:13.5px;
+  font-weight:600; text-decoration:none; transition:filter .18s,transform .12s;
+}
+a.primary{color:#fff; background:linear-gradient(120deg,var(--accent),var(--accent-2));
+  box-shadow:0 6px 18px rgba(124,58,237,.28)}
+a.ghost{color:var(--text-2); border:1px solid rgba(124,58,237,.28)}
+a:hover{filter:brightness(1.06)}
+a:active{transform:scale(.985)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="logo">
+    <svg viewBox="0 0 24 24"><path d="M7 6h10a5 5 0 0 1 5 5v3a4 4 0 0 1-4 4h-1.2a3 3 0 0 1-2.4-1.2l-.6-.8a2 2 0 0 0-3.2 0l-.6.8A3 3 0 0 1 7.6 18H7a4 4 0 0 1-4-4v-3a5 5 0 0 1 5-5zm1.5 4.5h-2v2h-1.5v-2h-2v-1.5h2v-2h1.5v2h2v1.5zM16 10.2a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2zm2.8 0a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2z"/></svg>
+  </div>
+  <p class="code">404</p>
+  <h1>这个地址不存在</h1>
+  <p>链接可能已经失效，或者本来就没有这个页面。<br/>回首页看一眼，多半能找到你要的东西。</p>
+  <div class="acts">
+    <a class="btn primary" href="/">回到首页</a>
+    <a class="btn ghost" href="/rankings">看排行榜</a>
+  </div>
+  <p class="sub">Kimi 游戏榜</p>
+</main>
+</body>
+</html>

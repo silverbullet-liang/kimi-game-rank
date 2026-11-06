@@ -51,7 +51,18 @@ check('30d 长度=720', $n30 === 720);
 list(, $nU) = mon_window('zzz');
 check('未知范围兜底=168', $nU === 168);
 
-echo "== 3) Apdex 口径（T=1200ms）==\n";
+echo "== 3) 上报额度 mon_collect_caps ==\n";
+list($cIp, $cAll) = mon_collect_caps();
+check('默认单 IP 600/小时', $cIp === 600);
+check('默认全站 3000/分钟', $cAll === 3000);
+$GLOBALS['SET']['monitor.max_per_ip_hour'] = '0';
+$GLOBALS['SET']['monitor.max_global_min'] = '999999';
+list($cIp, $cAll) = mon_collect_caps();
+check('下钳到 1', $cIp === 1);
+check('上钳到 100000', $cAll === 100000);
+unset($GLOBALS['SET']['monitor.max_per_ip_hour'], $GLOBALS['SET']['monitor.max_global_min']);
+
+echo "== 4) Apdex 口径（T=1200ms）==\n";
 check('空集=1.0', mon_apdex(array(), 1200) === 1.0);
 check('全部满意=1.0', mon_apdex(array(100, 200, 300), 1200) === 1.0);
 check('全部容忍=0.5', mon_apdex(array(2000, 2000), 1200) === 0.5);

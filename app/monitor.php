@@ -24,6 +24,8 @@ function mon_defaults(): array
         'srv_slow_alert_ms' => '3000',   // 单请求耗时告警阈值（ms）
         'apdex_t'           => '1200',   // Apdex 基线（ms）
         'track_urls'        => '',       // 重点接口白名单（逗号分隔）
+        'max_per_ip_hour'   => '600',    // 单 IP 每小时上报条数上限
+        'max_global_min'    => '3000',   // 全站每分钟入库条数上限（熔断）
     );
 }
 
@@ -32,6 +34,18 @@ function mon_default(string $k): string
 {
     $d = mon_defaults();
     return isset($d[$k]) ? $d[$k] : '';
+}
+
+/**
+ * 上报额度，单位是「条」而不是「次」。
+ * 单次请求本身就能携带几十条事件，只限请求次数等于没限。
+ * 返回 array(单 IP 每小时条数, 全站每分钟条数)。
+ */
+function mon_collect_caps(): array
+{
+    $ip  = (int)setting_get('monitor.max_per_ip_hour', mon_default('max_per_ip_hour'));
+    $all = (int)setting_get('monitor.max_global_min', mon_default('max_global_min'));
+    return array(max(1, min(100000, $ip)), max(1, min(100000, $all)));
 }
 
 /** 明细保留天数的上下限（前后端共用同一口径） */

@@ -59,7 +59,13 @@ check('配置读库覆盖 srv_sample=100', $cfg['srv_sample'] === '100');
 check('配置读库覆盖 srv_slow_ms=50', $cfg['srv_slow_ms'] === '50');
 check('配置读库覆盖 apdex_t=900', $cfg['apdex_t'] === '900');
 check('配置缺省项保持默认 keep_days=7', $cfg['keep_days'] === '7');
-check('监测接口自身不判定为可采集', mon_srv_route_ok('api/monitor.php') === false);
+check('上报动作判定为可采集（灌库可见）', mon_srv_route_ok('api/monitor.php') === true);
+check('面板查询动作不采集', strpos('api/monitor.php', 'monitor.php') !== false && (function () {
+    $_GET['action'] = 'stats';
+    $r = mon_srv_route_ok('api/monitor.php');
+    unset($_GET['action']);
+    return $r === false;
+})());
 check('普通接口判定为可采集', mon_srv_route_ok('api/works.php') === true);
 
 echo "== 4) 白名单解析 ==\n";

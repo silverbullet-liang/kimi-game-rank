@@ -33,9 +33,36 @@ AddDefaultCharset UTF-8
     RewriteRule ^robots\.txt$ robots.php [L]
     RewriteRule ^sitemap\.xml$ sitemap.php [L]
 
-    # ---------- 界面规整化：普通路径交给入口 ----------
-    # /rank  /detail/12  /doc/入榜规则  /chat … 一律由 index.php 解析，
-    # 真实存在的文件与目录（assets、api/*.php、favicon 等）不拦。
+    # ---------- 零后端 404：不存在的路径根本不启动 PHP ----------
+    # 共享主机按 PHP 请求计「入口进程」，只要一条 URL 落到 index.php，就要跑一遍
+    # 后端才给出 404。/probe/0 … /probe/24 那种批量扫描消耗入口进程正是靠这一点。
+    # 目标：静态就能判定「不存在」的路径，一律由 ErrorDocument 输出纯静态 404.html。
+
+    # 1) 目录请求（URI 以 / 结尾，如 /docs/ 、/storage/ 、/assets/）：
+    #    站点没有任何合法的目录地址，一律静态 404。用 URI 形态判定而不是 -d，
+    #    因为子目录里的 .htaccess（storage 的 Require all denied）会抢先给 403，
+    #    而 403 同样要走一次错误页。
+    RewriteCond %{REQUEST_URI} /$
+    RewriteCond %{REQUEST_URI} !^/$
+    RewriteRule ^ - [R=404,L]
+
+    # 2) 文档页：只认这 8 个 slug 与它们的中文名，其余 /docs/xxx 一律静态 404。
+    #    注意 %{REQUEST_URI} 里的中文是解码后的 UTF-8，正则必须写中文而不是 %XX；
+    #    「AI 使用说明」中间的空格用 \x20 表示，避免被 RewriteCond 当分隔符。
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_URI} ^/docs/(features|ai|community|scoring|admission|terms|privacy|changelog|功能说明|AI\x20使用说明|社区公约|评分标准|入榜规则|用户协议|隐私政策|更新日志)(/|$|\?)
+    RewriteRule ^ index.php [L,QSA]
+
+    # 3) 其余非文件、非目录路径：不在前端路由白名单里 → 不做重写，
+    #    Apache 直接 404，不进 PHP。白名单与 app/seo.php 的
+    #    seo_route_segments() + seo_legacy_segments() 一一对应，
+    #    新增对外路由段时必须同步这里，否则该页面会变成 404。
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} !^/($|\?|(rankings|works|world|me|login|submit|feedback|about|banned|notices|admin|monitor|today|history|incident|rank|detail|doc|mine|violation|discipline|panel)(/|$|\?))
+    RewriteRule ^ - [L]
+
+    # 4) 白名单内的前端路由交给入口
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^ index.php [L,QSA]
@@ -87,12 +114,16 @@ RedirectMatch 404 ^/(config|storage|sql|app|tools)/.*$
 RedirectMatch 404 \.(sql|log|ini|lock|bak|old|orig|save|swp|zip)$
 
 # ---------- 自定义错误页 ----------
-# 全部指向 error.php：自包含、不依赖 bootstrap 与外部资源，
-# 并且会读取 kimgr_skin cookie，按当前皮肤切换整套设计语言。
+# 400/401/403/405/408/429/5xx 指向 error.php：自包含、不依赖 bootstrap 与外部资源，
+# 并读取 kimgr_skin cookie 按当前皮肤切换设计语言。这些码由具体接口主动触发，量可控。
+# 404 例外：它是扫描与批量探测唯一会撞到的错误码，必须零 PHP ——
+# 交给纯静态 404.html，否则每打一条不存在的路径就白跑一个入口进程。
+# 403 同理统一回 404.html：目录探测（storage 等子目录 .htaccess 一律 deny）
+# 走的就是 403，既不能跑 PHP，也不该向外确认「这个目录存在」。
 ErrorDocument 400 /error.php?code=400
 ErrorDocument 401 /error.php?code=401
-ErrorDocument 403 /error.php?code=403
-ErrorDocument 404 /error.php?code=404
+ErrorDocument 403 /404.html
+ErrorDocument 404 /404.html
 ErrorDocument 405 /error.php?code=405
 ErrorDocument 408 /error.php?code=408
 ErrorDocument 429 /error.php?code=429
