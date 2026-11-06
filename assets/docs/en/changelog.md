@@ -7,6 +7,15 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.60.1 · 2026-11-06 (Set It Right)
+
+### Fixed
+
+- The History list and detail pages failed to open, reporting a parameter error
+- The world chat address moved from `/chat` to `/world`; the old address was blocked by the host firewall and returned 403
+
+---
+
 ## v3.60.0 · 2026-11-06 (On the Record)
 
 ### Added

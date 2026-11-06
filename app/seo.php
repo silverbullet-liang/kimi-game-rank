@@ -71,7 +71,7 @@ function seo_route_segments(): array
     return array(
         'rank'       => 'rankings',
         'detail'     => 'works',
-        'chat'       => 'chat',
+        'chat'       => 'world',   // 主机 WAF 拦截含 chat 的路径，对外改用 world
         'mine'       => 'me',
         'login'      => 'login',
         'submit'     => 'submit',

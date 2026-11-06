@@ -9427,9 +9427,16 @@ function bindFold(box) {
 }
 
 /* ---------------- 列表 ---------------- */
-async function renderHistory(container, id) {
+/* 路由调用约定：fn(container, { sub, params })，第二参是对象不是字符串。 */
+function routeSub(ctx) {
+  if (ctx && typeof ctx === 'object') { return String(ctx.sub || ''); }
+  return String(ctx || '');
+}
+
+async function renderHistory(container, ctx) {
   /* #/history 与 #/history/<id> 共用同一个路由名：
      带 id 时直接进详情，避免为「列表/详情」维护两套入口。 */
+  const id = routeSub(ctx);
   if (id) { return renderIncident(container, id); }
   container.innerHTML = `
     <div class="inc-hero">
@@ -9471,7 +9478,9 @@ async function renderHistory(container, id) {
 }
 
 /* ---------------- 详情 ---------------- */
-async function renderIncident(container, id) {
+async function renderIncident(container, ctx) {
+  const id = routeSub(ctx);
+  if (!id) { return renderHistory(container, { sub: '', params: {} }); }
   let d = null;
   try {
     d = await api('incident', 'get', { id: id }, { silent: true });
