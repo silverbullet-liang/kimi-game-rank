@@ -7,6 +7,15 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.60.3 · 2026-11-06 (Iron-Clad Record)
+
+### Updated
+
+- The 11·3 entry under "History" is now a full report: what the three attacks were, a timeline accurate to the second, what the attacker did, what was lost, and how such conduct is classified under criminal law
+- Corrected figures: 194 registered users, 193 accounts deleted, around 400 works removed
+
+---
+
 ## v3.60.2 · 2026-11-06 (Follow the Thread)
 
 ### Fixed
