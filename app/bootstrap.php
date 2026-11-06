@@ -82,6 +82,7 @@ require_once APP_ROOT . '/app/link_smart.php';
 require_once APP_ROOT . '/app/relink.php';
 require_once APP_ROOT . '/app/score_recalc.php';
 require_once APP_ROOT . '/app/link_guard.php';
+require_once APP_ROOT . '/app/panel.php';   /* 控制面板二次认证：会话判定与指纹 */
 require_once APP_ROOT . '/app/upload_guard.php';
 require_once APP_ROOT . '/app/integrity.php';
 require_once APP_ROOT . '/app/siteinfo.php';

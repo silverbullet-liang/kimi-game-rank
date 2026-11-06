@@ -24,8 +24,7 @@ if ($action === 'panel_auth') {
     $ident = require_any_admin();
     if ($ident['role'] === 'subadmin') {
         // 副管理员登录即已用密钥验证，无需二次确认
-        $_SESSION['panel_ok'] = time();
-        $_SESSION['panel_fp'] = panel_fp();
+        panel_grant();
         access_log_put('panel_auth', 'session', 'subadmin', 'ok');
         ok(array('role' => 'subadmin'), '已进入控制面板');
     }
@@ -34,8 +33,7 @@ if ($action === 'panel_auth') {
         timing_delay();
         fail(401, '管理员密钥错误');
     }
-    $_SESSION['panel_ok'] = time();
-    $_SESSION['panel_fp'] = panel_fp();
+    panel_grant();
     access_log_put('panel_auth', 'session', 'admin', 'ok');
     ok(array('role' => 'admin'), '验证通过，已进入控制面板');
 }
@@ -56,32 +54,21 @@ if ($IS_SUB && !in_array($action, $SUB_ALLOWED, true)) {
     fail(403, '副管理员无权执行该操作');
 }
 
-/**
- * 控制面板会话指纹。
- * 只记「验过一次密钥」不足以约束会话：一条被搬走的会话在有效期内可以继续开面板。
- * 这里把面板授权绑定到发起验证时的网络与浏览器特征上。
- */
-function panel_fp(): string
-{
-    $ip = function_exists('client_ip') ? (string)client_ip() : '';
-    $ua = isset($_SERVER['HTTP_USER_AGENT']) ? (string)$_SERVER['HTTP_USER_AGENT'] : '';
-    $salt = (string)cfg('secrets.cron_key', 'kimgr');
-    return substr(hash('sha256', $salt . '|' . $ip . '|' . $ua), 0, 32);
-}
-
-/* 控制面板写操作需已二次认证（副管理员登录即视为已认证） */
+/* 控制面板写操作需已二次认证（副管理员登录即视为已认证）。
+   判定与指纹都在 app/panel.php：授权落在独立文件里，不随 session 回收而丢失；
+   每通过一次校验就滑动续期，正在用面板的人不会被打断。 */
 function require_panel()
 {
     $ident = current_identity();
     if ($ident && $ident['role'] === 'subadmin') { return; }
-    $t = isset($_SESSION['panel_ok']) ? (int)$_SESSION['panel_ok'] : 0;
-    if ($t <= 0 || time() - $t > 3600) { fail(403, '请先在控制面板完成密钥验证'); }
-    $fp = isset($_SESSION['panel_fp']) ? (string)$_SESSION['panel_fp'] : '';
-    if ($fp === '' || !hash_equals($fp, panel_fp())) {
-        unset($_SESSION['panel_ok'], $_SESSION['panel_fp']);
-        access_log_put('panel_deny', 'session', 'fingerprint mismatch', 'deny');
-        fail(403, '请先在控制面板完成密钥验证');
+    $st = panel_state();
+    if (!$st['ok']) {
+        if ($st['reason'] === 'none') {
+            access_log_put('panel_deny', 'session', 'no grant', 'deny');
+        }
+        fail(403, '密钥验证已失效，请重新验证');
     }
+    panel_touch();
 }
 
 /** 抓取用社区凭证的存储键：副管理员独立，互不共用 */

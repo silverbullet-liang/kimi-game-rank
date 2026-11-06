@@ -14,6 +14,7 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 - Unknown addresses now show the 404 page immediately instead of leaving the request waiting; directory-style addresses ending in `/` are treated as "page not found" as well and no longer reveal whether a directory exists
 - The 404 page is rebuilt in the site's visual language, with direct links back to the home page and the rankings
 - Monitoring data is now written in batches, which visibly reduces database load for the same amount of data
+- Control panel key verification no longer lapses while you are still working in it: it stays valid as long as you keep using the panel, and only asks again after 2 hours of inactivity or 12 hours since the last verification — saying which of the two it is
 
 ### Notes
 

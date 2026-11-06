@@ -8,7 +8,10 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 
 require_any_admin();   // 副管理员也可读总览与趋势（只读聚合数据）
-$panel = isset($_SESSION['panel_ok']) ? (int)$_SESSION['panel_ok'] : 0;
+/* 面板授权落在 app/panel.php 的独立文件里（不随 session 回收丢失）。
+   总览是面板的心跳：只要它在刷，就说明人还在看，顺手续期。 */
+$panelSt = panel_state();
+if ($panelSt['ok']) { panel_touch(); }
 
 /**
  * AI 用量按通道拆分。
@@ -44,7 +47,8 @@ switch ($action) {
     /* 顶部汇总卡片 */
     case 'overview': {
         $data = array(
-            'panel_verified' => ($panel > 0 && time() - $panel <= 3600),
+            'panel_verified' => $panelSt['ok'],
+            'panel_reason'   => $panelSt['reason'],
             'users_total'    => (int)db_val('SELECT COUNT(*) FROM users'),
             'users_today'    => (int)db_val('SELECT COUNT(*) FROM users WHERE created_at >= ?', array(gmdate('Y-m-d') . ' 00:00:00')),
             'works_total'    => (int)db_val('SELECT COUNT(*) FROM works WHERE is_hidden = 0'),

@@ -370,6 +370,15 @@ async function api(file, action, data = null, opts = {}) {
         return out;
       } catch (e) {
         lastErr = e;
+        /* 面板密钥凭证失效：交给面板自己重新验证一次，成功后把这次请求重做。
+           只有 panel.js 注册了回调，其它 403 照旧抛出。 */
+        if (e && Number(e.code) === 403 && !opts.__reauth
+            && typeof window.__panelReauth === 'function'
+            && String(e.message || '').indexOf('密钥验证') >= 0) {
+          let again = false;
+          try { again = await window.__panelReauth(); } catch (err) { again = false; }
+          if (again) { return api(file, action, data, Object.assign({}, opts, { __reauth: true })); }
+        }
         // 仅对「网络层失败」（code=0）重试；HTTP/业务错误立即抛出
         if (!e || e.code !== 0 || opts.retry === false || i === maxTries - 1) { break; }
         try { console.warn(t('[api] 第 ') + (i + 1) + t(' 次失败，准备重试：') + file + '?' + action, e.message); } catch (err) {}
@@ -5943,6 +5952,29 @@ const PDIMS = [
   { k: 'cost', n: t('体量') }, { k: 'attitude', n: t('用心') }, { k: 'heat', n: t('口碑') },
 ];
 const catName = c => (PCATS.find(x => x[0] === c) || [, c])[1];
+
+/* 面板密钥凭证到期时自动重验一次，并把刚才那次请求重做 —— 用户不必自己
+   退出去再进来。core.js 的 api() 只在 403 且提示含「密钥验证」时调用它。 */
+let panelReauthing = false;
+function bindPanelReauth() {
+  window.__panelReauth = async function () {
+    if (panelReauthing) { return false; }
+    panelReauthing = true;
+    try {
+      const key = await prompt_(t('控制面板验证'),
+        t('密钥验证已失效（长时间没有操作，或已超过 12 小时），请重新输入管理员密钥。'), t('验证'));
+      if (!key) { return false; }
+      await api('admin', 'panel_auth', { key: key });
+      toast(t('已重新验证'));
+      return true;
+    } catch (e) {
+      toast((e && e.message) || t('验证失败'), 'err');
+      return false;
+    } finally {
+      panelReauthing = false;
+    }
+  };
+}
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function renderPanel(container) {
@@ -5959,7 +5991,13 @@ async function renderPanel(container) {
     try { ov = await api('dashboard', 'overview'); }
     catch (e) { container.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`; return; }
     if (!ov.panel_verified) {
-      const key = await prompt_(t('控制面板验证'), t('请输入管理员密钥（64 位十六进制，由密钥原文经 sha256 计算得出）。'), t('验证'));
+      /* 说清楚为什么：笼统一句「请重新验证」会让人以为登录掉了，其实只是这张凭证到期 */
+      const why = ov.panel_reason === 'expired'
+        ? t('密钥验证已超过 12 小时，请重新输入。')
+        : (ov.panel_reason === 'idle'
+          ? t('已有 2 小时没有操作，为安全起见请重新输入密钥。')
+          : t('请输入管理员密钥（64 位十六进制，由密钥原文经 sha256 计算得出）。'));
+      const key = await prompt_(t('控制面板验证'), why, t('验证'));
       if (!key) { container.innerHTML = '<div class="empty"><p>已取消验证</p></div>'; return; }
       try { await api('admin', 'panel_auth', { key: key }); }
       catch (e) { container.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`; return; }
@@ -5983,6 +6021,7 @@ async function renderPanel(container) {
     loadPeer(container);
     loadIntegrity(container);
     bindAiRank(container);
+    bindPanelReauth();
     startPanelPolling(container);
   } else {
     container.innerHTML = subLayout();

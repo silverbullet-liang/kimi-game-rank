@@ -175,6 +175,15 @@ export async function api(file, action, data = null, opts = {}) {
         return out;
       } catch (e) {
         lastErr = e;
+        /* 面板密钥凭证失效：交给面板自己重新验证一次，成功后把这次请求重做。
+           只有 panel.js 注册了回调，其它 403 照旧抛出。 */
+        if (e && Number(e.code) === 403 && !opts.__reauth
+            && typeof window.__panelReauth === 'function'
+            && String(e.message || '').indexOf('密钥验证') >= 0) {
+          let again = false;
+          try { again = await window.__panelReauth(); } catch (err) { again = false; }
+          if (again) { return api(file, action, data, Object.assign({}, opts, { __reauth: true })); }
+        }
         // 仅对「网络层失败」（code=0）重试；HTTP/业务错误立即抛出
         if (!e || e.code !== 0 || opts.retry === false || i === maxTries - 1) { break; }
         try { console.warn(t('[api] 第 ') + (i + 1) + t(' 次失败，准备重试：') + file + '?' + action, e.message); } catch (err) {}
