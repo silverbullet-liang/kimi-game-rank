@@ -2751,7 +2751,7 @@ async function onCommentClick(ev) {
 async function renderComments(container, workId, targetType) {
   /* 目标类型三选一，与后端 comment_target_type() 的白名单一致。
      切勿把 discipline_list 降级成 work：列表区固定在 work_id=0，降级后必被后端判为参数错误。 */
-  const ttype = ['discipline', 'discipline_list'].indexOf(targetType) >= 0 ? targetType : 'work';
+  const ttype = ['discipline', 'discipline_list', 'incident'].indexOf(targetType) >= 0 ? targetType : 'work';
   const form = container.querySelector('#cmtForm');
   const listBox = container.querySelector('#cmtList');
 
@@ -9370,6 +9370,138 @@ async function renderDiscipline(container, ctx) {
   }
 }
 
+/* ========== pages/history.js ========== */
+/**
+ * 铭记历史 · 攻击事件档案
+ * ------------------------------------------------------------
+ * 列表（#/history）与详情（#/history/<id>）两套渲染。
+ * 详情页：上方是标题与起止时间、始作俑者状态，
+ *        中间是梳理文档（按二级标题分节，默认折叠），
+ *        下方是讨论区（与违纪通报共用同一套评论）。
+ */
+
+
+
+
+
+function sevText(s) {
+  if (s === 'severe') { return '严重'; }
+  if (s === 'normal') { return '一般'; }
+  return '';
+}
+
+function spanText(d) {
+  const a = d.started || '—';
+  const b = d.ended || '至今';
+  return a + ' — ' + b;
+}
+
+/* 把渲染好的 HTML 按二级标题切成可折叠分节：
+   首个 h2 之前的内容作为「摘要」节，默认展开；其余默认收起。 */
+function sectionize(html) {
+  const parts = String(html).split(/<h2[^>]*>([\s\S]*?)<\/h2>/);
+  let out = '';
+  const head = (parts[0] || '').trim();
+  if (head) {
+    out += '<section class="inc-sec open">' +
+      '<button class="inc-head" type="button">摘要<i class="inc-ico"></i></button>' +
+      '<div class="inc-body"><div class="inc-inner">' + head + '</div></div></section>';
+  }
+  for (let i = 1; i < parts.length; i += 2) {
+    const title = parts[i] || '';
+    const body = parts[i + 1] || '';
+    out += '<section class="inc-sec">' +
+      '<button class="inc-head" type="button">' + title + '<i class="inc-ico"></i></button>' +
+      '<div class="inc-body"><div class="inc-inner">' + body + '</div></div></section>';
+  }
+  return out;
+}
+
+function bindFold(box) {
+  box.addEventListener('click', function (e) {
+    const btn = e.target.closest('.inc-head');
+    if (!btn || !box.contains(btn)) { return; }
+    const sec = btn.parentNode;
+    sec.classList.toggle('open');
+  });
+}
+
+/* ---------------- 列表 ---------------- */
+async function renderHistory(container, id) {
+  /* #/history 与 #/history/<id> 共用同一个路由名：
+     带 id 时直接进详情，避免为「列表/详情」维护两套入口。 */
+  if (id) { return renderIncident(container, id); }
+  container.innerHTML = `
+    <div class="inc-hero">
+      <p class="inc-tag">档案</p>
+      <h2>铭记历史</h2>
+      <p class="tiny muted">这个站被攻击过几次，都在这里。每一次都写明发生了什么、影响是什么、查到了什么、还有什么没查清。</p>
+    </div>
+    <div id="incList" class="inc-list"><div class="skeleton"></div><div class="skeleton"></div></div>`;
+
+  const list = container.querySelector('#incList');
+  try {
+    const d = await api('incident', 'list', {});
+    const items = d.items || [];
+    if (!items.length) {
+      list.innerHTML = '<div class="empty"><p>还没有记录</p></div>';
+      return;
+    }
+    list.innerHTML = '';
+    items.forEach(function (it) {
+      const el = document.createElement('div');
+      el.className = 'inc-item';
+      el.innerHTML = `
+        <div class="inc-it-top">
+          <span class="inc-it-title">${esc(it.title)}</span>
+          ${it.severity ? '<span class="inc-sev ' + esc(it.severity) + '">' + esc(sevText(it.severity)) + '</span>' : ''}
+        </div>
+        <div class="tiny muted inc-it-time">${esc(spanText(it))}</div>
+        <p class="inc-it-sum">${esc(it.summary)}</p>
+        <div class="tiny muted inc-it-foot">
+          <span>${it.culprit ? '始作俑者：' + esc(it.culprit) : '始作俑者：未记录'}</span>
+          <span>讨论 ${Number(it.comments || 0)}</span>
+        </div>`;
+      el.addEventListener('click', function () { navigate('#/history/' + it.id); });
+      list.appendChild(el);
+    });
+  } catch (e) {
+    list.innerHTML = '<div class="empty"><p>' + esc(e.message) + '</p></div>';
+  }
+}
+
+/* ---------------- 详情 ---------------- */
+async function renderIncident(container, id) {
+  let d = null;
+  try {
+    d = await api('incident', 'get', { id: id }, { silent: true });
+  } catch (e) {
+    container.innerHTML = '<div class="empty"><p>' + esc(e.message) + '</p></div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="inc-hero">
+      <p class="inc-tag">档案 · ${esc(sevText(d.severity) || '记录')}</p>
+      <h2>${esc(d.title)}</h2>
+      <div class="inc-meta">
+        <span class="mono">${esc(d.started || '—')} — ${esc(d.ended || '至今')}</span>
+      </div>
+      <div class="inc-culprit">始作俑者：${esc(d.culprit || '未确认')}</div>
+      ${d.summary ? '<p class="inc-lead">' + esc(d.summary) + '</p>' : ''}
+    </div>
+    <div class="inc-doc" id="incDoc"></div>
+    <div class="card" style="margin-top:18px">
+      <div id="incCmt"></div>
+    </div>`;
+
+  const doc = container.querySelector('#incDoc');
+  doc.innerHTML = sectionize(mdToHtml(d.doc || ''));
+  bindFold(doc);
+
+  await renderComments(container.querySelector('#incCmt'), d.id, 'incident');
+}
+
 /* ========== pages/today.js ========== */
 /**
  * 「关于今天」：当天命中的节日的介绍
@@ -9465,6 +9597,7 @@ async function renderToday(container) {
 
 
 
+
 const view = document.getElementById('view');
 
 /* 开源仓库：目录里的「渗透测试」直接跳这里 */
@@ -9498,6 +9631,8 @@ const routes = {
   about: renderAbout,
   violation: renderViolation,
   discipline: renderDiscipline,
+  history: renderHistory,
+  incident: renderIncident,
   today: renderToday,
 };
 
@@ -9541,7 +9676,7 @@ const SENSITIVE_PAGES = ['panel'];
 
 function readRoute() {
   if (location.hash && location.hash.length > 1) { return location.hash; }   // 旧式 #/ 链接优先
-  const KNOWN = ['rank', 'detail', 'chat', 'mine', 'login', 'submit', 'doc', 'panel', 'monitor', 'feedback', 'about', 'violation', 'discipline', 'today'];
+  const KNOWN = ['rank', 'detail', 'chat', 'mine', 'login', 'submit', 'doc', 'panel', 'monitor', 'feedback', 'about', 'violation', 'discipline', 'history', 'incident', 'today'];
 
   /* 主路径：/rank 、/detail/12 、/doc/入榜规则 */
   let path = location.pathname;
@@ -9755,6 +9890,7 @@ const I = {
   lock: 'M12 2a5 5 0 0 1 5 5v2h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v2h6V7a3 3 0 0 0-3-3zm0 9a1.6 1.6 0 0 1 .9 2.9V18h-1.8v-2.1A1.6 1.6 0 0 1 12 13z',
   gear: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 4l-2 1.5.3 2.5-2 1-1.8-1.8-2.3.8L12 18l-1.2-2-2.3-.8L6.7 17l-2-1 .3-2.5L3 12l2-1.5L4.7 8l2-1 1.8 1.8 2.3-.8L12 6l1.2 2 2.3.8L17.3 7l2 1-.3 2.5L21 12z',
   shield: 'M12 2 4 5.2v5.9c0 4.7 3.3 8.8 8 10.9 4.7-2.1 8-6.2 8-10.9V5.2L12 2z',
+  clock: 'M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm0 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm1 3v5.6l4 2.3-1 1.7-5-2.9V7h2z',
 };
 
 function drawerItems() {
@@ -9779,6 +9915,7 @@ function drawerItems() {
     { k: 'aihelp', label: t('AI 使用说明'), ic: I.plug, go: '#/doc/AI 使用说明' },
     { k: 'charter', label: t('社区公约'), ic: I.users, go: '#/doc/社区公约' },
     { k: 'discipline', label: t('违纪通报'), ic: I.shield, go: '#/discipline' },
+    { k: 'history', label: t('铭记历史'), ic: I.clock, go: '#/history' },
     { k: 'score', label: t('评分标准'), ic: I.rule, go: '#/doc/评分标准' },
     { k: 'join', label: t('入榜规则'), ic: I.list, go: '#/doc/入榜规则' },
     { k: 'terms', label: t('用户协议'), ic: I.doc, go: '#/doc/用户协议' },
@@ -9880,7 +10017,7 @@ function bindEvents() {
     const href = a.getAttribute('href') || '';
     if (href.charAt(0) !== '/') { return; }
     const path = href.slice(URL_BASE.length);
-    if (!/^\/(rank|detail|chat|mine|login|doc|feedback|about|violation|discipline)(\/|$|\?)/.test(path)) { return; }
+    if (!/^\/(rank|detail|chat|mine|login|doc|feedback|about|violation|discipline|history|incident)(\/|$|\?)/.test(path)) { return; }
     e.preventDefault();
     navigate(path);
   });

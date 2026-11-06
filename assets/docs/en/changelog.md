@@ -7,6 +7,20 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.60.0 · 2026-11-06 (On the Record)
+
+### Added
+
+- A "History" page: every attack this site has suffered is recorded here. Each entry has a name, a start and end time, a perpetrator status, and the full written account
+- The account is split into collapsible sections; only the summary is expanded by default
+- Each entry has its own discussion thread, sharing the same comment system as the violation notices
+
+### Note
+
+- The "perpetrator" field states only confirmed facts; anything unresolved is recorded as "unconfirmed", never as a guess
+
+---
+
 ## v3.59.0 · 2026-11-06 (Mend the Fold)
 
 ### Security

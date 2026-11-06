@@ -58,7 +58,7 @@ function seo_is_mirror(): bool
 function seo_route_names(): array
 {
     return array('rank','detail','chat','mine','login','submit','doc','panel','monitor',
-                 'feedback','about','violation','discipline','today');
+                 'feedback','about','violation','discipline','history','incident','today');
 }
 
 /**
@@ -83,6 +83,8 @@ function seo_route_segments(): array
         'panel'      => 'admin',
         'monitor'    => 'monitor',
         'today'      => 'today',
+        'history'    => 'history',
+        'incident'   => 'incident',
     );
 }
 
@@ -332,6 +334,11 @@ function seo_meta_for(array $route): array
         $canon = seo_abs('discipline');
         $title = '违纪通报 · ' . $site;
         $desc  = '本站违纪处理记录公开页。';
+    } elseif ($name === 'history' || $name === 'incident') {
+        $canon = seo_abs($name === 'incident' ? 'incident' : 'history', $sub);
+        $title = '铭记历史 · 攻击事件档案 · ' . $site;
+        $desc  = '本站被攻击的记录：每一次的时间线、影响范围、已查明的链路与仍未查清的部分，全部公开。';
+        $type  = 'article';
     } elseif ($name === 'about') {
         $canon = seo_abs('about');
         $title = '关于 · ' . $site;

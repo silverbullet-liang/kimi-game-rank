@@ -22,6 +22,7 @@ import { renderDoc } from './pages/doc.js';
 import { renderFeedback } from './pages/feedback.js';
 import { renderSubmit } from './pages/submit.js';
 import { renderViolation, renderDiscipline } from './pages/violation.js';
+import { renderHistory, renderIncident } from './pages/history.js';
 
 const view = document.getElementById('view');
 
@@ -56,6 +57,8 @@ const routes = {
   about: renderAbout,
   violation: renderViolation,
   discipline: renderDiscipline,
+  history: renderHistory,
+  incident: renderIncident,
   today: renderToday,
 };
 
@@ -99,7 +102,7 @@ const SENSITIVE_PAGES = ['panel'];
 
 function readRoute() {
   if (location.hash && location.hash.length > 1) { return location.hash; }   // 旧式 #/ 链接优先
-  const KNOWN = ['rank', 'detail', 'chat', 'mine', 'login', 'submit', 'doc', 'panel', 'monitor', 'feedback', 'about', 'violation', 'discipline', 'today'];
+  const KNOWN = ['rank', 'detail', 'chat', 'mine', 'login', 'submit', 'doc', 'panel', 'monitor', 'feedback', 'about', 'violation', 'discipline', 'history', 'incident', 'today'];
 
   /* 主路径：/rank 、/detail/12 、/doc/入榜规则 */
   let path = location.pathname;
@@ -313,6 +316,7 @@ const I = {
   lock: 'M12 2a5 5 0 0 1 5 5v2h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v2h6V7a3 3 0 0 0-3-3zm0 9a1.6 1.6 0 0 1 .9 2.9V18h-1.8v-2.1A1.6 1.6 0 0 1 12 13z',
   gear: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 4l-2 1.5.3 2.5-2 1-1.8-1.8-2.3.8L12 18l-1.2-2-2.3-.8L6.7 17l-2-1 .3-2.5L3 12l2-1.5L4.7 8l2-1 1.8 1.8 2.3-.8L12 6l1.2 2 2.3.8L17.3 7l2 1-.3 2.5L21 12z',
   shield: 'M12 2 4 5.2v5.9c0 4.7 3.3 8.8 8 10.9 4.7-2.1 8-6.2 8-10.9V5.2L12 2z',
+  clock: 'M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm0 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm1 3v5.6l4 2.3-1 1.7-5-2.9V7h2z',
 };
 
 function drawerItems() {
@@ -337,6 +341,7 @@ function drawerItems() {
     { k: 'aihelp', label: t('AI 使用说明'), ic: I.plug, go: '#/doc/AI 使用说明' },
     { k: 'charter', label: t('社区公约'), ic: I.users, go: '#/doc/社区公约' },
     { k: 'discipline', label: t('违纪通报'), ic: I.shield, go: '#/discipline' },
+    { k: 'history', label: t('铭记历史'), ic: I.clock, go: '#/history' },
     { k: 'score', label: t('评分标准'), ic: I.rule, go: '#/doc/评分标准' },
     { k: 'join', label: t('入榜规则'), ic: I.list, go: '#/doc/入榜规则' },
     { k: 'terms', label: t('用户协议'), ic: I.doc, go: '#/doc/用户协议' },
@@ -438,7 +443,7 @@ function bindEvents() {
     const href = a.getAttribute('href') || '';
     if (href.charAt(0) !== '/') { return; }
     const path = href.slice(URL_BASE.length);
-    if (!/^\/(rank|detail|chat|mine|login|doc|feedback|about|violation|discipline)(\/|$|\?)/.test(path)) { return; }
+    if (!/^\/(rank|detail|chat|mine|login|doc|feedback|about|violation|discipline|history|incident)(\/|$|\?)/.test(path)) { return; }
     e.preventDefault();
     navigate(path);
   });

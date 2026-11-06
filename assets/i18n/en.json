@@ -919,5 +919,9 @@
   "请填写收件邮箱": "Enter a recipient address",
   "发送中…": "Sending…",
   "测试邮件已发出，通道：": "Test mail sent via: ",
-  "测试邮件已发出": "Test mail sent"
+  "测试邮件已发出": "Test mail sent",
+  "铭记历史": "History",
+  "始作俑者": "Perpetrator",
+  "档案": "Archive",
+  "摘要": "Summary"
 }

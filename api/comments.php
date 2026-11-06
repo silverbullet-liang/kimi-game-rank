@@ -13,7 +13,7 @@ $action = param_str('action', 'list');
 function comment_target_type(): string
 {
     $t = param_str('target_type', 'work');
-    return in_array($t, array('discipline', 'discipline_list'), true) ? $t : 'work';
+    return in_array($t, array('discipline', 'discipline_list', 'incident'), true) ? $t : 'work';
 }
 
 /* 被通报封禁的访问者：通报类评论区看不到，也不能发表任何评论。
