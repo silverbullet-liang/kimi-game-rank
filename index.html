@@ -1,0 +1,1926 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>11·3 攻击事件 · 调查报告 — Kimi 游戏榜</title>
+<meta name="description" content="Kimi 游戏榜 11·3 攻击事件调查报告：三次攻击、完整时间线、证据链、损失清单与法律定性。"/>
+<meta name="color-scheme" content="light dark"/>
+<meta property="og:title" content="11·3 攻击事件 · 调查报告"/>
+<meta property="og:description" content="三次攻击、完整时间线、证据链、损失清单与法律定性。"/>
+<meta property="og:type" content="article"/>
+<link rel="preconnect" href="https://gcore.jsdelivr.net" crossorigin/>
+<link rel="stylesheet" href="https://gcore.jsdelivr.net/npm/misans@5.0.0/lib/Normal/MiSansVF.min.css"/>
+<style>
+:root{
+  --bg:#f6f8fb; --panel:#ffffff; --ink:#0f1520; --ink2:#5b6675; --ink3:#8a94a3;
+  --line:#e4e9f0; --accent:#007AFF; --accent-soft:#e8f2ff; --code-bg:#f4f6f9;
+  --radius:14px; --shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0b0e13; --panel:#141a22; --ink:#e8edf5; --ink2:#9aa7b8; --ink3:#6b7889;
+    --line:#232b36; --accent:#4da3ff; --accent-soft:#12253b; --code-bg:#0f151d;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:'MiSans VF',-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+  font-size:16px; line-height:1.78; letter-spacing:.01em;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent); text-decoration:none}
+a:hover{text-decoration:underline}
+code,pre{font-family:ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace}
+
+/* 顶栏 */
+.top{position:sticky; top:0; z-index:20; background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:saturate(180%) blur(12px); border-bottom:1px solid var(--line)}
+.top .wrap{max-width:1180px; margin:0 auto; padding:12px 20px; display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.brand{font-weight:650; color:var(--ink); font-size:15px; letter-spacing:.02em}
+.brand i{display:inline-block; width:8px; height:8px; border-radius:3px; background:var(--accent); margin-right:8px; vertical-align:1px}
+.sep{color:var(--ink3); font-size:13px}
+.cur{font-size:14px; color:var(--ink2)}
+.meta{margin-left:auto; font-size:12.5px; color:var(--ink3); font-variant-numeric:tabular-nums}
+.progress{height:2px; background:transparent}
+.progress i{display:block; height:2px; width:0; background:var(--accent); transition:width .12s linear}
+
+/* 布局 */
+.layout{max-width:1180px; margin:0 auto; padding:28px 20px 80px; display:grid; grid-template-columns:236px minmax(0,1fr); gap:40px}
+.toc{position:sticky; top:76px; align-self:start; max-height:calc(100vh - 100px); overflow:auto; padding-right:4px}
+.toc h4{margin:0 0 10px; font-size:12px; font-weight:600; color:var(--ink3); letter-spacing:.12em}
+.toc a{display:block; padding:6px 10px; border-radius:8px; font-size:13.5px; color:var(--ink2); line-height:1.5}
+.toc a:hover{background:var(--accent-soft); color:var(--accent); text-decoration:none}
+.toc a.on{background:var(--accent-soft); color:var(--accent); font-weight:600}
+.toc-toggle{display:none}
+
+/* 正文 */
+.doc{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow); padding:40px 44px 48px; min-width:0}
+.doc>p:first-of-type{color:var(--ink2); font-size:14.5px}
+.doc h2{
+  font-size:22px; line-height:1.4; margin:44px 0 14px; padding-top:22px; border-top:1px solid var(--line);
+  scroll-margin-top:88px; letter-spacing:.01em;
+}
+.doc h2:first-of-type{border-top:0; padding-top:0; margin-top:8px}
+.doc h3{font-size:16.5px; margin:30px 0 10px; scroll-margin-top:88px; color:var(--ink)}
+.doc h3::before{content:''; display:inline-block; width:3px; height:15px; background:var(--accent);
+  border-radius:2px; margin-right:9px; vertical-align:-2px}
+.doc p{margin:12px 0; color:var(--ink)}
+.doc strong{font-weight:650}
+.doc em{color:var(--ink2)}
+.doc hr{border:0; border-top:1px solid var(--line); margin:34px 0}
+.doc ul,.doc ol{margin:12px 0; padding-left:22px}
+.doc li{margin:6px 0}
+.doc blockquote{margin:18px 0; padding:12px 16px; background:var(--accent-soft);
+  border-left:3px solid var(--accent); border-radius:0 10px 10px 0; color:var(--ink)}
+.doc blockquote p{margin:6px 0}
+
+/* 表格 */
+.doc .table-wrap{overflow-x:auto; margin:16px 0; border:1px solid var(--line); border-radius:10px}
+.doc table{border-collapse:collapse; width:100%; font-size:14.5px; min-width:520px}
+.doc th,.doc td{padding:9px 13px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top}
+.doc th{background:var(--code-bg); font-weight:600; font-size:13.5px; color:var(--ink2); white-space:nowrap}
+.doc tr:last-child td{border-bottom:0}
+.doc tbody tr:nth-child(even){background:color-mix(in srgb,var(--code-bg) 55%,transparent)}
+
+/* 代码 */
+.doc code{background:var(--code-bg); padding:1.5px 6px; border-radius:5px; font-size:13.5px; color:#c7254e}
+@media (prefers-color-scheme: dark){ .doc code{color:#ff9db0} }
+.doc pre{background:var(--code-bg); border:1px solid var(--line); border-radius:10px;
+  padding:14px 16px; overflow-x:auto; margin:16px 0; line-height:1.6}
+.doc pre code{background:none; padding:0; color:var(--ink); font-size:13px}
+
+/* 页脚 */
+.foot{max-width:1180px; margin:0 auto; padding:0 20px 60px; color:var(--ink3); font-size:12.5px; text-align:center}
+.foot a{color:var(--ink3)}
+
+/* 移动端 */
+@media (max-width:900px){
+  .layout{grid-template-columns:minmax(0,1fr); gap:0; padding:16px 14px 60px}
+  .doc{padding:24px 18px 32px; border-radius:12px}
+  .doc h2{font-size:19px; margin-top:34px}
+  .doc h3{font-size:15.5px}
+  .toc{position:fixed; inset:53px 0 auto 0; max-height:none; z-index:19; background:var(--panel);
+    border-bottom:1px solid var(--line); padding:10px 16px 14px; display:none; overflow:auto; max-height:70vh}
+  .toc.open{display:block}
+  .toc-toggle{display:inline-flex; align-items:center; gap:6px; margin-left:auto; margin-right:8px;
+    padding:5px 12px; border:1px solid var(--line); border-radius:999px; background:var(--panel);
+    color:var(--ink2); font-size:13px; cursor:pointer; font-family:inherit}
+  .meta{display:none}
+}
+@media print{
+  .top,.toc,.foot{display:none}
+  .layout{display:block; padding:0}
+  .doc{border:0; box-shadow:none; padding:0}
+  .doc h2{page-break-after:avoid}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <span class="brand"><i></i>Kimi 游戏榜</span>
+    <span class="sep">/</span>
+    <span class="cur">11·3 攻击事件 · 调查报告</span>
+    <button class="toc-toggle" type="button" aria-label="目录">目录</button>
+    <span class="meta">2026-11-06 · 完整技术版</span>
+  </div>
+  <div class="progress"><i></i></div>
+</header>
+
+<div class="layout">
+  <aside class="toc">
+    <h4>目录</h4>
+      <a href="#s1" data-t="s1">一、导读：这份通报要说清三件事</a>
+      <a href="#s2" data-t="s2">二、结论</a>
+      <a href="#s3" data-t="s3">三、被攻击的是个什么东西</a>
+      <a href="#s4" data-t="s4">四、三次攻击全记录</a>
+      <a href="#s5" data-t="s5">五、他做了什么：15 个动作</a>
+      <a href="#s6" data-t="s6">六、证据：我们掌握了什么</a>
+      <a href="#s7" data-t="s7">七、预谋性与针对性</a>
+      <a href="#s8" data-t="s8">八、造成的损失</a>
+      <a href="#s9" data-t="s9">九、法律定性</a>
+      <a href="#s10" data-t="s10">十、给攻击者的话</a>
+      <a href="#s11" data-t="s11">十一、我们做了什么</a>
+      <a href="#s12" data-t="s12">十二、仍未查清</a>
+      <a href="#s13" data-t="s13">十三、附录</a>
+  </aside>
+  <main class="doc">
+<p><strong>受害站点</strong>：Kimi 游戏榜（kimi-game-rank）
+<strong>主站</strong>：https://kimi-game-rank.wuaze.com（v3.58.0）
+<strong>镜像站</strong>：https://kimi-game-rank.byethost33.com（v3.48.2）
+<strong>事件窗口</strong>：2026-11-02 13:15 — 2026-11-06 07:18（北京时间）
+<strong>攻击次数</strong>：三次（主站两次、镜像站一次）
+<strong>受影响用户</strong>：194 名注册用户、约 400 件作品
+<strong>通报时间</strong>：2026-11-06
+<strong>通报性质</strong>：公开通报。本通报陈述的每一项事实，均有数据库记录、请求日志、文件比对或主机商通知作为依据；不含任何未经证实的人身指控。</p>
+<hr>
+<h2 id="s1">一、导读：这份通报要说清三件事</h2>
+<p><strong>第一，发生了什么。</strong> 11 月 3 日至 4 日，这个站被攻击了三次：两次打进后台删数据、改公告，一次把备份站打停。不是故障，不是流量异常，是有人拿着管理员密码进来的。</p>
+<p><strong>第二，怎么证明是他。</strong> 我们不靠猜。登录记录、请求日志、数据比对、版本对照——每一条结论都指向一个具体的字段或一条具体的请求。</p>
+<p><strong>第三，这意味着什么。</strong> 对用户，是数据丢失与信任受损；对攻击者，是《刑法》第二百八十六条、第二百八十五条第二款写明的罪名；对其他站长，是一份可以直接照抄的加固清单。</p>
+<p><strong>这份通报也为一个人写。</strong> 如果你正在读它，并且知道自己做了什么——第十章的每一句话都不是修辞。</p>
+<hr>
+<h2 id="s2">二、结论</h2>
+<p><strong>这是一次有预谋、有针对性、分工明确的入侵与破坏。三次攻击，两次得手，两台服务器先后被打停。</strong></p>
+<p>三句话：</p>
+<ol>
+<li><strong>他手里有管理员密码。</strong> 11-03 15:13:42 与 11-04 18:35:34，<code>admin</code> 账号两次登录全部成功——不是绕过登录，不是撞库碰巧，是密码直接敲对了。</li>
+<li><strong>他连管理员密钥也有。</strong> 站内修改公告必须通过控制面板的二次验证（管理员密钥），他改成功了。<strong>两把钥匙都在他手上。</strong></li>
+<li><strong>他删了数据，然后把服务器打垮。</strong> 193 个账号、200 件作品被删除，公告被换成一篇以站长口吻写的"已回档"声明；随后用两个不设防的接口，在 30 分钟内制造约 <strong>21.6 万次数据库操作</strong>，让主机商先后停掉主站与镜像站。</li>
+</ol>
+<p>三次攻击的分布：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>时间（北京）</th>
+<th>目标</th>
+<th>手法</th>
+<th>结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第一次</td>
+<td>11-03 15:13 起</td>
+<td>主站</td>
+<td>管理员凭据登录 → 批量删作品 → 压量</td>
+<td>作品 400 → 36，主站停站</td>
+</tr>
+<tr>
+<td>第二次</td>
+<td>11-04 18:35 起</td>
+<td>主站</td>
+<td>再次登录 → 清空作品与账号 → 伪造公告 → 双通道 DDoS</td>
+<td>作品归零、193 个账号消失、主站停站</td>
+</tr>
+<tr>
+<td>第三次</td>
+<td>11-04 22:02 起</td>
+<td>镜像站</td>
+<td>纯流量压量</td>
+<td>只被打停，数据一条未动</td>
+</tr>
+</tbody>
+</table>
+<p><strong>攻击者的四个特征</strong>：</p>
+<ul>
+<li><strong>多 IP 轮换</strong>：1,205 次管理操作，用了 <strong>1,193 个不同 IP</strong>，平均一个 IP 只用一次。</li>
+<li><strong>脚本化</strong>：请求间隔严格 1–2 秒，五六个一组，<strong>没有一次同秒并发</strong>——人手点不出这种节奏。</li>
+<li><strong>递进式</strong>：先删大半（留 36 件）试探反应，未被发现后彻底清零，再转向备份站。</li>
+<li><strong>反侦查</strong>：逐请求换 IP、事后删除对自己不利的预警记录、伪造公告把入侵包装成运维事故。</li>
+</ul>
+<hr>
+<h2 id="s3">三、被攻击的是个什么东西</h2>
+<p>先把受害对象说清楚，因为它决定了这件事的性质。</p>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>站点性质</td>
+<td>非商业性作品排行榜，收录 Kimi 社区用户做的作品，由一个人维护</td>
+</tr>
+<tr>
+<td>内容来源</td>
+<td>全部由社区用户一件一件提交</td>
+</tr>
+<tr>
+<td>收入</td>
+<td><strong>无</strong>。无充值、无广告、无付费内容、无任何变现</td>
+</tr>
+<tr>
+<td>事件前规模</td>
+<td>注册用户 <strong>194 名</strong>，作品约 <strong>400 件</strong></td>
+</tr>
+<tr>
+<td>技术架构</td>
+<td>PHP + MariaDB，前端原生 JS，托管在免费主机上</td>
+</tr>
+<tr>
+<td>主机账户</td>
+<td>if0_42664755（InfinityFree 免费套餐）</td>
+</tr>
+<tr>
+<td>源码</td>
+<td>以 AGPL-3.0 在 GitHub 公开</td>
+</tr>
+<tr>
+<td>镜像站</td>
+<td>站长自建的备份与容灾站，与主站互为副本</td>
+</tr>
+</tbody>
+</table>
+<p><strong>为什么要专门写这一节</strong>：</p>
+<ul>
+<li><strong>它没有钱。</strong> 所以这不是图财——删数据和打流量都换不到一分钱。</li>
+<li><strong>它只有 194 个用户。</strong> 所以这不是"打大站蹭名声"——收益与成本完全不成比例。</li>
+<li><strong>它的内容全属于用户。</strong> 200 件作品是 200 个作者花时间做出来的东西，不是平台自有资产。删掉它们，等于抹掉 200 个人的劳动。</li>
+</ul>
+<p><strong>一个无收入、单人维护、194 个用户的小站，值得提前十二天预警、铺 1,193 个 IP、写两套脚本、三天打三次、打垮两台服务器。这件事本身，就是动机的答案。</strong></p>
+<hr>
+<h2 id="s4">四、三次攻击全记录</h2>
+<p>按时间顺序。每一次都写清四件事：他怎么准备的、怎么动手的、造成什么、留下什么痕迹。</p>
+<h3 id="s4-1">4.1 前置：十月二十一日的预警</h3>
+<p><strong>10 月 21 日深夜，一位外国用户在站内「世界对话」用英文反复发警告。</strong></p>
+<p>大意是：你写了一套非常糟糕的认证逻辑，<strong>在修好之前请把站关掉</strong>。</p>
+<p>站内内容审核拦截了原文，他把关键词拆成好几段才发出来。站长回复问了具体问题，<strong>没有立刻排查</strong>。</p>
+<p><strong>这段话现在回头看，不是客套，是提前十二天的预告。</strong> 而且它同时说明：这套认证逻辑的缺陷，在公开场合是可以被看出来的——所以攻击者不可能是"偶然撞上"。</p>
+<h3 id="s4-2">4.2 第一次攻击：入侵主站（11 月 3 日）</h3>
+<h4>动手前一天：试探</h4>
+<p><strong>11-02 13:15:13</strong>，有人在注册页填入邮箱 <code>sea@petalmail.com</code>，请求发送绑定验证码。</p>
+<p>三个细节值得注意：</p>
+<ul>
+<li>这个邮箱的域名<strong>真实存在</strong>，但<strong>服务已经停止运营</strong>——发出去的信没人收得到。</li>
+<li>这次请求是<strong>未登录状态</strong>发起的（<code>user_id=0</code>）。</li>
+<li>验证码有效期只有两分钟，之后有人<strong>试填过一次</strong>，失败。</li>
+</ul>
+<p><strong>用一收不到信的邮箱去绑定账号，本身没有任何意义。</strong> 它唯一的作用是测试：这套邮箱系统能不能用、报错会不会泄露信息、有没有频率限制。</p>
+<h4>动手当天下午：热身</h4>
+<p><strong>14:57 到 15:07，一个叫 <code>callaormfv</code> 的账号连续登录十余次，全部成功，每次换一个 IP。</strong></p>
+<table>
+<thead>
+<tr>
+<th>时间</th>
+<th>账号</th>
+<th>结果</th>
+<th>来源 IP（哈希前 8 位）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>14:57:51</td>
+<td><code>callaormfv</code></td>
+<td>成功</td>
+<td><code>027b6f51</code></td>
+</tr>
+<tr>
+<td>14:58:00</td>
+<td><code>callaormfv</code></td>
+<td>成功</td>
+<td><code>838c4c25</code></td>
+</tr>
+<tr>
+<td>14:58:10</td>
+<td><code>callaormfv</code></td>
+<td>成功</td>
+<td><code>f1412386</code></td>
+</tr>
+<tr>
+<td>14:58:36</td>
+<td><code>callaormfv</code></td>
+<td>成功</td>
+<td><code>027b6f51</code></td>
+</tr>
+<tr>
+<td>…（共十余次，跨 9 个 IP）</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>15:07:04</td>
+<td><code>callaormfv</code></td>
+<td>成功</td>
+<td><code>f1412386</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>这不是正常用户。</strong> 正常人不会在十分钟内换九个 IP 登同一个账号，更不会次次成功。</p>
+<p>同一时段还有第二件事：</p>
+<p><strong>15:00:22 到 15:01:14，一个叫 <code>nosuchus</code> 的账号连续登录失败 9 次</strong>，IP 同样在轮换。</p>
+<p>这是在探两件事：<strong>哪些账号存在</strong>、<strong>错误提示会不会泄露"账号不存在"与"密码错误"的差异</strong>。</p>
+<h4>15:13:42：管理员登录成功</h4>
+<p><strong><code>admin</code> 登录成功。</strong></p>
+<p>这个账号的密码是 32 位随机串。两次登录都是<strong>一次就对</strong>。</p>
+<p>14 秒后——<strong>15:13:57</strong>——第一条管理接口调用发出。从这一刻起，剩下的都不是人在操作。</p>
+<h4>15:50–16:09：批量删除</h4>
+<table>
+<thead>
+<tr>
+<th>时间</th>
+<th>管理接口调用次数</th>
+<th>特征</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>15:50–15:59</td>
+<td>230 次</td>
+<td>几乎全部固定执行 12 次数据库操作</td>
+</tr>
+<tr>
+<td>16:00–16:09</td>
+<td>218 次</td>
+<td>同上</td>
+</tr>
+</tbody>
+</table>
+<p><strong>节奏</strong>：间隔 1 秒占 312 次、2 秒占 143 次（合计 93%），<strong>一次同秒并发都没有</strong>，连续段固定 5–6 个一组，中间停十几秒。</p>
+<p><strong>结果：作品从约 400 件降到 36 件。</strong></p>
+<h4>当天晚间：主站第一次停站</h4>
+<p>请求量触发主机商的滥用保护机制。</p>
+<p><strong>当时未识别为攻击，没有留下面板截图。</strong> 这是本次调查中最可惜的一处缺失——第一次攻击的现场数据，只留下了数据库里的结果。</p>
+<h4>留下的痕迹</h4>
+<ul>
+<li><code>user_visits</code> 一条：<code>uid=8</code>、IP 归属地<strong>广东广州</strong>、<code>ip_hash=d213deea…</code></li>
+<li><code>login_attempts</code> 一条：账号 <code>admin</code>、<code>success=1</code></li>
+<li>请求记录 491 条管理调用，间隔 1–2 秒</li>
+<li>作品表从约 400 行变成 36 行</li>
+</ul>
+<h3 id="s4-3">4.3 第二次攻击：清空主站（11 月 4 日）</h3>
+<h4>18:35:34：再次登录</h4>
+<p><strong><code>admin</code> 第二次登录成功。</strong> IP 归属地显示<strong>广东深圳</strong>。</p>
+<p>有人会问：11-03 拿到的令牌七日有效，为什么还要再登录一次？</p>
+<p><strong>我们不知道。</strong> 这是一个未解问题，写在第十二章。可能是主动换会话，也可能是不同的人或不同的机器。</p>
+<h4>18:40–19:09：清空</h4>
+<table>
+<thead>
+<tr>
+<th>时间</th>
+<th>调用次数</th>
+<th>主要动作（按数据库操作次数推断）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>18:40–18:49</td>
+<td>147 次</td>
+<td>先读列表、再筛、再改</td>
+</tr>
+<tr>
+<td>18:50–18:59</td>
+<td>270 次</td>
+<td>批量写入，其中 176 次是同一个批量流程</td>
+</tr>
+<tr>
+<td>19:00–19:09</td>
+<td>235 次</td>
+<td>反复拉列表核对结果</td>
+</tr>
+</tbody>
+</table>
+<p><strong>"读 → 筛 → 写 → 再读核对"</strong>，这是一段带确认步骤的自动化流程，不是一个人翻后台。</p>
+<p><strong>结果：作品清零，193 个账号被删除。</strong></p>
+<h4>19:10:57：伪造公告</h4>
+<p><strong>这一刻，数据库里同时发生两件事</strong>：</p>
+<ol>
+<li>站内公告表的内容被替换，<code>updated_at</code> 变成 <code>19:10:57</code></li>
+<li>设置表里的公告字段同步变成同一段文字，<strong>逐字一致</strong></li>
+</ol>
+<p>公告全文（100 字）：</p>
+<blockquote>
+<p>【系统公告】站点已完成 v3.58.0 升级，数据库结构重建，全部作品与账号已回档至 11 月 2 日快照。期间注册的账号、提交的作品、评论与对话均已清空，请重新注册后重新提交。给你带来不便，敬请谅解。</p>
+</blockquote>
+<p><strong>两个要害</strong>：</p>
+<ul>
+<li><strong>它用站长的口吻写成。</strong> 读起来像站方自己发的通知。</li>
+<li><strong>它把"数据被删"包装成"系统升级后的正常回档"。</strong> 用户的第一反应不是"被攻击了"，而是"站长是不是跑路了"。</li>
+</ul>
+<p>三分钟后，站内缓存重建，首页四个分类的作品计数全部变成 <strong>0</strong>。</p>
+<p><strong>首页看起来，这个站已经空了。</strong></p>
+<h4>19:31–20:01：把服务器打垮</h4>
+<p>这是整件事里最隐蔽的环节，也是停站的直接原因。</p>
+<p><strong>两个接口，两个通道，都不需要登录：</strong></p>
+<table>
+<thead>
+<tr>
+<th>通道</th>
+<th>请求数</th>
+<th>数据库操作</th>
+<th>特征</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>作品列表接口</td>
+<td><strong>10,088 次</strong></td>
+<td>10,088 × 7 = <strong>70,616 次查询</strong></td>
+<td>单 IP，峰值 <strong>171 次/秒</strong>，同一秒大量并发</td>
+</tr>
+<tr>
+<td>数据上报接口</td>
+<td><strong>约 1,821 次</strong></td>
+<td><strong>145,655 次写入</strong></td>
+<td>单请求最多收 80 条，<strong>每条单独写一次数据库</strong></td>
+</tr>
+<tr>
+<td><strong>合计</strong></td>
+<td><strong>约 12,247 次</strong></td>
+<td><strong>约 216,271 次</strong></td>
+<td>全部集中在 <strong>30 分钟内</strong></td>
+</tr>
+</tbody>
+</table>
+<p>第二个通道的要害是<strong>写入放大</strong>：</p>
+<p><strong>发 1 个请求，服务器要做 80 次数据库写入。</strong> 1,821 个请求，换来 14.5 万次写库。</p>
+<p>而且这个接口<strong>不被请求监控采集</strong>——监控代码里写着"不采集监测接口自身，避免自激"。</p>
+<p>结果就是：<strong>19:58:09 那一秒，请求日志里 0 条记录，数据库里进了 1,813 条。</strong></p>
+<p><strong>一个人在打数据库，监控面板上一切正常。</strong></p>
+<p>这也是为什么主机商比站长先发现问题——他们看到的不是流量，是 CPU 和入口进程被占满。</p>
+<h4>20:02：主站被暂停</h4>
+<p>主机商的理由：「达到每日资源上限、每日点击上限」。</p>
+<h4>留下的痕迹</h4>
+<ul>
+<li><code>user_visits</code> 一条：<code>uid=8</code>、IP 归属地<strong>广东深圳</strong>、<code>ip_hash=bc05bc0b…</code></li>
+<li><code>login_attempts</code> 一条：账号 <code>admin</code>、<code>success=1</code></li>
+<li>714 次管理调用，间隔 1–2 秒</li>
+<li>19:10:57 那一条：<code>api/admin.php</code> POST 200，执行 9 次数据库操作</li>
+<li>若干 1,193 个不同 IP 的记录</li>
+</ul>
+<h3 id="s4-4">4.4 第三次攻击：打停镜像站（11 月 4 日 22:02）</h3>
+<p><strong>主站停站两小时后，目标转向镜像站。</strong></p>
+<p>这一站的情况完全不同：</p>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>主站</th>
+<th>镜像站</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>版本</td>
+<td>v3.58.0（825 个文件）</td>
+<td>v3.48.2（657 个文件）</td>
+</tr>
+<tr>
+<td>数据</td>
+<td>被删除、被篡改</td>
+<td><strong>一条未动</strong></td>
+</tr>
+<tr>
+<td>管理接口调用</td>
+<td>1,205 次</td>
+<td><strong>9 次</strong>（均为站长自己的操作）</td>
+</tr>
+<tr>
+<td>攻击形态</td>
+<td>入侵 + 破坏 + 压量</td>
+<td><strong>纯压量</strong></td>
+</tr>
+<tr>
+<td>停站时长</td>
+<td>24 小时</td>
+<td>24 小时</td>
+</tr>
+</tbody>
+</table>
+<p><strong>这个对照是整个事件里最重要的线索之一。</strong></p>
+<p>同一批人、同一个晚上、两台同源代码的站：一台被进去删了数据，另一台只是被打停。</p>
+<p><strong>原因在版本差集里。</strong></p>
+<p>用两个版本的完整文件树逐文件比对（GitHub Git Data API，v3.48.2 共 657 文件 / v3.58.0 共 825 文件）：</p>
+<ul>
+<li>新增的对外接口文件<strong>只有 <code>api/account.php</code></strong> 一个</li>
+<li><code>api/auth.php</code> 新增四个动作：<code>reg_send</code>、<code>login_2fa</code>、<code>login_send</code>、<code>login_code</code></li>
+<li><code>api/admin.php</code> 新增五个动作，全部在鉴权之后，不构成新攻击面</li>
+</ul>
+<p><strong>镜像站运行的版本里，"邮箱 + 验证码登录"这套系统根本不存在。</strong></p>
+<p>所以：</p>
+<ul>
+<li><strong>镜像站不是"防住了"，是"没有那个入口"。</strong></li>
+<li><strong>攻击者对两台站做过版本甄别</strong>——这排除了"无差别压量"的可能。</li>
+<li><strong>镜像站的价值在于它保住了全部证据</strong>：它上面有一份破坏前的完整数据（含 200 条作品），成了唯一能还原被删内容的来源。</li>
+</ul>
+<h3 id="s4-5">4.5 恢复（11 月 5 日 — 6 日）</h3>
+<table>
+<thead>
+<tr>
+<th>时间</th>
+<th>动作</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>11-04 晚</td>
+<td>确认攻击性质；停掉对外服务；另存破坏前的备份；从缓存里取出伪造公告原文存档</td>
+</tr>
+<tr>
+<td>11-05</td>
+<td>整站 <strong>944 个文件逐字节比对</strong>：663 个与仓库一致，其余差异全是部署产物（缓存、锁文件、上传目录）</td>
+</tr>
+<tr>
+<td>11-05</td>
+<td><strong>没有后门，没有木马，没有新增账号，没有计划任务</strong></td>
+</tr>
+<tr>
+<td>11-05 20:02 / 22:03</td>
+<td>主站与镜像站按主机规则自动恢复</td>
+</tr>
+<tr>
+<td>11-06 07:18</td>
+<td>镜像站解封，<strong>数据一条没动</strong></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="s5">五、他做了什么：15 个动作</h2>
+<p>按动作列，不按阶段列。每一条都能对应到具体的数据库字段或请求记录。</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>时间（北京）</th>
+<th>动作</th>
+<th>手法</th>
+<th>后果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>11-02 13:15</td>
+<td>用停服邮箱请求绑定验证码，试填一次</td>
+<td>试探邮箱系统的可用性与错误提示</td>
+<td>留下一条测试记录</td>
+</tr>
+<tr>
+<td>2</td>
+<td>11-03 14:57–15:07</td>
+<td><code>callaormfv</code> 在 9 个 IP 上连续登录成功十余次</td>
+<td>确认账号可用、试探限速、铺 IP 池</td>
+<td>—</td>
+</tr>
+<tr>
+<td>3</td>
+<td>11-03 15:00–15:01</td>
+<td><code>nosuchus</code> 连续登录失败 9 次</td>
+<td>探测账号存在性</td>
+<td>—</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>11-03 15:13:42</strong></td>
+<td><strong>用正确密码登录 <code>admin</code></strong></td>
+<td>持凭据登录</td>
+<td><strong>取得管理员身份</strong></td>
+</tr>
+<tr>
+<td>5</td>
+<td>11-03 15:13:57 – 16:09</td>
+<td>491 次管理调用</td>
+<td>脚本，1–2 秒一次，5 连发</td>
+<td>—</td>
+</tr>
+<tr>
+<td>6</td>
+<td>11-03 15:50–16:09</td>
+<td>448 次批量调用</td>
+<td>批量清理流程</td>
+<td><strong>作品 400 → 36</strong></td>
+</tr>
+<tr>
+<td>7</td>
+<td>11-03 晚间</td>
+<td>打请求触发主机滥用保护</td>
+<td>资源耗尽</td>
+<td><strong>主站第一次停站</strong></td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>11-04 18:35:34</strong></td>
+<td><strong>再次登录 <code>admin</code></strong></td>
+<td>同上</td>
+<td><strong>重获管理员身份</strong></td>
+</tr>
+<tr>
+<td>9</td>
+<td>11-04 18:40–19:09</td>
+<td>652 次管理调用</td>
+<td>批量删除、清空</td>
+<td><strong>作品归零</strong></td>
+</tr>
+<tr>
+<td>10</td>
+<td>11-04 18:40–19:09</td>
+<td>删除账号</td>
+<td>逐个删除</td>
+<td><strong>193 个账号消失</strong></td>
+</tr>
+<tr>
+<td>11</td>
+<td><strong>11-04 19:10:57</strong></td>
+<td><strong>写入伪造公告</strong>（同时改公告表与设置表）</td>
+<td>调用正常"改公告"接口</td>
+<td><strong>用户误以为数据已回档</strong></td>
+</tr>
+<tr>
+<td>12</td>
+<td>11-04 19:10 前后</td>
+<td>清空四个分类计数</td>
+<td>触发缓存重建</td>
+<td><strong>首页显示"什么都没有"</strong></td>
+</tr>
+<tr>
+<td>13</td>
+<td>11-04 19:31–20:01</td>
+<td>单 IP 刷作品接口 <strong>10,088 次</strong></td>
+<td>查询洪泛，峰值 171 次/秒</td>
+<td><strong>服务器负载打满</strong></td>
+</tr>
+<tr>
+<td>14</td>
+<td>11-04 19:46–19:58</td>
+<td>同一 IP 灌入 <strong>145,655 条事件</strong></td>
+<td><strong>写入放大</strong>，1,821 请求 → 14.5 万次写库</td>
+<td><strong>数据库被打爆</strong></td>
+</tr>
+<tr>
+<td>15</td>
+<td>11-04 20:02 / 22:02</td>
+<td>主站、镜像站先后被停</td>
+<td>借用平台资源规则</td>
+<td><strong>两站各停 24 小时</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="s5-1">5.1 他刻意做的三件事</h3>
+<ol>
+<li><strong>清理对自己不利的记录。</strong> 那位外国用户预警的"世界对话"与"反馈问题"两处，记录被专门处理。随机破坏不会挑这两处。</li>
+<li><strong>用站长的口吻宣布"已回档"。</strong> 让入侵看起来像运维事故，降低用户追问与举报的意愿。</li>
+<li><strong>把最猛的一轮压在人最可能在场的时段。</strong> 18:35 登录、19:10 出公告、19:52 起打接口。</li>
+</ol>
+<h3 id="s5-2">5.2 他刻意没做的四件事</h3>
+<ol>
+<li><strong>没改一个字节的代码。</strong> 944 个文件逐字节比对，无后门、无木马、无可执行文件。</li>
+<li><strong>没动数据库层。</strong> 如果他有数据库账号，第一件事就是删掉那两条能定位自己的登录记录。<strong>记录还在。</strong></li>
+<li><strong>没碰用户密码。</strong> 被删账号是整行消失，不是被改成别人的密码。</li>
+<li><strong>没留持久化后门。</strong> 没有新增账号、没有计划任务、没有异常文件。</li>
+</ol>
+<p><strong>这四件"没做"说明两件事</strong>：</p>
+<ul>
+<li>他的权限边界在<strong>应用层</strong>，不是系统层、不是数据库层。</li>
+<li>他的目的不是长期控制，而是<strong>让这个站消失</strong>。所以他不需要 webshell，也不需要数据库账号。</li>
+</ul>
+<hr>
+<h2 id="s6">六、证据：我们掌握了什么</h2>
+<p>这一章写给三类人看：想看证据的用户、想判断可信度的同行、以及准备受理案件的人。</p>
+<h3 id="s6-1">6.1 密码是真的——这不是漏洞利用，是持凭据登录</h3>
+<p>登录尝试表里有两条 <code>admin</code> 的成功记录：</p>
+<table>
+<thead>
+<tr>
+<th>时间</th>
+<th>账号</th>
+<th>结果</th>
+<th>来源 IP（哈希）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>11-03 15:13:42</td>
+<td><code>admin</code></td>
+<td><strong>成功</strong></td>
+<td><code>d7b0ff6b…</code></td>
+</tr>
+<tr>
+<td>11-04 18:35:34</td>
+<td><code>admin</code></td>
+<td><strong>成功</strong></td>
+<td><code>801d90c2…</code></td>
+</tr>
+</tbody>
+</table>
+<p>这个账号的密码是 32 位随机串，两次都是<strong>一次就对</strong>。</p>
+<p><strong>撞库撞不出一次性命中的 32 位随机串。这是"知道密码"，不是"猜出密码"。</strong></p>
+<p>这条证据的意义：<strong>攻击者不是通过某个漏洞绕过登录进来的，而是持有凭据。</strong> 所以后面所有分析都指向"凭据从哪来"，而不是"哪里能被绕过"。</p>
+<h3 id="s6-2">6.2 管理员密钥也在他手上</h3>
+<p>站点的控制面板有二次验证：进入后台必须再输一次管理员密钥，通过后 1 小时内有效。</p>
+<p>修改公告这个动作<strong>必须通过这道验证</strong>。</p>
+<p>他在 19:10:57 改成功了。而当时站长的浏览器不在他手上。</p>
+<p><strong>唯一解释：他同时掌握了管理员密钥。</strong></p>
+<p>这条证据的意义：他不是"拿到了一个后台会话"，而是<strong>两把钥匙都有</strong>。这也解释了为什么"18:35 某人在四川登录、19:10 有人在改公告"看起来不连贯——动手的人不一定是有浏览器的人。</p>
+<h3 id="s6-3">6.3 伪造公告精确可定位到一秒</h3>
+<p>请求记录里有一条：</p>
+<pre><code>时间：2026-11-04 19:10:57
+接口：api/admin.php
+方法：POST
+状态：200
+数据库操作：9 次
+来源 IP 哈希：7ab6c45085…
+</code></pre>
+<p>同一秒，数据库里：</p>
+<ul>
+<li><code>announcements.updated_at</code> = <code>2026-11-04 19:10:57</code></li>
+<li><code>announcements.content</code> 与 <code>settings['announcement']</code> <strong>逐字一致</strong></li>
+</ul>
+<p><strong>全站只有一处代码会同时写这两处</strong>——就是"改公告"这个接口。</p>
+<p><strong>手工改数据库的人通常只改一张表，不会同步维护设置表。</strong></p>
+<p>这条证据的意义：这不是"数据库被人直接动了"，而是<strong>通过应用接口执行的操作</strong>。它同时证明：攻击者的权限止于应用层。</p>
+<h3 id="s6-4">6.4 1,205 次管理操作，1,193 个 IP</h3>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>数值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>管理接口调用总数</td>
+<td><strong>1,205 次</strong>（11-03 起）</td>
+</tr>
+<tr>
+<td>其中成功</td>
+<td>1,186 次</td>
+</tr>
+<tr>
+<td>返回 403</td>
+<td>18 次</td>
+</tr>
+<tr>
+<td>去重 IP 哈希</td>
+<td><strong>1,193 个</strong></td>
+</tr>
+<tr>
+<td>平均每个 IP 使用次数</td>
+<td><strong>1.01 次</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>正常运维不会这样。</strong> 一个人在两天里换 1,193 个网络出口，只能有一个目的：<strong>回避基于 IP 的封禁与追溯</strong>。</p>
+<p>这条证据的意义：它不仅证明"这是攻击"，还证明<strong>攻击者明知自己的行为违法</strong>——否则不需要这样的隐匿设计。</p>
+<h3 id="s6-5">6.5 节奏证明这是脚本</h3>
+<p>把管理请求按秒展开，看相邻请求的间隔：</p>
+<table>
+<thead>
+<tr>
+<th>间隔</th>
+<th>11-03（491 次）</th>
+<th>11-04（701 次）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0 秒</td>
+<td><strong>312</strong></td>
+<td><strong>399</strong></td>
+</tr>
+<tr>
+<td>2.0 秒</td>
+<td><strong>143</strong></td>
+<td><strong>173</strong></td>
+</tr>
+<tr>
+<td>3–4 秒</td>
+<td>5</td>
+<td>40</td>
+</tr>
+<tr>
+<td>5 秒以上</td>
+<td>约 31</td>
+<td>约 89</td>
+</tr>
+<tr>
+<td><strong>同一秒内并发</strong></td>
+<td><strong>0</strong></td>
+<td><strong>0</strong></td>
+</tr>
+<tr>
+<td>连续段最长</td>
+<td>5</td>
+<td>5</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>93% 与 82% 的间隔落在 1 秒或 2 秒。</strong></li>
+<li><strong>一次同秒并发都没有</strong>——说明是串行循环，一次等一次返回。</li>
+<li><strong>固定五六个一组，中间停十几秒</strong>——批处理脚本的典型形状。</li>
+</ul>
+<p><strong>人手点不出这种节奏。</strong></p>
+<p>这条证据的意义：排除了"人手动操作"，也排除了"偶然的流量异常"。这是<strong>预先写好的程序</strong>在跑。</p>
+<h3 id="s6-6">6.6 双通道 DDoS：一个 IP，21.6 万次数据库操作</h3>
+<table>
+<thead>
+<tr>
+<th>通道</th>
+<th>请求数</th>
+<th>数据库操作</th>
+<th>峰值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>作品列表接口</td>
+<td>10,088 次</td>
+<td>70,616 次查询</td>
+<td>171 次/秒</td>
+</tr>
+<tr>
+<td>数据上报接口</td>
+<td>约 1,821 次</td>
+<td>145,655 次写入</td>
+<td>2,725 条/秒</td>
+</tr>
+<tr>
+<td><strong>合计</strong></td>
+<td><strong>约 12,247 次</strong></td>
+<td><strong>约 216,271 次</strong></td>
+<td>30 分钟内</td>
+</tr>
+</tbody>
+</table>
+<p><strong>这两个数字要分开看</strong>：</p>
+<ul>
+<li>请求数 <strong>12,247</strong> —— 看起来不多，一天几千次请求对任何网站都不算什么。</li>
+<li>数据库操作 <strong>216,271</strong> —— 在 30 分钟内，共享主机的数据库扛不住。</li>
+</ul>
+<p><strong>差距从哪来</strong>：数据上报接口单请求最多收 80 条，每条单独写一次库。<strong>发 1 个请求，服务器做 80 次写入。</strong> 这就是"写入放大"。</p>
+<p><strong>而且这个接口不被请求监控采集</strong>——这一条写在监控代码里，原文是"不采集监测接口自身，避免自激"。</p>
+<p>结果：<strong>19:58:09 那一秒，请求日志 0 条，数据库 1,813 条。</strong></p>
+<p>这条证据的意义：主机商判定的"资源超额"不是流量问题，是<strong>数据库被写入打爆</strong>。这也解释了为什么"看起来没什么请求"却会被停站。</p>
+<h3 id="s6-7">6.7 数据是"被删除"，不是"丢失"</h3>
+<table>
+<thead>
+<tr>
+<th>表</th>
+<th>现在的行数</th>
+<th>事件前</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>作品 <code>works</code></td>
+<td><strong>0</strong></td>
+<td>约 400（镜像站备份中有 200）</td>
+<td>全表清空，导出文件里连一条 INSERT 都没有</td>
+</tr>
+<tr>
+<td>账号 <code>users</code></td>
+<td><strong>1</strong></td>
+<td><strong>194</strong></td>
+<td><strong>193 个账号被删除</strong>，只剩管理员</td>
+</tr>
+<tr>
+<td>评论 <code>comments</code></td>
+<td>4</td>
+<td>更多</td>
+<td>中间 id 断裂，被批量删除</td>
+</tr>
+<tr>
+<td>公告 <code>announcements</code></td>
+<td>1</td>
+<td>1</td>
+<td>内容被替换，编号未变——<strong>改写而非新建</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>反证</strong>：<code>checkins</code> 表里还残留着 <strong>157 个不同用户 id、最大 id 到 236</strong>；<code>user_visits</code> 表最大 id 为 196。这些痕迹说明：<strong>这个站原来确实有近两百个用户</strong>。</p>
+<p><strong>同一天、同一批人，镜像站的数据一条没动。</strong></p>
+<p><strong>能选择"删什么、不删什么"，是操作，不是故障。</strong></p>
+<h3 id="s6-8">6.8 邮件系统是"试探过的门"，不是"走进来的门"</h3>
+<p>11-02 那次发码之后，邮箱验证码表里<strong>再没有任何新记录</strong>。</p>
+<p>如果攻击者真走过"绑自己邮箱 → 邮箱码登录"这条路，必然留下发码与消费记录。</p>
+<p><strong>没有。</strong> 而且管理员账号的邮箱三列全为空——从没有人绑过邮箱。</p>
+<p>这条证据的意义：<strong>排除了一个看起来很合理的假设。</strong> 很多人第一反应是"他换绑了管理员邮箱"，数据说不是。</p>
+<h3 id="s6-9">6.9 版本差集锁定了攻击面</h3>
+<p>GitHub 两个版本的完整文件树比对：</p>
+<table>
+<thead>
+<tr>
+<th>版本</th>
+<th>文件数</th>
+<th>有"邮箱 + 验证码登录"系统</th>
+<th>本次结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>v3.48.2（镜像站）</td>
+<td>657</td>
+<td><strong>没有</strong></td>
+<td>只被打停，数据未动</td>
+</tr>
+<tr>
+<td>v3.58.0（主站）</td>
+<td>825</td>
+<td><strong>有</strong></td>
+<td>被入侵，数据被删</td>
+</tr>
+</tbody>
+</table>
+<p><strong>新增的对外接口只有 <code>api/account.php</code> 一个。</strong></p>
+<p>这条证据的意义：它把"漏洞在哪"从"全站猜"缩小到"新增的这一个系统及其配套"。同时证明攻击者做过版本甄别。</p>
+<hr>
+<h2 id="s7">七、预谋性与针对性</h2>
+<p>判断"预谋"还是"随机"，看四件事：准备、选择、节奏、收尾。本案四项俱全。</p>
+<h3 id="s7-1">7.1 准备：至少提前十二天</h3>
+<table>
+<thead>
+<tr>
+<th>时间</th>
+<th>动作</th>
+<th>意义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>10-21 深夜</td>
+<td>公开指出这套认证逻辑有严重缺陷，建议关站整改</td>
+<td><strong>他先说了，才动手</strong></td>
+</tr>
+<tr>
+<td>11-02 13:15</td>
+<td>用停服邮箱试探邮箱系统</td>
+<td>动手前一天测试入口</td>
+</tr>
+<tr>
+<td>11-03 14:57 起</td>
+<td>普通账号在 9 个 IP 上连续登录十余次</td>
+<td>确认账号可用、试探限速、铺 IP 池</td>
+</tr>
+<tr>
+<td>11-03 15:00 起</td>
+<td>试一个不存在的账号 9 次</td>
+<td>探测账号存在性与错误提示差异</td>
+</tr>
+<tr>
+<td>11-03 15:13</td>
+<td><code>admin</code> 登录成功</td>
+<td><strong>真正开始</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>从被指出缺陷到真正动手，中间隔了十二天。</strong></p>
+<p>这十二天里他做的事是准备，不是尝试。这个时间差本身就是主观故意的证明：<strong>他知道有问题、知道问题在哪、也知道怎么用。</strong></p>
+<h3 id="s7-2">7.2 选择：只挑两个不设防的接口</h3>
+<p>站点有几十个接口。他用了哪几个？</p>
+<table>
+<thead>
+<tr>
+<th>接口</th>
+<th>是否需要登录</th>
+<th>是否有频率限制</th>
+<th>是否被监控采集</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>作品列表接口</td>
+<td><strong>否</strong></td>
+<td><strong>否</strong></td>
+<td>是</td>
+</tr>
+<tr>
+<td>数据上报接口</td>
+<td><strong>否</strong></td>
+<td><strong>否</strong></td>
+<td><strong>否</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>这两个是他刷量时用的。</strong> 其余需要登录、需要 CSRF、有限速的接口，一个都没碰。</p>
+<p><strong>这不是试出来的，是看过后挑的。</strong></p>
+<p>配合另一条：本站源码以 AGPL-3.0 公开在 GitHub。<strong>必须假设对方读过全部代码。</strong></p>
+<p><strong>这条也决定了防御思路</strong>：你不能靠"隐藏接口"来防御一个读过源码的人。唯一可靠的是服务端在每个请求上重新核对身份与权限。</p>
+<h3 id="s7-3">7.3 节奏：脚本化、批量化、可中断可续</h3>
+<table>
+<thead>
+<tr>
+<th>特征</th>
+<th>数据</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>管理操作时长</td>
+<td>11-03 约 1 小时；11-04 约 1.5 小时</td>
+</tr>
+<tr>
+<td>请求间隔</td>
+<td>1 秒或 2 秒占 82%–93%</td>
+</tr>
+<tr>
+<td>连续段</td>
+<td>固定 5–6 个一组，中间停十几秒</td>
+</tr>
+<tr>
+<td>管理操作同秒并发</td>
+<td><strong>0 次</strong>（严格串行）</td>
+</tr>
+<tr>
+<td>刷量侧同秒并发</td>
+<td><strong>大量</strong>（同一秒 171 次）</td>
+</tr>
+</tbody>
+</table>
+<p><strong>管理操作串行、刷量并发。</strong></p>
+<p>同一个人的手不可能同时用两种并发策略。这说明：<strong>至少是两段不同的代码，甚至可能是两个执行者。</strong></p>
+<h3 id="s7-4">7.4 收尾：抹痕与误导</h3>
+<p>按顺序：</p>
+<ol>
+<li><strong>清空四个分类的作品计数</strong>——让首页看起来"什么都没有了"。</li>
+<li><strong>伪造公告</strong>——用站长口吻宣布"已回档至 11 月 2 日快照"。</li>
+<li><strong>清理预警所在的两处记录</strong>——世界对话、反馈问题。</li>
+<li><strong>不装后门、不改代码</strong>——不留可供追查的技术痕迹。</li>
+</ol>
+<p><strong>抹痕 + 误导 + 选择性删除，三者同时出现，是"有意识掩盖"的标准形态。</strong></p>
+<p>一个只想搞破坏的人，不会写一篇语法通顺、口吻贴切、还带"敬请谅解"的公告。</p>
+<h3 id="s7-5">7.5 针对性：不是随机撞上的</h3>
+<table>
+<thead>
+<tr>
+<th>判据</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>目标专一</td>
+<td>三次攻击全压在这两台站上，别处没碰</td>
+</tr>
+<tr>
+<td>删除有指向</td>
+<td>只清对攻击者不利的预警记录</td>
+</tr>
+<tr>
+<td>三波递进</td>
+<td>先删大半（留 36 件），再彻底清零，再转向备份站</td>
+</tr>
+<tr>
+<td>不图财</td>
+<td>站点无收入、无支付、无数据可卖</td>
+</tr>
+<tr>
+<td><strong>版本甄别</strong></td>
+<td>镜像站只有流量攻击、无数据破坏——因为那个版本没有邮箱登录入口</td>
+</tr>
+<tr>
+<td>时机选择</td>
+<td>压在站长登录后的窗口内动手</td>
+</tr>
+<tr>
+<td>双站意识</td>
+<td>主站停站 <strong>2 小时</strong> 后立刻转向镜像站</td>
+</tr>
+</tbody>
+</table>
+<p><strong>最后两条最能说明问题。</strong></p>
+<ul>
+<li>"版本甄别"：如果只是无差别压量，不会出现"一台删数据、另一台只打流量"的分化。这种分化只能来自"他知道两台跑的不是同一个版本"。</li>
+<li>"双站意识"：随机扫描器不会知道这个站还有一个 byethost33 的镜像。</li>
+</ul>
+<p><strong>随机扫描的典型特征是：广撒网、不区分对象、不关心结果。本案完全相反——只打两个站、区分版本、关心"删得干净不干净"。</strong></p>
+<hr>
+<h2 id="s8">八、造成的损失</h2>
+<h3 id="s8-1">8.1 损失总表</h3>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>损失</th>
+<th>依据</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>数据</strong></td>
+<td>作品约 <strong>400 件</strong>被删除；<strong>193 个账号</strong>被删除（原有 194 名用户）；评论被批量删除；公告被篡改</td>
+<td>数据库现状 vs 镜像站备份（备份中有 200 条作品）</td>
+</tr>
+<tr>
+<td><strong>服务</strong></td>
+<td>主站停站两次（11-03 晚间；11-04 20:02 → 11-05 20:02）；镜像站停站一次（11-04 22:02 → 11-05 22:03）</td>
+<td>主机商暂停通知</td>
+</tr>
+<tr>
+<td><strong>运营</strong></td>
+<td>提交、评分、对话、注册反复中断，主站累计 24 小时以上</td>
+<td>同上</td>
+</tr>
+<tr>
+<td><strong>声誉</strong></td>
+<td>伪造公告导致用户误以为站方跑路或数据全失；社区出现质疑</td>
+<td>用户反馈与群内讨论</td>
+</tr>
+<tr>
+<td><strong>恢复成本</strong></td>
+<td>944 个文件逐字节比对、数据库核对与恢复、缓存重建、安全加固与三次发版</td>
+<td>操作记录</td>
+</tr>
+<tr>
+<td><strong>运营投入损失</strong></td>
+<td>30 天内 <strong>约 62 元</strong>已消耗直接支出（DeepSeek 21.9953 元 + ima 算力约 40 元）、1,891 次请求、3.35 亿 tokens、1,280 算力全部耗尽，投入归零重来</td>
+<td>两个平台的账单与用量记录（8.4 节）</td>
+</tr>
+<tr>
+<td><strong>用户损失</strong></td>
+<td>193 名用户的账号数据、签到记录、作品数据被删除；200 件作品是 200 个作者的劳动成果</td>
+<td>数据库与备份对照</td>
+</tr>
+</tbody>
+</table>
+<h3 id="s8-2">8.2 为什么"数据损失"不能按行数算</h3>
+<p><strong>作品不是平台自有的内容资产。</strong></p>
+<p>每一件作品，都是社区里的一个人花时间做出来的：写代码、调样式、想交互、反复改，然后提交到这个站上，希望被人看见、被人评分。</p>
+<p>它们不在别处有备份。删掉一件，就是消失一件。</p>
+<p><strong>200 件作品被删，等于 200 个作者的劳动成果在同一天被人按下删除键。</strong> 这部分损失不能只按"数据库行数"计算，也不能用"网站没收入所以没损失"来否定。</p>
+<p>同样，<strong>193 个账号被删</strong>——不是 193 行数据，是 193 个人在这个社区里的身份、签到记录、评论历史。</p>
+<h3 id="s8-3">8.3 可用于报案的损失量化（模板）</h3>
+<p>报案时，"后果严重"需要用数字支撑。下面这张表可以直接填：</p>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>计算方式</th>
+<th>金额</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>数据恢复工时</td>
+<td>数据库核对、比对、恢复的实际小时数 × 时薪</td>
+<td>待填</td>
+</tr>
+<tr>
+<td>文件完整性核验工时</td>
+<td>944 个文件逐字节比对的实际小时数 × 时薪</td>
+<td>待填</td>
+</tr>
+<tr>
+<td>安全加固开发工时</td>
+<td>三次发版（审计、指纹、权限收口）的实际小时数 × 时薪</td>
+<td>待填</td>
+</tr>
+<tr>
+<td>服务中断损失</td>
+<td>停站时长 × 站点日均运营价值（可按替代成本法估算）</td>
+<td>待填</td>
+</tr>
+<tr>
+<td>数据重建成本</td>
+<td>200 件作品若需重新征集的时间与组织成本</td>
+<td>待填</td>
+</tr>
+<tr>
+<td>应急处置成本</td>
+<td>事件期间的全部投入</td>
+<td>待填</td>
+</tr>
+<tr>
+<td><strong>合计</strong></td>
+<td></td>
+<td><strong>目标：≥10,000 元</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>说明</strong>：即使站点没有收入，投入的工时也是可核算的经济损失。这一栏填满，"造成经济损失一万元以上"的认定就有支撑。</p>
+<h3 id="s8-4">8.4 运营投入：这个站不是零成本</h3>
+<p>有人会说"网站没收入，所以删了也没损失"。这句话是错的。<strong>成本与收入是两件事。</strong></p>
+<p>站方保留了两个平台的全部账单与交易记录，覆盖开发、日常运维与事件处理三个时期：</p>
+<table>
+<thead>
+<tr>
+<th>来源</th>
+<th>计费方式</th>
+<th>金额</th>
+<th>明细</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>DeepSeek API</strong></td>
+<td>按量计费（后付费）</td>
+<td><strong>21.9953 元</strong></td>
+<td>2026-10-08 至 11-06，17 天有消费；<strong>1,891 次请求</strong>；输入 8,220,032 tokens（未命中缓存）+ 326,966,912 tokens（命中缓存）+ 输出 1,509,529 tokens</td>
+</tr>
+<tr>
+<td><strong>ima 算力</strong></td>
+<td>预付费充值，<strong>已全部消耗</strong></td>
+<td><strong>约 40.00 元</strong>（购买 800 算力，按 5 元/100 算力计）</td>
+<td>用量页显示：<strong>购买 800/800、赠送 480/480，合计 1,280 算力，100% 用完</strong>；其中 200 算力原定 2027-09-25 过期、50 算力 2026-11-06 过期</td>
+</tr>
+<tr>
+<td><strong>合计</strong></td>
+<td></td>
+<td><strong>约 61.99 元</strong></td>
+<td>其中 21.9953 元（DeepSeek 账单）与 25 元（5 笔交易流水）有直接凭证，其余约 15 元按同一单价推算</td>
+</tr>
+</tbody>
+</table>
+<p><strong>两项都已消耗完，不存在"还剩余额"的空间</strong>：</p>
+<ul>
+<li>DeepSeek：按 token 结算，<strong>21.9953 元已实际支出</strong>，账单按天可查。</li>
+<li>ima：购买 800 算力 + 活动赠送 480 算力，<strong>1,280 算力全部用完</strong>，用量页显示两条进度条均为 100%。</li>
+</ul>
+<p><strong>也就是说：这个站三十天的开发与运维，光 AI 算力就消耗了约 62 元，且全部为已发生支出。</strong> 日均区间 0.0089 元 — 4.3945 元，峰值出现在 10-31（4.3945 元，制作求助视频那天）。</p>
+<p><strong>口径说明（避免被质疑）</strong>：</p>
+<ul>
+<li>21.9953 元：来自平台导出的按天账单，精确到小数点后四位。</li>
+<li>25 元：来自 5 笔交易记录截图（每笔"购买 100 算力 -5 元"）。</li>
+<li>余下约 15 元（3 笔 × 100 算力）：由用量页"购买 800 算力已用完"与同一单价推算，<strong>为保守估计，不作唯一依据</strong>。</li>
+<li>赠送的 480 算力不计入金额（免费获得），但计入消耗量。</li>
+</ul>
+<p><strong>按日期看，能对上事件节奏</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>时间</th>
+<th>请求数</th>
+<th>对应的事</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>10-21</td>
+<td>110 次</td>
+<td>收到预警那天，在查认证逻辑</td>
+</tr>
+<tr>
+<td>10-24 — 10-27</td>
+<td>136 / 133 / 114 / 164 次</td>
+<td>日常开发与迭代</td>
+</tr>
+<tr>
+<td>10-31</td>
+<td><strong>501 次</strong></td>
+<td>求助视频与梳理材料</td>
+</tr>
+<tr>
+<td>11-03</td>
+<td>12 次</td>
+<td>第一次攻击当天（站被打停，人能做的很少）</td>
+</tr>
+<tr>
+<td>11-04</td>
+<td>125 次</td>
+<td>第二次攻击当天</td>
+</tr>
+<tr>
+<td>11-05</td>
+<td><strong>350 次</strong></td>
+<td>取证、比对、复盘</td>
+</tr>
+<tr>
+<td>11-06</td>
+<td>139 次</td>
+<td>文档与加固</td>
+</tr>
+</tbody>
+</table>
+<p><strong>这三条的意义</strong>：</p>
+<ol>
+<li><strong>它是一个有真实支出的项目。</strong> 不是"随手做着玩"，是持续 30 天、按天付费在维护。</li>
+<li><strong>它证明了投入的时间成本。</strong> 1,891 次请求、3.35 亿 tokens 的处理量，对应的是一个人三十天的实际劳动。</li>
+<li><strong>它是可以直接举证的书面凭证。</strong> 两家平台的账单都是可导出、可核对的第三方记录——<strong>比自述工时更硬</strong>。</li>
+</ol>
+<p><strong>同时也要诚实</strong>：约 62 元这个数字本身远达不到"一万元以上"的门槛。它的作用是<strong>反证"无收入 = 无损失"的错误逻辑</strong>，并为 8.3 的工时折算提供参照——它证明这个站确实在被持续投入，而不是闲置。</p>
+<hr>
+<h2 id="s9">九、法律定性</h2>
+<h3 id="s9-1">9.1 涉嫌罪名（一）：破坏计算机信息系统罪</h3>
+<p><strong>《刑法》第二百八十六条</strong></p>
+<blockquote>
+<p>第一款：违反国家规定，对计算机信息系统功能进行删除、修改、增加、干扰，造成计算机信息系统不能正常运行，后果严重的，处五年以下有期徒刑或者拘役；后果特别严重的，处五年以上有期徒刑。</p>
+<p>第二款：违反国家规定，对计算机信息系统中存储、处理或者传输的数据和应用程序进行删除、修改、增加的操作，后果严重的，依照前款的规定处罚。</p>
+</blockquote>
+<p><strong>构成要件逐条对应：</strong></p>
+<table>
+<thead>
+<tr>
+<th>要件</th>
+<th>本案事实</th>
+<th>证据</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>违反国家规定</td>
+<td>未经授权进入他人系统并实施破坏</td>
+<td>无授权记录；登录凭据非本人提供</td>
+</tr>
+<tr>
+<td><strong>删除</strong>数据</td>
+<td>作品约 400 件、账号 193 个、评论若干被删除</td>
+<td>数据库现状 vs 备份</td>
+</tr>
+<tr>
+<td><strong>修改</strong>数据</td>
+<td>公告被替换为伪造内容；四个分类计数被清零</td>
+<td>公告表 <code>updated_at</code>、缓存时间戳</td>
+</tr>
+<tr>
+<td><strong>干扰</strong>功能</td>
+<td>30 分钟内约 21.6 万次数据库操作，系统无法响应</td>
+<td>请求记录 + 事件灌入记录</td>
+</tr>
+<tr>
+<td>造成不能正常运行</td>
+<td>主站停站两次、镜像站停站一次，均为主机商强制暂停</td>
+<td>主机商暂停通知</td>
+</tr>
+</tbody>
+</table>
+<p><strong>量刑区间</strong>：后果严重 → <strong>五年以下有期徒刑或拘役</strong>；后果特别严重 → <strong>五年以上有期徒刑</strong>。</p>
+<h3 id="s9-2">9.2 涉嫌罪名（二）：非法控制计算机信息系统罪</h3>
+<p><strong>《刑法》第二百八十五条第二款</strong></p>
+<blockquote>
+<p>违反国家规定，侵入前款规定以外的计算机信息系统或者采用其他技术手段，获取该计算机信息系统中存储、处理或者传输的数据，或者对该计算机信息系统实施非法控制，情节严重的，处三年以下有期徒刑或者拘役，并处或者单处罚金；情节特别严重的，处三年以上七年以下有期徒刑，并处罚金。</p>
+</blockquote>
+<p><strong>对应本案</strong>：攻击者通过获取管理员凭据，实际取得了对后台管理功能的控制权，并以管理员身份执行删除、修改、发布公告等高权限操作——<strong>属于"对该计算机信息系统实施非法控制"</strong>。</p>
+<p><strong>量刑区间</strong>：情节严重 → <strong>三年以下</strong>；情节特别严重 → <strong>三年以上七年以下</strong>。</p>
+<h3 id="s9-3">9.3 "后果严重"怎么认定</h3>
+<p>《最高人民法院、最高人民检察院关于办理危害计算机信息系统安全刑事案件应用法律若干问题的解释》（法释〔2011〕19 号）第四条列举了"后果严重"的情形：</p>
+<table>
+<thead>
+<tr>
+<th>条文</th>
+<th>本案</th>
+<th>评估</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>（一）造成十台以上系统的主要软件或硬件不能正常运行</td>
+<td>1 个系统</td>
+<td>不满足台数，但停站事实成立</td>
+</tr>
+<tr>
+<td>（二）对二十台以上系统中的数据进行删除、修改、增加</td>
+<td>1 个系统，但删除 193 个账号、400 件作品</td>
+<td><strong>台数不达标，删除行为本身成立</strong></td>
+</tr>
+<tr>
+<td>（三）违法所得五千元以上或造成经济损失一万元以上</td>
+<td>站点无收入；工时与恢复成本可核算</td>
+<td><strong>可通过损失举证达成</strong></td>
+</tr>
+<tr>
+<td>（四）造成为一万以上用户提供服务的系统不能正常运行累计一小时以上</td>
+<td>停站累计远超一小时；注册用户 194 名</td>
+<td>用户规模不足</td>
+</tr>
+<tr>
+<td>（五）造成其他严重后果</td>
+<td>三次停站 + 193 个账号数据灭失 + 200 件作品灭失 + 伪造公告引发信任危机</td>
+<td><strong>兜底条款，可主张</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>必须诚实写清楚</strong>：本案在"台数"和"用户规模"两项量化指标上偏弱——站点小、用户少、无收入。<strong>这不是行为不严重，而是量化标准对小型站点不利。</strong></p>
+<p><strong>但同时也要写清楚另一半</strong>：</p>
+<ul>
+<li>"对数据进行删除操作"是 286 条第二款的<strong>要件事实</strong>，不因用户数少而消失。</li>
+<li>法释里"二十台以上系统"按<strong>系统台数</strong>算，不按数据条数算——所以它构不成加重情节，<strong>但也抹不掉行为本身</strong>。</li>
+<li>三条停站、193 个账号、400 件作品、一篇伪造公告，合起来完全可以主张第（五）项"其他严重后果"。</li>
+</ul>
+<p><strong>现实路径</strong>：第 9.1 节的损失量化表填满，走（三）通道；同时主张（五）兜底。</p>
+<h3 id="s9-4">9.4 从重情节</h3>
+<table>
+<thead>
+<tr>
+<th>情节</th>
+<th>事实</th>
+<th>法律意义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>预谋</strong></td>
+<td>距公开预警十二天后动手；动手前一天试探邮箱</td>
+<td>排除"一时冲动"，属直接故意</td>
+</tr>
+<tr>
+<td><strong>组织性</strong></td>
+<td>备用账号、代理 IP 池（1,193 个）、两套脚本、双通道工具</td>
+<td>非单人临时行为</td>
+</tr>
+<tr>
+<td><strong>反侦查</strong></td>
+<td>逐请求更换 IP；删除预警记录；伪造公告误导</td>
+<td><strong>明知违法、刻意规避，主观恶性重</strong></td>
+</tr>
+<tr>
+<td><strong>反复性</strong></td>
+<td>三天内三次攻击，第一次未被发现后继续第二、第三次</td>
+<td>排除"过失"与"误操作"</td>
+</tr>
+<tr>
+<td><strong>扩大损害</strong></td>
+<td>主站停站后两小时内转向镜像站</td>
+<td>主动追击备份节点</td>
+</tr>
+<tr>
+<td><strong>破坏性</strong></td>
+<td>193 个账号数据被删、400 件作品被删、三次停站、声誉损害</td>
+<td>后果叠加</td>
+</tr>
+</tbody>
+</table>
+<p><strong>其中"逐请求更换 1,193 个 IP"最值得注意。</strong></p>
+<p>它不是技术能力的体现，而是<strong>明知行为违法、刻意规避追溯</strong>的直接证明。<strong>在主观故意与量刑上，这一条比"删了多少数据"更有分量。</strong></p>
+<h3 id="s9-5">9.5 其他法律责任</h3>
+<table>
+<thead>
+<tr>
+<th>依据</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>《网络安全法》第二十七条</td>
+<td>任何个人和组织不得从事非法侵入他人网络、干扰他人网络正常功能、窃取网络数据等危害网络安全的活动</td>
+</tr>
+<tr>
+<td>《网络安全法》第六十三条</td>
+<td>违反第二十七条的，没收违法所得，处五日以下拘留，可并处五万元以上五十万元以下罚款；情节较重的，处五日以上十五日以下拘留，可并处十万元以上一百万元以下罚款</td>
+</tr>
+<tr>
+<td>《治安管理处罚法》第二十九条</td>
+<td>侵入计算机信息系统、干扰计算机信息系统正常功能等，处五日以上十日以下拘留</td>
+</tr>
+<tr>
+<td>《民法典》第一千一百六十五条</td>
+<td>过错侵害他人民事权益造成损害的，应承担侵权责任</td>
+</tr>
+<tr>
+<td>《民法典》第一千一百九十四条</td>
+<td>网络用户、网络服务提供者利用网络侵害他人民事权益的，应承担侵权责任</td>
+</tr>
+</tbody>
+</table>
+<h3 id="s9-6">9.6 追诉时效</h3>
+<p>《刑法》第八十七条：法定最高刑为五年以上不满十年有期徒刑的，经过十年；法定最高刑为十年以上有期徒刑的，经过十五年。</p>
+<ul>
+<li>破坏计算机信息系统罪（286 条）情节特别严重时，法定最高刑可达十五年 → <strong>追诉时效可至十五年</strong>。</li>
+<li>非法控制计算机信息系统罪（285 条二款）情节特别严重时，法定最高刑七年 → <strong>追诉时效十年</strong>。</li>
+</ul>
+<p><strong>换句话说：这不是"过一阵就没人管了"的事。</strong></p>
+<h3 id="s9-7">9.7 建议的处置路径</h3>
+<ol>
+<li><strong>固定证据</strong>。本报告引用的数据库导出、文件包、请求记录、面板导出、主机商停站通知，全部做哈希存档，多份异地保存。</li>
+<li><strong>向主机商书面调取日志</strong>。账户被暂停期间的访问日志，主机商后台通常只保留有限时间——<strong>这是取得明文 IP 的唯一内部途径，应尽快申请</strong>。</li>
+<li><strong>报案</strong>。以"破坏计算机信息系统"向网安部门报案，随附本报告与第 8.3 节的损失清单。管辖地为受害人所在地或服务器所在地公安机关。</li>
+<li><strong>损失举证</strong>。把第 8.3 节的表格填满，形成书面材料。</li>
+<li><strong>同步固定外部证据</strong>。涉事邮箱域名的注册信息；GitHub 仓库的访问与克隆记录（<strong>保留期仅 14 天，需立即导出</strong>）。</li>
+</ol>
+<hr>
+<h2 id="s10">十、给攻击者的话</h2>
+<p>这一章是写给一个人的。</p>
+<p>如果你正在读，并且知道自己做过什么，那么下面每一句都不是修辞，是事实。</p>
+<h3 id="s10-1">10.1 我们知道你做了什么</h3>
+<p>不是"大概知道"，是逐条对得上：</p>
+<ul>
+<li>你在 11 月 2 日 13:15，用一个停服的邮箱试过我们的注册流程。</li>
+<li>你在 11 月 3 日 14:57 开始，用一个普通账号在 9 个 IP 上连续登录十余次，全部成功。</li>
+<li>你在 15:00 试了一个不存在的账号 9 次。</li>
+<li>你在 <strong>15:13:42</strong> 用管理员密码登录成功，<strong>14 秒后</strong>开始调管理接口。</li>
+<li>你在 15:50 到 16:09 之间调用了 448 次批量接口，把作品从 400 件删到 36 件。</li>
+<li>你在 11 月 4 日 <strong>18:35:34</strong> 又登录了一次，然后调用了 652 次，把剩下的全清空。</li>
+<li>你在 <strong>19:10:57</strong> 写了一篇 100 字的公告，用站长的口吻宣布"已回档"。</li>
+<li>你在 19:31 到 20:01 之间，用一个 IP 打了我们 12,247 次请求，其中 145,655 条是伪造的数据上报——<strong>让数据库在 30 分钟里做了 21.6 万次操作</strong>。</li>
+<li>主站停站两小时后，你在 22:02 转向镜像站，又打了一次。</li>
+</ul>
+<p><strong>这些不是推测。每一条都在数据库里，有字段、有时间、有编号。</strong></p>
+<h3 id="s10-2">10.2 我们知道你怎么做的</h3>
+<ul>
+<li>你换 IP，换得很勤——1,205 次管理操作，1,193 个不同出口。</li>
+<li>你写脚本，节奏是 1 到 2 秒一次，五六个一组。</li>
+<li>你挑了不需要登录、没有限速、不被监控采集的接口。</li>
+<li>你读过程序——否则你不会知道数据上报接口单次最多收 80 条、每条单独写库。</li>
+<li>你事后删掉了对自己不利的记录，还把入侵写成了一次"系统升级"。</li>
+</ul>
+<p><strong>我们把这些都写进了这份通报，包括你怎么掩饰的。</strong></p>
+<h3 id="s10-3">10.3 我们掌握了什么</h3>
+<ul>
+<li>完整的数据库导出（含全部请求记录与前端埋点）</li>
+<li>完整的站点文件包（944 个文件）</li>
+<li>两个版本的完整文件树（用于证明镜像站为什么没被打进去）</li>
+<li>主机商的两次停站通知</li>
+<li>事件期间的异常检测记录与告警</li>
+</ul>
+<p><strong>全部做了哈希存档，多份异地保存。</strong></p>
+<h3 id="s10-4">10.4 关于你的"匿名"</h3>
+<p>我们知道你换 IP 是为了什么：<strong>让你觉得没有人能追到你。</strong></p>
+<p>这个思路只对了一半。</p>
+<ul>
+<li>站方确实只存 IP 的哈希——我们不保存明文地址，这是我们一贯的设计。</li>
+<li><strong>但主机商保留访问日志。</strong> 我们的服务器不在你手里，日志不在你手里。</li>
+<li><strong>邮箱服务方保留注册与发码记录。</strong> 如果那条邮箱线索有用，那边的记录比我们这边全。</li>
+<li><strong>代码托管平台保留访问与克隆记录。</strong> 谁在什么时候拉过这份源码，平台有账。</li>
+</ul>
+<p><strong>换 1,193 个 IP 能拖慢追溯，但拖不住追溯。</strong> 你已经多花了这份力气，说明你当时就知道自己在做什么。</p>
+<h3 id="s10-5">10.5 法律后果</h3>
+<ul>
+<li><strong>破坏计算机信息系统罪</strong>（《刑法》286 条）：情节严重，五年以下；情节特别严重，五年以上。</li>
+<li><strong>非法控制计算机信息系统罪</strong>（《刑法》285 条二款）：情节严重，三年以下；情节特别严重，三年以上七年以下。</li>
+<li><strong>追诉时效十年至十五年。</strong></li>
+</ul>
+<p><strong>这两条罪名不是"网站告你"才成立——是公诉罪。</strong> 立案之后，不是我们说停就能停的。</p>
+<h3 id="s10-6">10.6 我们的立场</h3>
+<p>三句话：</p>
+<ol>
+<li><strong>我们不打算私下解决。</strong> 不会因为"删掉数据就没事"，也不会接受任何形式的"和解换沉默"。</li>
+<li><strong>我们也不会冤枉人。</strong> 这份通报里的每一条都有证据支撑，没有一条是基于猜测的人身指控。如果你认为其中哪一条与事实不符，可以按法律途径提出异议。</li>
+<li><strong>但如果你还打算再来一次</strong>：你要面对的不再是一个没有日志的小站。日志已经有了，审计已经有了，指纹绑定已经有了，两个最脆的接口也已经补上。</li>
+</ol>
+<h3 id="s10-7">10.7 最后一句</h3>
+<p>这个站没有收入，只有 194 个用户。它不值得你花十二天准备、1,193 个 IP、两套脚本、三天三次攻击。</p>
+<p><strong>你做的这些，法律上有名字。</strong></p>
+<hr>
+<h2 id="s11">十一、我们做了什么</h2>
+<h3 id="s11-1">11.1 事发当时</h3>
+<table>
+<thead>
+<tr>
+<th>时间</th>
+<th>动作</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>11-04 晚</td>
+<td>确认性质；停掉对外服务；另存破坏前的备份；从缓存里取出伪造公告原文存档</td>
+</tr>
+<tr>
+<td>11-05</td>
+<td>944 个文件逐字节比对（663 个一致，其余为部署产物）；确认无后门、无木马</td>
+</tr>
+<tr>
+<td>11-05</td>
+<td>清除伪造公告、重建缓存、从镜像站恢复数据</td>
+</tr>
+</tbody>
+</table>
+<h3 id="s11-2">11.2 代码层面的加固</h3>
+<table>
+<thead>
+<tr>
+<th>修复项</th>
+<th>解决的问题</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>登录、改公告、删作品、删账号、绑/解邮箱、进面板——全部落审计表</td>
+<td>原来日志目录不存在，写日志的调用一直被静默忽略</td>
+</tr>
+<tr>
+<td>日志目录缺失时自动创建，单文件超 4 MB 轮转</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>解除邮箱绑定必须输入当前密码；解绑与关闭双重验证拆成两个动作</td>
+<td>账号接管辅助</td>
+</tr>
+<tr>
+<td>面板授权的指纹与当前网络、浏览器绑定，换环境必须重新验证</td>
+<td>会话被搬走即可复用</td>
+</tr>
+<tr>
+<td>站内链接只允许站内地址与 <code>http(s)</code>、<code>mailto</code></td>
+<td>脚本注入</td>
+</tr>
+<tr>
+<td>站点互通只同步普通用户数据，账号角色与口令不跨站覆盖</td>
+<td>跨站越权</td>
+</tr>
+<tr>
+<td>抓取外部链接前做内网地址过滤，跳转改为逐跳手动校验</td>
+<td>SSRF</td>
+</tr>
+<tr>
+<td>未登录发码不再提示邮箱是否已注册</td>
+<td>账号枚举</td>
+</tr>
+<tr>
+<td>后台凭据不再保留明文副本</td>
+<td>明文与哈希并存</td>
+</tr>
+<tr>
+<td>令牌根密钥、管理员密码、管理员密钥全部更换</td>
+<td>所有旧令牌一次性失效</td>
+</tr>
+</tbody>
+</table>
+<h3 id="s11-3">11.3 仍未完成的</h3>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>面板密钥与登录密码分离派生</strong></td>
+<td>这是本次事件最关键的放大器。目前两者同源，<strong>一处泄露等于两把钥匙同时失守</strong>。需要改配置结构，站长需重新设置</td>
+</tr>
+<tr>
+<td>令牌回库校验</td>
+<td>改动面大，需单独发版</td>
+</tr>
+<tr>
+<td>令牌加密加完整性校验</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>审计日志的查看界面</td>
+<td>目前只能查库</td>
+</tr>
+</tbody>
+</table>
+<h3 id="s11-4">11.4 对用户的交代</h3>
+<ul>
+<li>数据已从镜像站备份恢复，恢复的是 11 月 4 日的状态。</li>
+<li>期间提交但未进入备份的作品，无法找回。这一点不掩饰。</li>
+<li>所有账号的登录凭据已更换，旧令牌全部失效。</li>
+<li>如果你发现账号无法登录，请重新注册或联系站长。</li>
+</ul>
+<hr>
+<h2 id="s12">十二、仍未查清</h2>
+<p>不把猜测写成结论。</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>问题</th>
+<th>缺什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>管理员密码从哪来。</strong> 这是唯一无法从数据推出的一环</td>
+<td>密码的生成、保存、复制路径；是否曾出现在截图、聊天记录、浏览器保存口令中</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>管理员密钥怎么到手</strong></td>
+<td>与第 1 条同源——需确认线上配置里密钥与密码是否确实同值派生</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong><code>callaormfv</code> 是谁的账号</strong></td>
+<td>该账号已被删除，库中无痕；需从更早备份取注册时间与来源</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>11-04 18:35 那次登录的归属</strong></td>
+<td>记录显示归属地深圳，站长常住四川；站长本人称这是他自己的登录。两条信息不一致，无法从数据判定</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>为何 11-04 又登录一次</strong>（11-03 的令牌七日有效）</td>
+<td>需令牌签发与使用记录，站内未保存</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>那个停服邮箱是否系其所用</strong></td>
+<td>只有一次发码、一次试错，无法证实</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>是否存在未发现的后门</strong></td>
+<td>944 文件比对无异常，但基准是 11-04 的包，无法覆盖更晚变化</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>刷量 IP 与入侵 IP 池是否同源</strong></td>
+<td>两组哈希不同，站方只存哈希、无明文 IP，无法做归属与 ASN 关联</td>
+</tr>
+</tbody>
+</table>
+<p><strong>第 1 条是根。</strong> 其余七条都挂在它下面：只要知道他怎么拿到密码，密钥、账号、时机就都能对上。</p>
+<p><strong>为什么要把"没查清"公开写出来</strong>：</p>
+<p>因为一份只写"我都知道"的通报，是没有人信的。<strong>把不知道的部分标出来，已知的部分才站得住。</strong></p>
+<hr>
+<h2 id="s13">十三、附录</h2>
+<h3 id="s13-1">13.1 证据文件</h3>
+<table>
+<thead>
+<tr>
+<th>材料</th>
+<th>内容</th>
+<th>规模</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>主站数据库导出</td>
+<td>全部数据表，含 <code>user_visits</code>、<code>login_attempts</code>、<code>announcements</code>、<code>web_srv</code>、<code>web_events</code></td>
+<td>55 MB</td>
+</tr>
+<tr>
+<td>镜像站数据库导出</td>
+<td>破坏前的完整备份（含 200 条作品）</td>
+<td>503 KB（解压后）</td>
+</tr>
+<tr>
+<td>主站文件包</td>
+<td>944 个文件，用于与仓库逐字节比对</td>
+<td>5.4 MB</td>
+</tr>
+<tr>
+<td>异常检测面板导出</td>
+<td>主站 / 镜像站 7 天路由统计、事件、告警</td>
+<td>2.66 MB / 2.59 MB</td>
+</tr>
+<tr>
+<td>攻击现场截图</td>
+<td>两次暂停通知、预警对话 8 张</td>
+<td>9 张 JPG</td>
+</tr>
+<tr>
+<td>开源仓库版本树</td>
+<td>v3.48.2（657 文件）与 v3.58.0（825 文件）完整文件树</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h3 id="s13-2">13.2 关键查询（可复现）</h3>
+<pre><code class="language-sql">-- 两次管理员登录
+SELECT id, user_id, ip_masked, location, ip_hash, created_at
+FROM user_visits WHERE created_at &gt;= '2026-11-01' ORDER BY id;
+
+-- 登录尝试（含账号与成败）
+SELECT id, user_norm, success, ip_hash, created_at
+FROM login_attempts WHERE created_at &gt;= '2026-11-02' ORDER BY created_at;
+
+-- 公告被改写的时刻
+SELECT id, oid, updated_at, content FROM announcements;
+SELECT v FROM settings WHERE k = 'announcement';
+
+-- 数据缺失
+SELECT (SELECT COUNT(*) FROM users) AS users,
+       (SELECT COUNT(*) FROM works) AS works,
+       (SELECT COUNT(*) FROM comments) AS comments;
+
+-- 伪造公告那一条请求
+SELECT created_at, route, method, code, db_n, ip_hash FROM web_srv
+WHERE created_at BETWEEN '2026-11-04 11:10:50' AND '2026-11-04 11:11:05';
+
+-- 管理操作全序列（用于节奏分析）
+SELECT created_at, code, db_n, ip_hash FROM web_srv
+WHERE route = 'api/admin.php' AND method = 'POST'
+  AND created_at &gt;= '2026-11-03' ORDER BY created_at;
+
+-- 刷量峰值
+SELECT LEFT(created_at, 16) AS minute, COUNT(*) n FROM web_srv
+WHERE route = 'api/works.php' AND method = 'POST'
+  AND created_at &gt;= '2026-11-04 11:00:00'
+GROUP BY minute ORDER BY n DESC LIMIT 10;
+
+-- 埋点灌入（写入放大）
+SELECT ip_hash, COUNT(*) n, MIN(created_at), MAX(created_at)
+FROM web_events WHERE name LIKE '/probe/%'
+GROUP BY ip_hash ORDER BY n DESC;
+</code></pre>
+<h3 id="s13-3">13.3 给其他站长的加固清单</h3>
+<p>这条不是给本案用的，是给别人用的——同样的代码可能部署在别处。</p>
+<table>
+<thead>
+<tr>
+<th>优先级</th>
+<th>检查项</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>最高</strong></td>
+<td>管理员密码与面板密钥必须<strong>独立派生、独立轮换</strong>。同源等于只有一把钥匙</td>
+</tr>
+<tr>
+<td><strong>最高</strong></td>
+<td>任何接收数据写入的公开接口，必须有鉴权或令牌 + 严格频率限制 + 批量写入</td>
+</tr>
+<tr>
+<td><strong>最高</strong></td>
+<td>请求监控不要排除自身接口。至少保留"请求总量 + 来源"的计数</td>
+</tr>
+<tr>
+<td><strong>高</strong></td>
+<td>管理员操作全程落审计表：谁、何时、从哪、做了什么、结果</td>
+</tr>
+<tr>
+<td><strong>高</strong></td>
+<td>令牌校验回库比对角色与封禁状态，不要只信令牌内容</td>
+</tr>
+<tr>
+<td><strong>高</strong></td>
+<td>面板二次验证绑定网络与设备指纹，换环境必须重验</td>
+</tr>
+<tr>
+<td><strong>中</strong></td>
+<td>批量删除必须有二次确认 + 可回滚</td>
+</tr>
+<tr>
+<td><strong>中</strong></td>
+<td>内容里的链接做协议白名单，禁止 <code>javascript:</code></td>
+</tr>
+<tr>
+<td><strong>中</strong></td>
+<td>抓取外部链接前过滤内网地址，关闭自动跳转</td>
+</tr>
+<tr>
+<td><strong>中</strong></td>
+<td>未登录接口不要泄露"账号/邮箱是否存在"</td>
+</tr>
+</tbody>
+</table>
+<h3 id="s13-4">13.4 一句话收尾</h3>
+<p>这个站没有收入，只有 194 个用户。攻击者花的心思——提前试探、铺 1,193 个 IP、写两套脚本、伪造公告、三天打三次、打垮两台服务器——<strong>远超这个站本身的价值</strong>。</p>
+<p>所以这不是图利，是图它消失。</p>
+<p><strong>而这类行为，法律上有名字，也有刑期。</strong></p>
+<hr>
+<p><strong>通报结束</strong>
+<strong>证据存档完成时间</strong>：2026-11-06</p>
+  </main>
+</div>
+
+<footer class="foot">
+  本页为静态存档，内容随调查报告更新 · Kimi 游戏榜
+</footer>
+<script>
+(function(){
+  var bar=document.querySelector('.progress i');
+  function prog(){
+    var h=document.documentElement;
+    var max=h.scrollHeight-h.clientHeight;
+    bar.style.width=(max>0?(h.scrollTop/max*100):0)+'%';
+  }
+  document.addEventListener('scroll',prog,{passive:true}); prog();
+
+  var links=[].slice.call(document.querySelectorAll('.toc a'));
+  var map={}; links.forEach(function(a){ map[a.getAttribute('data-t')]=a; });
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if(e.isIntersecting){
+          links.forEach(function(a){a.classList.remove('on')});
+          var a=map[e.target.id]; if(a){a.classList.add('on')}
+        }
+      });
+    },{rootMargin:'-84px 0px -70% 0px',threshold:0});
+    document.querySelectorAll('.doc h2[id]').forEach(function(h){io.observe(h)});
+  }
+
+  var btn=document.querySelector('.toc-toggle'), toc=document.querySelector('.toc');
+  if(btn){ btn.addEventListener('click',function(){ toc.classList.toggle('open'); }); }
+  toc.addEventListener('click',function(e){
+    if(e.target.tagName==='A' && window.innerWidth<=900){ toc.classList.remove('open'); }
+  });
+
+  // 代码块横向滚动提示 + 表格包一层（移动端可滑）
+  document.querySelectorAll('.doc table').forEach(function(t){
+    if(!t.parentNode.classList.contains('table-wrap')){
+      var w=document.createElement('div'); w.className='table-wrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    }
+  });
+})();
+</script>
+</body>
+</html>
