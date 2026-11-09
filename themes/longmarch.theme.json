@@ -1,0 +1,64 @@
+{
+  "schema": "theme/1",
+  "id": "longmarch",
+  "name": {
+    "zh": "长征胜利纪念",
+    "en": "Long March Victory Day",
+    "ja": "長征勝利記念日"
+  },
+  "colour": {
+    "accent": "#8C3A2E",
+    "accent2": "#4A5A6A",
+    "ink": "#F6F7F8"
+  },
+  "colourDesc": {
+    "zh": "冷石灰底 · 雪山向北的路",
+    "en": "Cold snow peaks, road north",
+    "ja": "冷たい石灰の地 · 雪山と北への道"
+  },
+  "radius": 16,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(178deg,#F2F4F6 0%,#E9EEF2 58%,#E4E9EE 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 130'%3E%3Cpath d='M0 130V96l38-30 26 18 34-40 30 34 26-18 30 28 34-44 32 32 30-22 36 34 36-26 28 20v26z' fill='%23E9EDF1' fill-opacity='.90'/%3E%3Cpath d='M0 96l38-30 26 18 34-40 30 34 26-18 30 28 34-44 32 32 30-22 36 34 36-26 28 20' fill='none' stroke='%234A5A6A' stroke-opacity='.55' stroke-width='1.6'/%3E%3Cpath d='M98 44l10 6 6 10M168 44l9 7 8 9M268 52l9 6 7 9' fill='none' stroke='%23FFFFFF' stroke-opacity='.85' stroke-width='2.2'/%3E%3C/svg%3E",
+      "position": "bottom 0 left 0",
+      "size": "auto 128px",
+      "repeat": "repeat-x",
+      "opacity": 0.5
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 150'%3E%3Cpath d='M84 4h12l70 146H14z' fill='%234A5A6A' fill-opacity='.10'/%3E%3Cpath d='M84 4 14 150M96 4l70 146' fill='none' stroke='%234A5A6A' stroke-opacity='.26' stroke-width='1.2'/%3E%3Cpath d='M90 14l-14 70' fill='none' stroke='%238C3A2E' stroke-opacity='.42' stroke-width='1.6' stroke-dasharray='7 9'/%3E%3C/svg%3E",
+      "position": "bottom 0 center",
+      "size": "170px 142px",
+      "repeat": "no-repeat",
+      "opacity": 0.45
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Cg fill='%234A5A6A' fill-opacity='.50'%3E%3Ccircle cx='24' cy='16' r='1.5'/%3E%3Ccircle cx='58' cy='40' r='1.2'/%3E%3Ccircle cx='96' cy='12' r='1.6'/%3E%3Ccircle cx='124' cy='46' r='1.3'/%3E%3Ccircle cx='40' cy='66' r='1.4'/%3E%3Ccircle cx='84' cy='72' r='1.1'/%3E%3Ccircle cx='142' cy='20' r='1.2'/%3E%3C/g%3E%3Cpath d='M32 26l-6 11M68 50l-5 10M108 22l-6 11M132 56l-5 10M48 74l-5 9M92 80l-5 9' fill='none' stroke='%234A5A6A' stroke-opacity='.34' stroke-width='1.1'/%3E%3C/svg%3E",
+      "position": "top 26px right 40px",
+      "size": "150px 84px",
+      "repeat": "no-repeat",
+      "opacity": 0.3,
+      "animate": "drift"
+    }
+  ],
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,255,255,.88)",
+    "--border": "rgba(74,90,106,.20)",
+    "--border-soft": "rgba(74,90,106,.10)",
+    "--shadow": "0 10px 28px rgba(42,50,58,.12)",
+    "--shadow-sm": "0 4px 14px rgba(42,50,58,.08)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

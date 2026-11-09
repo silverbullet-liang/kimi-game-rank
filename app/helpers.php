@@ -805,6 +805,11 @@ function storage_gc(bool $force = false): int
         if ($tail !== false) { @file_put_contents($log, "[日志已截断，仅保留最近部分]\n" . $tail, LOCK_EX); $n++; }
     }
 
+    /* 用户主题：超过 7 天保留期的行删掉（读取时也会顺手清，这里兜底） */
+    if (function_exists('table_exists') && table_exists('user_themes')) {
+        try { db_exec('DELETE FROM user_themes WHERE expires_at <= ?', array(gmdate('Y-m-d H:i:s'))); } catch (Throwable $e) {}
+    }
+
     /* 世界对话图片：孤儿图与沉底图一并清掉（省存储；消息本身保留） */
     if (function_exists('chat_media_gc')) { $n += chat_media_gc(); }
 

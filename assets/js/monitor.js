@@ -8,8 +8,8 @@
   if (window.__mon && window.__mon.__v) { return; }
   var CFG = window.__MON_CFG__ || {};
   var END = CFG.endpoint || 'api/monitor.php';
-  var INTERVAL = CFG.interval || 10000;
-  var MAXBATCH = CFG.maxBatch || 25;
+  var INTERVAL = CFG.interval || 30000;   /* 30 秒一批：共享主机每个请求都占一个入口进程 */
+  var MAXBATCH = CFG.maxBatch || 40;      /* 但攒满 40 条就立刻发，不漏错误 */
   var V = '1.0.0';
 
   function now() { return +(new Date()); }

@@ -1,0 +1,68 @@
+{
+  "schema": "theme/1",
+  "id": "shangsi",
+  "name": {
+    "zh": "上巳节",
+    "en": "Shangsi Festival",
+    "ja": "上巳節"
+  },
+  "colour": {
+    "accent": "#4A8A98",
+    "accent2": "#8FA86B",
+    "ink": "#F4FBFC"
+  },
+  "colourDesc": {
+    "zh": "青绿底 · 水波与一瓣花",
+    "en": "Teal green · ripples and a petal",
+    "ja": "青緑の地 · 水紋と花びら"
+  },
+  "radius": 16,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(180deg, #F3F9F9 0%, #E1EEEC 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 26'%3E%3Cpath d='M0 20 q15 -14 30 0 t30 0 t30 0 t30 0' fill='none' stroke='%234A8A98' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E",
+      "position": "left 0 bottom 26px",
+      "size": "120px 26px",
+      "repeat": "repeat-x",
+      "opacity": 0.3
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 32'%3E%3Cpath d='M0 26 q20 -20 40 0 t40 0 t40 0 t40 0' fill='none' stroke='%238FA86B' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E",
+      "position": "left 0 bottom 0",
+      "size": "160px 32px",
+      "repeat": "repeat-x",
+      "opacity": 0.2,
+      "animate": "drift"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 6C46 17 46 38 37 52a5.6 5.6 0 0 1-10 0C18 38 18 17 32 6z' fill='%238FA86B' fill-opacity='.5' stroke='%234A8A98' stroke-opacity='.32' stroke-width='1.2'/%3E%3Cpath d='M32 13v30' stroke='%234A8A98' stroke-opacity='.26' stroke-width='1'/%3E%3C/svg%3E",
+      "position": "top 88px right 8%",
+      "size": "68px 68px",
+      "repeat": "no-repeat",
+      "opacity": 0.42,
+      "animate": "float"
+    }
+  ],
+  "icons": {
+    "nav.today": "M2 14.6q2.5-2.4 5 0t5 0 5 0 5 0v3.2q-2.5 2.4-5 0t-5 0-5 0-5 0z"
+  },
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,255,255,.91)",
+    "--border": "rgba(90,154,168,.18)",
+    "--border-soft": "rgba(90,154,168,.09)",
+    "--shadow": "0 9px 24px rgba(22,48,47,.12)",
+    "--shadow-sm": "0 3px 10px rgba(22,48,47,.07)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

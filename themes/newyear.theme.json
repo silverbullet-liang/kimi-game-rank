@@ -1,0 +1,65 @@
+{
+  "schema": "theme/1",
+  "id": "newyear",
+  "name": {
+    "zh": "元旦",
+    "en": "New Year's Day",
+    "ja": "元日"
+  },
+  "colour": {
+    "accent": "#B08A3E",
+    "accent2": "#2B4A6F",
+    "ink": "#0B1420"
+  },
+  "colourDesc": {
+    "zh": "金与深蓝 · 顶上一小簇烟花",
+    "en": "Gold and deep blue · fireworks",
+    "ja": "金と濃紺 · 天辺の小さな花火"
+  },
+  "radius": 16,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(180deg,#F7F8FA 0%,#EEF2F6 56%,#E7EBF0 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 160'%3E%3Cpath d='M98.0 80.0L138.0 80.0M95.6 89.0L130.2 109.0M89.0 95.6L109.0 130.2M80.0 98.0L80.0 138.0M71.0 95.6L51.0 130.2M64.4 89.0L29.8 109.0M62.0 80.0L22.0 80.0M64.4 71.0L29.8 51.0M71.0 64.4L51.0 29.8M80.0 62.0L80.0 22.0M89.0 64.4L109.0 29.8M95.6 71.0L130.2 51.0' fill='none' stroke='%23B08A3E' stroke-opacity='.55' stroke-width='1.2'/%3E%3Cg fill='%23B08A3E' fill-opacity='.60'%3E%3Ccircle cx='152.0' cy='80.0' r='2'/%3E%3Ccircle cx='142.4' cy='116.0' r='2'/%3E%3Ccircle cx='116.0' cy='142.4' r='2'/%3E%3Ccircle cx='80.0' cy='152.0' r='2'/%3E%3Ccircle cx='44.0' cy='142.4' r='2'/%3E%3Ccircle cx='17.6' cy='116.0' r='2'/%3E%3Ccircle cx='8.0' cy='80.0' r='2'/%3E%3Ccircle cx='17.6' cy='44.0' r='2'/%3E%3Ccircle cx='44.0' cy='17.6' r='2'/%3E%3Ccircle cx='80.0' cy='8.0' r='2'/%3E%3Ccircle cx='116.0' cy='17.6' r='2'/%3E%3Ccircle cx='142.4' cy='44.0' r='2'/%3E%3C/g%3E%3Ccircle cx='80' cy='80' r='3.2' fill='%23B08A3E' fill-opacity='.55'/%3E%3C/svg%3E",
+      "position": "top 4px left 38px",
+      "size": "150px 150px",
+      "repeat": "no-repeat",
+      "opacity": 0.3,
+      "animate": "pulse"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 160'%3E%3Cpath d='M94.0 80.0L124.0 80.0M89.9 89.9L111.1 111.1M80.0 94.0L80.0 124.0M70.1 89.9L48.9 111.1M66.0 80.0L36.0 80.0M70.1 70.1L48.9 48.9M80.0 66.0L80.0 36.0M89.9 70.1L111.1 48.9' fill='none' stroke='%232B4A6F' stroke-opacity='.55' stroke-width='1.2'/%3E%3Cg fill='%232B4A6F' fill-opacity='.60'%3E%3Ccircle cx='136.0' cy='80.0' r='2'/%3E%3Ccircle cx='119.6' cy='119.6' r='2'/%3E%3Ccircle cx='80.0' cy='136.0' r='2'/%3E%3Ccircle cx='40.4' cy='119.6' r='2'/%3E%3Ccircle cx='24.0' cy='80.0' r='2'/%3E%3Ccircle cx='40.4' cy='40.4' r='2'/%3E%3Ccircle cx='80.0' cy='24.0' r='2'/%3E%3Ccircle cx='119.6' cy='40.4' r='2'/%3E%3C/g%3E%3Ccircle cx='80' cy='80' r='3.2' fill='%232B4A6F' fill-opacity='.55'/%3E%3C/svg%3E",
+      "position": "top 20px right 54px",
+      "size": "112px 112px",
+      "repeat": "no-repeat",
+      "opacity": 0.26,
+      "animate": "pulse"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 30'%3E%3Cpath d='M0 22h300' fill='none' stroke='%23B08A3E' stroke-opacity='.60' stroke-width='1.4'/%3E%3Cpath d='M0 27h300' fill='none' stroke='%232B4A6F' stroke-opacity='.22' stroke-width='1'/%3E%3C/svg%3E",
+      "position": "bottom 10px left 0",
+      "size": "300px 30px",
+      "repeat": "repeat-x",
+      "opacity": 0.34
+    }
+  ],
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,255,255,.90)",
+    "--border": "rgba(43,74,111,.16)",
+    "--border-soft": "rgba(43,74,111,.08)",
+    "--shadow": "0 10px 28px rgba(16,26,38,.13)",
+    "--shadow-sm": "0 3px 11px rgba(16,26,38,.08)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

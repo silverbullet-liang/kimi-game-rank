@@ -1,0 +1,63 @@
+{
+  "schema": "theme/1",
+  "id": "bookday",
+  "name": {
+    "zh": "读书日",
+    "en": "World Book Day",
+    "ja": "世界本の日"
+  },
+  "colour": {
+    "accent": "#B4802E",
+    "accent2": "#4A4033",
+    "ink": "#FFFBF2"
+  },
+  "colourDesc": {
+    "zh": "纸白暖黄 · 灯下光锥",
+    "en": "Paper white · lamp-lit cone",
+    "ja": "紙白と暖黄 · 灯下の光錐"
+  },
+  "radius": 10,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(175deg, #FCF9F2 0%, #F7EEDE 58%, #F1E7D5 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 200'%3E%3Cdefs%3E%3ClinearGradient id='c' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23E0B15A' stop-opacity='.34'/%3E%3Cstop offset='.62' stop-color='%23E0B15A' stop-opacity='.08'/%3E%3Cstop offset='1' stop-color='%23E0B15A' stop-opacity='0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpolygon points='36,0 64,0 100,200 0,200' fill='url(%23c)'/%3E%3C/svg%3E",
+      "position": "top -10px right -20px",
+      "size": "190px 380px",
+      "repeat": "no-repeat",
+      "opacity": 0.85
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 52 30'%3E%3Cdefs%3E%3ClinearGradient id='l' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23E0B15A' stop-opacity='.68'/%3E%3Cstop offset='1' stop-color='%23E0B15A' stop-opacity='.28'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpolygon points='9,0 43,0 52,30 0,30' fill='url(%23l)'/%3E%3C/svg%3E",
+      "position": "top 40px right 44px",
+      "size": "52px 30px",
+      "repeat": "no-repeat",
+      "opacity": 0.9
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 118'%3E%3Cg transform='rotate(-5 48 59)'%3E%3Crect x='1' y='1' width='94' height='116' rx='4' fill='%23FFFDF6' stroke='%23B4802E' stroke-opacity='.22'/%3E%3Crect x='10' y='16' width='76' height='1.4' fill='%236B5A42' fill-opacity='.26'/%3E%3Crect x='10' y='26' width='76' height='1.4' fill='%236B5A42' fill-opacity='.26'/%3E%3Crect x='10' y='36' width='76' height='1.4' fill='%236B5A42' fill-opacity='.26'/%3E%3Crect x='10' y='46' width='76' height='1.4' fill='%236B5A42' fill-opacity='.26'/%3E%3Crect x='10' y='56' width='76' height='1.4' fill='%236B5A42' fill-opacity='.26'/%3E%3Crect x='10' y='66' width='76' height='1.4' fill='%236B5A42' fill-opacity='.26'/%3E%3Crect x='10' y='76' width='76' height='1.4' fill='%236B5A42' fill-opacity='.26'/%3E%3Crect x='10' y='86' width='76' height='1.4' fill='%236B5A42' fill-opacity='.26'/%3E%3Crect x='10' y='96' width='76' height='1.4' fill='%236B5A42' fill-opacity='.26'/%3E%3Crect x='10' y='106' width='76' height='1.4' fill='%236B5A42' fill-opacity='.26'/%3E%3C/g%3E%3C/svg%3E",
+      "position": "bottom 54px right 40px",
+      "size": "96px 118px",
+      "repeat": "no-repeat",
+      "opacity": 0.9
+    }
+  ],
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,253,248,.91)",
+    "--border": "rgba(180,128,46,.17)",
+    "--border-soft": "rgba(180,128,46,.08)",
+    "--shadow": "0 9px 24px rgba(51,41,27,.14)",
+    "--shadow-sm": "0 3px 10px rgba(51,41,27,.09)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

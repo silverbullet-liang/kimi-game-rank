@@ -1,0 +1,55 @@
+{
+  "schema": "theme/1",
+  "id": "labor",
+  "name": {
+    "zh": "劳动节",
+    "en": "International Labour Day",
+    "ja": "メーデー（労働節）"
+  },
+  "colour": {
+    "accent": "#A64B2A",
+    "accent2": "#4A4A4A",
+    "ink": "#FFF7F2"
+  },
+  "colourDesc": {
+    "zh": "砖红压铁灰 · 沙色底上两件工具",
+    "en": "Brick red on sand · tools",
+    "ja": "煉瓦色と鉄色 · 砂色の地に工具"
+  },
+  "radius": 8,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(162deg,#F9F4EE 0%,#F2E9DD 54%,#EDE2D4 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect x='14' y='18' width='42' height='17' rx='3' fill='%234A4A4A' fill-opacity='.22' stroke='%234A4A4A' stroke-opacity='.70' stroke-width='2.4'/%3E%3Cpath d='M35 35v72' fill='none' stroke='%234A4A4A' stroke-opacity='.70' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M84 14v11a11 11 0 0 0 22 0V14' fill='none' stroke='%234A4A4A' stroke-opacity='.70' stroke-width='3.4' stroke-linecap='round'/%3E%3Cpath d='M95 36v71' fill='none' stroke='%234A4A4A' stroke-opacity='.55' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E",
+      "position": "bottom 30px right 24px",
+      "size": "108px 108px",
+      "repeat": "no-repeat",
+      "opacity": 0.32
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 16'%3E%3Cpath d='M0 8h48M0 15h48M12 8v7M36 8v7M24 0v8' fill='none' stroke='%23A64B2A' stroke-opacity='.55' stroke-width='1'/%3E%3C/svg%3E",
+      "position": "bottom 0 left 0",
+      "size": "48px 16px",
+      "repeat": "repeat-x",
+      "opacity": 0.22
+    }
+  ],
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,252,248,.91)",
+    "--border": "rgba(166,75,42,.17)",
+    "--border-soft": "rgba(166,75,42,.08)",
+    "--shadow": "0 8px 22px rgba(42,33,28,.14)",
+    "--shadow-sm": "0 3px 9px rgba(42,33,28,.09)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

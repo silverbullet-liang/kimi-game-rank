@@ -1,0 +1,67 @@
+{
+  "schema": "theme/1",
+  "id": "chuxi",
+  "name": {
+    "zh": "除夕",
+    "en": "Chinese New Year's Eve",
+    "ja": "大晦日（旧暦）"
+  },
+  "colour": {
+    "accent": "#B22A22",
+    "accent2": "#E0B44A",
+    "ink": "#FFF7EF"
+  },
+  "colourDesc": {
+    "zh": "朱红底 · 金线与碎金",
+    "en": "Vermilion ground · gold thread",
+    "ja": "朱の地 · 金の秒針"
+  },
+  "radius": 18,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(170deg, #FFF6F0 0%, #FDEDE3 55%, #FBE3D8 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M4 52a46 46 0 0 0 92 0' fill='none' stroke='%23E0B44A' stroke-opacity='.35' stroke-width='2'/%3E%3Cline x1='50' y1='52' x2='50' y2='14' stroke='%23E0B44A' stroke-opacity='.7' stroke-width='2'/%3E%3C/svg%3E",
+      "position": "bottom 44px left 16px",
+      "size": "110px 110px",
+      "repeat": "no-repeat",
+      "opacity": 0.8
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg transform='rotate(180 50 50)' fill='none' stroke='%23B22A22' stroke-opacity='.2' stroke-width='2'%3E%3Crect x='8' y='8' width='84' height='84' rx='10'/%3E%3Cpath d='M50 16 84 50 50 84 16 50z'/%3E%3Ccircle cx='50' cy='50' r='22'/%3E%3C/g%3E%3C/svg%3E",
+      "position": "top 56px right 24px",
+      "size": "88px 88px",
+      "repeat": "no-repeat",
+      "opacity": 0.55
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 130'%3E%3Cg fill='%23F5DA9A'%3E%3Ccircle cx='36' cy='106' r='3.4' fill-opacity='.85'/%3E%3Ccircle cx='104' cy='84' r='3' fill-opacity='.6'/%3E%3Ccircle cx='168' cy='58' r='2.6' fill-opacity='.45'/%3E%3C/g%3E%3C/svg%3E",
+      "position": "bottom 60px left 34%",
+      "size": "220px 130px",
+      "repeat": "no-repeat",
+      "opacity": 0.55,
+      "animate": "float"
+    }
+  ],
+  "force": "auto",
+  "icons": {
+    "nav.today": "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2.2a7.8 7.8 0 1 1 0 15.6 7.8 7.8 0 0 1 0-15.6zM11 6.6v6.1l5 3 1.1-1.8-4.1-2.4V6.6z"
+  },
+  "tokens": {
+    "--surface": "rgba(255,251,247,.91)",
+    "--border": "rgba(178,42,34,.18)",
+    "--border-soft": "rgba(178,42,34,.09)",
+    "--shadow": "0 10px 30px rgba(126,26,20,.16)",
+    "--shadow-sm": "0 4px 13px rgba(126,26,20,.10)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

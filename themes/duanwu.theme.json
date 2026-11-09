@@ -1,0 +1,55 @@
+{
+  "schema": "theme/1",
+  "id": "duanwu",
+  "name": {
+    "zh": "端午",
+    "en": "Dragon Boat Festival",
+    "ja": "端午節"
+  },
+  "colour": {
+    "accent": "#4A7A52",
+    "accent2": "#B4402F",
+    "ink": "#F6FBF4"
+  },
+  "colourDesc": {
+    "zh": "粽叶青 · 绳红水纹",
+    "en": "Leaf green · red rope ripples",
+    "ja": "粽葉の青 · 縄の赤と波紋"
+  },
+  "radius": 14,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(175deg, #F4F9F2 0%, #EDF5EA 55%, #E4EEE1 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 70' preserveAspectRatio='none' fill='none' stroke='%234A7A52'%3E%3Cpath d='M0 22q300 -14 600 0t600 0' stroke-opacity='.3' stroke-width='1.6'/%3E%3Cpath d='M0 42q300 -14 600 0t600 0' stroke-opacity='.2' stroke-width='1.6'/%3E%3Cpath d='M0 60q300 -14 600 0t600 0' stroke-opacity='.12' stroke-width='1.6'/%3E%3C/svg%3E",
+      "position": "bottom left",
+      "size": "100% 70px",
+      "repeat": "no-repeat",
+      "opacity": 0.75
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 100'%3E%3Cdefs%3E%3ClinearGradient id='z' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%234A7A52'/%3E%3Cstop offset='1' stop-color='%2333593A'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpolygon points='60,6 116,94 4,94' fill='url(%23z)' fill-opacity='.92'/%3E%3Cpath d='M60 6 38 94M60 6 82 94' stroke='%2333593A' stroke-opacity='.55' stroke-width='2'/%3E%3Cpath d='M26 66 94 60' stroke='%23B4402F' stroke-opacity='.7' stroke-width='3'/%3E%3C/svg%3E",
+      "position": "bottom 74px right 32px",
+      "size": "104px 88px",
+      "repeat": "no-repeat",
+      "opacity": 0.92
+    }
+  ],
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,255,255,.91)",
+    "--border": "rgba(74,122,82,.18)",
+    "--border-soft": "rgba(74,122,82,.09)",
+    "--shadow": "0 9px 24px rgba(27,42,29,.13)",
+    "--shadow-sm": "0 3px 10px rgba(27,42,29,.08)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

@@ -239,9 +239,47 @@ installImageFallback();
 function getToken() {
   try { return localStorage.getItem(LS_KEY) || ''; } catch (e) { return ''; }
 }
+/* 身份代号：每次令牌变更 +1。
+   异步拿到的旧令牌（例如 401 后补发的游客令牌）在回填前要比对代号，
+   否则会把用户刚登录成功的新令牌覆盖成游客令牌——表现为「一登录就失效」。 */
+let __authEpoch = 0;
+function authEpoch() { return __authEpoch; }
+
 function setToken(t) {
   try { t ? localStorage.setItem(LS_KEY, t) : localStorage.removeItem(LS_KEY); } catch (e) {}
   state.token = t || '';
+  __authEpoch++;
+}
+
+/* ---------- 设备标识 ----------
+   localStorage 与 cookie 双写：任意一侧被清掉，另一侧还能认回来。
+   仅用于封停匹配，不采集任何可识别个人的信息。 */
+const DEV_KEY = 'kimgr_dev';
+let __devId = '';
+
+function readCookie(k) {
+  try {
+    const m = document.cookie.match(new RegExp('(?:^|; )' + k + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : '';
+  } catch (e) { return ''; }
+}
+
+function deviceId() {
+  if (__devId) { return __devId; }
+  let v = '';
+  try { v = localStorage.getItem(DEV_KEY) || ''; } catch (e) {}
+  if (!v) { v = readCookie(DEV_KEY); }
+  if (!/^[A-Za-z0-9_-]{8,80}$/.test(v)) {
+    v = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  }
+  __devId = v;
+  try { localStorage.setItem(DEV_KEY, v); } catch (e) {}
+  try {
+    if (readCookie(DEV_KEY) !== v) {
+      document.cookie = DEV_KEY + '=' + encodeURIComponent(v) + ';path=/;max-age=63072000;SameSite=Lax';
+    }
+  } catch (e) {}
+  return v;
 }
 function getPrefs() {
   try { return JSON.parse(localStorage.getItem(LS_PREFS) || '{}') || {}; } catch (e) { return {}; }
@@ -399,6 +437,10 @@ async function apiOnce(file, action, data = null, opts = {}) {
   if (action) url.searchParams.set('action', action);
 
   const headers = { 'Accept': 'application/json' };
+  /* 设备标识：与登录态无关，一直带。换 IP 时它不变，
+     这样封停才能落到「这台设备的这个浏览器」而不是某个地址段。 */
+  const __dev = deviceId();
+  if (__dev) { headers['X-Device-Id'] = __dev; }
   if (state.token) {
     headers['Authorization'] = 'Bearer ' + state.token;
     headers['X-Token'] = state.token;   // 部分主机会剥离 Authorization，双通道兜底
@@ -699,10 +741,7 @@ async function boot() {
   }
 
   // CSRF（会话级）
-  try {
-    const d = await fetch(API_BASE + '/auth?action=csrf', { credentials: 'same-origin' }).then(r => r.json());
-    if (d && d.data && d.data.csrf) state.csrf = d.data.csrf;
-  } catch (e) {}
+  await fetchCsrf();
 
   if (t) {
     try {
@@ -734,14 +773,45 @@ async function boot() {
   return state;
 }
 
-/** 静默重新获取游客令牌（失败返回 false，不抛错） */
-async function reauthGuest() {
+/** 取一张新的页面令牌（CSRF）：会话被共享主机回收后必须重新拿 */
+async function fetchCsrf() {
   try {
-    const r = await fetch(API_BASE + '/auth?action=guest', { credentials: 'same-origin' });
+    const r = await fetch(API_BASE + '/auth?action=csrf', { credentials: 'same-origin' });
     const j = await r.json();
+    if (j && j.data && j.data.csrf) { state.csrf = j.data.csrf; return true; }
+  } catch (e) { /* 下面按失败处理 */ }
+  return false;
+}
+
+/** 静默重新获取游客令牌（失败返回 false，不抛错）
+    —— 必须带 X-CSRF-Token：guest 接口同样走 csrf_verify()，
+       裸 fetch 会被 419 拒绝，表现为「登出后一直登录态失效、刷新才好」。 */
+async function reauthGuest() {
+  const ep = __authEpoch;
+  const ask = async () => {
+    const r = await fetch(API_BASE + '/auth?action=guest', {
+      credentials: 'same-origin',
+      headers: state.csrf ? { 'X-CSRF-Token': state.csrf } : {}
+    });
+    return await r.json();
+  };
+  try {
+    if (!state.csrf) { await fetchCsrf(); }
+    let j = await ask();
+    if (__authEpoch !== ep) { return false; }
+    if (j && Number(j.code) === 419 && await fetchCsrf()) {
+      j = await ask();                       // 会话被回收：换令牌再来一次
+      if (__authEpoch !== ep) { return false; }
+    }
     if (j && j.code === 0 && j.data && j.data.token) { setToken(j.data.token); return true; }
   } catch (e) { /* 交给上层处理 */ }
   return false;
+}
+
+/** 退出登录后立刻补回游客身份：留空的令牌会让后续每个请求都 401 */
+async function ensureGuestSession() {
+  if (state.token) { return true; }
+  return await reauthGuest();
 }
 
 async function ensureGuestCsrf() {
@@ -1270,6 +1340,105 @@ function mdToHtml(md, inlineExtra) {
   return html;
 }
 
+/* ========== icons.js ========== */
+/**
+ * 图标注册表 —— 全站图标唯一来源
+ * ------------------------------------------------------------
+ * 两种形态：
+ *   ① 内置：24×24 viewBox 的 SVG path（默认值，永远可用）
+ *   ② 覆盖：主题 JSON 按「位置名」注入，值为 img: / data: / css| 前缀
+ * 页面统一走 T(slot, I.xxx)，未覆盖时原样返回内置 path，零额外开销。
+ */
+const I = {
+  rank: 'M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3z',
+  play: 'M8 5v14l11-7z',
+  search: 'M10 4a6 6 0 1 0 3.7 10.7l4.3 4.3 1.4-1.4-4.3-4.3A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8z',
+  vote: 'M12 2l3 6 6.5.9-4.7 4.6 1.1 6.5L12 17l-5.9 3 1.1-6.5L2.5 8.9 9 8z',
+  crown: 'M4 8l4 4 4-6 4 6 4-4-1.5 10h-13L4 8z',
+  snow: 'M12 3v18M4.2 7.5l15.6 9M19.8 7.5l-15.6 9',
+  mail: 'M3 6h18v12H3V6zm2 2l7 5 7-5',
+  rule: 'M6 3h9l4 4v14H6V3zm8 1v4h4',
+  list: 'M4 6h16M4 12h16M4 18h10',
+  users: 'M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm7 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 20c0-3 3-5 6-5s6 2 6 5H3zm13-5c2.5 0 5 1.4 5 4h-5V15z',
+  info: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z',
+  login: 'M10 3h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-8v-2h8V5h-8V3zM3 12l5-5v3h6v4H8v3l-5-5z',
+  logout: 'M14 3h6v18h-6v-2h4V5h-4V3zM10 7l-5 5 5 5v-3h6v-4h-6V7z',
+  doc: 'M6 2h8l4 4v16H6V2zm7 1.5V7h3.5L13 3.5zM8 11h8v2H8v-2zm0 4h8v2H8v-2z',
+  plug: 'M9 2v5H7V2h2zm6 0v5h-2V2h2zM5 9h14v3a7 7 0 0 1-7 7 7 7 0 0 1-7-7V9zm5 11h4v2h-4v-2z',
+  heart: 'M12 21s-7.5-4.7-9.3-9A5.5 5.5 0 0 1 12 6.6 5.5 5.5 0 0 1 21.3 12c-1.8 4.3-9.3 9-9.3 9z',
+  lock: 'M12 2a5 5 0 0 1 5 5v2h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v2h6V7a3 3 0 0 0-3-3zm0 9a1.6 1.6 0 0 1 .9 2.9V18h-1.8v-2.1A1.6 1.6 0 0 1 12 13z',
+  gear: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 4l-2 1.5.3 2.5-2 1-1.8-1.8-2.3.8L12 18l-1.2-2-2.3-.8L6.7 17l-2-1 .3-2.5L3 12l2-1.5L4.7 8l2-1 1.8 1.8 2.3-.8L12 6l1.2 2 2.3.8L17.3 7l2 1-.3 2.5L21 12z',
+  shield: 'M12 2 4 5.2v5.9c0 4.7 3.3 8.8 8 10.9 4.7-2.1 8-6.2 8-10.9V5.2L12 2z',
+  clock: 'M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm0 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm1 3v5.6l4 2.3-1 1.7-5-2.9V7h2z',
+};
+
+/** 位置 → 内置图标的键。主题 JSON 的 slot 名就是这些 key。 */
+const SLOT_KEYS = {
+  'nav.total': 'rank', 'nav.vote': 'vote', 'nav.gods': 'crown', 'nav.cold': 'snow',
+  'nav.chat': 'list', 'nav.submit': 'list', 'nav.mine': 'users', 'nav.help': 'doc',
+  'nav.feedback': 'mail', 'nav.admin': 'shield', 'nav.monitor': 'shield', 'nav.today': 'info',
+  'action.search': 'search', 'action.vote': 'heart', 'action.external': 'plug',
+  'action.send': 'play', 'action.back': 'logout',
+  'user.login': 'login', 'user.logout': 'logout', 'user.avatar': 'users',
+  'user.admin': 'shield', 'user.verified': 'shield',
+  'doc.community': 'rule', 'doc.terms': 'doc', 'doc.privacy': 'lock', 'doc.features': 'doc',
+  'doc.criteria': 'rule', 'doc.ranking': 'list', 'doc.changelog': 'clock', 'doc.ai': 'info',
+  'theme.light': 'gear', 'theme.dark': 'gear', 'theme.auto': 'gear',
+  'theme.palette': 'gear', 'theme.lang': 'gear',
+  'state.loading': 'clock', 'state.empty': 'list', 'state.error': 'info',
+  'state.success': 'info', 'state.warn': 'info', 'state.offline': 'info',
+  'field.search': 'search', 'field.refresh': 'clock',
+};
+
+/** 当前生效的覆盖：slot → img: / data: / css|slot / path */
+let OVR = {};
+
+/** 取某位置的图标值；未覆盖时返回内置值 */
+function T(slot, base) {
+  var v = OVR[slot];
+  return (typeof v === 'string' && v) ? v : base;
+}
+
+/**
+ * 渲染图标。
+ *   'img:URL' / 'data:image/...' → <img>
+ *   'css|<slot>'                 → <i>（样式由主题注入的 .ti-<slot> 规则提供）
+ *   其它（SVG path）              → <svg><path>
+ */
+function icon(x) {
+  var s = (x == null) ? '' : String(x);
+  if (s.slice(0, 4) === 'img:') {
+    return '<img class="ic ic-img" src="' + escAttrJs(s.slice(4)) + '" alt="" draggable="false" referrerpolicy="no-referrer">';
+  }
+  if (s.slice(0, 5) === 'data:') {
+    return '<img class="ic ic-img" src="' + escAttrJs(s) + '" alt="" draggable="false" referrerpolicy="no-referrer">';
+  }
+  if (s.slice(0, 4) === 'css|') {
+    /* slot 里的点不能进 class 名：nav.total → ti-nav-total */
+    return '<i class="ic ti-' + s.slice(4).replace(/\./g, '-') + '"></i>';
+  }
+  return '<svg viewBox="0 0 24 24" class="ic"><path d="' + escAttrJs(s) + '"/></svg>';
+}
+
+/** 属性转义（不依赖 DOM） */
+function escAttrJs(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/'/g, '&#39;');
+}
+
+/** 主题应用时注入覆盖表；传空对象即恢复默认 */
+function applyThemeIcons(map) {
+  OVR = {};
+  if (map && typeof map === 'object') {
+    for (var k in map) {
+      if (!Object.prototype.hasOwnProperty.call(map, k)) { continue; }
+      if (Object.prototype.hasOwnProperty.call(SLOT_KEYS, k) && typeof map[k] === 'string' && map[k]) {
+        OVR[k] = map[k];
+      }
+    }
+  }
+}
+
 /* ========== theme.js ========== */
 /**
  * 主题系统：深浅色 / 三主题色（蓝紫、iOS 彩色、自定义）/ 玻璃方案（CSS、WebGL）
@@ -1346,9 +1515,13 @@ function applyTheme(opts = {}) {
   const accent = opts.accent || state.settings.accent || prefs.accent || 'blue-purple';
   const custom = opts.custom || state.settings.accent_custom || prefs.accent_custom || '#7C3AED';
 
-  const resolvedTheme = theme === 'system'
-    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-    : theme;
+  /* JSON 主题可以强制明暗：强制时用户的深浅选择不生效，但切换按钮仍显示 */
+  const forced = (typeof window !== 'undefined' && window.__TJSON_FORCE) || '';
+  const resolvedTheme = forced === 'dark' ? 'dark'
+    : forced === 'light' ? 'light'
+      : (theme === 'system'
+        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : theme);
 
   const root = document.documentElement;
   root.dataset.theme = resolvedTheme;
@@ -1366,6 +1539,12 @@ function applyTheme(opts = {}) {
 
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', a);
+
+  /* applyTheme 会覆盖 --accent / --radius 等变量；JSON 主题在它之后再补一次，
+     否则每次切换深浅色都会把主题色冲回用户偏好色。 */
+  if (typeof window !== 'undefined' && typeof window.__TJSON_REAPPLY === 'function') {
+    window.__TJSON_REAPPLY();
+  }
 
   return { theme, accent, custom, skin, resolvedTheme };
 }
@@ -1390,6 +1569,622 @@ function initSystemWatcher() {
   if (mq.addEventListener) mq.addEventListener('change', handler);
   else if (mq.addListener) mq.addListener(handler);
 }
+
+/* ========== theme-json.js ========== */
+/**
+ * 主题 JSON 解析器（schema: theme/1）
+ * ------------------------------------------------------------
+ * 职责：把一份 JSON 变成「看得见的主题」——CSS 变量、背景图层、图标覆盖、字体、强制明暗。
+ * 原则：
+ *   1. 任何字段缺失或非法都回退，绝不白屏、绝不抛错打断业务；
+ *   2. 主题来自他人，按不可信输入处理：体积、URL、CSS、SVG 全部过滤；
+ *   3. 不拼 innerHTML 承载主题内容，一律 createElement + 属性赋值。
+ */
+
+
+const MAX_JSON = 1024 * 1024;      /* 1 MB */
+const MAX_LAYERS = 12;
+const MAX_LAYER_BYTES = 512 * 1024;
+const MAX_BG_BYTES = 2 * 1024 * 1024;
+const MAX_PATH = 4000;
+
+/* 66 个合法位置（与规范 §8.1 一致） */
+const SLOTS = {
+  'nav.total': 1, 'nav.vote': 1, 'nav.gods': 1, 'nav.cold': 1, 'nav.chat': 1, 'nav.submit': 1,
+  'nav.mine': 1, 'nav.help': 1, 'nav.feedback': 1, 'nav.admin': 1, 'nav.monitor': 1, 'nav.today': 1,
+  'action.back': 1, 'action.close': 1, 'action.more': 1, 'action.vote': 1, 'action.star': 1,
+  'action.comment': 1, 'action.reply': 1, 'action.copy': 1, 'action.share': 1, 'action.external': 1,
+  'action.edit': 1, 'action.delete': 1, 'action.report': 1, 'action.send': 1, 'action.stop': 1,
+  'action.retry': 1, 'action.download': 1, 'action.expand': 1,
+  'field.search': 1, 'field.password': 1, 'field.emoji': 1, 'field.image': 1, 'field.video': 1,
+  'field.upload': 1, 'field.mention': 1, 'field.model': 1, 'field.think': 1, 'field.filter': 1,
+  'field.sort': 1, 'field.refresh': 1,
+  'media.play': 1, 'media.pause': 1, 'media.fullscreen': 1, 'media.mute': 1,
+  'state.loading': 1, 'state.empty': 1, 'state.error': 1, 'state.success': 1, 'state.warn': 1,
+  'state.offline': 1,
+  'user.login': 1, 'user.logout': 1, 'user.avatar': 1, 'user.admin': 1, 'user.verified': 1,
+  'theme.light': 1, 'theme.dark': 1, 'theme.auto': 1, 'theme.palette': 1, 'theme.lang': 1,
+  'doc.community': 1, 'doc.terms': 1, 'doc.privacy': 1, 'doc.features': 1, 'doc.criteria': 1,
+  'doc.ranking': 1, 'doc.changelog': 1, 'doc.ai': 1,
+};
+
+/* 8 个可覆写的变量：只碰观感，不碰布局尺寸 */
+const TOKENS = ['--glass-blur', '--glass-sat', '--glass-alpha', '--shadow', '--shadow-sm',
+  '--border', '--border-soft', '--surface'];
+
+const STYLE_ID = 'tjson-style';
+const BG_ID = 'tjson-bg';
+const FONT_LINK_ID = 'tjson-font';
+
+const TJ = { theme: null, force: 'auto', errors: [], warns: [] };
+let writtenVars = [];
+
+/* ---------- 基础工具 ---------- */
+
+function utf8Len(s) {
+  var n = 0;
+  for (var i = 0; i < s.length; i++) {
+    var c = s.charCodeAt(i);
+    n += c < 0x80 ? 1 : (c < 0x800 ? 2 : (c >= 0xd800 && c <= 0xdbff ? 4 : 3));
+  }
+  return n;
+}
+
+function isHex(c) { return typeof c === 'string' && /^#[0-9A-Fa-f]{6}$/.test(c); }
+
+function escAttr(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
+}
+
+/** 只接受 https 与图片类 data URL；拒绝 http、协议相对、内网地址 */
+function safeUrl(u, allowData) {
+  if (typeof u !== 'string' || !u) { return ''; }
+  if (u.slice(0, 5) === 'data:') {
+    if (!allowData) { return ''; }
+    return /^data:image\/(svg\+xml|png|jpeg|webp|gif)[;,]/i.test(u) ? u : '';
+  }
+  if (u.slice(0, 8) !== 'https://') { return ''; }
+  var host = u.slice(8).split('/')[0].split(':')[0].toLowerCase();
+  if (!host || host === 'localhost' || /\.local$/.test(host)) { return ''; }
+  if (/^(10|127)\./.test(host) || /^192\.168\./.test(host) || /^172\.(1[6-9]|2\d|3[01])\./.test(host)) { return ''; }
+  if (host === '0.0.0.0' || host === '[::1]' || host === '::1') { return ''; }
+  return u;
+}
+
+/** SVG 过滤：去掉脚本、事件、外链与 foreignObject，保留图形本身 */
+function sanitizeSvg(svg) {
+  var s = String(svg);
+  s = s.replace(/<\s*script[\s\S]*?<\s*\/\s*script\s*>/gi, '');
+  s = s.replace(/<\s*script[^>]*\/?>/gi, '');
+  s = s.replace(/<\s*foreignObject[\s\S]*?<\s*\/\s*foreignObject\s*>/gi, '');
+  s = s.replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+  s = s.replace(/(xlink:href|href)\s*=\s*("(?:[^"]*)"|'(?:[^']*)')/gi, function (m, a, v) {
+    var val = v.slice(1, -1);
+    return val.charAt(0) === '#' ? m : '';
+  });
+  s = s.replace(/javascript\s*:/gi, '');
+  s = s.replace(/<!\s*\[CDATA\[[\s\S]*?\]\]\s*>/g, '');
+  s = s.replace(/<\s*style[\s\S]*?<\s*\/\s*style\s*>/gi, '');
+  return s;
+}
+
+/** 解码 data URL 文本（只处理 utf8 / base64 的 svg） */
+function dataUrlText(u) {
+  var comma = u.indexOf(',');
+  if (comma < 0) { return null; }
+  var head = u.slice(0, comma), body = u.slice(comma + 1);
+  try {
+    if (/;base64/i.test(head)) {
+      if (typeof atob !== 'function') { return null; }
+      var bin = atob(body);
+      try {
+        if (typeof TextDecoder === 'function') {
+          var bytes = new Uint8Array(bin.length);
+          for (var i = 0; i < bin.length; i++) { bytes[i] = bin.charCodeAt(i); }
+          return new TextDecoder('utf-8').decode(bytes);
+        }
+      } catch (e) {}
+      return bin;
+    }
+    return decodeURIComponent(body);
+  } catch (e) { return null; }
+}
+
+/** CSS 声明过滤：禁导入、表达式、脚本协议与定位劫持 */
+function sanitizeCss(css) {
+  var s = String(css || '');
+  if (s.length > 1200) { return ''; }
+  if (/@import|expression\s*\(|javascript\s*:|-moz-binding|behavior\s*:/i.test(s)) { return ''; }
+  if (/position\s*:\s*(fixed|absolute|sticky)/i.test(s)) { return ''; }
+  if (/z-index|pointer-events|display\s*:\s*none/i.test(s)) { return ''; }
+  if (/[<>{}]/.test(s)) { return ''; }
+  return s;
+}
+
+/* ---------- 校验 ---------- */
+
+function parseI18n(v, field, warns) {
+  if (typeof v === 'string') { return v.trim() ? { zh: v.trim() } : null; }
+  if (!v || typeof v !== 'object') { return null; }
+  var out = {}, ok = false;
+  ['zh', 'en', 'ja'].forEach(function (k) {
+    if (typeof v[k] === 'string' && v[k].trim()) {
+      out[k] = v[k].trim().slice(0, 32);
+      ok = true;
+    }
+  });
+  if (!ok) { return null; }
+  Object.keys(v).forEach(function (k) {
+    if (['zh', 'en', 'ja'].indexOf(k) < 0) { warns.push(field + ' 含未知语种 ' + k + '（忽略）'); }
+  });
+  return out;
+}
+
+function validate(data, rawLen) {
+  var errors = [], warns = [];
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return { errors: ['JSON 顶层必须是对象'], warns: warns };
+  }
+  if (rawLen > MAX_JSON) { errors.push('文件超过 1 MB'); }
+  if (data.schema !== 'theme/1') { errors.push('schema 必须是 "theme/1"'); }
+  if (typeof data.id !== 'string' || !/^[a-z0-9][a-z0-9_-]{1,31}$/.test(data.id)) {
+    errors.push('id 非法（小写字母数字与连字符，2~32 位）');
+  }
+
+  var name = parseI18n(data.name, 'name', warns);
+  if (!name) { errors.push('缺少或非法的 name'); }
+
+  var colour = data.colour;
+  if (typeof colour === 'string') { colour = { accent: colour }; }
+  if (!colour || typeof colour !== 'object' || !isHex(colour.accent)) {
+    errors.push('colour.accent 必须是 #RRGGBB');
+  } else {
+    if (colour.accent2 != null && !isHex(colour.accent2)) { errors.push('colour.accent2 必须是 #RRGGBB'); }
+    if (colour.ink != null && !isHex(colour.ink)) { errors.push('colour.ink 必须是 #RRGGBB'); }
+  }
+
+  var desc = null;
+  if (data.colourDesc != null) {
+    desc = parseI18n(data.colourDesc, 'colourDesc', warns);
+    if (!desc) { errors.push('colourDesc 非法'); }
+  }
+
+  var radius = null;
+  var r = data.radius;
+  if (r != null) {
+    if (typeof r === 'number') { r = { lg: r }; }
+    if (!r || typeof r !== 'object') {
+      errors.push('radius 必须是数字或对象');
+    } else {
+      radius = {};
+      ['lg', 'md', 'sm'].forEach(function (k) {
+        if (r[k] != null) {
+          if (typeof r[k] !== 'number' || r[k] < 0 || r[k] > 40) { errors.push('radius.' + k + ' 必须在 0~40'); }
+          else { radius[k] = Math.round(r[k]); }
+        }
+      });
+      if (radius.lg != null && radius.md == null) { radius.md = Math.round(radius.lg * 0.73); }
+      if (radius.lg != null && radius.sm == null) { radius.sm = Math.round(radius.lg * 0.5); }
+    }
+  }
+
+  /* 背景 */
+  var bg = [], bgBytes = 0;
+  if (data.background != null) {
+    if (!Array.isArray(data.background)) {
+      errors.push('background 必须是数组');
+    } else if (data.background.length > MAX_LAYERS) {
+      errors.push('background 最多 ' + MAX_LAYERS + ' 层');
+    } else {
+      data.background.forEach(function (layer, i) {
+        if (!layer || typeof layer !== 'object') { errors.push('background[' + i + '] 必须是对象'); return; }
+        var type = layer.type;
+        if (['css', 'image', 'svg'].indexOf(type) < 0) { errors.push('background[' + i + '].type 非法'); return; }
+        var one = { type: type };
+        if (type === 'css') {
+          one.css = sanitizeCss(layer.css);
+          if (!one.css) { errors.push('background[' + i + '].css 为空或含危险语句'); return; }
+        } else {
+          var src = safeUrl(layer.src, true);
+          if (!src) { errors.push('background[' + i + '].src 必须是 https 或图片 data URL'); return; }
+          if (src.slice(0, 5) === 'data:') {
+            if (utf8Len(src) > MAX_LAYER_BYTES) { errors.push('background[' + i + '] 单层超过 512 KB'); return; }
+            bgBytes += utf8Len(src);
+            if (/^data:image\/svg\+xml/i.test(src)) {
+              var txt = dataUrlText(src);
+              if (txt) {
+                /* 含脚本或内联事件的 SVG 不做修补，直接拒绝：
+                   与云端的准入口径保持一致，也免得用户以为自己用的是「净化过」的图。 */
+                if (/(<\s*script|\son[a-z]+\s*=|foreignObject|javascript\s*:)/i.test(txt)) {
+                  errors.push('background[' + i + '] 的 SVG 含脚本或事件，已拒绝');
+                  return;
+                }
+                var clean = sanitizeSvg(txt);
+                if (!clean || clean.indexOf('<svg') < 0) { errors.push('background[' + i + '] SVG 非法'); return; }
+                one.svgText = clean;
+              }
+            }
+          }
+          one.src = src;
+        }
+        one.position = cssToken(layer.position) || 'center';
+        one.size = cssToken(layer.size) || (type === 'css' ? 'auto' : 'cover');
+        one.repeat = ['no-repeat', 'repeat', 'repeat-x', 'repeat-y'].indexOf(layer.repeat) >= 0 ? layer.repeat : 'no-repeat';
+        one.opacity = (typeof layer.opacity === 'number' && layer.opacity >= 0 && layer.opacity <= 1) ? layer.opacity : 1;
+        one.blend = cssToken(layer.blend) || 'normal';
+        one.mask = layer.mask ? sanitizeCss(layer.mask) : '';
+        one.animate = layer.animate === 'drift' || layer.animate === 'float' || layer.animate === 'pulse' ? layer.animate : '';
+        one.fixed = layer.fixed === true;
+        one.rect = parseRect(layer.rect);
+        bg.push(one);
+      });
+      if (bgBytes > MAX_BG_BYTES) { errors.push('背景 data URL 合计超过 2 MB'); }
+    }
+  }
+
+  /* 图标 */
+  var icons = {}, iconCss = {};
+  if (data.icons != null) {
+    if (!data.icons || typeof data.icons !== 'object' || Array.isArray(data.icons)) {
+      errors.push('icons 必须是对象');
+    } else {
+      Object.keys(data.icons).forEach(function (slot) {
+        if (!SLOTS[slot]) { errors.push('图标位置 ' + slot + ' 不在命名表内'); return; }
+        var v = data.icons[slot];
+        if (v === null) { return; }
+        if (typeof v === 'string') {
+          var path = v.trim();
+          if (!path || path.length > MAX_PATH || !/^[MmZzLlHhVvCcSsQqTtAa0-9eE,.\-\s]+$/.test(path)) {
+            errors.push('图标 ' + slot + ' 的 path 非法'); return;
+          }
+          icons[slot] = path;
+          return;
+        }
+        if (!v || typeof v !== 'object') { errors.push('图标 ' + slot + ' 必须是字符串、对象或 null'); return; }
+        if (v.type === 'css') {
+          var css = sanitizeCss(v.css);
+          if (!css) { errors.push('图标 ' + slot + ' 的 css 非法'); return; }
+          icons[slot] = 'css|' + slot;
+          iconCss[slot] = css;
+        } else if (v.type === 'url' || v.type === 'data') {
+          var u = safeUrl(v.src, v.type === 'data');
+          if (!u) { errors.push('图标 ' + slot + ' 的地址非法'); return; }
+          if (u.slice(0, 5) === 'data:' && /^data:image\/svg\+xml/i.test(u)) {
+            var t2 = dataUrlText(u);
+            if (t2 && /(<\s*script|\son[a-z]+\s*=|foreignObject|javascript\s*:)/i.test(t2)) {
+              errors.push('图标 ' + slot + ' 的 SVG 含脚本或事件，已拒绝'); return;
+            }
+            var c2 = t2 ? sanitizeSvg(t2) : '';
+            if (!c2 || c2.indexOf('<svg') < 0) { errors.push('图标 ' + slot + ' 的 SVG 非法'); return; }
+          }
+          icons[slot] = (v.type === 'url') ? 'img:' + u : u;
+        } else {
+          errors.push('图标 ' + slot + ' 的 type 非法');
+        }
+      });
+    }
+  }
+
+  /* 字体 */
+  var font = null;
+  if (data.font != null) {
+    if (!data.font || typeof data.font !== 'object') {
+      errors.push('font 必须是对象');
+    } else {
+      var body = data.font.body;
+      font = { family: '', url: '', kind: 'stylesheet', weight: '', fallback: [] };
+      if (body && typeof body === 'object') {
+        if (body.url) {
+          var fu = safeUrl(body.url, false);
+          if (!fu) { errors.push('font.body.url 必须是 https'); }
+          else { font.url = fu; }
+        }
+        if (typeof body.family === 'string' && /^[A-Za-z0-9 _\-.]{1,64}$/.test(body.family)) {
+          font.family = body.family;
+        }
+        if (body.kind === 'font' || body.kind === 'stylesheet') { font.kind = body.kind; }
+        if (typeof body.weight === 'string' && /^[0-9 ]{1,20}$/.test(body.weight)) { font.weight = body.weight; }
+        if (font.url && !font.family) { errors.push('font.body 给了 url 却没有合法的 family'); }
+      }
+      if (Array.isArray(data.font.fallback)) {
+        font.fallback = data.font.fallback.filter(function (x) {
+          return typeof x === 'string' && /^[A-Za-z0-9 _\-,.]{1,48}$/.test(x);
+        }).slice(0, 6);
+      }
+    }
+  }
+
+  /* force / tokens */
+  var force = 'auto';
+  if (data.force != null) {
+    if (['auto', 'light', 'dark'].indexOf(data.force) < 0) { errors.push('force 只能是 auto / light / dark'); }
+    else { force = data.force; }
+  }
+
+  var tokens = {};
+  if (data.tokens != null) {
+    if (!data.tokens || typeof data.tokens !== 'object') {
+      errors.push('tokens 必须是对象');
+    } else {
+      Object.keys(data.tokens).forEach(function (k) {
+        if (TOKENS.indexOf(k) < 0) {
+          warns.push('tokens 忽略白名单外的键 ' + k);
+          return;
+        }
+        var val = String(data.tokens[k] == null ? '' : data.tokens[k]);
+        if (!val || val.length > 120 || /important|var\(|url\(|[{}<>]/i.test(val)) {
+          warns.push('tokens.' + k + ' 值不合法，已忽略');
+          return;
+        }
+        tokens[k] = val;
+      });
+    }
+  }
+
+  var known = ['schema', 'id', 'name', 'colour', 'colourDesc', 'radius', 'background',
+    'icons', 'font', 'force', 'tokens', 'meta'];
+  Object.keys(data).forEach(function (k) {
+    if (known.indexOf(k) < 0) { warns.push('忽略未知字段 ' + k); }
+  });
+
+  if (errors.length) { return { errors: errors, warns: warns }; }
+
+  return {
+    errors: [], warns: warns,
+    theme: {
+      id: data.id, name: name, desc: desc, colour: colour, radius: radius,
+      background: bg, icons: icons, iconCss: iconCss, font: font, force: force,
+      tokens: tokens, meta: data.meta || null,
+    },
+  };
+}
+
+/** CSS 值令牌：只允许字母数字、空格、百分号、点、斜杠与常见单位 */
+function cssToken(v) {
+  if (typeof v !== 'string' || !v.trim() || v.length > 64) { return ''; }
+  var s = v.trim();
+  return /^[A-Za-z0-9 %.,\/\-()#]+$/.test(s) ? s : '';
+}
+
+/** 图层矩形：用 CSS 长度定位，拒绝任何函数与表达式 */
+function parseRect(r) {
+  if (!r || typeof r !== 'object') { return null; }
+  var out = {}, hit = false;
+  ['top', 'right', 'bottom', 'left', 'width', 'height'].forEach(function (k) {
+    var v = r[k];
+    if (v == null) { return; }
+    var s = String(v).trim();
+    if (s === 'auto' || /^-?\d+(\.\d+)?(px|%|vh|vw|rem|em)$/.test(s)) { out[k] = s; hit = true; }
+  });
+  return hit ? out : null;
+}
+
+/* ---------- 应用 ---------- */
+
+function lighten(hex, n) {
+  var r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+  r = Math.min(255, r + n * 2); g = Math.min(255, g + n * 2); b = Math.min(255, b + n * 2);
+  return '#' + [r, g, b].map(function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+}
+
+/** 主色上的文字色：按相对亮度选黑或白 */
+function contrastInk(hex) {
+  var r = parseInt(hex.slice(1, 3), 16) / 255, g = parseInt(hex.slice(3, 5), 16) / 255, b = parseInt(hex.slice(5, 7), 16) / 255;
+  var f = function (c) { return c <= .03928 ? c / 12.92 : Math.pow((c + .055) / 1.055, 2.4); };
+  var L = .2126 * f(r) + .7152 * f(g) + .0722 * f(b);
+  return (L + .05) / .05 > 4.5 ? '#000000' : '#FFFFFF';
+}
+
+function setVar(k, v) {
+  /* 节日皮肤用 !important 锁了 --accent 等变量，只有 inline 的 !important 能压过去 */
+  document.documentElement.style.setProperty(k, v, 'important');
+  if (writtenVars.indexOf(k) < 0) { writtenVars.push(k); }
+}
+
+function buildLayers(list) {
+  var box = document.createElement('div');
+  box.id = BG_ID;
+  box.setAttribute('aria-hidden', 'true');
+  list.forEach(function (l) {
+    var d = document.createElement('div');
+    d.className = 'tj-layer';
+    if (l.rect) {
+      ['top', 'right', 'bottom', 'left', 'width', 'height'].forEach(function (k) {
+        if (l.rect[k]) { d.style[k] = l.rect[k]; }
+      });
+    }
+    if (l.type === 'css') {
+      d.style.backgroundImage = l.css;
+    } else {
+      var src = l.src;
+      /* SVG 走过滤后的结果，重新编码为 data URL */
+      if (l.svgText) {
+        src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(l.svgText);
+      }
+      d.style.backgroundImage = 'url("' + src.replace(/"/g, '%22') + '")';
+    }
+    d.style.backgroundPosition = l.position;
+    d.style.backgroundSize = l.size;
+    d.style.backgroundRepeat = l.repeat;
+    d.style.opacity = String(l.opacity);
+    d.style.mixBlendMode = l.blend;
+    if (l.mask) { d.style.webkitMaskImage = l.mask; d.style.maskImage = l.mask; }
+    if (l.animate) { d.className += ' tj-anim-' + l.animate; }
+    if (l.fixed) { d.style.backgroundAttachment = 'fixed'; }
+    box.appendChild(d);
+  });
+  document.body.appendChild(box);
+}
+
+function injectStyle(theme) {
+  var css = [];
+  /* 图标 CSS 型：按 slot 生成独立规则，不用 style 属性 */
+  Object.keys(theme.iconCss).forEach(function (slot) {
+    css.push('html[data-tjson] .ti-' + slot.replace(/\./g, '-') + '{' + theme.iconCss[slot] + '}');
+  });
+  /* 字体：只改字族，不动字号与行高 */
+  if (theme.font && theme.font.family) {
+    var fam = '"' + theme.font.family + '"';
+    var fb = theme.font.fallback.length ? ', ' + theme.font.fallback.join(', ') : '';
+    css.push('html[data-tjson] body,html[data-tjson] button,html[data-tjson] input,'
+      + 'html[data-tjson] textarea,html[data-tjson] select,html[data-tjson] .doc-body{'
+      + 'font-family:' + fam + fb + ' !important}');
+  }
+  if (!css.length) { return; }
+  var el = document.createElement('style');
+  el.id = STYLE_ID;
+  el.textContent = css.join('\n');
+  document.head.appendChild(el);
+}
+
+function injectFont(theme) {
+  var f = theme.font;
+  if (!f || !f.url || !f.family) { return; }
+  if (f.kind === 'stylesheet') {
+    var link = document.createElement('link');
+    link.id = FONT_LINK_ID;
+    link.rel = 'stylesheet';
+    link.href = f.url;
+    link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+    return;
+  }
+  var css = '@font-face{font-family:"' + f.family + '";src:url("' + f.url + '")'
+    + (f.weight ? ';font-weight:' + f.weight : '')
+    + ';font-display:swap}';
+  var el = document.createElement('style');
+  el.id = FONT_LINK_ID;
+  el.textContent = css;
+  document.head.appendChild(el);
+}
+
+/** 只重写变量（明暗切换后 applyTheme 会覆盖掉主题色，需要补一次） */
+function applyVars(theme) {
+  var c = theme.colour;
+  setVar('--accent', c.accent);
+  setVar('--accent-2', c.accent2 || lighten(c.accent, 12));
+  setVar('--accent-ink', c.ink || contrastInk(c.accent));
+  setVar('--toggle-on', c.accent);
+  setVar('--slider-fill', c.accent);
+  if (theme.radius) {
+    if (theme.radius.lg != null) { setVar('--radius-lg', theme.radius.lg + 'px'); }
+    if (theme.radius.md != null) { setVar('--radius-md', theme.radius.md + 'px'); }
+    if (theme.radius.sm != null) { setVar('--radius-sm', theme.radius.sm + 'px'); }
+  }
+  Object.keys(theme.tokens).forEach(function (k) { setVar(k, theme.tokens[k]); });
+}
+
+function apply(theme) {
+  clear();
+  document.documentElement.setAttribute('data-tjson', theme.id);
+  applyVars(theme);
+  if (theme.background && theme.background.length) {
+    /* 站点 body 自带三层渐变背景，会盖住 z-index:-1 的图层。
+       主题自带背景时把 body 背景让位（由主题的第一层充当底色）。 */
+    document.documentElement.setAttribute('data-tjbg', '1');
+    buildLayers(theme.background);
+  }
+  applyThemeIcons(theme.icons);
+  injectStyle(theme);
+  injectFont(theme);
+  TJ.theme = theme;
+  TJ.force = theme.force || 'auto';
+  window.__TJSON_FORCE = TJ.force;
+  if (TJ.force !== 'auto') {
+    document.documentElement.dataset.theme = TJ.force;
+  }
+  /* 常驻 UI（抽屉）不会自己重绘：图标换了要让它立刻反映出来 */
+  try { if (typeof window.__rerenderDrawer === 'function') { window.__rerenderDrawer(); } } catch (e) {}
+  try { window.dispatchEvent(new CustomEvent('tjson:applied', { detail: { id: theme.id, force: TJ.force } })); } catch (e) {}
+  return true;
+}
+
+function clear() {
+  writtenVars.forEach(function (k) { document.documentElement.style.removeProperty(k); });
+  writtenVars = [];
+  delete document.documentElement.dataset.tjson;
+  delete document.documentElement.dataset.tjbg;
+  delete window.__TJSON_FORCE;
+  var bg = document.getElementById(BG_ID);
+  if (bg) { bg.remove(); }
+  ['tjson-style', 'tjson-font'].forEach(function (id) {
+    var n = document.getElementById(id);
+    if (n) { n.remove(); }
+  });
+  applyThemeIcons({});
+  try { if (typeof window.__rerenderDrawer === 'function') { window.__rerenderDrawer(); } } catch (e) {}
+  TJ.theme = null;
+  TJ.force = 'auto';
+}
+
+/* ---------- 对外 ---------- */
+
+/** 解析并校验；返回 { ok, theme, errors, warns } */
+function parse(raw) {
+  var text = (typeof raw === 'string') ? raw : JSON.stringify(raw || {});
+  var len = utf8Len(text);
+  var data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    return { ok: false, errors: ['JSON 解析失败：' + e.message], warns: [] };
+  }
+  var r = validate(data, len);
+  if (r.errors.length) { return { ok: false, theme: null, errors: r.errors, warns: r.warns }; }
+  return { ok: true, theme: r.theme, errors: [], warns: r.warns };
+}
+
+/** 解析 + 应用；失败时不改动现有主题 */
+function applyRaw(raw) {
+  var r = parse(raw);
+  if (!r.ok) { TJ.errors = r.errors; TJ.warns = r.warns; return r; }
+  apply(r.theme);
+  TJ.errors = [];
+  TJ.warns = r.warns;
+  return r;
+}
+
+/** 读取当前主题的摘要，供 UI 展示 */
+function current() {
+  if (!TJ.theme) { return null; }
+  return {
+    id: TJ.theme.id,
+    name: TJ.theme.name,
+    desc: TJ.theme.desc,
+    accent: TJ.theme.colour.accent,
+    force: TJ.theme.force,
+    layers: TJ.theme.background.length,
+    icons: Object.keys(TJ.theme.icons).length,
+    font: TJ.theme.font ? TJ.theme.font.family : '',
+  };
+}
+
+/** 启动时恢复本机保存的主题；数据来自 localStorage，同样要过校验（可被篡改） */
+function restoreThemeJson() {
+  var text = '';
+  try { text = localStorage.getItem('kimgr_tjson') || ''; } catch (e) { return; }
+  if (!text) { return; }
+  var r = applyRaw(text);
+  if (!r.ok) {
+    try { localStorage.removeItem('kimgr_tjson'); } catch (e2) {}
+  }
+}
+
+const ThemeJSON = {
+  parse: parse,
+  apply: apply,
+  applyRaw: applyRaw,
+  clear: clear,
+  current: current,
+  reapply: function () { if (TJ.theme) { applyVars(TJ.theme); } },
+  restore: restoreThemeJson,
+  slots: SLOTS,
+  limits: { json: MAX_JSON, layers: MAX_LAYERS, layerBytes: MAX_LAYER_BYTES, bgBytes: MAX_BG_BYTES },
+};
+window.ThemeJSON = ThemeJSON;
+window.__TJSON_REAPPLY = ThemeJSON.reapply;
+window.restoreThemeJson = restoreThemeJson;
 
 /* ========== transitions.js ========== */
 /**
@@ -4701,6 +5496,8 @@ function bindEmailDialog(hasBound, done) {
       /* 就地切到游客态并重绘，不整页刷新 */
       state.role = 'guest'; state.uid = 0; state.username = t('游客');
       state.settings = {}; state.avatar = '';
+      /* 退出后必须重新拿到游客令牌，否则后续请求全部 401 */
+      await ensureGuestSession();
       toast('已退出');
       navigate('#/rank');
     }
@@ -4849,6 +5646,20 @@ function mountAppearance(box) {
         </div>
       </div>
     </div>
+    <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+      <span>${t('主题 JSON')}</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-ghost btn-sm" type="button" id="tjImport">${t('导入文件')}</button>
+        <button class="btn-ghost btn-sm" type="button" id="tjPaste">${t('粘贴 JSON')}</button>
+        <button class="btn-ghost btn-sm" type="button" id="tjClear">${t('恢复默认')}</button>
+      </div>
+      <input type="file" id="tjFile" accept=".json,application/json" style="display:none">
+      <div id="tjPasteBox" style="display:none;width:100%">
+        <textarea id="tjText" rows="5" style="width:100%;margin:4px 0;padding:8px;border-radius:8px;border:1px solid var(--border-soft);background:var(--surface-solid);color:var(--text);font:12.5px/1.5 ui-monospace,monospace" placeholder="${t('粘贴主题 JSON（最大 1 MB）')}"></textarea>
+        <button class="btn-ghost btn-sm" type="button" id="tjApply">${t('应用')}</button>
+      </div>
+      <div class="tiny" id="tjState">${t('未启用。可导入他人分享的主题文件，最大 1 MB。')}</div>
+    </div>
     <div class="setting-row">
       <span>返回动画</span>
       <div class="seg" style="max-width:200px" id="navAnimSeg">
@@ -4914,6 +5725,88 @@ function mountAppearance(box) {
     customBox.hidden = b.dataset.a !== 'custom';
     if (b.dataset.a === 'custom') initHsl(box);
     await saveTheme({ accent: b.dataset.a });
+  });
+  bindThemeJson(box);
+}
+
+/* ---------- 主题 JSON：导入 / 粘贴 / 云同步（7 天）/ 恢复 ---------- */
+function tjName(n) {
+  if (!n) return '';
+  const L = (document.documentElement.lang || 'zh').slice(0, 2);
+  return n[L] || n.zh || n.en || n.ja || '';
+}
+
+function bindThemeJson(box) {
+  const TJ = window.ThemeJSON;
+  if (!TJ || !box) return;
+  const stateEl = box.querySelector('#tjState');
+  const fileEl = box.querySelector('#tjFile');
+  const pasteBox = box.querySelector('#tjPasteBox');
+  const textEl = box.querySelector('#tjText');
+
+  const show = () => {
+    if (!stateEl) return;
+    const c = TJ.current();
+    if (!c) {
+      stateEl.textContent = t('未启用。可导入他人分享的主题文件，最大 1 MB。');
+      return;
+    }
+    const f = c.force === 'auto' ? t('不强制明暗') : (c.force === 'dark' ? t('强制深色') : t('强制浅色'));
+    stateEl.textContent = t('已启用') + '：' + tjName(c.name) + '（' + c.accent + ' · '
+      + c.layers + t(' 层背景') + ' · ' + c.icons + t(' 个图标') + ' · ' + f + '）';
+  };
+  show();
+
+  const applyText = async (text) => {
+    if (!text) return;
+    if (text.length > 1024 * 1024) { toast(t('主题文件超过 1 MB，已拒绝')); return; }
+    const r = TJ.applyRaw(text);
+    if (!r.ok) {
+      toast(t('主题未通过校验') + '：' + (r.errors[0] || ''));
+      return;
+    }
+    try { localStorage.setItem('kimgr_tjson', text); } catch (e) {}
+    show();
+    toast(t('主题已应用'));
+    if (r.warns.length) { toast(t('提示') + '：' + r.warns[0]); }
+    /* 云同步：登录态下随账号走，7 天后自动过期 */
+    if (state.role !== 'guest') {
+      try { await api('theme', 'save', { json: text }); toast(t('已同步到云端（7 天有效）')); }
+      catch (e) { toast(t('云端同步失败，已在本机生效')); }
+    }
+  };
+
+  const btnImport = box.querySelector('#tjImport');
+  if (btnImport) btnImport.addEventListener('click', () => fileEl && fileEl.click());
+  if (fileEl) {
+    fileEl.addEventListener('change', () => {
+      const f = fileEl.files && fileEl.files[0];
+      if (!f) return;
+      if (f.size > 1024 * 1024) { toast(t('主题文件超过 1 MB，已拒绝')); fileEl.value = ''; return; }
+      const rd = new FileReader();
+      rd.onload = () => { applyText(String(rd.result || '')); fileEl.value = ''; };
+      rd.onerror = () => { toast(t('读取文件失败')); fileEl.value = ''; };
+      rd.readAsText(f);
+    });
+  }
+
+  const btnPaste = box.querySelector('#tjPaste');
+  if (btnPaste) btnPaste.addEventListener('click', () => {
+    if (pasteBox) pasteBox.style.display = pasteBox.style.display === 'none' ? 'block' : 'none';
+  });
+  const btnApply = box.querySelector('#tjApply');
+  if (btnApply) btnApply.addEventListener('click', () => {
+    applyText(textEl ? textEl.value.trim() : '');
+  });
+
+  const btnClear = box.querySelector('#tjClear');
+  if (btnClear) btnClear.addEventListener('click', async () => {
+    TJ.clear();
+    try { localStorage.removeItem('kimgr_tjson'); } catch (e) {}
+    if (textEl) textEl.value = '';
+    show();
+    toast(t('已恢复默认主题'));
+    if (state.role !== 'guest') { try { await api('theme', 'del'); } catch (e) {} }
   });
 }
 
@@ -9661,6 +10554,7 @@ async function renderToday(container) {
 
 
 
+
 const view = document.getElementById('view');
 
 /* 开源仓库：目录里的「渗透测试」直接跳这里 */
@@ -9932,30 +10826,6 @@ function setActiveTab(name) {
 const drawer = document.getElementById('drawer');
 const drawerScrim = document.getElementById('drawerScrim');
 
-function icon(path) { return `<svg viewBox="0 0 24 24" class="ic"><path d="${path}"/></svg>`; }
-const I = {
-  rank: 'M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3z',
-  play: 'M8 5v14l11-7z',
-  search: 'M10 4a6 6 0 1 0 3.7 10.7l4.3 4.3 1.4-1.4-4.3-4.3A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8z',
-  vote: 'M12 2l3 6 6.5.9-4.7 4.6 1.1 6.5L12 17l-5.9 3 1.1-6.5L2.5 8.9 9 8z',
-  crown: 'M4 8l4 4 4-6 4 6 4-4-1.5 10h-13L4 8z',
-  snow: 'M12 3v18M4.2 7.5l15.6 9M19.8 7.5l-15.6 9',
-  mail: 'M3 6h18v12H3V6zm2 2l7 5 7-5',
-  rule: 'M6 3h9l4 4v14H6V3zm8 1v4h4',
-  list: 'M4 6h16M4 12h16M4 18h10',
-  users: 'M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm7 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 20c0-3 3-5 6-5s6 2 6 5H3zm13-5c2.5 0 5 1.4 5 4h-5V15z',
-  info: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z',
-  login: 'M10 3h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-8v-2h8V5h-8V3zM3 12l5-5v3h6v4H8v3l-5-5z',
-  logout: 'M14 3h6v18h-6v-2h4V5h-4V3zM10 7l-5 5 5 5v-3h6v-4h-6V7z',
-  doc: 'M6 2h8l4 4v16H6V2zm7 1.5V7h3.5L13 3.5zM8 11h8v2H8v-2zm0 4h8v2H8v-2z',
-  plug: 'M9 2v5H7V2h2zm6 0v5h-2V2h2zM5 9h14v3a7 7 0 0 1-7 7 7 7 0 0 1-7-7V9zm5 11h4v2h-4v-2z',
-  heart: 'M12 21s-7.5-4.7-9.3-9A5.5 5.5 0 0 1 12 6.6 5.5 5.5 0 0 1 21.3 12c-1.8 4.3-9.3 9-9.3 9z',
-  lock: 'M12 2a5 5 0 0 1 5 5v2h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v2h6V7a3 3 0 0 0-3-3zm0 9a1.6 1.6 0 0 1 .9 2.9V18h-1.8v-2.1A1.6 1.6 0 0 1 12 13z',
-  gear: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 4l-2 1.5.3 2.5-2 1-1.8-1.8-2.3.8L12 18l-1.2-2-2.3-.8L6.7 17l-2-1 .3-2.5L3 12l2-1.5L4.7 8l2-1 1.8 1.8 2.3-.8L12 6l1.2 2 2.3.8L17.3 7l2 1-.3 2.5L21 12z',
-  shield: 'M12 2 4 5.2v5.9c0 4.7 3.3 8.8 8 10.9 4.7-2.1 8-6.2 8-10.9V5.2L12 2z',
-  clock: 'M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm0 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm1 3v5.6l4 2.3-1 1.7-5-2.9V7h2z',
-};
-
 function drawerItems() {
   const isAdmin = state.role === 'admin' || state.role === 'subadmin';
   const items = [];
@@ -9964,40 +10834,43 @@ function drawerItems() {
     ? window.__FESTIVAL.today : [];
   if (festToday.length) {
     items.push({ k: 'today', label: t('关于今天') + '：' + festToday.map(function (x) { return festName(x); }).join('·'),
-      ic: I.info, go: '#/today' });
+      ic: T('nav.today', I.info), go: '#/today' });
   }
   const base = [
-    { k: 'total', label: t('总排行榜'), ic: I.rank, go: '#/rank' },
-    { k: 'search', label: t('搜索作品'), ic: I.search, act: 'search' },
-    { k: 'submit', label: t('提交作品'), ic: I.list, go: '#/submit' },
-    { k: 'vote', label: t('投票榜'), ic: I.vote, go: '#/rank?board=vote' },
-    { k: 'gods', label: t('诸神榜'), ic: I.crown, go: '#/rank?board=gods' },
-    { k: 'cold', label: t('冷门榜'), ic: I.snow, go: '#/rank?board=cold' },
-    { k: 'feedback', label: isAdmin ? '回复反馈' : t('反映问题'), ic: I.mail, go: '#/feedback' },
-    { k: 'help', label: t('功能说明'), ic: I.doc, go: '#/doc/功能说明' },
-    { k: 'aihelp', label: t('AI 使用说明'), ic: I.plug, go: '#/doc/AI 使用说明' },
-    { k: 'charter', label: t('社区公约'), ic: I.users, go: '#/doc/社区公约' },
+    { k: 'total', label: t('总排行榜'), ic: T('nav.total', I.rank), go: '#/rank' },
+    { k: 'search', label: t('搜索作品'), ic: T('field.search', I.search), act: 'search' },
+    { k: 'submit', label: t('提交作品'), ic: T('nav.submit', I.list), go: '#/submit' },
+    { k: 'vote', label: t('投票榜'), ic: T('nav.vote', I.vote), go: '#/rank?board=vote' },
+    { k: 'gods', label: t('诸神榜'), ic: T('nav.gods', I.crown), go: '#/rank?board=gods' },
+    { k: 'cold', label: t('冷门榜'), ic: T('nav.cold', I.snow), go: '#/rank?board=cold' },
+    { k: 'feedback', label: isAdmin ? '回复反馈' : t('反映问题'), ic: T('nav.feedback', I.mail), go: '#/feedback' },
+    { k: 'help', label: t('功能说明'), ic: T('nav.help', I.doc), go: '#/doc/功能说明' },
+    { k: 'aihelp', label: t('AI 使用说明'), ic: T('doc.ai', I.plug), go: '#/doc/AI 使用说明' },
+    { k: 'charter', label: t('社区公约'), ic: T('doc.community', I.users), go: '#/doc/社区公约' },
     { k: 'discipline', label: t('违纪通报'), ic: I.shield, go: '#/discipline' },
     { k: 'history', label: t('铭记历史'), ic: I.clock, go: '#/history' },
-    { k: 'score', label: t('评分标准'), ic: I.rule, go: '#/doc/评分标准' },
-    { k: 'join', label: t('入榜规则'), ic: I.list, go: '#/doc/入榜规则' },
-    { k: 'terms', label: t('用户协议'), ic: I.doc, go: '#/doc/用户协议' },
-    { k: 'privacy', label: t('隐私政策'), ic: I.lock, go: '#/doc/隐私政策' },
-    { k: 'changelog', label: t('更新日志'), ic: I.doc, go: '#/doc/更新日志' },
+    { k: 'score', label: t('评分标准'), ic: T('doc.criteria', I.rule), go: '#/doc/评分标准' },
+    { k: 'join', label: t('入榜规则'), ic: T('doc.ranking', I.list), go: '#/doc/入榜规则' },
+    { k: 'terms', label: t('用户协议'), ic: T('doc.terms', I.doc), go: '#/doc/用户协议' },
+    { k: 'privacy', label: t('隐私政策'), ic: T('doc.privacy', I.lock), go: '#/doc/隐私政策' },
+    { k: 'changelog', label: t('更新日志'), ic: T('doc.changelog', I.doc), go: '#/doc/更新日志' },
     { k: 'pentest', label: t('渗透测试'), ic: I.shield, url: REPO_URL },
     { k: 'admins', label: t('管理者名单'), ic: I.users, go: '#/about' },
     { k: 'about', label: t('关于'), ic: I.info, go: '#/about' },
   ];
   base.forEach(function (x) { items.push(x); });
   if (state.role === 'user' || state.role === 'guest') {
-    items.push({ k: 'auth', label: t('用户登录 / 注册'), ic: I.login, go: '#/login' });
+    items.push({ k: 'auth', label: t('用户登录 / 注册'), ic: T('user.login', I.login), go: '#/login' });
   } else {
-    items.push({ k: 'panel', label: t('控制面板'), ic: I.gear, go: '#/panel' });
-    items.push({ k: 'monitor', label: t('异常监测'), ic: I.shield, go: '#/monitor' });
-    items.push({ k: 'logout', label: t('退出登录'), ic: I.logout, act: 'logout' });
+    items.push({ k: 'panel', label: t('控制面板'), ic: T('nav.admin', I.gear), go: '#/panel' });
+    items.push({ k: 'monitor', label: t('异常监测'), ic: T('nav.monitor', I.shield), go: '#/monitor' });
+    items.push({ k: 'logout', label: t('退出登录'), ic: T('user.logout', I.logout), act: 'logout' });
   }
   return items;
 }
+
+/* 主题 JSON 换图标后需要重绘抽屉（常驻 DOM，不会自己更新） */
+window.__rerenderDrawer = renderDrawer;
 
 function renderDrawer() {
   const list = document.getElementById('drawerList');
@@ -10019,6 +10892,9 @@ function renderDrawer() {
           /* 就地切到游客态：重绘抽屉并跳转，不再整页刷新 */
           state.role = 'guest'; state.uid = 0; state.username = t('游客');
           state.settings = {}; state.avatar = '';
+          /* 关键：立刻补一张游客令牌。留空的令牌会让之后的每个请求都 401，
+             用户看到的就是「退出后一直登录态失效、要刷新才能再登录」。 */
+          await ensureGuestSession();
           toast('已退出');
           renderDrawer();
           navigate('#/rank');
@@ -10390,6 +11266,9 @@ async function main() {
 
   await boot();
   applyTheme();
+  /* JSON 主题：先恢复本机保存的，再按账号拉一次云端（7 天有效，过期即无） */
+  if (typeof window.restoreThemeJson === 'function') { window.restoreThemeJson(); }
+  syncCloudTheme();
   /* 返回动画开关（本机偏好，默认开启） */
   setNavAnim(getPrefs().nav_anim !== 0);
 
@@ -10434,6 +11313,22 @@ async function main() {
 
   // 首次交互时请求通知权限
   bindToTop();   // 通知权限改为在「我的 → 设置」中显式开启
+}
+
+/** 云端主题：随账号同步，过期或未登录时什么也不做 */
+async function syncCloudTheme() {
+  if (state.role === 'guest') { return; }
+  try {
+    const d = await api('theme', 'get', null, { silent: true, tries: 1 });
+    const text = (d && d.json) ? String(d.json) : '';
+    if (!text) { return; }
+    let local = '';
+    try { local = localStorage.getItem('kimgr_tjson') || ''; } catch (e) {}
+    if (text === local) { return; }
+    if (window.ThemeJSON && window.ThemeJSON.applyRaw(text).ok) {
+      try { localStorage.setItem('kimgr_tjson', text); } catch (e) {}
+    }
+  } catch (e) { /* 云端不可用不影响本机主题 */ }
 }
 
 main();

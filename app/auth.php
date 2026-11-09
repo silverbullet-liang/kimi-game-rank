@@ -417,6 +417,11 @@ function login_finish(array $u, bool $skipTwofa = false): array
     if (function_exists('access_log_put')) {
         access_log_put('login', 'user:' . (int)$u['id'], 'role=' . (string)$u['role'], 'ok');
     }
+    /* 记住这台设备：通报时可据此一并封停，换 IP 也逃不掉 */
+    if (function_exists('discipline_dev_of_request')) {
+        $__dev = discipline_dev_of_request();
+        if ($__dev !== '' && (int)$u['id'] > 0) { discipline_dev_touch((int)$u['id'], $__dev); }
+    }
     /* 双重验证：密码只是第一步。这里不直接发令牌，而是把票据交给浏览器，
        等它拿「票据 + 邮件验证码」回来换。发信失败一律拒绝（不允许绕过）。 */
     if (!$skipTwofa && user_twofa_enabled($u)) {

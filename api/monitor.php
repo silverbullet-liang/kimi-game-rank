@@ -23,6 +23,10 @@ if ($action === 'collect') {
             ok(array('n' => 0));
         }
 
+        /* 指纹校验：只收「由本站页面 SDK 发出」的上报。
+           11·3 与 11-08 的灌水都是裸脚本直接 POST 伪造 PV，不带环境字段、sid 恒定。 */
+        if (!mon_collect_trust($p, (string)($_SERVER['HTTP_USER_AGENT'] ?? ''))) { ok(array('n' => 0)); }
+
         /* 采样：采样率 < 100 时，低于概率的上报整体丢弃 */
         $sample = max(1, min(100, (int)setting_get('monitor.sample', mon_default('sample'))));
         if ($sample < 100 && random_int(1, 100) > $sample) { ok(array('n' => 0)); }
@@ -61,6 +65,12 @@ if ($action === 'collect') {
             );
         }
         if (!$rows) { ok(array('n' => 0)); }
+
+        /* 同一会话的 PV 速率：正常用户一分钟开不了 10 个页面。
+           单 sid 恒定 + 高频 PV 是「拿一份会话标识刷浏览量」的典型形态。 */
+        $pvN = 0;
+        foreach ($rows as $r) { if ($r[0] === 'pv') { $pvN++; } }
+        if ($pvN > 0 && !rate_limit('mon_pv_' . $sid, 10, 60, $pvN)) { ok(array('n' => 0)); }
 
         /* 额度按「条」计，不按「次」计：
            第一道锁单个来源每小时总量，第二道是全站每分钟熔断（多 IP 轮换的兜底）。 */
@@ -110,8 +120,9 @@ $__isAdmin = (($__ident['role'] ?? '') === 'admin');
 if ($action === 'stats') {
     list($from, ) = mon_window(param_str('range', '7d'));
 
-    $pv    = (int)db_val("SELECT COUNT(*) FROM web_events WHERE kind='pv' AND created_at >= ?", array($from));
-    $uv    = (int)db_val("SELECT COUNT(DISTINCT sid) FROM web_events WHERE kind='pv' AND sid<>'' AND created_at >= ?", array($from));
+    /* browser 为空的行是伪造上报的特征（真实 SDK 必带环境字段），统计时一律不计 */
+    $pv    = (int)db_val("SELECT COUNT(*) FROM web_events WHERE kind='pv' AND browser<>'' AND created_at >= ?", array($from));
+    $uv    = (int)db_val("SELECT COUNT(DISTINCT sid) FROM web_events WHERE kind='pv' AND sid<>'' AND browser<>'' AND created_at >= ?", array($from));
     $jsErr = (int)db_val("SELECT COUNT(*) FROM web_events WHERE kind='js' AND created_at >= ?", array($from));
     $apiT  = (int)db_val("SELECT COUNT(*) FROM web_events WHERE kind='api' AND created_at >= ?", array($from));
     $apiF  = (int)db_val("SELECT COUNT(*) FROM web_events WHERE kind='api' AND status='fail' AND created_at >= ?", array($from));
@@ -161,7 +172,8 @@ if ($action === 'stats') {
     $thSlow = (int)setting_get('monitor.alert_slow_ratio', mon_default('alert_slow_ratio'));
     $errRate  = $pv > 0 ? round($jsErr / $pv * 100, 1) : 0.0;
     $slowRate = $apiT > 0 ? round($apiS / $apiT * 100, 1) : 0.0;
-    if ($pv >= 20 && $errRate > $thErr) {
+    /* 小样本不评估：十几个 PV 里出两条错误就是 15%+，这种告警只会淹没真问题 */
+    if ($pv >= 50 && $jsErr >= 3 && $errRate > $thErr) {
         mon_alert('error_rate', 'error', 'JS 错误率 ' . $errRate . '% 超过阈值 ' . $thErr . '%', (int)$errRate, $thErr);
     }
     if ($apiT >= 20 && $slowRate > $thSlow) {
@@ -529,6 +541,20 @@ if ($action === 'export') {
 if ($action === 'purge') {
     csrf_verify();
     if (!$__isAdmin) { fail(403, '仅主管理员可清理监测明细'); }
+
+    /* 定向清洗伪造上报：只删「无环境字段」的行，
+       真实会话即使误传了 sid 也不会被连坐。 */
+    $sid = (string)preg_replace('/[^A-Za-z0-9_\-]/', '', param_str('sid', ''));
+    if ($sid !== '') {
+        $n = (int)db_val("SELECT COUNT(*) FROM web_events WHERE sid=? AND browser=''", array($sid));
+        db_exec("DELETE FROM web_events WHERE sid=? AND browser=''", array($sid));
+        ok(array('deleted' => $n), '已清理伪造上报');
+    }
+    if (param_int('fake', 0) === 1) {
+        $n = (int)db_val("SELECT COUNT(*) FROM web_events WHERE kind='pv' AND browser=''", array());
+        db_exec("DELETE FROM web_events WHERE kind='pv' AND browser=''", array());
+        ok(array('deleted' => $n), '已清理伪造 PV');
+    }
     ok(array('deleted' => mon_cleanup()), '已清理');
 }
 

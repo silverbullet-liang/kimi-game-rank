@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '3.60.5');
+define('APP_VERSION', '3.60.9');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);
@@ -57,6 +57,7 @@ require_once APP_ROOT . '/app/helpers.php';
 require_once APP_ROOT . '/app/oid.php';
 require_once APP_ROOT . '/app/monitor.php';
 require_once APP_ROOT . '/app/mon_srv.php';
+require_once APP_ROOT . '/app/theme_json.php';
 require_once APP_ROOT . '/app/crypto.php';
 require_once APP_ROOT . '/app/scoring.php';
 require_once APP_ROOT . '/app/corpus.php';
@@ -177,7 +178,10 @@ if (php_sapi_name() !== 'cli' && function_exists('integrity_tick')) {
 }
 
 /* ---------- 会话（仅用于管理面板二次认证等短状态） ---------- */
-if (session_status() !== PHP_SESSION_ACTIVE && php_sapi_name() !== 'cli') {
+/* 监测上报接口不需要会话：它在匿名状态下被高频调用，而共享主机的
+   session GC 目录（/php_sessions）常无权限，每次 GC 都会写一条 warning。 */
+$__noSess = (bool)preg_match('#/api/monitor\.php$#', (string)($_SERVER['SCRIPT_NAME'] ?? ''));
+if (!$__noSess && session_status() !== PHP_SESSION_ACTIVE && php_sapi_name() !== 'cli') {
     session_name('kimgr_sess');
     // PHP 7.0 兼容：使用旧版参数签名；SameSite 通过 ini 尽力设置（7.3+ 生效，低版本忽略）
     @ini_set('session.cookie_samesite', 'Lax');

@@ -1,0 +1,63 @@
+{
+  "schema": "theme/1",
+  "id": "nineone",
+  "name": {
+    "zh": "九一八",
+    "en": "September 18 Incident",
+    "ja": "九・一八事変（満州事変）"
+  },
+  "colour": {
+    "accent": "#4A4A48",
+    "accent2": "#8C8478",
+    "ink": "#F5F4F0"
+  },
+  "colourDesc": {
+    "zh": "灰调克制 · 刻度与一道裂痕",
+    "en": "Restrained grey · crack and rule",
+    "ja": "抑えた灰 · 刻線と一筋の亀裂"
+  },
+  "radius": 3,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(180deg,#F6F5F1 0%,#EFEEE9 58%,#E9E7E1 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 140'%3E%3Cpath d='M0 46h180M0 92h180M60 0v140M120 0v140' fill='none' stroke='%234A4A48' stroke-opacity='.24' stroke-width='1'/%3E%3Cpath d='M0 0h180v140H0z' fill='none' stroke='%234A4A48' stroke-opacity='.24' stroke-width='1'/%3E%3Cpath d='M90 0l-6 22 9 16-7 18 8 20-5 22 4 20' fill='none' stroke='%234A4A48' stroke-opacity='.42' stroke-width='1.4'/%3E%3C/svg%3E",
+      "position": "top 0 right 0",
+      "size": "168px 132px",
+      "repeat": "no-repeat",
+      "opacity": 0.3
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 40'%3E%3Cpath d='M10 0v14M10 24v16' fill='none' stroke='%234A4A48' stroke-opacity='.42' stroke-width='1.2'/%3E%3C/svg%3E",
+      "position": "top 0 left 0",
+      "size": "16px 40px",
+      "repeat": "repeat-y",
+      "opacity": 0.22
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 20'%3E%3Cpath d='M0 12h118M150 12h150' fill='none' stroke='%234A4A48' stroke-opacity='.30' stroke-width='1'/%3E%3C/svg%3E",
+      "position": "bottom 14px left 0",
+      "size": "300px 20px",
+      "repeat": "repeat-x",
+      "opacity": 0.2
+    }
+  ],
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,255,251,.92)",
+    "--border": "rgba(74,74,72,.16)",
+    "--border-soft": "rgba(74,74,72,.08)",
+    "--shadow": "0 5px 16px rgba(34,34,32,.11)",
+    "--shadow-sm": "0 2px 7px rgba(34,34,32,.07)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

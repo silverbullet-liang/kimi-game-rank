@@ -1,0 +1,64 @@
+{
+  "schema": "theme/1",
+  "id": "kmyc",
+  "name": {
+    "zh": "抗美援朝纪念",
+    "en": "Korean War",
+    "ja": "朝鮮戦争"
+  },
+  "colour": {
+    "accent": "#43523A",
+    "accent2": "#B03A2E",
+    "ink": "#F6F3E8"
+  },
+  "colourDesc": {
+    "zh": "军绿底 · 红星一点",
+    "en": "Army green · one red star",
+    "ja": "軍緑の地 · 赤い星ひとつ"
+  },
+  "radius": 16,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(178deg, #F5F2E9 0%, #EDEADE 55%, #E6E2D3 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 200' preserveAspectRatio='none'%3E%3Cpath d='M0 200V126L182 60 356 134 520 76 700 142 862 86 1030 150 1200 96v104z' fill='%236E7F62' fill-opacity='.16'/%3E%3C/svg%3E",
+      "position": "bottom 0 left 0",
+      "size": "110% 190px",
+      "repeat": "no-repeat",
+      "opacity": 0.55
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 160' preserveAspectRatio='none'%3E%3Cpath d='M0 160V118q150-46 300-8t300-22 300 26 300-16v62z' fill='%2343523A' fill-opacity='.14'/%3E%3C/svg%3E",
+      "position": "bottom 0 left 0",
+      "size": "112% 130px",
+      "repeat": "no-repeat",
+      "opacity": 0.6
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 2.6l5.4 11.2 12.2 1.7-8.9 8.6 2.2 12.2L20 30.5l-10.9 5.8 2.2-12.2-8.9-8.6 12.2-1.7z' fill='%23B03A2E' fill-opacity='.42'/%3E%3C/svg%3E",
+      "position": "top 62px right 42px",
+      "size": "42px 42px",
+      "repeat": "no-repeat",
+      "opacity": 0.6,
+      "animate": "pulse"
+    }
+  ],
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,253,246,.9)",
+    "--border": "rgba(67,82,58,.18)",
+    "--border-soft": "rgba(67,82,58,.09)",
+    "--shadow": "0 9px 26px rgba(35,42,29,.14)",
+    "--shadow-sm": "0 3px 10px rgba(35,42,29,.08)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "schema": "theme/1",
+  "id": "midautumn",
+  "name": {
+    "zh": "中秋",
+    "en": "Mid-Autumn Festival",
+    "ja": "中秋節"
+  },
+  "colour": {
+    "accent": "#34456E",
+    "accent2": "#E8C77A",
+    "ink": "#FBF8F0"
+  },
+  "colourDesc": {
+    "zh": "靛蓝夜 · 满月与桂金花瓣",
+    "en": "Indigo night · full moon, petals",
+    "ja": "藍の夜 · 満月と金木犀"
+  },
+  "radius": 20,
+  "background": [
+    {
+      "type": "css",
+      "css": "radial-gradient(96% 62% at 82% -8%,#FDFBF4 0%,#F7F7FB 46%,#E7E9F2 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3CradialGradient id='h'%3E%3Cstop offset='0' stop-color='%23E8C77A' stop-opacity='.45'/%3E%3Cstop offset='.52' stop-color='%23E8C77A' stop-opacity='.15'/%3E%3Cstop offset='1' stop-color='%23E8C77A' stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='100' cy='100' r='98' fill='url(%23h)'/%3E%3Ccircle cx='100' cy='96' r='40' fill='%23F0D79F' fill-opacity='.88'/%3E%3Ccircle cx='88' cy='84' r='13' fill='%23FBF0D4' fill-opacity='.45'/%3E%3C/svg%3E",
+      "position": "top 0 right 30px",
+      "size": "92px 92px",
+      "repeat": "no-repeat",
+      "opacity": 0.58
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 120' fill='%23E8C77A'%3E%3Cg fill-opacity='.72'%3E%3Cpath d='M28 18c5-8 13-8 17 0-5 5-12 5-17 0z'/%3E%3Cpath d='M74 40c4-7 11-7 15 0-4 4-11 4-15 0z'/%3E%3Cpath d='M40 62c5-8 13-8 17 0-5 5-12 5-17 0z'/%3E%3Cpath d='M104 18c3-6 9-6 12 0-3 4-9 4-12 0z'/%3E%3Cpath d='M86 86c4-6 10-6 13 0-4 4-9 4-13 0z'/%3E%3C/g%3E%3Cg fill-opacity='.42'%3E%3Cpath d='M116 58c3-5 8-5 11 0-3 3-8 3-11 0z'/%3E%3Cpath d='M56 94c3-5 8-5 11 0-3 3-8 3-11 0z'/%3E%3Cpath d='M14 44c3-5 8-5 11 0-3 3-8 3-11 0z'/%3E%3C/g%3E%3C/svg%3E",
+      "position": "top 96px left 16px",
+      "size": "150px 112px",
+      "repeat": "no-repeat",
+      "opacity": 0.45,
+      "animate": "drift"
+    }
+  ],
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,255,255,.92)",
+    "--border": "rgba(52,69,110,.16)",
+    "--border-soft": "rgba(52,69,110,.08)",
+    "--shadow": "0 11px 28px rgba(28,34,51,.13)",
+    "--shadow-sm": "0 4px 12px rgba(28,34,51,.08)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

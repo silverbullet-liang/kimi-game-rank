@@ -1,0 +1,68 @@
+{
+  "schema": "theme/1",
+  "id": "teacher",
+  "name": {
+    "zh": "教师节",
+    "en": "Chinese Teachers' Day",
+    "ja": "教師の日"
+  },
+  "colour": {
+    "accent": "#2F5A45",
+    "accent2": "#E8E2D0",
+    "ink": "#F6F8F4"
+  },
+  "colourDesc": {
+    "zh": "板绿底 · 粉笔灰与擦痕",
+    "en": "Board green · chalk and dust",
+    "ja": "黒板緑の地 · チョークの粉と拭き跡"
+  },
+  "radius": 8,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(180deg, #F4F7F3 0%, #E4EBE3 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 84 84'%3E%3Ccircle cx='12' cy='18' r='1.6' fill='%237D8F80'/%3E%3Ccircle cx='34' cy='9' r='1.1' fill='%237D8F80'/%3E%3Ccircle cx='58' cy='26' r='1.8' fill='%237D8F80'/%3E%3Ccircle cx='24' cy='52' r='1.2' fill='%237D8F80'/%3E%3Ccircle cx='68' cy='62' r='1.5' fill='%237D8F80'/%3E%3Ccircle cx='46' cy='70' r='1.0' fill='%237D8F80'/%3E%3Ccircle cx='6' cy='40' r='0.8' fill='%237D8F80'/%3E%3Ccircle cx='76' cy='12' r='0.9' fill='%237D8F80'/%3E%3C/svg%3E",
+      "position": "left 0 top 0",
+      "size": "84px 84px",
+      "repeat": "repeat",
+      "opacity": 0.3
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 72'%3E%3Cg transform='rotate(-4 210 36)'%3E%3Crect x='6' y='16' width='408' height='38' rx='9' fill='%232F5A45' fill-opacity='.07'/%3E%3Crect x='26' y='24' width='300' height='5' rx='2' fill='%232F5A45' fill-opacity='.05'/%3E%3Crect x='60' y='36' width='330' height='5' rx='2' fill='%232F5A45' fill-opacity='.04'/%3E%3C/g%3E%3C/svg%3E",
+      "position": "top 148px right 6%",
+      "size": "350px 60px",
+      "repeat": "no-repeat",
+      "opacity": 0.5,
+      "blend": "multiply"
+    },
+    {
+      "type": "css",
+      "css": "radial-gradient(120% 46% at 50% 112%, rgba(47,90,69,.16), rgba(47,90,69,0) 74%)",
+      "position": "center",
+      "size": "100% 100%",
+      "repeat": "no-repeat",
+      "opacity": 0.45
+    }
+  ],
+  "icons": {
+    "nav.today": "M4 17.2L15.6 5.6a2 2 0 0 1 2.8 2.8L6.8 20 3 21z",
+    "nav.help": "M11.2 5.6C9.4 4.4 6.6 4 3 4.2v13.6c3.6-.2 6.4.2 8.2 1.4zM12.8 5.6C14.6 4.4 17.4 4 21 4.2v13.6c-3.6-.2-6.4.2-8.2 1.4z"
+  },
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,255,252,.92)",
+    "--border": "rgba(47,90,69,.17)",
+    "--border-soft": "rgba(47,90,69,.08)",
+    "--shadow": "0 7px 20px rgba(27,42,34,.12)",
+    "--shadow-sm": "0 3px 9px rgba(27,42,34,.07)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

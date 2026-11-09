@@ -34,3 +34,10 @@ jobs:
 
       - name: 泄漏自检（密钥 / 词库 / 数据库连接）
         run: python3 tools/repo_check.py
+
+      - name: 主题 JSON 校验
+        run: |
+          shopt -s nullglob
+          files=(themes/*.json)
+          if [ ${#files[@]} -eq 0 ]; then echo "没有主题文件"; exit 0; fi
+          python3 tools/theme_check.py "${files[@]}"

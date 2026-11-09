@@ -1,0 +1,55 @@
+{
+  "schema": "theme/1",
+  "id": "may12",
+  "name": {
+    "zh": "5·12 纪念日",
+    "en": "May 12 Commemoration",
+    "ja": "5・12 追悼の日"
+  },
+  "colour": {
+    "accent": "#4A5D6E",
+    "accent2": "#A8894E",
+    "ink": "#F7FAFC"
+  },
+  "colourDesc": {
+    "zh": "石板灰蓝 · 一线地平与微光",
+    "en": "Slate grey-blue · faint horizon",
+    "ja": "石板の灰青 · 地平線と微光"
+  },
+  "radius": 16,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(180deg,#F6F8FA 0%,#EDF1F5 56%,#E6ECF1 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 360 60'%3E%3Cpath d='M0 40h360' fill='none' stroke='%234A5D6E' stroke-opacity='.50' stroke-width='1.2'/%3E%3Cpath d='M0 48h360' fill='none' stroke='%234A5D6E' stroke-opacity='.22' stroke-width='1'/%3E%3Cpath d='M0 32h132M228 32h132' fill='none' stroke='%234A5D6E' stroke-opacity='.16' stroke-width='1'/%3E%3C/svg%3E",
+      "position": "bottom 40px left 0",
+      "size": "360px 60px",
+      "repeat": "repeat-x",
+      "opacity": 0.35
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3CradialGradient id='g'%3E%3Cstop offset='0' stop-color='%23C69A5A' stop-opacity='.55'/%3E%3Cstop offset='.42' stop-color='%23C69A5A' stop-opacity='.18'/%3E%3Cstop offset='1' stop-color='%23C69A5A' stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='100' cy='100' r='100' fill='url(%23g)'/%3E%3C/svg%3E",
+      "position": "bottom 66px right 12%",
+      "size": "168px 168px",
+      "repeat": "no-repeat",
+      "opacity": 0.34
+    }
+  ],
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,255,255,.90)",
+    "--border": "rgba(74,93,110,.18)",
+    "--border-soft": "rgba(74,93,110,.09)",
+    "--shadow": "0 10px 28px rgba(27,39,51,.13)",
+    "--shadow-sm": "0 3px 12px rgba(27,39,51,.08)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

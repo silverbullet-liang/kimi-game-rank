@@ -1693,3 +1693,51 @@ html[data-theme="dark"] .mon-app { --mok:#4ade80; --mwarn:#fbbf24; --mbad:#f8717
 .inc-inner ul, .inc-inner ol { padding-left: 20px; margin: 6px 0 10px; }
 .inc-inner li { margin: 4px 0; }
 .inc-inner strong { color: var(--text); }
+
+/* ============================================================
+   JSON 主题层（theme/1）
+   主题自带背景时 body 背景让位，图层以 z-index:-1 铺在最底，
+   指针事件全程穿透，永不影响正文交互。
+   ============================================================ */
+html[data-tjbg] body { background: transparent !important; }
+
+#tjson-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  contain: strict;
+}
+#tjson-bg .tj-layer {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  transform: translateZ(0);
+}
+#tjson-bg .tj-anim-drift { animation: tj-drift 48s ease-in-out infinite alternate; }
+#tjson-bg .tj-anim-float { animation: tj-float 9s ease-in-out infinite alternate; }
+#tjson-bg .tj-anim-pulse { animation: tj-pulse 7s ease-in-out infinite; }
+
+@keyframes tj-drift {
+  from { transform: translate3d(-2%, 0, 0) scale(1.02); }
+  to   { transform: translate3d(2%, -1.5%, 0) scale(1.06); }
+}
+@keyframes tj-float {
+  from { transform: translate3d(0, -6px, 0); }
+  to   { transform: translate3d(0, 6px, 0); }
+}
+@keyframes tj-pulse {
+  0%, 100% { opacity: .55; }
+  50%      { opacity: 1; }
+}
+
+/* 图标：图片型与 CSS 型共用 .ic 的尺寸规则 */
+.ic-img { object-fit: contain; }
+i.ic[class*='ti-'] { background-repeat: no-repeat; background-position: center; background-size: contain; }
+
+@media (prefers-reduced-motion: reduce) {
+  #tjson-bg .tj-layer { animation: none !important; }
+}

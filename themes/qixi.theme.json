@@ -1,0 +1,67 @@
+{
+  "schema": "theme/1",
+  "id": "qixi",
+  "name": {
+    "zh": "七夕",
+    "en": "Qixi Festival",
+    "ja": "七夕"
+  },
+  "colour": {
+    "accent": "#3A3A6E",
+    "accent2": "#C9A6D9",
+    "ink": "#F8F4FF"
+  },
+  "colourDesc": {
+    "zh": "夜紫底 · 星河点阵与鹊桥弧",
+    "en": "Night violet · stars + arc",
+    "ja": "夜紫の地 · 星河と鵲の橋"
+  },
+  "radius": 22,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(180deg, #F6F5FC 0%, #E7E4F5 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 36'%3E%3Ccircle cx='6' cy='8' r='0.9' fill='%233A3A6E' fill-opacity='.75'/%3E%3Ccircle cx='22' cy='26' r='0.7' fill='%23C9A6D9' fill-opacity='.9'/%3E%3Ccircle cx='38' cy='12' r='1.1' fill='%233A3A6E' fill-opacity='.7'/%3E%3Ccircle cx='14' cy='31' r='0.6' fill='%23C9A6D9' fill-opacity='.85'/%3E%3Ccircle cx='43' cy='30' r='0.8' fill='%233A3A6E' fill-opacity='.7'/%3E%3Ccircle cx='30' cy='4' r='0.7' fill='%23C9A6D9' fill-opacity='.8'/%3E%3Ccircle cx='2' cy='20' r='0.5' fill='%23C9A6D9' fill-opacity='.7'/%3E%3Ccircle cx='34' cy='21' r='0.5' fill='%233A3A6E' fill-opacity='.6'/%3E%3C/svg%3E",
+      "position": "left 0 top 0",
+      "size": "96px 72px",
+      "repeat": "repeat",
+      "opacity": 0.4,
+      "animate": "drift"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 460 130'%3E%3Cpath d='M10 116Q230 16 450 116' fill='none' stroke='%233A3A6E' stroke-width='1.6' stroke-opacity='.42'/%3E%3Cpath d='M10 116Q230 34 450 116' fill='none' stroke='%23C9A6D9' stroke-width='1' stroke-opacity='.4'/%3E%3Ccircle cx='89.2' cy='86.5' r='2.2' fill='%233A3A6E' fill-opacity='.45'/%3E%3Ccircle cx='159.6' cy='71.1' r='2.2' fill='%233A3A6E' fill-opacity='.45'/%3E%3Ccircle cx='230' cy='66' r='2.2' fill='%233A3A6E' fill-opacity='.45'/%3E%3Ccircle cx='300.4' cy='71.1' r='2.2' fill='%233A3A6E' fill-opacity='.45'/%3E%3Ccircle cx='370.8' cy='86.5' r='2.2' fill='%233A3A6E' fill-opacity='.45'/%3E%3Ccircle cx='10' cy='116' r='3.2' fill='%233A3A6E' fill-opacity='.5'/%3E%3Ccircle cx='450' cy='116' r='3.2' fill='%233A3A6E' fill-opacity='.5'/%3E%3C/svg%3E",
+      "position": "left 0 bottom 8px",
+      "size": "100% 132px",
+      "repeat": "no-repeat",
+      "opacity": 0.32
+    },
+    {
+      "type": "css",
+      "css": "radial-gradient(120% 42% at 50% 104%, rgba(58,58,110,.20), rgba(58,58,110,0) 72%)",
+      "position": "center",
+      "size": "100% 100%",
+      "repeat": "no-repeat",
+      "opacity": 0.5
+    }
+  ],
+  "icons": {
+    "nav.today": "M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z"
+  },
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,254,255,.92)",
+    "--border": "rgba(58,58,110,.16)",
+    "--border-soft": "rgba(58,58,110,.08)",
+    "--shadow": "0 12px 30px rgba(29,27,51,.16)",
+    "--shadow-sm": "0 4px 12px rgba(29,27,51,.10)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

@@ -55,6 +55,12 @@ switch ($action) {
         $ident = param_str('identifier', '');
         if ($ident === '') { $ident = param_str('username', ''); }   // 旧客户端字段名
         $r = user_login($ident, param_str('password'));
+        /* 硬门：封停的账号或设备一律不签发令牌 —— 登录入口就挡住，不必等进了站再拦。
+           设备维度不吃 IP 变更：换网络、换号段都不影响。 */
+        if (function_exists('discipline_login_blocked') && discipline_login_blocked((int)($r['uid'] ?? 0))) {
+            timing_delay();
+            fail(403, '该账号或设备已被封停，无法登录');
+        }
         /* 开启双重验证的账号：密码通过只是第一步，令牌要等邮件验证码回来才发 */
         if (!empty($r['twofa'])) { ok($r, '请输入邮箱验证码'); break; }
         ok(array('token' => $r['token'], 'role' => $r['role'], 'uid' => $r['uid'], 'username' => $r['username']));
@@ -65,6 +71,10 @@ switch ($action) {
         csrf_verify();
         captcha_guard();
         $r = user_login_2fa(param_str('ticket'), param_str('code'));
+        if (function_exists('discipline_login_blocked') && discipline_login_blocked((int)($r['uid'] ?? 0))) {
+            timing_delay();
+            fail(403, '该账号或设备已被封停，无法登录');
+        }
         ok(array('token' => $r['token'], 'role' => $r['role'], 'uid' => $r['uid'], 'username' => $r['username']));
 
     /* 邮箱验证码登录 · 第一步：发码 */

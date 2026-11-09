@@ -44,9 +44,47 @@ installImageFallback();
 export function getToken() {
   try { return localStorage.getItem(LS_KEY) || ''; } catch (e) { return ''; }
 }
+/* 身份代号：每次令牌变更 +1。
+   异步拿到的旧令牌（例如 401 后补发的游客令牌）在回填前要比对代号，
+   否则会把用户刚登录成功的新令牌覆盖成游客令牌——表现为「一登录就失效」。 */
+let __authEpoch = 0;
+export function authEpoch() { return __authEpoch; }
+
 export function setToken(t) {
   try { t ? localStorage.setItem(LS_KEY, t) : localStorage.removeItem(LS_KEY); } catch (e) {}
   state.token = t || '';
+  __authEpoch++;
+}
+
+/* ---------- 设备标识 ----------
+   localStorage 与 cookie 双写：任意一侧被清掉，另一侧还能认回来。
+   仅用于封停匹配，不采集任何可识别个人的信息。 */
+const DEV_KEY = 'kimgr_dev';
+let __devId = '';
+
+function readCookie(k) {
+  try {
+    const m = document.cookie.match(new RegExp('(?:^|; )' + k + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : '';
+  } catch (e) { return ''; }
+}
+
+export function deviceId() {
+  if (__devId) { return __devId; }
+  let v = '';
+  try { v = localStorage.getItem(DEV_KEY) || ''; } catch (e) {}
+  if (!v) { v = readCookie(DEV_KEY); }
+  if (!/^[A-Za-z0-9_-]{8,80}$/.test(v)) {
+    v = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  }
+  __devId = v;
+  try { localStorage.setItem(DEV_KEY, v); } catch (e) {}
+  try {
+    if (readCookie(DEV_KEY) !== v) {
+      document.cookie = DEV_KEY + '=' + encodeURIComponent(v) + ';path=/;max-age=63072000;SameSite=Lax';
+    }
+  } catch (e) {}
+  return v;
 }
 export function getPrefs() {
   try { return JSON.parse(localStorage.getItem(LS_PREFS) || '{}') || {}; } catch (e) { return {}; }
@@ -204,6 +242,10 @@ async function apiOnce(file, action, data = null, opts = {}) {
   if (action) url.searchParams.set('action', action);
 
   const headers = { 'Accept': 'application/json' };
+  /* 设备标识：与登录态无关，一直带。换 IP 时它不变，
+     这样封停才能落到「这台设备的这个浏览器」而不是某个地址段。 */
+  const __dev = deviceId();
+  if (__dev) { headers['X-Device-Id'] = __dev; }
   if (state.token) {
     headers['Authorization'] = 'Bearer ' + state.token;
     headers['X-Token'] = state.token;   // 部分主机会剥离 Authorization，双通道兜底
@@ -504,10 +546,7 @@ export async function boot() {
   }
 
   // CSRF（会话级）
-  try {
-    const d = await fetch(API_BASE + '/auth?action=csrf', { credentials: 'same-origin' }).then(r => r.json());
-    if (d && d.data && d.data.csrf) state.csrf = d.data.csrf;
-  } catch (e) {}
+  await fetchCsrf();
 
   if (t) {
     try {
@@ -539,14 +578,45 @@ export async function boot() {
   return state;
 }
 
-/** 静默重新获取游客令牌（失败返回 false，不抛错） */
-async function reauthGuest() {
+/** 取一张新的页面令牌（CSRF）：会话被共享主机回收后必须重新拿 */
+async function fetchCsrf() {
   try {
-    const r = await fetch(API_BASE + '/auth?action=guest', { credentials: 'same-origin' });
+    const r = await fetch(API_BASE + '/auth?action=csrf', { credentials: 'same-origin' });
     const j = await r.json();
+    if (j && j.data && j.data.csrf) { state.csrf = j.data.csrf; return true; }
+  } catch (e) { /* 下面按失败处理 */ }
+  return false;
+}
+
+/** 静默重新获取游客令牌（失败返回 false，不抛错）
+    —— 必须带 X-CSRF-Token：guest 接口同样走 csrf_verify()，
+       裸 fetch 会被 419 拒绝，表现为「登出后一直登录态失效、刷新才好」。 */
+async function reauthGuest() {
+  const ep = __authEpoch;
+  const ask = async () => {
+    const r = await fetch(API_BASE + '/auth?action=guest', {
+      credentials: 'same-origin',
+      headers: state.csrf ? { 'X-CSRF-Token': state.csrf } : {}
+    });
+    return await r.json();
+  };
+  try {
+    if (!state.csrf) { await fetchCsrf(); }
+    let j = await ask();
+    if (__authEpoch !== ep) { return false; }
+    if (j && Number(j.code) === 419 && await fetchCsrf()) {
+      j = await ask();                       // 会话被回收：换令牌再来一次
+      if (__authEpoch !== ep) { return false; }
+    }
     if (j && j.code === 0 && j.data && j.data.token) { setToken(j.data.token); return true; }
   } catch (e) { /* 交给上层处理 */ }
   return false;
+}
+
+/** 退出登录后立刻补回游客身份：留空的令牌会让后续每个请求都 401 */
+export async function ensureGuestSession() {
+  if (state.token) { return true; }
+  return await reauthGuest();
 }
 
 async function ensureGuestCsrf() {

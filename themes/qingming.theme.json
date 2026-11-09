@@ -1,0 +1,67 @@
+{
+  "schema": "theme/1",
+  "id": "qingming",
+  "name": {
+    "zh": "清明",
+    "en": "Qingming Festival",
+    "ja": "清明節"
+  },
+  "colour": {
+    "accent": "#5F7F85",
+    "accent2": "#A8C08A",
+    "ink": "#F5FAFA"
+  },
+  "colourDesc": {
+    "zh": "青灰底 · 斜雨与垂柳",
+    "en": "Grey-green · rain and willow",
+    "ja": "青灰の地 · 斜雨と柳"
+  },
+  "radius": 12,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(180deg, #F4F8F8 0%, #E3ECEC 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 20'%3E%3Cline x1='2.5' y1='20' x2='8.5' y2='2' stroke='%235F7F85' stroke-width='1' stroke-opacity='.6' stroke-linecap='round'/%3E%3C/svg%3E",
+      "position": "left 0 top 0",
+      "size": "12px 20px",
+      "repeat": "repeat",
+      "opacity": 0.34
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 40'%3E%3Cline x1='6' y1='40' x2='16' y2='4' stroke='%235F7F85' stroke-width='1.2' stroke-opacity='.5' stroke-linecap='round'/%3E%3C/svg%3E",
+      "position": "left 7px top 13px",
+      "size": "26px 40px",
+      "repeat": "repeat",
+      "opacity": 0.24,
+      "animate": "drift"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 170 140'%3E%3Cpath d='M12 10Q86 16 150 118' fill='none' stroke='%235F7F85' stroke-width='1.8' stroke-opacity='.45' stroke-linecap='round'/%3E%3Cellipse cx='32.5' cy='13.6' rx='10' ry='3.6' fill='%23A8C08A' fill-opacity='.42' transform='rotate(-31 32.5 13.6)'/%3E%3Cellipse cx='32.5' cy='13.6' rx='10' ry='3.6' fill='%23A8C08A' fill-opacity='.42' transform='rotate(61 32.5 13.6)'/%3E%3Cellipse cx='49.8' cy='19.6' rx='10' ry='3.6' fill='%23A8C08A' fill-opacity='.42' transform='rotate(-22.6 49.8 19.6)'/%3E%3Cellipse cx='49.8' cy='19.6' rx='10' ry='3.6' fill='%23A8C08A' fill-opacity='.42' transform='rotate(69.4 49.8 19.6)'/%3E%3Cellipse cx='66.8' cy='28.4' rx='10' ry='3.6' fill='%23A8C08A' fill-opacity='.42' transform='rotate(-14.8 66.8 28.4)'/%3E%3Cellipse cx='66.8' cy='28.4' rx='10' ry='3.6' fill='%23A8C08A' fill-opacity='.42' transform='rotate(77.2 66.8 28.4)'/%3E%3Cellipse cx='83.5' cy='40' rx='10' ry='3.6' fill='%23A8C08A' fill-opacity='.42' transform='rotate(-8 83.5 40)'/%3E%3Cellipse cx='83.5' cy='40' rx='10' ry='3.6' fill='%23A8C08A' fill-opacity='.42' transform='rotate(84 83.5 40)'/%3E%3Cellipse cx='99.9' cy='54.3' rx='10' ry='3.6' fill='%23A8C08A' fill-opacity='.42' transform='rotate(-2 99.9 54.3)'/%3E%3Cellipse cx='99.9' cy='54.3' rx='10' ry='3.6' fill='%23A8C08A' fill-opacity='.42' transform='rotate(90 99.9 54.3)'/%3E%3Cellipse cx='116' cy='71.4' rx='10' ry='3.6' fill='%23A8C08A' fill-opacity='.42' transform='rotate(3.2 116 71.4)'/%3E%3Cellipse cx='116' cy='71.4' rx='10' ry='3.6' fill='%23A8C08A' fill-opacity='.42' transform='rotate(95.2 116 71.4)'/%3E%3Cellipse cx='131.9' cy='91.3' rx='10' ry='3.6' fill='%23A8C08A' fill-opacity='.42' transform='rotate(7.6 131.9 91.3)'/%3E%3Cellipse cx='131.9' cy='91.3' rx='10' ry='3.6' fill='%23A8C08A' fill-opacity='.42' transform='rotate(99.6 131.9 91.3)'/%3E%3C/svg%3E",
+      "position": "top 96px left 18px",
+      "size": "196px 160px",
+      "repeat": "no-repeat",
+      "opacity": 0.34
+    }
+  ],
+  "icons": {
+    "nav.today": "M12 2.6c3.6 4.4 6 7.6 6 10.6a6 6 0 0 1-12 0c0-3 2.4-6.2 6-10.6z"
+  },
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,255,255,.91)",
+    "--border": "rgba(107,138,143,.18)",
+    "--border-soft": "rgba(107,138,143,.09)",
+    "--shadow": "0 9px 24px rgba(27,42,44,.12)",
+    "--shadow-sm": "0 3px 10px rgba(27,42,44,.07)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

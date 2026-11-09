@@ -1,0 +1,92 @@
+{
+  "schema": "theme/1",
+  "id": "default",
+  "name": {
+    "zh": "默认",
+    "en": "Default",
+    "ja": "デフォルト"
+  },
+  "colour": {
+    "accent": "#7C3AED",
+    "accent2": "#A855F7",
+    "ink": "#FFFFFF"
+  },
+  "colourDesc": {
+    "zh": "液态玻璃 · 紫",
+    "en": "Liquid Glass · Violet",
+    "ja": "リキッドグラス · バイオレット"
+  },
+  "radius": {
+    "lg": 22,
+    "md": 16,
+    "sm": 11
+  },
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(165deg, #EEF0F5 0%, #E6E9F2 55%, #EDE9F8 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400'%3E%3Cdefs%3E%3CradialGradient id='g'%3E%3Cstop offset='0' stop-color='%237C3AED' stop-opacity='.55'/%3E%3Cstop offset='1' stop-color='%237C3AED' stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='200' cy='200' r='200' fill='url(%23g)'/%3E%3C/svg%3E",
+      "position": "top -120px right -140px",
+      "size": "620px 620px",
+      "repeat": "no-repeat",
+      "opacity": 0.55,
+      "blend": "normal",
+      "animate": "float"
+    },
+    {
+      "type": "css",
+      "css": "repeating-linear-gradient(0deg, rgba(20,20,40,.035) 0 1px, transparent 1px 64px), repeating-linear-gradient(90deg, rgba(20,20,40,.035) 0 1px, transparent 1px 64px)",
+      "position": "center",
+      "size": "auto",
+      "repeat": "repeat",
+      "opacity": 0.5,
+      "mask": "linear-gradient(180deg, #000 0%, transparent 70%)"
+    }
+  ],
+  "icons": {
+    "nav.total": "M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3z",
+    "nav.chat": {
+      "type": "url",
+      "src": "https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/message-circle.svg"
+    },
+    "action.send": {
+      "type": "data",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 20l18-8L3 4v6l12 2-12 2v6z'/%3E%3C/svg%3E"
+    },
+    "state.empty": {
+      "type": "css",
+      "css": "width:72px;height:72px;background:radial-gradient(circle at 50% 42%, #C7B6F2 0 34%, transparent 36%) center/contain no-repeat;opacity:.8"
+    },
+    "user.login": null
+  },
+  "font": {
+    "body": {
+      "kind": "stylesheet",
+      "url": "https://cdn.jsdelivr.net/npm/misans@5.0.0/lib/Normal/MiSansVF.min.css",
+      "family": "MiSans VF",
+      "weight": "100 900",
+      "display": "swap"
+    },
+    "fallback": ["system-ui", "-apple-system", "Segoe UI", "sans-serif"]
+  },
+  "force": "auto",
+  "tokens": {
+    "--glass-blur": "22px",
+    "--glass-sat": "170%",
+    "--glass-alpha": ".58",
+    "--shadow": "0 10px 30px rgba(30, 25, 80, .10)",
+    "--shadow-sm": "0 4px 14px rgba(30, 25, 80, .07)",
+    "--border": "rgba(255, 255, 255, .65)",
+    "--border-soft": "rgba(20, 20, 40, .08)",
+    "--surface": "rgba(255, 255, 255, .58)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0",
+    "homepage": "https://kimi-game-rank.wuaze.com"
+  }
+}

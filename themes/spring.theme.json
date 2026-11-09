@@ -1,0 +1,67 @@
+{
+  "schema": "theme/1",
+  "id": "spring",
+  "name": {
+    "zh": "春节",
+    "en": "Spring Festival",
+    "ja": "春節"
+  },
+  "colour": {
+    "accent": "#C0392B",
+    "accent2": "#D4A017",
+    "ink": "#FFF8F2"
+  },
+  "colourDesc": {
+    "zh": "米白宣纸底 · 朱红灯笼与窗花",
+    "en": "Paper-white · lantern & window",
+    "ja": "米白の地 · 赤提灯と切り絵"
+  },
+  "radius": 18,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(178deg, #FFF7F2 0%, #FBE6DA 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='40,23 67,50 40,77 13,50' fill='none' stroke='%23D4A017' stroke-width='1.6' stroke-opacity='.75'/%3E%3Cpolygon points='40,33 57,50 40,67 23,50' fill='none' stroke='%23D4A017' stroke-width='1.6' stroke-opacity='.5'/%3E%3Cpolygon points='60,23 87,50 60,77 33,50' fill='none' stroke='%23D4A017' stroke-width='1.6' stroke-opacity='.75'/%3E%3Cpolygon points='60,33 77,50 60,67 43,50' fill='none' stroke='%23D4A017' stroke-width='1.6' stroke-opacity='.5'/%3E%3Cpolygon points='50,44 56,50 50,56 44,50' fill='%23C0392B' fill-opacity='.55'/%3E%3C/svg%3E",
+      "position": "top 88px left 26px",
+      "size": "104px 104px",
+      "repeat": "no-repeat",
+      "opacity": 0.26
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 340 112'%3E%3Cpath d='M52 0v11' stroke='%23D4A017' stroke-width='1.6' stroke-opacity='.7'/%3E%3Crect x='40' y='10' width='24' height='6' rx='2' fill='%23D4A017' fill-opacity='.62'/%3E%3Cellipse cx='52' cy='48' rx='27' ry='31' fill='%23C0392B' fill-opacity='.13' stroke='%23C0392B' stroke-opacity='.36' stroke-width='1.7'/%3E%3Cellipse cx='52' cy='48' rx='17' ry='31' fill='none' stroke='%23C0392B' stroke-opacity='.2'/%3E%3Cellipse cx='52' cy='48' rx='8' ry='31' fill='none' stroke='%23C0392B' stroke-opacity='.14'/%3E%3Crect x='40' y='78' width='24' height='6' rx='2' fill='%23D4A017' fill-opacity='.62'/%3E%3Cpath d='M52 84v22M52 92l-8 12M52 92l8 12' stroke='%23D4A017' stroke-width='1.4' stroke-opacity='.5' fill='none'/%3E%3Cpath d='M288 0v11' stroke='%23D4A017' stroke-width='1.6' stroke-opacity='.7'/%3E%3Crect x='276' y='10' width='24' height='6' rx='2' fill='%23D4A017' fill-opacity='.62'/%3E%3Cellipse cx='288' cy='48' rx='27' ry='31' fill='%23C0392B' fill-opacity='.13' stroke='%23C0392B' stroke-opacity='.36' stroke-width='1.7'/%3E%3Cellipse cx='288' cy='48' rx='17' ry='31' fill='none' stroke='%23C0392B' stroke-opacity='.2'/%3E%3Cellipse cx='288' cy='48' rx='8' ry='31' fill='none' stroke='%23C0392B' stroke-opacity='.14'/%3E%3Crect x='276' y='78' width='24' height='6' rx='2' fill='%23D4A017' fill-opacity='.62'/%3E%3Cpath d='M288 84v22M288 92l-8 12M288 92l8 12' stroke='%23D4A017' stroke-width='1.4' stroke-opacity='.5' fill='none'/%3E%3C/svg%3E",
+      "position": "top -8px right 3%",
+      "size": "340px 112px",
+      "repeat": "no-repeat",
+      "opacity": 0.5,
+      "animate": "float"
+    },
+    {
+      "type": "css",
+      "css": "radial-gradient(110% 38% at 50% 108%, rgba(212,160,23,.22), rgba(212,160,23,0) 72%)",
+      "position": "center",
+      "size": "100% 100%",
+      "repeat": "no-repeat",
+      "opacity": 0.5
+    }
+  ],
+  "icons": {
+    "nav.today": "M11.2 .8h1.6v2.2h-1.6zM9.4 3h5.2v1.8H9.4zM12 4.8c4.3 0 7.2 2.9 7.2 6.8s-2.9 6.8-7.2 6.8-7.2-2.9-7.2-6.8 2.9-6.8 7.2-6.8zM9.4 18.4h5.2v1.8H9.4zM11.4 20.2h1.2v2.6h-1.2z"
+  },
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,253,250,.89)",
+    "--border": "rgba(192,57,43,.18)",
+    "--border-soft": "rgba(192,57,43,.09)",
+    "--shadow": "0 10px 30px rgba(142,32,22,.16)",
+    "--shadow-sm": "0 4px 14px rgba(142,32,22,.10)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

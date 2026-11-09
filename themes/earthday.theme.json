@@ -1,0 +1,56 @@
+{
+  "schema": "theme/1",
+  "id": "earthday",
+  "name": {
+    "zh": "地球日",
+    "en": "Earth Day",
+    "ja": "アースデイ"
+  },
+  "colour": {
+    "accent": "#2E7BA6",
+    "accent2": "#6FA84F",
+    "ink": "#F3FAFE"
+  },
+  "colourDesc": {
+    "zh": "浅海蓝底 · 一颗球的弧光",
+    "en": "Pale sea blue · one globe edge",
+    "ja": "淡い海色の地 · 球の縁の光"
+  },
+  "radius": 22,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(172deg, #F2F8FC 0%, #E9F3F9 54%, #DFEDF5 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' fill='none'%3E%3Ccircle cx='100' cy='100' r='92' stroke='%232E7BA6' stroke-opacity='.34' stroke-width='1.5'/%3E%3Ccircle cx='100' cy='100' r='74' fill='%236FA84F' fill-opacity='.05'/%3E%3Cpath d='M100 8a92 92 0 0 1 74 40' stroke='%232E7BA6' stroke-opacity='.5' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M28 118a92 92 0 0 0 40 58' stroke='%236FA84F' stroke-opacity='.34' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E",
+      "position": "top 42px right -58px",
+      "size": "286px 286px",
+      "repeat": "no-repeat",
+      "opacity": 0.55,
+      "animate": "float"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 170' preserveAspectRatio='none'%3E%3Cpath d='M0 170V112q120-46 240 0t240 0 240 0 240 0 240 0v58z' fill='%232E7BA6' fill-opacity='.12'/%3E%3Cpath d='M0 170v-30q140-38 280 0t280 0 280 0 360 0v30z' fill='%236FA84F' fill-opacity='.10'/%3E%3C/svg%3E",
+      "position": "bottom left",
+      "size": "112% 170px",
+      "repeat": "no-repeat",
+      "opacity": 0.6
+    }
+  ],
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,255,255,.91)",
+    "--border": "rgba(46,123,166,.18)",
+    "--border-soft": "rgba(46,123,166,.09)",
+    "--shadow": "0 10px 28px rgba(18,36,46,.13)",
+    "--shadow-sm": "0 4px 12px rgba(18,36,46,.08)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

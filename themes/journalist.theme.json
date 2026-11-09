@@ -1,0 +1,63 @@
+{
+  "schema": "theme/1",
+  "id": "journalist",
+  "name": {
+    "zh": "记者节",
+    "en": "Journalists’ Day",
+    "ja": "記者の日"
+  },
+  "colour": {
+    "accent": "#B0332A",
+    "accent2": "#3A3A3A",
+    "ink": "#FBF9F4"
+  },
+  "colourDesc": {
+    "zh": "纸白底 · 铅黑朱批",
+    "en": "Paper white · lead + red pen",
+    "ja": "紙の白 · 鉛黒と朱の批"
+  },
+  "radius": 6,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(180deg, #F8F6F1 0%, #F3F0E9 58%, #EEEBE3 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 240' fill='none' stroke='%233A3A3A' stroke-width='1'%3E%3Cpath d='M8 0v240M22 0v240M36 0v240' stroke-opacity='.22'/%3E%3C/svg%3E",
+      "position": "left 10px",
+      "size": "44px 240px",
+      "repeat": "repeat-y",
+      "opacity": 0.45
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 240' fill='none' stroke='%233A3A3A' stroke-width='1'%3E%3Cpath d='M8 0v240M22 0v240M36 0v240' stroke-opacity='.22'/%3E%3C/svg%3E",
+      "position": "right 10px",
+      "size": "44px 240px",
+      "repeat": "repeat-y",
+      "opacity": 0.45
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 130' fill='none'%3E%3Cg transform='rotate%28-13 65 65%29'%3E%3Cpath d='M30 96c-16-22-14-52 8-66 22-15 54-10 66 12 9 17 5 34-6 44' stroke='%23B0332A' stroke-opacity='.42' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M34 104c-6-8-9-16-9-24' stroke='%23B0332A' stroke-opacity='.22' stroke-width='2' stroke-linecap='round'/%3E%3C/g%3E%3C/svg%3E",
+      "position": "top 54px right 26px",
+      "size": "132px 132px",
+      "repeat": "no-repeat",
+      "opacity": 0.55
+    }
+  ],
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,254,250,.92)",
+    "--border": "rgba(31,31,31,.16)",
+    "--border-soft": "rgba(31,31,31,.08)",
+    "--shadow": "0 6px 20px rgba(31,31,31,.12)",
+    "--shadow-sm": "0 2px 8px rgba(31,31,31,.07)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

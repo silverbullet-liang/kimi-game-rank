@@ -73,9 +73,13 @@ export function applyTheme(opts = {}) {
   const accent = opts.accent || state.settings.accent || prefs.accent || 'blue-purple';
   const custom = opts.custom || state.settings.accent_custom || prefs.accent_custom || '#7C3AED';
 
-  const resolvedTheme = theme === 'system'
-    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-    : theme;
+  /* JSON 主题可以强制明暗：强制时用户的深浅选择不生效，但切换按钮仍显示 */
+  const forced = (typeof window !== 'undefined' && window.__TJSON_FORCE) || '';
+  const resolvedTheme = forced === 'dark' ? 'dark'
+    : forced === 'light' ? 'light'
+      : (theme === 'system'
+        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : theme);
 
   const root = document.documentElement;
   root.dataset.theme = resolvedTheme;
@@ -93,6 +97,12 @@ export function applyTheme(opts = {}) {
 
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', a);
+
+  /* applyTheme 会覆盖 --accent / --radius 等变量；JSON 主题在它之后再补一次，
+     否则每次切换深浅色都会把主题色冲回用户偏好色。 */
+  if (typeof window !== 'undefined' && typeof window.__TJSON_REAPPLY === 'function') {
+    window.__TJSON_REAPPLY();
+  }
 
   return { theme, accent, custom, skin, resolvedTheme };
 }

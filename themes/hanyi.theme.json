@@ -1,0 +1,63 @@
+{
+  "schema": "theme/1",
+  "id": "hanyi",
+  "name": {
+    "zh": "寒衣节",
+    "en": "Winter Clothing Festival",
+    "ja": "寒衣節"
+  },
+  "colour": {
+    "accent": "#48596A",
+    "accent2": "#8FA6B8",
+    "ink": "#F4F8FB"
+  },
+  "colourDesc": {
+    "zh": "霜蓝底 · 冷月与叠衣",
+    "en": "Frost blue · cold moon, coat",
+    "ja": "霜色の地 · 冷月と畳んだ衣"
+  },
+  "radius": 14,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(178deg, #F4F7FA 0%, #EDF2F6 55%, #E3EAF0 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 220'%3E%3Cdefs%3E%3CradialGradient id='h'%3E%3Cstop offset='0' stop-color='%238FA6B8' stop-opacity='.30'/%3E%3Cstop offset='.6' stop-color='%238FA6B8' stop-opacity='.09'/%3E%3Cstop offset='1' stop-color='%238FA6B8' stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='110' cy='110' r='110' fill='url%28%23h%29'/%3E%3Ccircle cx='110' cy='104' r='30' fill='%23E9EFF4' fill-opacity='.75'/%3E%3C/svg%3E",
+      "position": "top 26px left 4px",
+      "size": "236px 236px",
+      "repeat": "no-repeat",
+      "opacity": 0.5
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 130' fill='none' stroke='%2348596A'%3E%3Cpath d='M56 6h68l26 108H30z' stroke-opacity='.32' stroke-width='1.6' fill='%238FA6B8' fill-opacity='.07'/%3E%3Cpath d='M56 6l-26 44 14 8 8-16M124 6l26 44-14 8-8-16' stroke-opacity='.28' stroke-width='1.5'/%3E%3Cpath d='M56 34h68M44 72h92M38 100h104' stroke-opacity='.16' stroke-width='1.2'/%3E%3C/svg%3E",
+      "position": "bottom 30px right 10px",
+      "size": "206px 150px",
+      "repeat": "no-repeat",
+      "opacity": 0.5
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 140 140' fill='%238FA6B8'%3E%3Ccircle cx='16' cy='22' r='1.5' fill-opacity='.5'/%3E%3Ccircle cx='58' cy='44' r='1.2' fill-opacity='.40'/%3E%3Ccircle cx='104' cy='16' r='1.4' fill-opacity='.45'/%3E%3Ccircle cx='32' cy='88' r='1.2' fill-opacity='.34'/%3E%3Ccircle cx='86' cy='104' r='1.5' fill-opacity='.40'/%3E%3Ccircle cx='124' cy='70' r='1.1' fill-opacity='.30'/%3E%3Ccircle cx='70' cy='128' r='1.3' fill-opacity='.30'/%3E%3C/svg%3E",
+      "position": "top 0 left 0",
+      "size": "150px 150px",
+      "repeat": "repeat",
+      "opacity": 0.42
+    }
+  ],
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,255,255,.9)",
+    "--border": "rgba(72,89,106,.18)",
+    "--border-soft": "rgba(72,89,106,.09)",
+    "--shadow": "0 8px 24px rgba(29,42,51,.12)",
+    "--shadow-sm": "0 3px 10px rgba(29,42,51,.07)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

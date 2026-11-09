@@ -1,7 +1,7 @@
 /**
  * 我的页：个人信息 / AI 用量 / IP 与访问记录 / 设置 / 控制面板入口
  */
-import { api, state, esc, toast, dialog, btnLoading, setToken, askNotifyPermission, userName, isAdminish, getPrefs, setPrefs } from '../core.js';
+import { api, state, esc, toast, dialog, btnLoading, setToken, ensureGuestSession, askNotifyPermission, userName, isAdminish, getPrefs, setPrefs } from '../core.js';
 import { LANGS, I18N, setLang, festName } from '../i18n.js';
 import { navigate } from '../router.js';
 import { saveTheme, ACCENTS, SKINS, hexToHsl, FESTIVAL_KEYS, festivalNow } from '../theme.js';
@@ -437,6 +437,8 @@ function bindEmailDialog(hasBound, done) {
       /* 就地切到游客态并重绘，不整页刷新 */
       state.role = 'guest'; state.uid = 0; state.username = t('游客');
       state.settings = {}; state.avatar = '';
+      /* 退出后必须重新拿到游客令牌，否则后续请求全部 401 */
+      await ensureGuestSession();
       toast('已退出');
       navigate('#/rank');
     }
@@ -585,6 +587,20 @@ function mountAppearance(box) {
         </div>
       </div>
     </div>
+    <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+      <span>${t('主题 JSON')}</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-ghost btn-sm" type="button" id="tjImport">${t('导入文件')}</button>
+        <button class="btn-ghost btn-sm" type="button" id="tjPaste">${t('粘贴 JSON')}</button>
+        <button class="btn-ghost btn-sm" type="button" id="tjClear">${t('恢复默认')}</button>
+      </div>
+      <input type="file" id="tjFile" accept=".json,application/json" style="display:none">
+      <div id="tjPasteBox" style="display:none;width:100%">
+        <textarea id="tjText" rows="5" style="width:100%;margin:4px 0;padding:8px;border-radius:8px;border:1px solid var(--border-soft);background:var(--surface-solid);color:var(--text);font:12.5px/1.5 ui-monospace,monospace" placeholder="${t('粘贴主题 JSON（最大 1 MB）')}"></textarea>
+        <button class="btn-ghost btn-sm" type="button" id="tjApply">${t('应用')}</button>
+      </div>
+      <div class="tiny" id="tjState">${t('未启用。可导入他人分享的主题文件，最大 1 MB。')}</div>
+    </div>
     <div class="setting-row">
       <span>返回动画</span>
       <div class="seg" style="max-width:200px" id="navAnimSeg">
@@ -650,6 +666,88 @@ function mountAppearance(box) {
     customBox.hidden = b.dataset.a !== 'custom';
     if (b.dataset.a === 'custom') initHsl(box);
     await saveTheme({ accent: b.dataset.a });
+  });
+  bindThemeJson(box);
+}
+
+/* ---------- 主题 JSON：导入 / 粘贴 / 云同步（7 天）/ 恢复 ---------- */
+function tjName(n) {
+  if (!n) return '';
+  const L = (document.documentElement.lang || 'zh').slice(0, 2);
+  return n[L] || n.zh || n.en || n.ja || '';
+}
+
+function bindThemeJson(box) {
+  const TJ = window.ThemeJSON;
+  if (!TJ || !box) return;
+  const stateEl = box.querySelector('#tjState');
+  const fileEl = box.querySelector('#tjFile');
+  const pasteBox = box.querySelector('#tjPasteBox');
+  const textEl = box.querySelector('#tjText');
+
+  const show = () => {
+    if (!stateEl) return;
+    const c = TJ.current();
+    if (!c) {
+      stateEl.textContent = t('未启用。可导入他人分享的主题文件，最大 1 MB。');
+      return;
+    }
+    const f = c.force === 'auto' ? t('不强制明暗') : (c.force === 'dark' ? t('强制深色') : t('强制浅色'));
+    stateEl.textContent = t('已启用') + '：' + tjName(c.name) + '（' + c.accent + ' · '
+      + c.layers + t(' 层背景') + ' · ' + c.icons + t(' 个图标') + ' · ' + f + '）';
+  };
+  show();
+
+  const applyText = async (text) => {
+    if (!text) return;
+    if (text.length > 1024 * 1024) { toast(t('主题文件超过 1 MB，已拒绝')); return; }
+    const r = TJ.applyRaw(text);
+    if (!r.ok) {
+      toast(t('主题未通过校验') + '：' + (r.errors[0] || ''));
+      return;
+    }
+    try { localStorage.setItem('kimgr_tjson', text); } catch (e) {}
+    show();
+    toast(t('主题已应用'));
+    if (r.warns.length) { toast(t('提示') + '：' + r.warns[0]); }
+    /* 云同步：登录态下随账号走，7 天后自动过期 */
+    if (state.role !== 'guest') {
+      try { await api('theme', 'save', { json: text }); toast(t('已同步到云端（7 天有效）')); }
+      catch (e) { toast(t('云端同步失败，已在本机生效')); }
+    }
+  };
+
+  const btnImport = box.querySelector('#tjImport');
+  if (btnImport) btnImport.addEventListener('click', () => fileEl && fileEl.click());
+  if (fileEl) {
+    fileEl.addEventListener('change', () => {
+      const f = fileEl.files && fileEl.files[0];
+      if (!f) return;
+      if (f.size > 1024 * 1024) { toast(t('主题文件超过 1 MB，已拒绝')); fileEl.value = ''; return; }
+      const rd = new FileReader();
+      rd.onload = () => { applyText(String(rd.result || '')); fileEl.value = ''; };
+      rd.onerror = () => { toast(t('读取文件失败')); fileEl.value = ''; };
+      rd.readAsText(f);
+    });
+  }
+
+  const btnPaste = box.querySelector('#tjPaste');
+  if (btnPaste) btnPaste.addEventListener('click', () => {
+    if (pasteBox) pasteBox.style.display = pasteBox.style.display === 'none' ? 'block' : 'none';
+  });
+  const btnApply = box.querySelector('#tjApply');
+  if (btnApply) btnApply.addEventListener('click', () => {
+    applyText(textEl ? textEl.value.trim() : '');
+  });
+
+  const btnClear = box.querySelector('#tjClear');
+  if (btnClear) btnClear.addEventListener('click', async () => {
+    TJ.clear();
+    try { localStorage.removeItem('kimgr_tjson'); } catch (e) {}
+    if (textEl) textEl.value = '';
+    show();
+    toast(t('已恢复默认主题'));
+    if (state.role !== 'guest') { try { await api('theme', 'del'); } catch (e) {} }
   });
 }
 

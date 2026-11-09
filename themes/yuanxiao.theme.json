@@ -1,0 +1,60 @@
+{
+  "schema": "theme/1",
+  "id": "yuanxiao",
+  "name": {
+    "zh": "元宵",
+    "en": "Lantern Festival",
+    "ja": "元宵節"
+  },
+  "colour": {
+    "accent": "#D97B2B",
+    "accent2": "#3E3455",
+    "ink": "#FFF8EE"
+  },
+  "colourDesc": {
+    "zh": "暖橘底 · 紫夜与垂落的灯笼",
+    "en": "Warm orange · hanging lanterns",
+    "ja": "暖橙の地 · 紫の夜と垂れる灯籠"
+  },
+  "radius": 18,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(176deg, #FCF6EE 0%, #F7EBDB 56%, #F1E3D2 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20300%20240'%3E%3Cdefs%3E%3CradialGradient%20id='g'%3E%3Cstop%20offset='0'%20stop-color='%23F0A860'%20stop-opacity='.55'/%3E%3Cstop%20offset='1'%20stop-color='%23F0A860'%20stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle%20cx='150'%20cy='118'%20r='118'%20fill='url%28%23g%29'/%3E%3Ccircle%20cx='54'%20cy='52'%20r='70'%20fill='url%28%23g%29'%20fill-opacity='.7'/%3E%3C/svg%3E",
+      "position": "top -34px right -30px",
+      "size": "330px 264px",
+      "repeat": "no-repeat",
+      "opacity": 0.4,
+      "animate": "pulse"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20360%20210'%3E%3Cdefs%3E%3ClinearGradient%20id='L'%20x1='0'%20y1='0'%20x2='1'%20y2='1'%3E%3Cstop%20offset='0'%20stop-color='%23F0A860'/%3E%3Cstop%20offset='1'%20stop-color='%23D97B2B'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg%20stroke='%23D97B2B'%20fill='none'%20stroke-opacity='.5'%20stroke-width='1.2'%3E%3Cline%20x1='286'%20y1='0'%20x2='286'%20y2='56'/%3E%3Cline%20x1='190'%20y1='0'%20x2='190'%20y2='30'/%3E%3Cline%20x1='104'%20y1='0'%20x2='104'%20y2='12'/%3E%3C/g%3E%3Cg%20fill='url%28%23L%29'%20fill-opacity='.42'%3E%3Cellipse%20cx='286'%20cy='108'%20rx='44'%20ry='52'/%3E%3Cellipse%20cx='190'%20cy='66'%20rx='30'%20ry='36'/%3E%3Cellipse%20cx='104'%20cy='36'%20rx='20'%20ry='24'/%3E%3C/g%3E%3Cg%20stroke='%23C0702A'%20fill='none'%20stroke-opacity='.55'%20stroke-width='1.1'%3E%3Cellipse%20cx='286'%20cy='108'%20rx='44'%20ry='52'%20stroke-opacity='.4'/%3E%3Cellipse%20cx='190'%20cy='66'%20rx='30'%20ry='36'%20stroke-opacity='.4'/%3E%3Cellipse%20cx='104'%20cy='36'%20rx='20'%20ry='24'%20stroke-opacity='.4'/%3E%3Crect%20x='272'%20y='54'%20width='28'%20height='6'%20rx='2'%20fill='%23D97B2B'%20fill-opacity='.4'%20stroke='none'/%3E%3Crect%20x='178'%20y='29'%20width='24'%20height='5'%20rx='2'%20fill='%23D97B2B'%20fill-opacity='.4'%20stroke='none'/%3E%3Cline%20x1='286'%20y1='160'%20x2='286'%20y2='198'/%3E%3Cline%20x1='281'%20y1='160'%20x2='277'%20y2='192'/%3E%3Cline%20x1='291'%20y1='160'%20x2='295'%20y2='192'/%3E%3Cline%20x1='190'%20y1='102'%20x2='190'%20y2='128'/%3E%3Cline%20x1='186'%20y1='102'%20x2='182'%20y2='124'/%3E%3Cline%20x1='194'%20y1='102'%20x2='198'%20y2='124'/%3E%3Cline%20x1='104'%20y1='60'%20x2='104'%20y2='82'/%3E%3Cline%20x1='100'%20y1='60'%20x2='97'%20y2='78'/%3E%3Cline%20x1='108'%20y1='60'%20x2='111'%20y2='78'/%3E%3C/g%3E%3C/svg%3E",
+      "position": "top -8px right 3%",
+      "size": "330px 192px",
+      "repeat": "no-repeat",
+      "opacity": 0.5,
+      "animate": "float"
+    }
+  ],
+  "icons": {
+    "nav.today": "M11 0h2v2h-2zM12 3a6 6 0 0 1 6 6 6 6 0 0 1-6 6 6 6 0 0 1-6-6 6 6 0 0 1 6-6zM11 15h2v4h-2zM8 19h8v2H8z"
+  },
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,252,247,.91)",
+    "--border": "rgba(217,123,43,.18)",
+    "--border-soft": "rgba(217,123,43,.09)",
+    "--shadow": "0 10px 28px rgba(42,32,53,.16)",
+    "--shadow-sm": "0 4px 13px rgba(42,32,53,.10)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

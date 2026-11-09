@@ -1,0 +1,64 @@
+{
+  "schema": "theme/1",
+  "id": "laba",
+  "name": {
+    "zh": "腊八",
+    "en": "Laba Festival",
+    "ja": "臘八節"
+  },
+  "colour": {
+    "accent": "#8B5A2B",
+    "accent2": "#C98A2E",
+    "ink": "#FFF9EC"
+  },
+  "colourDesc": {
+    "zh": "米黄底 · 一碗热粥",
+    "en": "Rice cream · a bowl of congee",
+    "ja": "米色の地 · 温かい粥一碗"
+  },
+  "radius": 18,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(174deg, #FCF6EA 0%, #F7EDDB 56%, #F2E6CF 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 78'%3E%3Cpath d='M6 26h118' stroke='%238B5A2B' stroke-opacity='.38' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M14 34a51 44 0 0 0 102 0z' fill='%23C98A2E' fill-opacity='.14' stroke='%238B5A2B' stroke-opacity='.32' stroke-width='2'/%3E%3Cpath d='M40 46a30 20 0 0 0 50 0' fill='none' stroke='%23C98A2E' stroke-opacity='.22' stroke-width='1.6'/%3E%3C/svg%3E",
+      "position": "bottom 76px right 28px",
+      "size": "138px 82px",
+      "repeat": "no-repeat",
+      "opacity": 0.55
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 90 70' fill='none' stroke='%23C98A2E' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M28 62c0-12 12-14 12-25s-10-13-10-24' stroke-opacity='.30'/%3E%3Cpath d='M52 64c0-10 11-12 11-22s-9-12-9-22' stroke-opacity='.20'/%3E%3C/svg%3E",
+      "position": "bottom 150px right 52px",
+      "size": "94px 72px",
+      "repeat": "no-repeat",
+      "opacity": 0.5,
+      "animate": "float"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 76' fill='%23C98A2E'%3E%3Cellipse cx='12' cy='58' rx='7' ry='4.4' fill-opacity='.34'/%3E%3Cellipse cx='38' cy='40' rx='6.4' ry='4' fill-opacity='.28'/%3E%3Cellipse cx='62' cy='62' rx='7.6' ry='4.6' fill-opacity='.30'/%3E%3Cellipse cx='88' cy='34' rx='6' ry='3.8' fill-opacity='.24'/%3E%3Cellipse cx='118' cy='58' rx='7' ry='4.2' fill-opacity='.30'/%3E%3Cellipse cx='146' cy='26' rx='5.6' ry='3.6' fill-opacity='.22'/%3E%3Cellipse cx='176' cy='54' rx='6.8' ry='4.2' fill-opacity='.26'/%3E%3C/svg%3E",
+      "position": "bottom 34px left 4%",
+      "size": "206px 80px",
+      "repeat": "no-repeat",
+      "opacity": 0.55
+    }
+  ],
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,252,244,.91)",
+    "--border": "rgba(139,90,43,.18)",
+    "--border-soft": "rgba(139,90,43,.09)",
+    "--shadow": "0 10px 28px rgba(139,90,43,.15)",
+    "--shadow-sm": "0 4px 13px rgba(139,90,43,.09)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

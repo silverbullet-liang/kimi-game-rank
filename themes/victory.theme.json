@@ -1,0 +1,59 @@
+{
+  "schema": "theme/1",
+  "id": "victory",
+  "name": {
+    "zh": "抗战胜利日",
+    "en": "Victory over Japan Day",
+    "ja": "対日戦勝記念日"
+  },
+  "colour": {
+    "accent": "#8A4B28",
+    "accent2": "#E0B274",
+    "ink": "#FDF6EE"
+  },
+  "colourDesc": {
+    "zh": "赭棕米底 · 一线曙光与碑线",
+    "en": "Ochre cream · dawn line + stele",
+    "ja": "赭土の地 · 一条の曙光と碑線"
+  },
+  "radius": 12,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(180deg, #FDF8F2 0%, #F9EFE3 52%, #F3E6D7 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20200'%3E%3Cg%20fill='none'%20stroke='%238A4B28'%3E%3Cline%20x1='6'%20y1='196'%20x2='84'%20y2='196'%20stroke-width='1.4'%20stroke-opacity='.65'/%3E%3Cline%20x1='16'%20y1='196'%20x2='16'%20y2='46'%20stroke-width='1.6'%20stroke-opacity='.8'/%3E%3Cline%20x1='34'%20y1='196'%20x2='34'%20y2='84'%20stroke-width='1'%20stroke-opacity='.55'/%3E%3Cline%20x1='50'%20y1='196'%20x2='50'%20y2='112'%20stroke-width='1'%20stroke-opacity='.45'/%3E%3Cline%20x1='64'%20y1='196'%20x2='64'%20y2='140'%20stroke-width='1'%20stroke-opacity='.35'/%3E%3Crect%20x='12'%20y='38'%20width='8'%20height='3'%20stroke='none'%20fill='%23C08A3E'%20fill-opacity='.7'/%3E%3C/g%3E%3C/svg%3E",
+      "position": "bottom 8px left 22px",
+      "size": "96px 196px",
+      "repeat": "no-repeat",
+      "opacity": 0.3
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20600%20210'%3E%3Cdefs%3E%3ClinearGradient%20id='d'%20x1='0'%20y1='0'%20x2='0'%20y2='1'%3E%3Cstop%20offset='0'%20stop-color='%23E0B274'%20stop-opacity='.55'/%3E%3Cstop%20offset='1'%20stop-color='%23E0B274'%20stop-opacity='0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath%20d='M70%20198a230%20230%200%200%201%20460%200z'%20fill='url%28%23d%29'/%3E%3Cline%20x1='16'%20y1='198'%20x2='584'%20y2='198'%20stroke='%238A4B28'%20stroke-width='1.3'%20stroke-opacity='.45'/%3E%3C/svg%3E",
+      "position": "bottom -6px center",
+      "size": "740px 258px",
+      "repeat": "no-repeat",
+      "opacity": 0.45,
+      "animate": "pulse"
+    }
+  ],
+  "icons": {
+    "nav.today": "M2 18h20v2H2zM12 4a8 8 0 0 1 8 8H4a8 8 0 0 1 8-8zM11 12h2v6h-2z"
+  },
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,252,247,.92)",
+    "--border": "rgba(138,75,40,.16)",
+    "--border-soft": "rgba(138,75,40,.08)",
+    "--shadow": "0 9px 24px rgba(46,29,18,.12)",
+    "--shadow-sm": "0 3px 9px rgba(46,29,18,.07)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

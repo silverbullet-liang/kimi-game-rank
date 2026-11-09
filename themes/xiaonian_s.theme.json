@@ -1,0 +1,60 @@
+{
+  "schema": "theme/1",
+  "id": "xiaonian_s",
+  "name": {
+    "zh": "南方小年",
+    "en": "Southern Xiaonian",
+    "ja": "南方の小年"
+  },
+  "colour": {
+    "accent": "#C4552F",
+    "accent2": "#7B8A4E",
+    "ink": "#FEF9F2"
+  },
+  "colourDesc": {
+    "zh": "灰白墙 · 竹青与陶橙",
+    "en": "Chalk wall · bamboo green + clay",
+    "ja": "白壁の地 · 竹青と陶土の橙"
+  },
+  "radius": 10,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(200deg, #F8F5EE 0%, #F1EBE0 58%, #EBE4D6 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20200%20200'%3E%3Cg%20fill='none'%20stroke-linecap='round'%3E%3Ccircle%20cx='100'%20cy='100'%20r='88'%20stroke='%237B8A4E'%20stroke-width='1.4'%20stroke-opacity='.55'%20stroke-dasharray='16%2012'/%3E%3Ccircle%20cx='100'%20cy='100'%20r='64'%20stroke='%237B8A4E'%20stroke-width='1.2'%20stroke-opacity='.4'/%3E%3Ccircle%20cx='100'%20cy='100'%20r='40'%20stroke='%237B8A4E'%20stroke-width='1'%20stroke-opacity='.28'/%3E%3Cpath%20d='M100%2012a88%2088%200%200%201%2074%2041'%20stroke='%23C4552F'%20stroke-width='2.4'%20stroke-opacity='.6'/%3E%3C/g%3E%3C/svg%3E",
+      "position": "top 34px left -54px",
+      "size": "222px 222px",
+      "repeat": "no-repeat",
+      "opacity": 0.32,
+      "animate": "float"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20200%20120'%3E%3Cpath%20d='M6%20104a94%2062%200%200%201%20188%200'%20fill='none'%20stroke='%23C4552F'%20stroke-width='1.6'%20stroke-opacity='.55'%20stroke-linecap='round'%20stroke-dasharray='12%209'/%3E%3Cg%20fill='%23B9A585'%3E%3Ccircle%20cx='30'%20cy='88'%20r='5'%20fill-opacity='.75'/%3E%3Ccircle%20cx='62'%20cy='58'%20r='3.4'%20fill-opacity='.6'/%3E%3Ccircle%20cx='104'%20cy='94'%20r='4.2'%20fill-opacity='.65'/%3E%3Ccircle%20cx='142'%20cy='44'%20r='2.8'%20fill-opacity='.5'/%3E%3Ccircle%20cx='176'%20cy='74'%20r='4.6'%20fill-opacity='.6'/%3E%3C/g%3E%3C/svg%3E",
+      "position": "bottom 38px right 26px",
+      "size": "212px 127px",
+      "repeat": "no-repeat",
+      "opacity": 0.42,
+      "animate": "drift"
+    }
+  ],
+  "icons": {
+    "nav.today": "M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18zm0 2a7 7 0 1 0 0 14 7 7 0 0 0 0-14zm-3.9 4.3a5.6 5.6 0 0 1 8 0l-1.4 1.4a3.6 3.6 0 0 0-5.2 0z"
+  },
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,254,250,.92)",
+    "--border": "rgba(196,85,47,.16)",
+    "--border-soft": "rgba(196,85,47,.08)",
+    "--shadow": "0 8px 22px rgba(46,42,33,.13)",
+    "--shadow-sm": "0 3px 10px rgba(46,42,33,.08)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

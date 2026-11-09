@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 36);
+define('SCHEMA_VERSION', 38);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -1814,7 +1814,7 @@ INCDOC35;
 | 收入 | **无**。无充值、无广告、无付费内容、无任何变现 |
 | 事件前规模 | 注册用户 **194 名**，作品约 **400 件** |
 | 技术架构 | PHP + MariaDB，前端原生 JS，托管在免费主机上 |
-| 主机账户 | if0_42664755（InfinityFree 免费套餐） |
+| 主机账户 | 站长自有账户（InfinityFree 免费套餐） |
 | 源码 | 以 AGPL-3.0 在 GitHub 公开 |
 | 镜像站 | 站长自建的备份与容灾站，与主站互为副本 |
 
@@ -2741,6 +2741,55 @@ INCDOC36;
         }
     }
 
+    /* ---------- v37：设备指纹（换 IP 也能认出同一台设备） ---------- */
+    if ($cur < 37) {
+        try {
+            db_exec("CREATE TABLE IF NOT EXISTS `banned_devices` (
+                `dev_hash` CHAR(64) NOT NULL COMMENT '设备指纹（加盐哈希，不可反推）',
+                `report_id` INT NOT NULL DEFAULT 0,
+                `user_id` INT NOT NULL DEFAULT 0,
+                `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`dev_hash`),
+                KEY `idx_bd_user` (`user_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='被封停的设备（违纪通报用）'");
+
+            db_exec("CREATE TABLE IF NOT EXISTS `user_devices` (
+                `user_id` INT NOT NULL,
+                `dev_hash` CHAR(64) NOT NULL,
+                `last_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`user_id`, `dev_hash`),
+                KEY `idx_ud_dev` (`dev_hash`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='账号用过的设备（供通报时一并封停）'");
+            setting_set('schema_version', '37');
+            app_log('schema migrated to v37（banned_devices / user_devices）');
+        } catch (Throwable $e) {
+            app_log('migrate v37 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v38：用户主题云同步（JSON 主题，7 天有效） ---------- */
+    if ($cur < 38) {
+        try {
+            db_exec("CREATE TABLE IF NOT EXISTS `user_themes` (
+                `id` INT NOT NULL AUTO_INCREMENT,
+                `uid` INT NOT NULL,
+                `theme_id` VARCHAR(32) NOT NULL DEFAULT '',
+                `theme_name` VARCHAR(32) NOT NULL DEFAULT '',
+                `bytes` INT NOT NULL DEFAULT 0,
+                `body` MEDIUMTEXT NOT NULL,
+                `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `expires_at` DATETIME NOT NULL,
+                PRIMARY KEY (`id`),
+                KEY `idx_ut_uid` (`uid`),
+                KEY `idx_ut_exp` (`expires_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户主题（7 天过期）'");
+            setting_set('schema_version', '38');
+            app_log('schema migrated to v38（user_themes）');
+        } catch (Throwable $e) {
+            app_log('migrate v38 failed: ' . $e->getMessage());
+        }
+    }
+
     $ok = true;
     foreach (array('comments', 'feedback') as $t) {
         if (table_exists($t) && !column_exists($t, 'content_norm')) { $ok = false; }
@@ -2774,6 +2823,8 @@ INCDOC36;
     if (!table_exists('audit_log')) { $ok = false; }
     if (!table_exists('access_log')) { $ok = false; }
     if (!table_exists('incidents')) { $ok = false; }
+    if (!table_exists('banned_devices')) { $ok = false; }
+    if (!table_exists('user_devices')) { $ok = false; }
     if ($ok) {
         setting_set('schema_version', (string)SCHEMA_VERSION);
         @file_put_contents(migration_lock_path(), gmdate('c'));

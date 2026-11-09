@@ -1,0 +1,56 @@
+{
+  "schema": "theme/1",
+  "id": "mothersday",
+  "name": {
+    "zh": "母亲节",
+    "en": "Mother's Day",
+    "ja": "母の日"
+  },
+  "colour": {
+    "accent": "#C4627A",
+    "accent2": "#8FA86B",
+    "ink": "#FFF7F9"
+  },
+  "colourDesc": {
+    "zh": "康乃馨粉 · 三瓣线描与浅绿",
+    "en": "Carnation pink · three petals",
+    "ja": "カーネーションの桃 · 三枚花びらと若草"
+  },
+  "radius": 22,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(166deg,#FDF8F6 0%,#FAEFEC 56%,#F7E8E6 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 140'%3E%3Cellipse cx='60' cy='44' rx='27' ry='15' transform='rotate(-34 60 44)' fill='none' stroke='%23C4627A' stroke-opacity='.50' stroke-width='1.4'/%3E%3Cellipse cx='60' cy='44' rx='27' ry='15' transform='rotate(34 60 44)' fill='none' stroke='%23C4627A' stroke-opacity='.50' stroke-width='1.4'/%3E%3Cellipse cx='60' cy='40' rx='15' ry='26' fill='none' stroke='%23C4627A' stroke-opacity='.42' stroke-width='1.4'/%3E%3Cpath d='M60 68v58' fill='none' stroke='%23C4627A' stroke-opacity='.45' stroke-width='1.4'/%3E%3Cpath d='M60 104c-16 4-24-6-22-16 12-4 20 6 22 16z' fill='none' stroke='%23C4627A' stroke-opacity='.40' stroke-width='1.4'/%3E%3Cpath d='M60 88c14-2 22-12 20-20-10-2-18 8-20 20z' fill='none' stroke='%23C4627A' stroke-opacity='.30' stroke-width='1.4'/%3E%3C/svg%3E",
+      "position": "bottom 26px right 26px",
+      "size": "112px 132px",
+      "repeat": "no-repeat",
+      "opacity": 0.4,
+      "animate": "float"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300'%3E%3Cdefs%3E%3CradialGradient id='b'%3E%3Cstop offset='0' stop-color='%23F0C6CC' stop-opacity='.55'/%3E%3Cstop offset='.55' stop-color='%23F0C6CC' stop-opacity='.16'/%3E%3Cstop offset='1' stop-color='%23F0C6CC' stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='150' cy='150' r='150' fill='url(%23b)'/%3E%3C/svg%3E",
+      "position": "top -24px left -24px",
+      "size": "300px 300px",
+      "repeat": "no-repeat",
+      "opacity": 0.32
+    }
+  ],
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,252,251,.92)",
+    "--border": "rgba(196,98,122,.16)",
+    "--border-soft": "rgba(196,98,122,.08)",
+    "--shadow": "0 10px 28px rgba(196,98,122,.14)",
+    "--shadow-sm": "0 4px 12px rgba(196,98,122,.09)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

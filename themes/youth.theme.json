@@ -1,0 +1,59 @@
+{
+  "schema": "theme/1",
+  "id": "youth",
+  "name": {
+    "zh": "青年节",
+    "en": "Chinese Youth Day",
+    "ja": "青年節"
+  },
+  "colour": {
+    "accent": "#E2662E",
+    "accent2": "#5FA8D3",
+    "ink": "#FFFAF5"
+  },
+  "colourDesc": {
+    "zh": "橙蓝撞色 · 斜带与上升箭头",
+    "en": "Orange + blue · bands, arrow",
+    "ja": "橙と青の対比 · 斜めの帯と矢"
+  },
+  "radius": 20,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(162deg, #FEF7F0 0%, #FBEEE2 52%, #F7E7D7 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20600%20400'%3E%3Cg%20transform='rotate%28-20%20300%20200%29'%3E%3Crect%20x='-140'%20y='54'%20width='900'%20height='30'%20fill='%23E2662E'%20fill-opacity='.18'/%3E%3Crect%20x='-140'%20y='112'%20width='900'%20height='12'%20fill='%235FA8D3'%20fill-opacity='.24'/%3E%3Crect%20x='-140'%20y='296'%20width='900'%20height='16'%20fill='%235FA8D3'%20fill-opacity='.18'/%3E%3Crect%20x='-140'%20y='344'%20width='900'%20height='8'%20fill='%23E2662E'%20fill-opacity='.2'/%3E%3C/g%3E%3C/svg%3E",
+      "position": "center",
+      "size": "cover",
+      "repeat": "no-repeat",
+      "opacity": 0.45
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20120%20170'%3E%3Cg%20transform='rotate%28-22%2060%2080%29'%3E%3Cpolygon%20points='60,10%2090,52%2030,52'%20fill='%23E2662E'%20fill-opacity='.8'/%3E%3Crect%20x='47'%20y='52'%20width='26'%20height='96'%20fill='%23E2662E'%20fill-opacity='.72'/%3E%3Crect%20x='47'%20y='148'%20width='26'%20height='6'%20fill='%235FA8D3'%20fill-opacity='.6'/%3E%3C/g%3E%3C/svg%3E",
+      "position": "bottom 118px right 76px",
+      "size": "112px 158px",
+      "repeat": "no-repeat",
+      "opacity": 0.42,
+      "animate": "float"
+    }
+  ],
+  "icons": {
+    "nav.today": "M12 3l6.5 7.6h-4.2V21h-4.6V10.6H5.5z"
+  },
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,252,248,.91)",
+    "--border": "rgba(226,102,46,.17)",
+    "--border-soft": "rgba(226,102,46,.08)",
+    "--shadow": "0 10px 28px rgba(226,102,46,.15)",
+    "--shadow-sm": "0 4px 12px rgba(226,102,46,.09)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

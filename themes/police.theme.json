@@ -1,0 +1,59 @@
+{
+  "schema": "theme/1",
+  "id": "police",
+  "name": {
+    "zh": "警察节",
+    "en": "Chinese People's Police Day",
+    "ja": "中国人民警察の日"
+  },
+  "colour": {
+    "accent": "#1B3A5C",
+    "accent2": "#C9D3DC",
+    "ink": "#F4F7FA"
+  },
+  "colourDesc": {
+    "zh": "冷灰蓝底 · 盾形轮廓与一条横带",
+    "en": "Cool grey-blue · shield + band",
+    "ja": "灰青の地 · 盾の輪郭と横帯"
+  },
+  "radius": 12,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(180deg, #F5F7FA 0%, #E5EAF0 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 252'%3E%3Cpath d='M100 12L180 44v84c0 56-38 92-80 112-42-20-80-56-80-112V44z' fill='none' stroke='%231B3A5C' stroke-width='3' stroke-opacity='.5'/%3E%3Cpath d='M100 12L180 44v84c0 56-38 92-80 112-42-20-80-56-80-112V44z' fill='none' stroke='%231B3A5C' stroke-width='1.4' stroke-opacity='.38' transform='translate(100 128) scale(.84) translate(-100 -128)'/%3E%3Cpath d='M100 96v52' stroke='%23C9D3DC' stroke-width='2.4' stroke-opacity='.9'/%3E%3C/svg%3E",
+      "position": "top -70px right -80px",
+      "size": "380px 478px",
+      "repeat": "no-repeat",
+      "opacity": 0.22
+    },
+    {
+      "type": "css",
+      "css": "linear-gradient(90deg, rgba(27,58,92,.30) 0%, rgba(27,58,92,.06) 58%, rgba(27,58,92,0) 100%)",
+      "position": "left 0 bottom 26px",
+      "size": "100% 6px",
+      "repeat": "no-repeat",
+      "opacity": 0.55
+    }
+  ],
+  "icons": {
+    "nav.today": "M12 2.2L20 5v6.4c0 4.6-3.2 8.6-8 10.4-4.8-1.8-8-5.8-8-10.4V5z",
+    "user.admin": "M12 4.6l5.6 4.4-1.4 1.9L12 7.6 7.8 10.9 6.4 9zM12 10.8l5.6 4.4-1.4 1.9L12 13.8l-4.2 3.3-1.4-1.9zM7 17.8h10v2.2H7z"
+  },
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,255,255,.90)",
+    "--border": "rgba(27,58,92,.17)",
+    "--border-soft": "rgba(27,58,92,.08)",
+    "--shadow": "0 9px 24px rgba(20,32,43,.13)",
+    "--shadow-sm": "0 3px 10px rgba(20,32,43,.08)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

@@ -79,6 +79,89 @@ function discipline_ip_banned(string $hash): bool
     return db_val('SELECT 1 FROM banned_ips WHERE ip_hash = ? LIMIT 1', array($hash)) !== null;
 }
 
+/* ============================================================
+ * 设备指纹
+ * ------------------------------------------------------------
+ * 换 IP 是绕过封禁最便宜的办法：拨号、代理、手机流量都能换地址。
+ * 设备指纹绑定的是「这台设备上的这个浏览器」，地址变了它还在。
+ * 只存加盐哈希，不落任何原始标识；清缓存或换设备仍会失效，
+ * 所以它是「把门槛抬高」而不是「绝对定位」。
+ * ============================================================ */
+function discipline_dev_hash(string $dev): string
+{
+    $dev = trim($dev);
+    if ($dev === '' || strlen($dev) < 8 || strlen($dev) > 128) { return ''; }
+    if (!preg_match('/^[A-Za-z0-9_-]+$/', $dev)) { return ''; }
+    return hash('sha256', (string)cfg('secrets.cron_key', 'kimgr') . '|dev|' . $dev);
+}
+
+/** 当前请求携带的设备指纹（无则空串） */
+function discipline_dev_of_request(): string
+{
+    $h = isset($_SERVER['HTTP_X_DEVICE_ID']) ? (string)$_SERVER['HTTP_X_DEVICE_ID'] : '';
+    return discipline_dev_hash($h);
+}
+
+function discipline_dev_banned(string $hash): bool
+{
+    if ($hash === '' || !table_exists('banned_devices')) { return false; }
+    return db_val('SELECT 1 FROM banned_devices WHERE dev_hash = ? LIMIT 1', array($hash)) !== null;
+}
+
+/** 记录「这个账号用过这台设备」，通报时据此一并封停 */
+function discipline_dev_touch(int $uid, string $hash)
+{
+    if ($uid <= 0 || $hash === '' || !table_exists('user_devices')) { return; }
+    try {
+        db_exec('INSERT INTO user_devices (user_id, dev_hash, last_at) VALUES (?, ?, UTC_TIMESTAMP())
+                 ON DUPLICATE KEY UPDATE last_at = UTC_TIMESTAMP()', array($uid, $hash));
+    } catch (Throwable $e) { }
+}
+
+/** 该账号用过的设备（最近 8 台） */
+function discipline_devs_of_user(int $uid): array
+{
+    if ($uid <= 0 || !table_exists('user_devices')) { return array(); }
+    $rows = db_all('SELECT dev_hash FROM user_devices WHERE user_id = ? ORDER BY last_at DESC LIMIT 8', array($uid));
+    $out = array();
+    foreach ($rows as $r) { $out[] = (string)$r['dev_hash']; }
+    return $out;
+}
+
+function discipline_dev_ban(string $hash, int $reportId, int $uid)
+{
+    if ($hash === '' || !table_exists('banned_devices')) { return; }
+    try {
+        db_exec('INSERT INTO banned_devices (dev_hash, report_id, user_id, created_at)
+                 VALUES (?, ?, ?, UTC_TIMESTAMP())
+                 ON DUPLICATE KEY UPDATE report_id = VALUES(report_id), user_id = VALUES(user_id)',
+                array($hash, $reportId, $uid));
+    } catch (Throwable $e) { }
+}
+
+/**
+ * 登录 / 注册入口的硬判定：
+ *   · 设备命中 → 一律拒绝（换 IP 无效）
+ *   · 账号被封 → 一律拒绝（换 IP 无效）
+ *   · 仅 IP 命中 → 仍按地区判定（同 IP 的另一个人可申诉）
+ */
+function discipline_login_blocked(int $uid = 0): bool
+{
+    try {
+        $dev = discipline_dev_of_request();
+        if ($dev !== '' && discipline_dev_banned($dev)) { return true; }
+        if ($uid > 0 && discipline_user_block($uid) !== null) { return true; }
+        $ip = discipline_ip_hash(discipline_client_ip());
+        if ($ip !== '' && discipline_ip_banned($ip)) {
+            $v = discipline_geo_verdict($ip, discipline_req_geo());
+            return !empty($v['blocked']);
+        }
+        return false;
+    } catch (Throwable $e) {
+        return false;       // 判定本身出错时放行，绝不因拦截逻辑故障把所有人挡在门外
+    }
+}
+
 /** 封禁是否仍在有效期内（NULL 表示永久） */
 function discipline_ban_alive($row): bool
 {
@@ -104,10 +187,20 @@ function discipline_user_block(int $uid)
     return $row;
 }
 
-/** 当前访问者命中的通报（IP 优先，其次账号）；无则 null */
-function discipline_hit(int $uid, string $ipHash)
+/** 当前访问者命中的通报（设备优先，其次 IP，最后账号）；无则 null */
+function discipline_hit(int $uid, string $ipHash, string $devHash = '')
 {
     if (!table_exists('discipline_reports')) { return null; }
+    /* 设备最硬：换 IP、换账号都不改变它 */
+    if ($devHash !== '' && discipline_dev_banned($devHash)) {
+        $row = db_one('SELECT dr.* FROM banned_devices bd JOIN discipline_reports dr ON dr.id = bd.report_id
+                       WHERE bd.dev_hash = ? ORDER BY dr.id DESC LIMIT 1', array($devHash));
+        if ($row !== null && discipline_ban_alive($row)) { return $row; }
+        if ($row === null) {
+            return array('id' => 0, 'user_id' => 0, 'username' => '', 'reasons' => '[]',
+                         'note' => '', 'views' => 0, 'created_at' => now_utc(), 'dev_banned' => 1, 'banned' => 0);
+        }
+    }
     if (discipline_ip_banned($ipHash)) {
         $row = db_one('SELECT * FROM discipline_reports WHERE ip_banned = 1 ORDER BY id DESC LIMIT 1');
         if ($row !== null) { return $row; }
@@ -188,7 +281,7 @@ function discipline_reasons_of(array $row): array
  * 返回 array(created, accounts_banned, ips_banned, no_ip)
  */
 function discipline_create(array $userIds, array $reasons, string $note, bool $banAccount, bool $banIp,
-                            int $byUid, $banDays = 0, bool $purge = false): array
+                            int $byUid, $banDays = 0, bool $purge = false, bool $banDev = false): array
 {
     $reasons = array_values(array_filter(array_map(function ($r) { return trim((string)$r); }, $reasons)));
     $reasons = array_slice($reasons, 0, 20);
@@ -200,7 +293,7 @@ function discipline_create(array $userIds, array $reasons, string $note, bool $b
     $banDays = (float)$banDays;                                    // 支持小数天：0.5 = 12 小时
     $banDays = max(0.0, min(36500.0, $banDays));                   // 0 = 永久
     $banUntil = $banAccount ? discipline_ban_until($banDays) : null;
-    $created = 0; $accBanned = 0; $ipBanned = 0; $noIp = 0;
+    $created = 0; $accBanned = 0; $ipBanned = 0; $noIp = 0; $devBanned = 0;
     $purged = array('comments' => 0, 'messages' => 0, 'images' => 0);
 
     foreach (array_slice($userIds, 0, 50) as $uidRaw) {
@@ -248,6 +341,16 @@ function discipline_create(array $userIds, array $reasons, string $note, bool $b
             $purged['messages'] += (int)$p['messages'];
             $purged['images']   += (int)$p['images'];
         }
+        /* 设备一并封停：换 IP、换账号都躲不开同一台设备 */
+        if ($banDev) {
+            $devs = discipline_devs_of_user($uid);
+            $cur  = discipline_dev_of_request();
+            if ($cur !== '' && !in_array($cur, $devs, true)) { $devs[] = $cur; }
+            foreach ($devs as $dh) {
+                discipline_dev_ban((string)$dh, (int)$rid, $uid);
+                $devBanned++;
+            }
+        }
         if ($banIp) {
             if (!$ips) { $noIp++; }
             foreach ($ips as $ip) {
@@ -275,7 +378,7 @@ function discipline_create(array $userIds, array $reasons, string $note, bool $b
     discipline_prune();
 
     return array('created' => $created, 'accounts_banned' => $accBanned,
-                 'ips_banned' => $ipBanned, 'no_ip' => $noIp,
+                 'ips_banned' => $ipBanned, 'devices_banned' => $devBanned, 'no_ip' => $noIp,
                  'purged_comments' => $purged['comments'],
                  'purged_messages' => $purged['messages'],
                  'purged_images'   => $purged['images'],
@@ -477,6 +580,10 @@ function discipline_visitor_blocked(): bool
         }
         $uid = is_array($ident) ? (int)($ident['uid'] ?? 0) : 0;
         $hash = discipline_ip_hash(discipline_client_ip());
+
+        /* 设备命中：与地址无关，换网络也照样拦 */
+        $dev = discipline_dev_of_request();
+        if ($dev !== '' && discipline_dev_banned($dev)) { return true; }
 
         /* IP 命中时先做地区判定：请求带定位且明显不在锚点附近 → 判为同 IP 的另一个人，放行。
            无定位（拒绝授权 / 定位失败）时仍按 IP 拦截，不留「拒绝授权即解封」的绕过口。 */

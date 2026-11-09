@@ -1,0 +1,64 @@
+{
+  "schema": "theme/1",
+  "id": "chongyang",
+  "name": {
+    "zh": "重阳节",
+    "en": "Double Ninth Festival",
+    "ja": "重陽節"
+  },
+  "colour": {
+    "accent": "#A85B2B",
+    "accent2": "#E0A526",
+    "ink": "#FFF8EA"
+  },
+  "colourDesc": {
+    "zh": "暖米底 · 菊黄金赭",
+    "en": "Warm beige · ochre + gold",
+    "ja": "暖米の地 · 菊黄と秋赭"
+  },
+  "radius": 18,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(180deg, #FAF3E6 0%, #F4E9D6 52%, #EFE2CC 100%)"
+    },
+    {
+      "type": "css",
+      "css": "radial-gradient(145% 52% at 50% -14%, rgba(168,91,43,.34), rgba(168,91,43,.10) 46%, transparent 70%), radial-gradient(125% 44% at 50% 114%, rgba(224,165,38,.26), transparent 72%)",
+      "position": "center",
+      "size": "100% 100%",
+      "repeat": "no-repeat",
+      "opacity": 1
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23E0A526' fill-opacity='.5'%3E%3Cg transform='rotate(0 50 50)'%3E%3Cellipse cx='50' cy='26' rx='8' ry='20'/%3E%3C/g%3E%3Cg transform='rotate(45 50 50)'%3E%3Cellipse cx='50' cy='26' rx='8' ry='20'/%3E%3C/g%3E%3Cg transform='rotate(90 50 50)'%3E%3Cellipse cx='50' cy='26' rx='8' ry='20'/%3E%3C/g%3E%3Cg transform='rotate(135 50 50)'%3E%3Cellipse cx='50' cy='26' rx='8' ry='20'/%3E%3C/g%3E%3Cg transform='rotate(180 50 50)'%3E%3Cellipse cx='50' cy='26' rx='8' ry='20'/%3E%3C/g%3E%3Cg transform='rotate(225 50 50)'%3E%3Cellipse cx='50' cy='26' rx='8' ry='20'/%3E%3C/g%3E%3Cg transform='rotate(270 50 50)'%3E%3Cellipse cx='50' cy='26' rx='8' ry='20'/%3E%3C/g%3E%3Cg transform='rotate(315 50 50)'%3E%3Cellipse cx='50' cy='26' rx='8' ry='20'/%3E%3C/g%3E%3C/g%3E%3Ccircle cx='50' cy='50' r='9' fill='%23B9791A' fill-opacity='.65'/%3E%3C/svg%3E",
+      "position": "top 92px left 4%",
+      "size": "72px 72px",
+      "repeat": "no-repeat",
+      "opacity": 0.55,
+      "animate": "float"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 200' preserveAspectRatio='none'%3E%3Cpath d='M0 200 L0 132 L170 54 L330 140 L500 62 L690 148 L860 78 L1030 152 L1200 96 L1200 200 Z' fill='%23A85B2B' fill-opacity='.22'/%3E%3C/svg%3E",
+      "position": "bottom left",
+      "size": "110% 180px",
+      "repeat": "no-repeat",
+      "opacity": 0.55
+    }
+  ],
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,252,245,.87)",
+    "--border": "rgba(168,91,43,.20)",
+    "--border-soft": "rgba(168,91,43,.10)",
+    "--shadow": "0 10px 30px rgba(122,63,27,.16)",
+    "--shadow-sm": "0 4px 14px rgba(122,63,27,.11)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

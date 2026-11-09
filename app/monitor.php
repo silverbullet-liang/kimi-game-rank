@@ -37,6 +37,52 @@ function mon_default(string $k): string
 }
 
 /**
+ * 上报可信度校验 —— 拦「不是本站页面发出来的」请求。
+ * ------------------------------------------------------------
+ * 采集 SDK（assets/js/monitor.js）每次上报都带 sid + 环境字段，
+ * 其中 browser 由同一个 UA 解析得出。这两者的对应关系伪造脚本很难凑齐，
+ * 而真实用户零误伤。返回 true 才允许入库。
+ *
+ * 拦住的三类：① sid 不是 SDK 生成的形态；② 没带环境字段（裸脚本）；
+ *             ③ 上报的浏览器与请求 UA 对不上（张冠李戴的伪造）。
+ */
+function mon_collect_trust(array $p, string $ua): bool
+{
+    $sid = (string)($p['sid'] ?? '');
+    /* SDK：'s' + Date.now().toString(36) + 6 位随机 base36 */
+    if (!preg_match('/^s[a-z0-9]{12,20}$/', $sid)) { return false; }
+
+    $browser = trim((string)($p['browser'] ?? ''));
+    $ua      = strtolower(trim($ua));
+    if ($browser === '' || $ua === '') { return false; }
+    /* 明显不是浏览器的 UA：命令行工具、爬虫库、空壳 */
+    if (preg_match('#^(curl|wget|python|go-http|java|okhttp|node|axios|postman|httpie|libwww|scrapy)#', $ua)) {
+        return false;
+    }
+
+    /* 家族名与 UA 必须同源；SDK 解析不出的统一记为 Other，此时不再深究 */
+    $map = array(
+        'chrome'  => array('chrome/'),
+        'edge'    => array('edg/'),
+        'firefox' => array('firefox/'),
+        'safari'  => array('version/'),
+        'opera'   => array('opr/', 'opera/'),
+        'uc'      => array('ucbrowser/'),
+        'qq'      => array('qqbrowser/'),
+        'wechat'  => array('micromessenger/'),
+    );
+    $fam = strtolower((string)strtok($browser, ' '));
+    if (isset($map[$fam])) {
+        $hit = false;
+        foreach ($map[$fam] as $needle) {
+            if (strpos($ua, $needle) !== false) { $hit = true; break; }
+        }
+        if (!$hit) { return false; }
+    }
+    return true;
+}
+
+/**
  * 上报额度，单位是「条」而不是「次」。
  * 单次请求本身就能携带几十条事件，只限请求次数等于没限。
  * 返回 array(单 IP 每小时条数, 全站每分钟条数)。

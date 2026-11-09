@@ -159,6 +159,13 @@ switch ($action) {
                 || db_one('SELECT id FROM discipline_reports WHERE id = ?', array($wid)) === null) {
                 fail(404, '通报不存在');
             }
+        } elseif ($ttype === 'incident') {
+            /* 铭记历史页的讨论区挂在 incidents 上，不是 works：
+               漏掉这一支会落到下面的作品校验，误报「作品不存在」。 */
+            if (!table_exists('incidents')
+                || db_one('SELECT id FROM incidents WHERE id = ? AND is_public = 1', array($wid)) === null) {
+                fail(404, '事件档案不存在');
+            }
         } else {
             $w = db_one('SELECT id FROM works WHERE id = ? AND is_hidden = 0', array($wid));
             if ($w === null) { fail(404, '作品不存在'); }

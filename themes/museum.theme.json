@@ -1,0 +1,56 @@
+{
+  "schema": "theme/1",
+  "id": "museum",
+  "name": {
+    "zh": "博物馆日",
+    "en": "International Museum Day",
+    "ja": "国際博物館の日"
+  },
+  "colour": {
+    "accent": "#4F6B72",
+    "accent2": "#B07A4A",
+    "ink": "#F6FAFA"
+  },
+  "colourDesc": {
+    "zh": "石青柜体 · 陶土橙与玻璃反光",
+    "en": "Stone-blue case · terracotta jar",
+    "ja": "石青のケース · 陶土色とガラスの反射"
+  },
+  "radius": 6,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(170deg,#F4F7F8 0%,#ECF1F2 58%,#E4EBED 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 130'%3E%3Cpath d='M44 12h32v8l-5 6c15 6 21 18 21 32 0 20-13 34-32 34S28 78 28 58c0-14 6-26 21-32l-5-6z' fill='%23B07A4A' fill-opacity='.16' stroke='%23B07A4A' stroke-opacity='.50' stroke-width='1.4'/%3E%3Cpath d='M40 54h40M37 70h46' fill='none' stroke='%23B07A4A' stroke-opacity='.28' stroke-width='1.2'/%3E%3Cpath d='M14 104h92' fill='none' stroke='%234F6B72' stroke-opacity='.42' stroke-width='1.4'/%3E%3C/svg%3E",
+      "position": "bottom 14px left 26px",
+      "size": "104px 112px",
+      "repeat": "no-repeat",
+      "opacity": 0.4
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 260'%3E%3Cdefs%3E%3ClinearGradient id='r' x1='0' y1='0' x2='.6' y2='1'%3E%3Cstop offset='0' stop-color='%23FFFFFF' stop-opacity='.90'/%3E%3Cstop offset='1' stop-color='%23FFFFFF' stop-opacity='0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpolygon points='86,0 116,0 30,260 0,260' fill='url(%23r)'/%3E%3Cpolygon points='150,0 160,0 94,260 84,260' fill='%23FFFFFF' fill-opacity='.45'/%3E%3C/svg%3E",
+      "position": "top 0 right 0",
+      "size": "240px 260px",
+      "repeat": "no-repeat",
+      "opacity": 0.42,
+      "blend": "soft-light"
+    }
+  ],
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,255,255,.92)",
+    "--border": "rgba(79,107,114,.17)",
+    "--border-soft": "rgba(79,107,114,.08)",
+    "--shadow": "0 8px 22px rgba(29,42,45,.12)",
+    "--shadow-sm": "0 3px 9px rgba(29,42,45,.07)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

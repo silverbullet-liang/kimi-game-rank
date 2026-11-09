@@ -1,0 +1,55 @@
+{
+  "schema": "theme/1",
+  "id": "fathersday",
+  "name": {
+    "zh": "父亲节",
+    "en": "Father's Day",
+    "ja": "父の日"
+  },
+  "colour": {
+    "accent": "#7A5238",
+    "accent2": "#A8A29A",
+    "ink": "#FBF6EE"
+  },
+  "colourDesc": {
+    "zh": "旧木褐底 · 磨白的肩线",
+    "en": "Faded wood · worn shoulder",
+    "ja": "古びた木の茶 · 擦り切れた肩線"
+  },
+  "radius": 10,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(176deg, #FAF6EF 0%, #F4EDE2 54%, #EDE3D5 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 180'%3E%3Cpath d='M40 30c14-14 34-20 60-20s46 6 60 20l16 32-20 9-12-18v127H56V53l-12 18-20-9z' fill='%237A5238' fill-opacity='.13' stroke='%237A5238' stroke-opacity='.26' stroke-width='1.6'/%3E%3Cpath d='M84 12l16 26 16-26' fill='none' stroke='%237A5238' stroke-opacity='.30' stroke-width='1.6'/%3E%3Cpath d='M100 38v111' stroke='%237A5238' stroke-opacity='.16' stroke-width='1.2'/%3E%3Cpath d='M24 74h12v34H24zM164 74h12v34h-12z' fill='%23C9BBA8' fill-opacity='.30'/%3E%3C/svg%3E",
+      "position": "bottom 34px right -26px",
+      "size": "250px 225px",
+      "repeat": "no-repeat",
+      "opacity": 0.55
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 12'%3E%3Cpath d='M0 6h80' stroke='%237A5238' stroke-opacity='.22' stroke-width='1.6' stroke-dasharray='7 7'/%3E%3C/svg%3E",
+      "position": "bottom 0 left 0",
+      "size": "80px 12px",
+      "repeat": "repeat-x",
+      "opacity": 0.5
+    }
+  ],
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,252,247,.91)",
+    "--border": "rgba(122,82,56,.18)",
+    "--border-soft": "rgba(122,82,56,.09)",
+    "--shadow": "0 8px 22px rgba(45,33,24,.14)",
+    "--shadow-sm": "0 3px 9px rgba(45,33,24,.09)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

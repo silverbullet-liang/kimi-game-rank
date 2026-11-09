@@ -1,0 +1,68 @@
+{
+  "schema": "theme/1",
+  "id": "party",
+  "name": {
+    "zh": "建党节",
+    "en": "CPC Founding Day",
+    "ja": "中国共産党創立記念日"
+  },
+  "colour": {
+    "accent": "#B22A22",
+    "accent2": "#E0B44A",
+    "ink": "#FFF7F2"
+  },
+  "colourDesc": {
+    "zh": "朱红底 · 金线放射与一枚星徽",
+    "en": "Vermilion · gold rays and star",
+    "ja": "朱の地 · 金の光芒と星章"
+  },
+  "radius": 10,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(175deg, #FFF7F3 0%, #FBE4DA 100%)"
+    },
+    {
+      "type": "css",
+      "css": "linear-gradient(180deg, rgba(178,42,34,.34), rgba(178,42,34,.04) 92%)",
+      "position": "left 22px top 0",
+      "size": "10px 46%",
+      "repeat": "no-repeat",
+      "opacity": 0.5
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath d='M100 56L100 4M116.8 59.3L136.7 11.3M131.1 68.9L167.9 32.1M140.7 83.2L188.7 63.3M144 100L196 100M140.7 116.8L188.7 136.7M131.1 131.1L167.9 167.9M116.8 140.7L136.7 188.7M100 144L100 196M83.2 140.7L63.3 188.7M68.9 131.1L32.1 167.9M59.3 116.8L11.3 136.7M56 100L4 100M59.3 83.2L11.3 63.3M68.9 68.9L32.1 32.1M83.2 59.3L63.3 11.3' fill='none' stroke='%23E0B44A' stroke-width='1.5' stroke-linecap='round' stroke-opacity='.85'/%3E%3Ccircle cx='100' cy='100' r='40' fill='none' stroke='%23E0B44A' stroke-width='1.2' stroke-opacity='.6'/%3E%3C/svg%3E",
+      "position": "top -120px right -130px",
+      "size": "540px 540px",
+      "repeat": "no-repeat",
+      "opacity": 0.28,
+      "animate": "pulse"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 72 72'%3E%3Ccircle cx='36' cy='36' r='30' fill='none' stroke='%23B22A22' stroke-width='1.4' stroke-opacity='.55'/%3E%3Cpath d='M36 21L40 32.5L52.2 32.7L42.5 40.1L46 51.8L36 44.8L26 51.8L29.5 40.1L19.8 32.7L32 32.5Z' fill='none' stroke='%23B22A22' stroke-width='1.3' stroke-opacity='.6'/%3E%3Ccircle cx='36' cy='36' r='3' fill='%23E0B44A' fill-opacity='.8'/%3E%3C/svg%3E",
+      "position": "top 104px left 44px",
+      "size": "64px 64px",
+      "repeat": "no-repeat",
+      "opacity": 0.3
+    }
+  ],
+  "icons": {
+    "nav.today": "M12 2.8L14.5 9.3L21.5 9.7L16.1 14.1L17.9 20.9L12 17.1L6.1 20.9L7.9 14.1L2.5 9.7L9.5 9.3Z",
+    "user.admin": "M12 2.6L14.2 8.2L20.2 8.5L15.5 12.3L17.1 18.2L12 14.9L6.9 18.2L8.5 12.3L3.8 8.5L9.8 8.2ZM8.6 19.6h6.8v1.8H8.6z"
+  },
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,252,249,.92)",
+    "--border": "rgba(178,42,34,.16)",
+    "--border-soft": "rgba(178,42,34,.08)",
+    "--shadow": "0 8px 24px rgba(126,26,20,.14)",
+    "--shadow-sm": "0 3px 10px rgba(126,26,20,.09)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

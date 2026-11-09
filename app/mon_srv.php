@@ -169,6 +169,12 @@ function mon_srv_track_urls(): array
     return array_slice(array_values(array_unique($out)), 0, 20);
 }
 
+/** 这些接口的 5xx 来自外部依赖（邮件 / 扫码 / 解析 / 模型网关），不是本站代码崩溃 */
+function mon_srv_dep_routes(): array
+{
+    return array('api/auth.php', 'api/submit.php', 'api/video.php', 'api/ai.php');
+}
+
 /** 阈值告警：单请求过慢 / 5xx（mon_alert 自带 1 小时去重） */
 function mon_srv_alert(int $dur, int $code)
 {
@@ -179,6 +185,13 @@ function mon_srv_alert(int $dur, int $code)
             mon_srv_route() . ' 耗时 ' . $dur . ' ms，超过阈值 ' . $th . ' ms', $dur, $th);
     }
     if ($code >= 500) {
-        mon_alert('srv_5xx', 'error', mon_srv_route() . ' 返回 HTTP ' . $code, $code, 500);
+        $route = mon_srv_route();
+        /* 外部依赖失败与代码崩溃不是一回事：前者降为 warn 并标注，
+           否则真正的内部错误会被邮件/网关的偶发故障淹没。 */
+        if (in_array($route, mon_srv_dep_routes(), true)) {
+            mon_alert('srv_dep', 'warn', $route . ' 返回 HTTP ' . $code . '（外部依赖）', $code, 500);
+        } else {
+            mon_alert('srv_5xx', 'error', $route . ' 返回 HTTP ' . $code, $code, 500);
+        }
     }
 }

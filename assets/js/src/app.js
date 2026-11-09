@@ -3,10 +3,11 @@ import { SITE_BASE } from './base.js';
  * 应用入口：启动引导、路由、底栏、抽屉、搜索、通知轮询
  */
 import { i18nInit, t, festName, applyI18nDom, applyI18nText, watchI18n } from './i18n.js';
-import { boot, state, api, toast, dialog, prompt_, setToken, setUnauthorizedHandler, notify, getPrefs, setPrefs, $, on, askNotifyPermission, esc, showBanLock, hideBanLock, maybeDiscPopup, maybeFestivalPopup, readBanCache, readBanCacheAsync, saveBanCache } from './core.js';
+import { boot, state, api, toast, dialog, prompt_, setToken, ensureGuestSession, setUnauthorizedHandler, notify, getPrefs, setPrefs, $, on, askNotifyPermission, esc, showBanLock, hideBanLock, maybeDiscPopup, maybeFestivalPopup, readBanCache, readBanCacheAsync, saveBanCache } from './core.js';
 import { applyTheme, saveTheme, initSystemWatcher, ACCENTS } from './theme.js';
 import { setNavigate } from './router.js';
 import { guardStart } from './guard.js';
+import { I, T, icon } from './icons.js';
 import { startEggs } from './eggs.js';
 import { cacheGet, cacheSet, cacheTouch, cachePrev, runTransition, enablePredictiveBack, setNavAnim } from './transitions.js';
 
@@ -295,30 +296,6 @@ function setActiveTab(name) {
 const drawer = document.getElementById('drawer');
 const drawerScrim = document.getElementById('drawerScrim');
 
-function icon(path) { return `<svg viewBox="0 0 24 24" class="ic"><path d="${path}"/></svg>`; }
-const I = {
-  rank: 'M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3z',
-  play: 'M8 5v14l11-7z',
-  search: 'M10 4a6 6 0 1 0 3.7 10.7l4.3 4.3 1.4-1.4-4.3-4.3A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8z',
-  vote: 'M12 2l3 6 6.5.9-4.7 4.6 1.1 6.5L12 17l-5.9 3 1.1-6.5L2.5 8.9 9 8z',
-  crown: 'M4 8l4 4 4-6 4 6 4-4-1.5 10h-13L4 8z',
-  snow: 'M12 3v18M4.2 7.5l15.6 9M19.8 7.5l-15.6 9',
-  mail: 'M3 6h18v12H3V6zm2 2l7 5 7-5',
-  rule: 'M6 3h9l4 4v14H6V3zm8 1v4h4',
-  list: 'M4 6h16M4 12h16M4 18h10',
-  users: 'M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm7 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 20c0-3 3-5 6-5s6 2 6 5H3zm13-5c2.5 0 5 1.4 5 4h-5V15z',
-  info: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z',
-  login: 'M10 3h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-8v-2h8V5h-8V3zM3 12l5-5v3h6v4H8v3l-5-5z',
-  logout: 'M14 3h6v18h-6v-2h4V5h-4V3zM10 7l-5 5 5 5v-3h6v-4h-6V7z',
-  doc: 'M6 2h8l4 4v16H6V2zm7 1.5V7h3.5L13 3.5zM8 11h8v2H8v-2zm0 4h8v2H8v-2z',
-  plug: 'M9 2v5H7V2h2zm6 0v5h-2V2h2zM5 9h14v3a7 7 0 0 1-7 7 7 7 0 0 1-7-7V9zm5 11h4v2h-4v-2z',
-  heart: 'M12 21s-7.5-4.7-9.3-9A5.5 5.5 0 0 1 12 6.6 5.5 5.5 0 0 1 21.3 12c-1.8 4.3-9.3 9-9.3 9z',
-  lock: 'M12 2a5 5 0 0 1 5 5v2h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v2h6V7a3 3 0 0 0-3-3zm0 9a1.6 1.6 0 0 1 .9 2.9V18h-1.8v-2.1A1.6 1.6 0 0 1 12 13z',
-  gear: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 4l-2 1.5.3 2.5-2 1-1.8-1.8-2.3.8L12 18l-1.2-2-2.3-.8L6.7 17l-2-1 .3-2.5L3 12l2-1.5L4.7 8l2-1 1.8 1.8 2.3-.8L12 6l1.2 2 2.3.8L17.3 7l2 1-.3 2.5L21 12z',
-  shield: 'M12 2 4 5.2v5.9c0 4.7 3.3 8.8 8 10.9 4.7-2.1 8-6.2 8-10.9V5.2L12 2z',
-  clock: 'M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm0 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm1 3v5.6l4 2.3-1 1.7-5-2.9V7h2z',
-};
-
 function drawerItems() {
   const isAdmin = state.role === 'admin' || state.role === 'subadmin';
   const items = [];
@@ -327,40 +304,43 @@ function drawerItems() {
     ? window.__FESTIVAL.today : [];
   if (festToday.length) {
     items.push({ k: 'today', label: t('关于今天') + '：' + festToday.map(function (x) { return festName(x); }).join('·'),
-      ic: I.info, go: '#/today' });
+      ic: T('nav.today', I.info), go: '#/today' });
   }
   const base = [
-    { k: 'total', label: t('总排行榜'), ic: I.rank, go: '#/rank' },
-    { k: 'search', label: t('搜索作品'), ic: I.search, act: 'search' },
-    { k: 'submit', label: t('提交作品'), ic: I.list, go: '#/submit' },
-    { k: 'vote', label: t('投票榜'), ic: I.vote, go: '#/rank?board=vote' },
-    { k: 'gods', label: t('诸神榜'), ic: I.crown, go: '#/rank?board=gods' },
-    { k: 'cold', label: t('冷门榜'), ic: I.snow, go: '#/rank?board=cold' },
-    { k: 'feedback', label: isAdmin ? '回复反馈' : t('反映问题'), ic: I.mail, go: '#/feedback' },
-    { k: 'help', label: t('功能说明'), ic: I.doc, go: '#/doc/功能说明' },
-    { k: 'aihelp', label: t('AI 使用说明'), ic: I.plug, go: '#/doc/AI 使用说明' },
-    { k: 'charter', label: t('社区公约'), ic: I.users, go: '#/doc/社区公约' },
+    { k: 'total', label: t('总排行榜'), ic: T('nav.total', I.rank), go: '#/rank' },
+    { k: 'search', label: t('搜索作品'), ic: T('field.search', I.search), act: 'search' },
+    { k: 'submit', label: t('提交作品'), ic: T('nav.submit', I.list), go: '#/submit' },
+    { k: 'vote', label: t('投票榜'), ic: T('nav.vote', I.vote), go: '#/rank?board=vote' },
+    { k: 'gods', label: t('诸神榜'), ic: T('nav.gods', I.crown), go: '#/rank?board=gods' },
+    { k: 'cold', label: t('冷门榜'), ic: T('nav.cold', I.snow), go: '#/rank?board=cold' },
+    { k: 'feedback', label: isAdmin ? '回复反馈' : t('反映问题'), ic: T('nav.feedback', I.mail), go: '#/feedback' },
+    { k: 'help', label: t('功能说明'), ic: T('nav.help', I.doc), go: '#/doc/功能说明' },
+    { k: 'aihelp', label: t('AI 使用说明'), ic: T('doc.ai', I.plug), go: '#/doc/AI 使用说明' },
+    { k: 'charter', label: t('社区公约'), ic: T('doc.community', I.users), go: '#/doc/社区公约' },
     { k: 'discipline', label: t('违纪通报'), ic: I.shield, go: '#/discipline' },
     { k: 'history', label: t('铭记历史'), ic: I.clock, go: '#/history' },
-    { k: 'score', label: t('评分标准'), ic: I.rule, go: '#/doc/评分标准' },
-    { k: 'join', label: t('入榜规则'), ic: I.list, go: '#/doc/入榜规则' },
-    { k: 'terms', label: t('用户协议'), ic: I.doc, go: '#/doc/用户协议' },
-    { k: 'privacy', label: t('隐私政策'), ic: I.lock, go: '#/doc/隐私政策' },
-    { k: 'changelog', label: t('更新日志'), ic: I.doc, go: '#/doc/更新日志' },
+    { k: 'score', label: t('评分标准'), ic: T('doc.criteria', I.rule), go: '#/doc/评分标准' },
+    { k: 'join', label: t('入榜规则'), ic: T('doc.ranking', I.list), go: '#/doc/入榜规则' },
+    { k: 'terms', label: t('用户协议'), ic: T('doc.terms', I.doc), go: '#/doc/用户协议' },
+    { k: 'privacy', label: t('隐私政策'), ic: T('doc.privacy', I.lock), go: '#/doc/隐私政策' },
+    { k: 'changelog', label: t('更新日志'), ic: T('doc.changelog', I.doc), go: '#/doc/更新日志' },
     { k: 'pentest', label: t('渗透测试'), ic: I.shield, url: REPO_URL },
     { k: 'admins', label: t('管理者名单'), ic: I.users, go: '#/about' },
     { k: 'about', label: t('关于'), ic: I.info, go: '#/about' },
   ];
   base.forEach(function (x) { items.push(x); });
   if (state.role === 'user' || state.role === 'guest') {
-    items.push({ k: 'auth', label: t('用户登录 / 注册'), ic: I.login, go: '#/login' });
+    items.push({ k: 'auth', label: t('用户登录 / 注册'), ic: T('user.login', I.login), go: '#/login' });
   } else {
-    items.push({ k: 'panel', label: t('控制面板'), ic: I.gear, go: '#/panel' });
-    items.push({ k: 'monitor', label: t('异常监测'), ic: I.shield, go: '#/monitor' });
-    items.push({ k: 'logout', label: t('退出登录'), ic: I.logout, act: 'logout' });
+    items.push({ k: 'panel', label: t('控制面板'), ic: T('nav.admin', I.gear), go: '#/panel' });
+    items.push({ k: 'monitor', label: t('异常监测'), ic: T('nav.monitor', I.shield), go: '#/monitor' });
+    items.push({ k: 'logout', label: t('退出登录'), ic: T('user.logout', I.logout), act: 'logout' });
   }
   return items;
 }
+
+/* 主题 JSON 换图标后需要重绘抽屉（常驻 DOM，不会自己更新） */
+window.__rerenderDrawer = renderDrawer;
 
 function renderDrawer() {
   const list = document.getElementById('drawerList');
@@ -382,6 +362,9 @@ function renderDrawer() {
           /* 就地切到游客态：重绘抽屉并跳转，不再整页刷新 */
           state.role = 'guest'; state.uid = 0; state.username = t('游客');
           state.settings = {}; state.avatar = '';
+          /* 关键：立刻补一张游客令牌。留空的令牌会让之后的每个请求都 401，
+             用户看到的就是「退出后一直登录态失效、要刷新才能再登录」。 */
+          await ensureGuestSession();
           toast('已退出');
           renderDrawer();
           navigate('#/rank');
@@ -755,6 +738,9 @@ async function main() {
 
   await boot();
   applyTheme();
+  /* JSON 主题：先恢复本机保存的，再按账号拉一次云端（7 天有效，过期即无） */
+  if (typeof window.restoreThemeJson === 'function') { window.restoreThemeJson(); }
+  syncCloudTheme();
   /* 返回动画开关（本机偏好，默认开启） */
   setNavAnim(getPrefs().nav_anim !== 0);
 
@@ -799,6 +785,22 @@ async function main() {
 
   // 首次交互时请求通知权限
   bindToTop();   // 通知权限改为在「我的 → 设置」中显式开启
+}
+
+/** 云端主题：随账号同步，过期或未登录时什么也不做 */
+async function syncCloudTheme() {
+  if (state.role === 'guest') { return; }
+  try {
+    const d = await api('theme', 'get', null, { silent: true, tries: 1 });
+    const text = (d && d.json) ? String(d.json) : '';
+    if (!text) { return; }
+    let local = '';
+    try { local = localStorage.getItem('kimgr_tjson') || ''; } catch (e) {}
+    if (text === local) { return; }
+    if (window.ThemeJSON && window.ThemeJSON.applyRaw(text).ok) {
+      try { localStorage.setItem('kimgr_tjson', text); } catch (e) {}
+    }
+  } catch (e) { /* 云端不可用不影响本机主题 */ }
 }
 
 main();

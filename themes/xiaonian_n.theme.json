@@ -1,0 +1,59 @@
+{
+  "schema": "theme/1",
+  "id": "xiaonian_n",
+  "name": {
+    "zh": "北方小年",
+    "en": "Northern Xiaonian",
+    "ja": "北方の小年"
+  },
+  "colour": {
+    "accent": "#C98A2E",
+    "accent2": "#A8322A",
+    "ink": "#FFFBF0"
+  },
+  "colourDesc": {
+    "zh": "琥珀糖色 · 四方窗格方正",
+    "en": "Amber sugar · square panes",
+    "ja": "飴の琥珀色 · 四角い窓格子"
+  },
+  "radius": 16,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(170deg, #FDF7EC 0%, #F8ECDA 55%, #F4E7D2 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20140%20140'%3E%3Cg%20fill='none'%20stroke='%23A8322A'%3E%3Crect%20x='6'%20y='6'%20width='128'%20height='128'%20stroke-width='1.6'%20stroke-opacity='.7'/%3E%3Crect%20x='20'%20y='20'%20width='100'%20height='100'%20stroke-width='1'%20stroke-opacity='.45'/%3E%3Cline%20x1='6'%20y1='70'%20x2='134'%20y2='70'%20stroke-width='1'%20stroke-opacity='.4'/%3E%3Cline%20x1='70'%20y1='6'%20x2='70'%20y2='134'%20stroke-width='1'%20stroke-opacity='.4'/%3E%3Cline%20x1='20'%20y1='20'%20x2='120'%20y2='120'%20stroke-width='.9'%20stroke-opacity='.28'/%3E%3Cline%20x1='120'%20y1='20'%20x2='20'%20y2='120'%20stroke-width='.9'%20stroke-opacity='.28'/%3E%3C/g%3E%3Crect%20x='60'%20y='60'%20width='20'%20height='20'%20fill='%23C98A2E'%20fill-opacity='.55'/%3E%3C/svg%3E",
+      "position": "top 50px right -18px",
+      "size": "152px 152px",
+      "repeat": "no-repeat",
+      "opacity": 0.38
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20196%2044'%3E%3Cg%20fill='none'%20stroke='%23C98A2E'%20stroke-width='1.3'%20stroke-opacity='.6'%3E%3Crect%20x='4'%20y='8'%20width='24'%20height='24'/%3E%3Crect%20x='12'%20y='16'%20width='8'%20height='8'/%3E%3Crect%20x='36'%20y='8'%20width='24'%20height='24'/%3E%3Crect%20x='44'%20y='16'%20width='8'%20height='8'/%3E%3Crect%20x='68'%20y='8'%20width='24'%20height='24'/%3E%3Crect%20x='76'%20y='16'%20width='8'%20height='8'/%3E%3Crect%20x='100'%20y='8'%20width='24'%20height='24'/%3E%3Crect%20x='108'%20y='16'%20width='8'%20height='8'/%3E%3Crect%20x='132'%20y='8'%20width='24'%20height='24'/%3E%3Crect%20x='140'%20y='16'%20width='8'%20height='8'/%3E%3Crect%20x='164'%20y='8'%20width='24'%20height='24'/%3E%3Crect%20x='172'%20y='16'%20width='8'%20height='8'/%3E%3Cline%20x1='0'%20y1='38'%20x2='196'%20y2='38'%20stroke-opacity='.4'/%3E%3C/g%3E%3C/svg%3E",
+      "position": "bottom 26px left 22px",
+      "size": "252px 57px",
+      "repeat": "no-repeat",
+      "opacity": 0.3,
+      "animate": "drift"
+    }
+  ],
+  "icons": {
+    "nav.today": "M4 4h16v16H4V4zm2 2v12h12V6H6zm5 0h2v12h-2zM6 11h12v2H6z"
+  },
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,253,247,.91)",
+    "--border": "rgba(201,138,46,.20)",
+    "--border-soft": "rgba(201,138,46,.10)",
+    "--shadow": "0 10px 26px rgba(201,138,46,.16)",
+    "--shadow-sm": "0 3px 11px rgba(201,138,46,.10)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

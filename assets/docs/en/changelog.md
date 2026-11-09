@@ -7,6 +7,55 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.60.9 · 2026-11-09 (Every Hue Its Own)
+
+### Added
+
+- Appearance settings can now import a theme file: pick a `.json` or paste the text, and it applies immediately without a reload
+- A theme can define its name (Chinese / English / Japanese), accent colour with a one-line description, corner radius, layered backgrounds (image, SVG or pure CSS, each positioned, faded and slowly animated), per-position icon replacements, a font, and forced light or dark mode
+- Signed-in users get their theme synced to the cloud: still there on another device within 7 days, gone automatically after that
+- The official theme library ships 49 seasonal themes with the source; to submit your own, the repository has a dedicated issue template
+
+### Fixed
+
+- A theme can only change how the site looks, never what it can do: SVGs containing scripts, plain-http images, and styles or variables outside the whitelist are all rejected
+
+## v3.60.8 · 2026-11-09 (Proof of Identity)
+
+### Fixed
+
+- Visit statistics now accept only data sent by pages on this site: page views forged by external scripts are no longer counted, so the numbers on the panel are real again
+- Alerts now separate "third-party service failure" from "a problem on this site": email delivery, QR login and video parsing failures are no longer recorded as internal errors
+
+### Improved
+
+- Monitoring data is now reported once every 30 seconds (immediately once 40 events have queued), reducing the number of requests and easing the load on the server
+
+## v3.60.7 · 2026-11-08 (Closed Gate)
+
+### Changed
+
+- Accounts suspended by a public notice are now stopped right at the sign-in step: changing networks or IP addresses no longer helps, and signing up a new account from the same browser is refused as well
+- Other people on the same network are unaffected and can still register and sign in normally
+
+### Notes
+
+- Only the sign-in and sign-up doors changed; nothing else on the site behaves differently.
+
+## v3.60.6 · 2026-11-08 (Lost and Found)
+
+### Fixed
+
+- Signing out no longer results in an "expired session": the site switches back to a usable guest identity right away, and signing in again no longer needs a page refresh
+- The discussion area under the incident archive (11·3 attack) accepts comments again; posting used to fail with "work does not exist"
+- After leaving a page idle in the background, your session recovers by itself instead of asking you to refresh
+
+### Notes
+
+- Bug fixes only; no new features.
+
+---
+
 ## v3.60.5 · 2026-11-06 (Dead End)
 
 ### Fixed

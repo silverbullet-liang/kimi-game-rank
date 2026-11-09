@@ -1,0 +1,65 @@
+{
+  "schema": "theme/1",
+  "id": "halloween",
+  "name": {
+    "zh": "万圣夜",
+    "en": "Halloween",
+    "ja": "ハロウィン"
+  },
+  "colour": {
+    "accent": "#E9720C",
+    "accent2": "#7BAA4F",
+    "ink": "#1A1024"
+  },
+  "colourDesc": {
+    "zh": "近黑紫 · 月白与南瓜橙",
+    "en": "Near-black · moon + pumpkin",
+    "ja": "黒紫の夜 · 月白と南瓜の橙"
+  },
+  "radius": 16,
+  "background": [
+    {
+      "type": "css",
+      "css": "radial-gradient(120% 78% at 50% 0%, #241634 0%, #1B1029 44%, #120B1B 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3CradialGradient id='m'%3E%3Cstop offset='0' stop-color='%23E6E0D2' stop-opacity='.34'/%3E%3Cstop offset='.55' stop-color='%23E6E0D2' stop-opacity='.10'/%3E%3Cstop offset='1' stop-color='%23E6E0D2' stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='100' cy='100' r='100' fill='url%28%23m%29'/%3E%3Ccircle cx='100' cy='92' r='34' fill='%23E6E0D2' fill-opacity='.5'/%3E%3Ccircle cx='112' cy='84' r='30' fill='%23120B1B' fill-opacity='.55'/%3E%3C/svg%3E",
+      "position": "top 18px left 12px",
+      "size": "230px 230px",
+      "repeat": "no-repeat",
+      "opacity": 0.55
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300'%3E%3Cdefs%3E%3CradialGradient id='p'%3E%3Cstop offset='0' stop-color='%23E9720C' stop-opacity='.40'/%3E%3Cstop offset='.5' stop-color='%23E9720C' stop-opacity='.14'/%3E%3Cstop offset='1' stop-color='%23E9720C' stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='150' cy='150' r='150' fill='url%28%23p%29'/%3E%3C/svg%3E",
+      "position": "bottom -110px right -100px",
+      "size": "340px 340px",
+      "repeat": "no-repeat",
+      "opacity": 0.6,
+      "animate": "pulse"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 90' fill='%23E6E0D2'%3E%3Cpath d='M18 44c10-13 20-13 27-3 7-10 17-10 24 3-7-3-12 2-14 10-5-8-10-8-13 0-2-3-7-3-9 0-2-8-7-13-15-10z' fill-opacity='.34'/%3E%3Cpath d='M118 20c7-9 14-9 19-2 5-7 12-7 17 2-5-2-9 1-10 7-4-6-7-6-9 0-2-2-5-2-7 0-1-6-5-9-10-7z' fill-opacity='.24'/%3E%3Cpath d='M132 68c6-7 12-7 16-2 4-6 10-6 14 2-4-2-7 1-9 6-3-5-6-5-7 0-2-2-4-2-6 0-1-5-4-8-8-6z' fill-opacity='.18'/%3E%3C/svg%3E",
+      "position": "top 96px right 4px",
+      "size": "196px 88px",
+      "repeat": "no-repeat",
+      "opacity": 0.55,
+      "animate": "drift"
+    }
+  ],
+  "force": "dark",
+  "tokens": {
+    "--surface": "rgba(33,21,47,.86)",
+    "--border": "rgba(233,114,12,.26)",
+    "--border-soft": "rgba(233,114,12,.14)",
+    "--shadow": "0 12px 36px rgba(0,0,0,.62)",
+    "--shadow-sm": "0 5px 16px rgba(0,0,0,.5)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

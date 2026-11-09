@@ -1,0 +1,59 @@
+{
+  "schema": "theme/1",
+  "id": "zhongyuan",
+  "name": {
+    "zh": "中元节",
+    "en": "Zhongyuan Festival",
+    "ja": "中元節"
+  },
+  "colour": {
+    "accent": "#2E4A4E",
+    "accent2": "#C9A86B",
+    "ink": "#F4F9F9"
+  },
+  "colourDesc": {
+    "zh": "青灰静水 · 一盏河灯的微光",
+    "en": "Slate water · one lamp's glow",
+    "ja": "青鈍の水面 · 灯籠ひとつの微光"
+  },
+  "radius": 26,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(180deg, #F2F7F7 0%, #EAF2F2 62%, #E0EAEA 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20620%20124'%3E%3Cg%20fill='none'%20stroke='%232E4A4E'%20stroke-linecap='round'%3E%3Cpath%20d='M12%2040q44-11%2088%200t88%200%2088%200%2088%200%2088%200%2088%200'%20stroke-width='1.1'%20stroke-opacity='.4'/%3E%3Cpath%20d='M0%2078q46-12%2092%200t92%200%2092%200%2092%200%2092%200%2092%200'%20stroke-width='1.4'%20stroke-opacity='.5'/%3E%3Cpath%20d='M24%20112q44-10%2088%200t88%200%2088%200%2088%200%2088%200%2088%200'%20stroke-width='1'%20stroke-opacity='.3'/%3E%3C/g%3E%3C/svg%3E",
+      "position": "bottom -6px center",
+      "size": "760px 152px",
+      "repeat": "no-repeat",
+      "opacity": 0.4
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20300%20216'%3E%3Cdefs%3E%3CradialGradient%20id='g'%3E%3Cstop%20offset='0'%20stop-color='%23C9A86B'%20stop-opacity='.62'/%3E%3Cstop%20offset='.55'%20stop-color='%23C9A86B'%20stop-opacity='.18'/%3E%3Cstop%20offset='1'%20stop-color='%23C9A86B'%20stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cellipse%20cx='150'%20cy='96'%20rx='118'%20ry='84'%20fill='url%28%23g%29'/%3E%3Cpath%20d='M150%20118c11%204%2019%2012%2019%2022h-38c0-10%208-18%2019-22z'%20fill='%23C9A86B'%20fill-opacity='.85'/%3E%3Crect%20x='128'%20y='139'%20width='44'%20height='4'%20rx='2'%20fill='%232E4A4E'%20fill-opacity='.35'/%3E%3Cellipse%20cx='150'%20cy='158'%20rx='72'%20ry='14'%20fill='url%28%23g%29'%20fill-opacity='.8'/%3E%3Cellipse%20cx='150'%20cy='176'%20rx='96'%20ry='10'%20fill='none'%20stroke='%232E4A4E'%20stroke-width='1'%20stroke-opacity='.28'/%3E%3Cellipse%20cx='150'%20cy='196'%20rx='124'%20ry='9'%20fill='none'%20stroke='%232E4A4E'%20stroke-width='1'%20stroke-opacity='.18'/%3E%3C/svg%3E",
+      "position": "bottom 10px left 14%",
+      "size": "300px 216px",
+      "repeat": "no-repeat",
+      "opacity": 0.5,
+      "animate": "pulse"
+    }
+  ],
+  "icons": {
+    "nav.today": "M12 4a5.5 5.5 0 0 1 5.5 5.5h-11A5.5 5.5 0 0 1 12 4zM5.6 10.5h12.8v2H5.6zM2 16h20v1.8H2zM5 20h14v1.8H5z"
+  },
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,255,255,.90)",
+    "--border": "rgba(46,74,78,.16)",
+    "--border-soft": "rgba(46,74,78,.08)",
+    "--shadow": "0 14px 34px rgba(24,39,42,.13)",
+    "--shadow-sm": "0 5px 14px rgba(24,39,42,.08)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

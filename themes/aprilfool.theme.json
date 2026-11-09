@@ -1,0 +1,55 @@
+{
+  "schema": "theme/1",
+  "id": "aprilfool",
+  "name": {
+    "zh": "愚人节",
+    "en": "April Fools' Day",
+    "ja": "エイプリルフール"
+  },
+  "colour": {
+    "accent": "#6E6E6E",
+    "accent2": "#E8D44D",
+    "ink": "#FFFDF2"
+  },
+  "colourDesc": {
+    "zh": "中性灰 · 一抹亮黄",
+    "en": "Neutral grey · a dash of yellow",
+    "ja": "ニュートラルグレー · 黄の一差し"
+  },
+  "radius": 8,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(170deg, #F7F6F3 0%, #F1EFEA 55%, #EAE8E2 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg transform='rotate(180 12 12)'%3E%3Cpath d='M8 8a4 4 0 1 1 5 3.9c-.8.3-1 .9-1 1.7v1.4' fill='none' stroke='%23E8D44D' stroke-width='2.2' stroke-linecap='round'/%3E%3Ccircle cx='12' cy='20.6' r='1.6' fill='%23E8D44D'/%3E%3C/g%3E%3C/svg%3E",
+      "position": "top 52px right 34px",
+      "size": "84px 84px",
+      "repeat": "no-repeat",
+      "opacity": 0.9
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 12'%3E%3Cg transform='rotate(-1.4 200 6)'%3E%3Crect x='0' y='5' width='400' height='2' fill='%236E6E6E' fill-opacity='.22'/%3E%3C/g%3E%3C/svg%3E",
+      "position": "bottom 26px left -30px",
+      "size": "440px 12px",
+      "repeat": "no-repeat",
+      "opacity": 0.9
+    }
+  ],
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,255,253,.92)",
+    "--border": "rgba(110,110,110,.16)",
+    "--border-soft": "rgba(110,110,110,.08)",
+    "--shadow": "0 7px 20px rgba(35,35,35,.11)",
+    "--shadow-sm": "0 2px 9px rgba(35,35,35,.07)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

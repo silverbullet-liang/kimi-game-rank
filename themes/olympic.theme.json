@@ -1,0 +1,55 @@
+{
+  "schema": "theme/1",
+  "id": "olympic",
+  "name": {
+    "zh": "奥林匹克日",
+    "en": "International Olympic Day",
+    "ja": "国際オリンピックデー"
+  },
+  "colour": {
+    "accent": "#2B6CA3",
+    "accent2": "#C9392F",
+    "ink": "#FBFDFF"
+  },
+  "colourDesc": {
+    "zh": "白底细环 · 五色只用线不用面",
+    "en": "White ground · five thin rings",
+    "ja": "白地の細い輪 · 五色は線だけで"
+  },
+  "radius": 18,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(170deg,#FBFCFE 0%,#F3F7FA 56%,#EDF1F6 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 210 120'%3E%3Ccircle cx='38' cy='34' r='24' fill='none' stroke='%232B6CA3' stroke-width='2.8'/%3E%3Ccircle cx='94' cy='34' r='24' fill='none' stroke='%23333333' stroke-width='2.8'/%3E%3Ccircle cx='150' cy='34' r='24' fill='none' stroke='%23C9392F' stroke-width='2.8'/%3E%3Ccircle cx='66' cy='76' r='24' fill='none' stroke='%23C9A227' stroke-width='2.8'/%3E%3Ccircle cx='122' cy='76' r='24' fill='none' stroke='%233E7B4A' stroke-width='2.8'/%3E%3C/svg%3E",
+      "position": "bottom 10px right 16px",
+      "size": "200px 116px",
+      "repeat": "no-repeat",
+      "opacity": 0.5
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Ccircle cx='100' cy='100' r='86' fill='none' stroke='%232B6CA3' stroke-opacity='.55' stroke-width='1.6'/%3E%3Ccircle cx='100' cy='100' r='66' fill='none' stroke='%23C9392F' stroke-opacity='.30' stroke-width='1.2'/%3E%3C/svg%3E",
+      "position": "top -44px left -44px",
+      "size": "180px 180px",
+      "repeat": "no-repeat",
+      "opacity": 0.18
+    }
+  ],
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,255,255,.93)",
+    "--border": "rgba(43,108,163,.15)",
+    "--border-soft": "rgba(43,108,163,.07)",
+    "--shadow": "0 9px 24px rgba(26,34,41,.10)",
+    "--shadow-sm": "0 3px 10px rgba(26,34,41,.06)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}

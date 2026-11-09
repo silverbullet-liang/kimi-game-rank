@@ -1,0 +1,65 @@
+{
+  "schema": "theme/1",
+  "id": "festival",
+  "name": {
+    "zh": "国庆专版",
+    "en": "China's National Day",
+    "ja": "国慶節"
+  },
+  "colour": {
+    "accent": "#C8102E",
+    "accent2": "#E8B923",
+    "ink": "#FFF8E6"
+  },
+  "colourDesc": {
+    "zh": "暖红底 · 鎏金回纹灯笼",
+    "en": "Warm red · gilded lanterns",
+    "ja": "暖かな赤の地 · 金の灯籠"
+  },
+  "radius": 20,
+  "background": [
+    {
+      "type": "css",
+      "css": "linear-gradient(178deg, #FBF0E7 0%, #F8E6DA 52%, #F4DCD0 100%)"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 16' fill='none' stroke='%23A87B12' stroke-width='1.6'%3E%3Cpath d='M0 14h8V5h12v7h8V3h12v10h8v3h12' stroke-opacity='.5'/%3E%3C/svg%3E",
+      "position": "bottom 0 left 0",
+      "size": "60px 16px",
+      "repeat": "repeat-x",
+      "opacity": 0.4
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 156'%3E%3Cpath d='M50 0v22' stroke='%23A87B12' stroke-opacity='.55' stroke-width='1.6'/%3E%3Crect x='38' y='22' width='24' height='8' rx='2' fill='%23E8B923' fill-opacity='.62'/%3E%3Cellipse cx='50' cy='64' rx='34' ry='34' fill='%23C8102E' fill-opacity='.16' stroke='%23C8102E' stroke-opacity='.34' stroke-width='1.8'/%3E%3Cellipse cx='50' cy='64' rx='13' ry='34' fill='none' stroke='%23C8102E' stroke-opacity='.20'/%3E%3Cellipse cx='50' cy='64' rx='24' ry='34' fill='none' stroke='%23C8102E' stroke-opacity='.14'/%3E%3Crect x='38' y='94' width='24' height='8' rx='2' fill='%23E8B923' fill-opacity='.62'/%3E%3Cpath d='M50 102v34' stroke='%23E8B923' stroke-opacity='.55' stroke-width='2'/%3E%3C/svg%3E",
+      "position": "top 0 right 34px",
+      "size": "92px 144px",
+      "repeat": "no-repeat",
+      "opacity": 0.6,
+      "animate": "float"
+    },
+    {
+      "type": "svg",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 130 110' fill='%23E8B923'%3E%3Cpath d='M22 8l3.2 7 7.6 1-5.6 5.4 1.4 7.6L22 25.4l-6.6 3.6 1.4-7.6L11.2 16l7.6-1z' fill-opacity='.55'/%3E%3Cpath d='M74 40l2.4 5.2 5.8.8-4.2 4 1 5.8-5-2.8-5 2.8 1-5.8-4.2-4 5.8-.8z' fill-opacity='.40'/%3E%3Cpath d='M38 70l2 4.4 4.8.6-3.4 3.4.8 4.8L38 80.8l-4.2 2.4.8-4.8L31.2 75l4.8-.6z' fill-opacity='.30'/%3E%3C/svg%3E",
+      "position": "top 36px left 22px",
+      "size": "118px 100px",
+      "repeat": "no-repeat",
+      "opacity": 0.5,
+      "animate": "pulse"
+    }
+  ],
+  "force": "auto",
+  "tokens": {
+    "--surface": "rgba(255,252,247,.88)",
+    "--border": "rgba(200,16,46,.16)",
+    "--border-soft": "rgba(140,30,40,.10)",
+    "--shadow": "0 10px 30px rgba(142,14,32,.13)",
+    "--shadow-sm": "0 4px 14px rgba(142,14,32,.10)"
+  },
+  "meta": {
+    "author": "Kimi 游戏榜",
+    "version": "1.0.0",
+    "license": "AGPL-3.0"
+  }
+}
