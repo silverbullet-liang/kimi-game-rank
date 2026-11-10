@@ -75,6 +75,22 @@ html[data-theme="dark"] {
   --shadow: 0 10px 30px rgba(0, 0, 0, .45);
   --shadow-sm: 0 4px 14px rgba(0, 0, 0, .35);
 }
+/* 节日皮肤只定义了一套浅色变量：深色模式下统一压暗表面与文字，
+   否则会出现「深色界面里一张白卡片」。皮肤若自带暗色变体可再覆盖回去。 */
+html[data-theme="dark"][data-skin] {
+  --surface: rgba(38, 38, 48, .55) !important;
+  --surface-solid: #1e1e26 !important;
+  --border: rgba(255, 255, 255, .12) !important;
+  --border-soft: rgba(255, 255, 255, .08) !important;
+  --text: #f2f2f5 !important;
+  --text-2: #b3b6c2 !important;
+  --text-3: #7c8194 !important;
+  --msg-bg: rgba(38, 38, 48, .94) !important;
+  --msg-fg: #f2f2f5 !important;
+  --toast-bg: rgba(24, 24, 32, .94) !important;
+  --toast-fg: #ffffff !important;
+}
+
 html[data-theme="dark"] .glass,
 html[data-theme="dark"] .topbar,
 html[data-theme="dark"] .tabbar { background: var(--surface); }
@@ -257,10 +273,12 @@ html[data-theme="dark"] .glass {
 .drawer-item.active { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); font-weight: 600; }
 
 /* ---------- 对话框 ---------- */
-.dialog-scrim { position: fixed; inset: 0; background: rgba(10, 10, 20, .5); z-index: 70; display: grid; place-items: center; padding: 20px; }
+.dialog-scrim { position: fixed; inset: 0; background: var(--dlg-scrim, rgba(10, 10, 20, .5)); z-index: 70; display: grid; place-items: center; padding: 20px; }
 .dialog {
   width: min(420px, 94vw); border-radius: var(--radius-lg); padding: 20px;
-  background: color-mix(in srgb, var(--surface-solid) 82%, transparent);
+  background: var(--dlg-bg, color-mix(in srgb, var(--surface-solid) 82%, transparent));
+  color: var(--dlg-fg, var(--text));
+  border: 1px solid var(--dlg-border, transparent);
   -webkit-backdrop-filter: blur(30px) saturate(180%);
   backdrop-filter: blur(30px) saturate(180%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), var(--shadow);
@@ -1741,3 +1759,10 @@ i.ic[class*='ti-'] { background-repeat: no-repeat; background-position: center; 
 @media (prefers-reduced-motion: reduce) {
   #tjson-bg .tj-layer { animation: none !important; }
 }
+
+/* 主题可替换的静态图标位：外层只负责占位，内层图标填满 */
+.ic-slot { display: inline-flex; align-items: center; justify-content: center; width: 21px; height: 21px; }
+.icon-btn .ic-slot { width: 19px; height: 19px; }
+.tab .ic-slot { width: 21px; height: 21px; }
+.ic-slot > .ic { width: 100%; height: 100%; fill: currentColor; }
+.ic-slot > .ic-img { object-fit: contain; }

@@ -44,6 +44,8 @@ const SLOT_KEYS = {
   'theme.palette': 'gear', 'theme.lang': 'gear',
   'state.loading': 'clock', 'state.empty': 'list', 'state.error': 'info',
   'state.success': 'info', 'state.warn': 'info', 'state.offline': 'info',
+  'tab.rank': 'rank', 'tab.chat': 'list', 'tab.mine': 'users',
+  'ui.menu': 'list', 'ui.theme': 'gear',
   'field.search': 'search', 'field.refresh': 'clock',
 };
 
@@ -83,6 +85,27 @@ function escAttrJs(s) {
     .replace(/>/g, '&gt;').replace(/'/g, '&#39;');
 }
 
+/** 取某位置的覆盖值（没有则空串） */
+function TIcon(slot) {
+  var v = OVR[slot];
+  return (typeof v === 'string') ? v : '';
+}
+
+/* 页面上写死的图标（底部 tab、菜单按钮等 HTML 里的 SVG）：
+   主题覆盖时才替换，清除主题时还原原样。 */
+const STATIC_ORIG = new Map();
+
+function refreshStaticIcons() {
+  var nodes = document.querySelectorAll('[data-ic]');
+  for (var i = 0; i < nodes.length; i++) {
+    var el = nodes[i];
+    var slot = el.getAttribute('data-ic');
+    if (!STATIC_ORIG.has(el)) { STATIC_ORIG.set(el, el.innerHTML); }
+    var ovr = TIcon(slot);
+    el.innerHTML = ovr ? icon(ovr) : STATIC_ORIG.get(el);
+  }
+}
+
 /** 主题应用时注入覆盖表；传空对象即恢复默认 */
 function applyThemeIcons(map) {
   OVR = {};
@@ -94,4 +117,12 @@ function applyThemeIcons(map) {
       }
     }
   }
+  /* 新位置不在 SLOT_KEYS 里也能覆盖（tab.* / ui.* 由 data-ic 直接消费） */
+  if (map && typeof map === 'object') {
+    for (var k2 in map) {
+      if (!Object.prototype.hasOwnProperty.call(map, k2)) { continue; }
+      if (typeof map[k2] === 'string' && map[k2] && !OVR[k2]) { OVR[k2] = map[k2]; }
+    }
+  }
+  try { refreshStaticIcons(); } catch (e) {}
 }

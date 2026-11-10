@@ -530,13 +530,13 @@ try {
     </div>
     <div class="ctrl">
       <button class="icon-btn" id="btnSearch" aria-label="<?= e(seo_t('搜索', 'Search', '検索')) ?>">
-        <svg viewBox="0 0 24 24" class="ic"><path d="M10 4a6 6 0 1 0 3.7 10.7l4.3 4.3 1.4-1.4-4.3-4.3A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"/></svg>
+        <span class="ic-slot" data-ic="field.search"><svg viewBox="0 0 24 24" class="ic"><path d="M10 4a6 6 0 1 0 3.7 10.7l4.3 4.3 1.4-1.4-4.3-4.3A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"/></svg></span>
       </button>
       <button class="icon-btn" id="btnTheme" aria-label="<?= e(seo_t('切换深浅色', 'Toggle theme', 'テーマ切替')) ?>">
-        <svg viewBox="0 0 24 24" class="ic" id="themeIcon"><path d="M12 3q-.5 0-.5.5t.5.5q3.7 0 6.3 2.7T21 13q0 2.4-1.2 4.4.5-1.3.5-2.7 0-3-2.1-5.1T13 7.5q-1.8 0-3.4.9t-2.5 2.4q-.9 1.6-.9 3.4 0 1.2.4 2.2-2.1-2-2.1-4.9 0-3.7 2.6-6.3T12 3z"/></svg>
+        <span class="ic-slot" data-ic="ui.theme"><svg viewBox="0 0 24 24" class="ic" id="themeIcon"><path d="M12 3q-.5 0-.5.5t.5.5q3.7 0 6.3 2.7T21 13q0 2.4-1.2 4.4.5-1.3.5-2.7 0-3-2.1-5.1T13 7.5q-1.8 0-3.4.9t-2.5 2.4q-.9 1.6-.9 3.4 0 1.2.4 2.2-2.1-2-2.1-4.9 0-3.7 2.6-6.3T12 3z"/></svg></span>
       </button>
       <button class="icon-btn" id="btnMenu" aria-label="<?= e(seo_t('菜单', 'Menu', 'メニュー')) ?>">
-        <svg viewBox="0 0 24 24" class="ic"><path d="M4 7h16v2H4V7zm0 4h16v2H4v-2zm0 4h16v2H4v-2z"/></svg>
+        <span class="ic-slot" data-ic="ui.menu"><svg viewBox="0 0 24 24" class="ic"><path d="M4 7h16v2H4V7zm0 4h16v2H4v-2zm0 4h16v2H4v-2z"/></svg></span>
       </button>
     </div>
   </header>
@@ -566,15 +566,15 @@ try {
   <!-- 底部三栏 -->
   <nav class="tabbar glass" id="tabbar">
     <button class="tab" data-tab="rank" data-route="#/rank">
-      <svg viewBox="0 0 24 24" class="ic"><path d="M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3zm0 5H4a1 1 0 0 0 0 2h2V8zm14 0h-2v2h2a1 1 0 0 0 0-2z"/></svg>
+      <span class="ic-slot" data-ic="tab.rank"><svg viewBox="0 0 24 24" class="ic"><path d="M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3zm0 5H4a1 1 0 0 0 0 2h2V8zm14 0h-2v2h2a1 1 0 0 0 0-2z"/></svg></span>
       <span data-i18n="榜单">榜单</span>
     </button>
     <button class="tab" data-tab="chat" data-route="#/chat">
-      <svg viewBox="0 0 24 24" class="ic"><path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2z"/></svg>
+      <span class="ic-slot" data-ic="tab.chat"><svg viewBox="0 0 24 24" class="ic"><path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2z"/></svg></span>
       <span data-i18n="对话">对话</span>
     </button>
     <button class="tab" data-tab="mine" data-route="#/mine">
-      <svg viewBox="0 0 24 24" class="ic"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5z"/></svg>
+      <span class="ic-slot" data-ic="tab.mine"><svg viewBox="0 0 24 24" class="ic"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5z"/></svg></span>
       <span data-i18n="我的">我的</span>
     </button>
   </nav>

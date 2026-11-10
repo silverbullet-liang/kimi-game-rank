@@ -53,6 +53,7 @@ themes/
 | `tokens` | object | 否 | 逃生舱：覆盖白名单内的 CSS 变量，见 §11 |
 | `borders` | object | 否 | 12 处元素的边框与阴影，只接受声明不给选择器，见 §22.1 |
 | `effects` | object | 否 | 点击任意位置的效果（形状 / 颜色 / 扩散动画），见 §22.2 |
+| `dialog` | object | 否 | 对话框背景 / 文字 / 描边 / 遮罩，可另给深色一套，见 §22.3 |
 | `meta` | object | 否 | 作者、版本、许可、主页，仅展示用 |
 
 ---
@@ -205,6 +206,21 @@ themes/
 | `nav.admin` | 控制面板 |
 | `nav.monitor` | 异常监测 |
 | `nav.today` | 关于今天（节日入口） |
+
+**tab — 底部标签栏**
+
+| 名字 | 位置 |
+|---|---|
+| `tab.rank` | 榜单 |
+| `tab.chat` | 对话 |
+| `tab.mine` | 我的 |
+
+**ui — 顶栏与切换**
+
+| 名字 | 位置 |
+|---|---|
+| `ui.menu` | 菜单（抽屉）按钮 |
+| `ui.theme` | 深浅色切换按钮 |
 
 **action — 作用于内容的操作**
 
@@ -569,6 +585,16 @@ themes/
 | `avatar` | 头像 |
 | `bubble` | 聊天气泡 |
 | `announce` | 公告条 |
+| `topbar` | 顶栏 |
+| `seg` | 分段选择器 |
+| `switch` | 开关 |
+| `chip` | 标签胶囊 |
+| `toast` | 轻提示 |
+| `drawer` | 抽屉面板 |
+| `monCard` | 监测卡片 |
+| `panelPlain` | 控制面板的朴素卡片 |
+| `toolCard` | 对话里的工具卡 |
+| `empty` | 空状态块 |
 
 允许的属性（其余静默丢弃）：
 
@@ -614,7 +640,31 @@ transform  opacity  filter  backdrop-filter  animation*
 
 **为什么禁 position / pointer-events / z-index**：这三个一起改就能做出一层盖满屏幕、吃掉所有点击的透明层——那就是点击劫持。现在它们由站点写死，主题只能决定「长什么样」，不能决定「挡不挡手」。
 
-### 22.3 缺省行为
+### 22.3 dialog：对话框配色
+
+```json
+"dialog": {
+  "bg": "rgba(255,255,255,.92)",
+  "fg": "#17171E",
+  "border": "rgba(20,20,40,.10)",
+  "backdrop": "rgba(10,10,20,.42)",
+  "dark": { "bg": "rgba(30,30,38,.94)", "fg": "#F2F2F5", "border": "rgba(255,255,255,.12)" }
+}
+```
+
+| 键 | 作用 |
+|---|---|
+| `bg` | 对话框主体背景 |
+| `fg` | 主体文字色 |
+| `border` | 描边 |
+| `backdrop` | 背后遮罩色（默认半透明黑） |
+| `dark` | 可选，深色模式下另给一套；只写要变的键，其余沿用上面 |
+
+只接受纯色：`#RGB` / `#RRGGBB` / `#RRGGBBAA` / `rgb()` / `rgba()` / `hsl()` / `hsla()`。不接受 `var()`、`url()` 与任何函数。
+
+切换深浅色时会自动换用 `dark` 那一套，不需要主题作者再写两遍。
+
+### 22.4 缺省行为
 
 | 情况 | 结果 |
 |---|---|
@@ -623,7 +673,7 @@ transform  opacity  filter  backdrop-filter  animation*
 | 没有 `effects.click` | 不绑定任何监听，零开销 |
 | 声明全部被过滤 | 该项视为未定义，回到默认 |
 
-### 22.4 校验口径
+### 22.5 校验口径
 
 - **投稿/CI**（`theme_check.py`）从严：未知键、无可用声明、非法 keyframes 一律报错，必须改到通过
 - **站内导入**从宽：未知键忽略并提示，危险声明丢弃，主题照常应用

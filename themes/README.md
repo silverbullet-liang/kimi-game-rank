@@ -71,7 +71,7 @@
 
 `background` 是数组，**先写的在下**。每层可以用 `position` / `size` / `repeat` / `opacity` / `blend` / `mask` / `animate` 独立控制——星星放右上、光晕铺满、网格渐隐，就是三层，不写一行 CSS 选择器。
 
-`icons` 的键必须是 SPEC §8.1 里那 66 个位置之一，写错位置名会校验失败。没写的、写 `null` 的、加载失败的，一律回退默认图标。
+`icons` 的键必须是 SPEC §8.1 里那 75 个位置之一（含底部三个标签 `tab.rank/tab.chat/tab.mine`、菜单 `ui.menu`、深浅色切换 `ui.theme`），写错位置名会校验失败。没写的、写 `null` 的、加载失败的，一律回退默认图标。
 
 ---
 
@@ -91,6 +91,20 @@
 ```
 
 `borders` 的键只能从那 12 个语义位置里选（`card`、`button`、`input`、`tabbar`……见 SPEC §22.1），写别的一律不生效。`effects.click` 会在每次点击处生成一个元素，主题决定它长什么样、怎么扩散，但**位置与穿透由站点写死**——主题写 `position:fixed` 或 `pointer-events:auto` 会被丢弃，这是防止做出「盖满全屏吃点击」的层。
+
+## 对话框配色
+
+```json
+"dialog": {
+  "bg": "rgba(255,255,255,.92)",
+  "fg": "#17171E",
+  "border": "rgba(20,20,40,.10)",
+  "backdrop": "rgba(10,10,20,.42)",
+  "dark": { "bg": "rgba(30,30,38,.94)", "fg": "#F2F2F5" }
+}
+```
+
+只写要改的键。`dark` 是深色模式下的另一套，切深浅色时自动换用，不用写两遍。
 
 ## 校验
 

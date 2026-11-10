@@ -1387,6 +1387,8 @@ const SLOT_KEYS = {
   'theme.palette': 'gear', 'theme.lang': 'gear',
   'state.loading': 'clock', 'state.empty': 'list', 'state.error': 'info',
   'state.success': 'info', 'state.warn': 'info', 'state.offline': 'info',
+  'tab.rank': 'rank', 'tab.chat': 'list', 'tab.mine': 'users',
+  'ui.menu': 'list', 'ui.theme': 'gear',
   'field.search': 'search', 'field.refresh': 'clock',
 };
 
@@ -1426,6 +1428,27 @@ function escAttrJs(s) {
     .replace(/>/g, '&gt;').replace(/'/g, '&#39;');
 }
 
+/** 取某位置的覆盖值（没有则空串） */
+function TIcon(slot) {
+  var v = OVR[slot];
+  return (typeof v === 'string') ? v : '';
+}
+
+/* 页面上写死的图标（底部 tab、菜单按钮等 HTML 里的 SVG）：
+   主题覆盖时才替换，清除主题时还原原样。 */
+const STATIC_ORIG = new Map();
+
+function refreshStaticIcons() {
+  var nodes = document.querySelectorAll('[data-ic]');
+  for (var i = 0; i < nodes.length; i++) {
+    var el = nodes[i];
+    var slot = el.getAttribute('data-ic');
+    if (!STATIC_ORIG.has(el)) { STATIC_ORIG.set(el, el.innerHTML); }
+    var ovr = TIcon(slot);
+    el.innerHTML = ovr ? icon(ovr) : STATIC_ORIG.get(el);
+  }
+}
+
 /** 主题应用时注入覆盖表；传空对象即恢复默认 */
 function applyThemeIcons(map) {
   OVR = {};
@@ -1437,6 +1460,14 @@ function applyThemeIcons(map) {
       }
     }
   }
+  /* 新位置不在 SLOT_KEYS 里也能覆盖（tab.* / ui.* 由 data-ic 直接消费） */
+  if (map && typeof map === 'object') {
+    for (var k2 in map) {
+      if (!Object.prototype.hasOwnProperty.call(map, k2)) { continue; }
+      if (typeof map[k2] === 'string' && map[k2] && !OVR[k2]) { OVR[k2] = map[k2]; }
+    }
+  }
+  try { refreshStaticIcons(); } catch (e) {}
 }
 
 /* ========== theme.js ========== */
@@ -1596,6 +1627,8 @@ const SLOTS = {
   'action.comment': 1, 'action.reply': 1, 'action.copy': 1, 'action.share': 1, 'action.external': 1,
   'action.edit': 1, 'action.delete': 1, 'action.report': 1, 'action.send': 1, 'action.stop': 1,
   'action.retry': 1, 'action.download': 1, 'action.expand': 1,
+  'tab.rank': 1, 'tab.chat': 1, 'tab.mine': 1,
+  'ui.menu': 1, 'ui.theme': 1,
   'field.search': 1, 'field.password': 1, 'field.emoji': 1, 'field.image': 1, 'field.video': 1,
   'field.upload': 1, 'field.mention': 1, 'field.model': 1, 'field.think': 1, 'field.filter': 1,
   'field.sort': 1, 'field.refresh': 1,
@@ -1626,6 +1659,16 @@ const BORDER_KEYS = {
   avatar: '.avatar',
   bubble: '.bubble',
   announce: '.announce',
+  topbar: '.topbar',
+  seg: '.seg',
+  switch: '.switch',
+  chip: '.chip',
+  toast: '.toast',
+  drawer: '.drawer',
+  monCard: '.mon-card',
+  panelPlain: '.panel-plain',
+  toolCard: '.tool-card',
+  empty: '.empty',
 };
 
 /* 边框允许的属性：形状与描边，不允许影响布局与定位 */
@@ -1656,6 +1699,17 @@ function utf8Len(s) {
 }
 
 function isHex(c) { return typeof c === 'string' && /^#[0-9A-Fa-f]{6}$/.test(c); }
+
+/** 对话框只接受纯色值：hex / rgb(a) / hsl(a)，禁函数与变量 */
+function isColor(v) {
+  if (typeof v !== 'string') { return false; }
+  var s = v.trim();
+  if (!s || s.length > 64) { return false; }
+  if (/url\s*\(|expression|javascript:|var\s*\(|[<>{}]/i.test(s)) { return false; }
+  return /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(s)
+    || /^rgba?\(\s*[\d.]+%?\s*,\s*[\d.]+%?\s*,\s*[\d.]+%?\s*(,\s*[\d.]+%?\s*)?\)$/.test(s)
+    || /^hsla?\(\s*[\d.]+\s*,\s*[\d.]+%\s*,\s*[\d.]+%\s*(,\s*[\d.]+%?\s*)?\)$/.test(s);
+}
 
 function escAttr(s) {
   return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
@@ -1952,6 +2006,36 @@ function validate(data, rawLen) {
     }
   }
 
+  /* 对话框配色：只接受纯色值，不接受函数与变量 */
+  var dialog = null;
+  if (data.dialog != null) {
+    if (!data.dialog || typeof data.dialog !== 'object' || Array.isArray(data.dialog)) {
+      errors.push('dialog 必须是对象');
+    } else {
+      dialog = {};
+      ['bg', 'fg', 'border', 'backdrop'].forEach(function (k) {
+        if (data.dialog[k] == null) { return; }
+        if (!isColor(data.dialog[k])) { errors.push('dialog.' + k + ' 必须是颜色值'); return; }
+        dialog[k] = String(data.dialog[k]).trim();
+      });
+      /* 可选：深色模式下另给一套（只写要变的键，其余沿用浅色） */
+      if (data.dialog.dark != null) {
+        if (!data.dialog.dark || typeof data.dialog.dark !== 'object') {
+          errors.push('dialog.dark 必须是对象');
+        } else {
+          var dk = {};
+          ['bg', 'fg', 'border', 'backdrop'].forEach(function (k) {
+            if (data.dialog.dark[k] == null) { return; }
+            if (!isColor(data.dialog.dark[k])) { errors.push('dialog.dark.' + k + ' 必须是颜色值'); return; }
+            dk[k] = String(data.dialog.dark[k]).trim();
+          });
+          if (Object.keys(dk).length) { dialog.dark = dk; }
+        }
+      }
+      if (!Object.keys(dialog).length) { dialog = null; }
+    }
+  }
+
   /* 边框：语义键 → 声明串，只作用于站内既有元素 */
   var borders = {};
   if (data.borders != null) {
@@ -2016,7 +2100,7 @@ function validate(data, rawLen) {
   }
 
   var known = ['schema', 'id', 'name', 'colour', 'colourDesc', 'radius', 'background',
-    'icons', 'font', 'force', 'tokens', 'borders', 'effects', 'meta'];
+    'icons', 'font', 'force', 'tokens', 'borders', 'effects', 'dialog', 'meta'];
   Object.keys(data).forEach(function (k) {
     if (known.indexOf(k) < 0) { warns.push('忽略未知字段 ' + k); }
   });
@@ -2028,7 +2112,7 @@ function validate(data, rawLen) {
     theme: {
       id: data.id, name: name, desc: desc, colour: colour, radius: radius,
       background: bg, icons: icons, iconCss: iconCss, font: font, force: force,
-      tokens: tokens, borders: borders, effects: effects, meta: data.meta || null,
+      tokens: tokens, borders: borders, effects: effects, dialog: dialog, meta: data.meta || null,
     },
   };
 }
@@ -2203,6 +2287,15 @@ function applyVars(theme) {
     if (theme.radius.sm != null) { setVar('--radius-sm', theme.radius.sm + 'px'); }
   }
   Object.keys(theme.tokens).forEach(function (k) { setVar(k, theme.tokens[k]); });
+  if (theme.dialog) {
+    var dark = document.documentElement.dataset.theme === 'dark';
+    var dlg = Object.assign({}, theme.dialog, dark && theme.dialog.dark ? theme.dialog.dark : {});
+    delete dlg.dark;
+    if (dlg.bg) { setVar('--dlg-bg', dlg.bg); }
+    if (dlg.fg) { setVar('--dlg-fg', dlg.fg); }
+    if (dlg.border) { setVar('--dlg-border', dlg.border); }
+    if (dlg.backdrop) { setVar('--dlg-scrim', dlg.backdrop); }
+  }
 }
 
 function apply(theme) {
@@ -2291,6 +2384,7 @@ function current() {
     font: TJ.theme.font ? TJ.theme.font.family : '',
     borders: Object.keys(TJ.theme.borders || {}).length,
     click: !!(TJ.theme.effects && TJ.theme.effects.click),
+    dialog: !!TJ.theme.dialog,
   };
 }
 

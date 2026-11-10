@@ -12,6 +12,8 @@ ICON_SLOTS = {
     'nav': ['total', 'vote', 'gods', 'cold', 'chat', 'submit', 'mine', 'help', 'feedback', 'admin', 'monitor', 'today'],
     'action': ['back', 'close', 'more', 'vote', 'star', 'comment', 'reply', 'copy', 'share', 'external',
                'edit', 'delete', 'report', 'send', 'stop', 'retry', 'download', 'expand'],
+    'tab': ['rank', 'chat', 'mine'],
+    'ui': ['menu', 'theme'],
     'field': ['search', 'password', 'emoji', 'image', 'video', 'upload', 'mention', 'model', 'think',
               'filter', 'sort', 'refresh'],
     'media': ['play', 'pause', 'fullscreen', 'mute'],
@@ -22,7 +24,14 @@ ICON_SLOTS = {
 }
 SLOTS = {'%s.%s' % (g, k) for g, ks in ICON_SLOTS.items() for k in ks}
 BORDER_KEYS = {'card', 'cardTitle', 'button', 'ghost', 'iconButton', 'input',
-               'drawerItem', 'tabbar', 'tab', 'avatar', 'bubble', 'announce'}
+               'drawerItem', 'tabbar', 'tab', 'avatar', 'bubble', 'announce',
+               'topbar', 'seg', 'switch', 'chip', 'toast', 'drawer',
+               'monCard', 'panelPlain', 'toolCard', 'empty'}
+COLOR_RE = [
+    re.compile(r'^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$'),
+    re.compile(r'^rgba?\(\s*[\d.]+%?\s*,\s*[\d.]+%?\s*,\s*[\d.]+%?\s*(,\s*[\d.]+%?\s*)?\)$'),
+    re.compile(r'^hsla?\(\s*[\d.]+\s*,\s*[\d.]+%\s*,\s*[\d.]+%\s*(,\s*[\d.]+%?\s*)?\)$'),
+]
 BORDER_PROPS = re.compile(r'^(border(-[a-z-]+)?|border-radius|box-shadow|outline|outline-offset|background(-color)?|background-image)$')
 FX_PROPS = re.compile(r'^(width|height|margin(-[a-z]+)?|border(-[a-z-]+)?|border-radius|box-shadow|background(-color)?|background-image|transform|opacity|filter|backdrop-filter|animation(-[a-z-]+)?)$')
 DANGER_VAL = re.compile(r'url\s*\(|expression|@import|javascript:|[<>{}]', re.I)
@@ -173,6 +182,26 @@ def _decls(css, prop_re):
     return ';'.join(keep)
 
 
+def check_dialog(v):
+    if not isinstance(v, dict):
+        return err('dialog 必须是对象')
+    for k, val in v.items():
+        if k == 'dark':
+            if not isinstance(val, dict):
+                return err('dialog.dark 必须是对象')
+            for k2, v2 in val.items():
+                if k2 not in ('bg', 'fg', 'border', 'backdrop'):
+                    return err('dialog.dark 未知键 %r' % k2)
+                if not isinstance(v2, str) or not any(r.match(v2.strip()) for r in COLOR_RE):
+                    return err('dialog.dark.%s 必须是 hex / rgb() / hsl() 颜色' % k2)
+            continue
+        if k not in ('bg', 'fg', 'border', 'backdrop'):
+            return err('dialog 未知键 %r（可用 bg/fg/border/backdrop）' % k)
+        if not isinstance(val, str) or not any(r.match(val.strip()) for r in COLOR_RE):
+            return err('dialog.%s 必须是 hex / rgb() / hsl() 颜色' % k)
+    return None
+
+
 def check_borders(v):
     if not isinstance(v, dict):
         return err('borders 必须是对象')
@@ -264,6 +293,10 @@ def check(data, raw_len):
         e = check_icons(data['icons'], warns)
         if e:
             problems.append(e)
+    if 'dialog' in data:
+        e = check_dialog(data['dialog'])
+        if e:
+            problems.append(e)
     if 'borders' in data:
         e = check_borders(data['borders'])
         if e:
@@ -290,7 +323,7 @@ def check(data, raw_len):
                     problems.append(err('tokens.%s 不允许 !important 或 var()' % k))
     unknown = set(data) - {'schema', 'id', 'name', 'colour', 'colourDesc', 'radius',
                            'background', 'icons', 'font', 'force', 'tokens', 'borders',
-                           'effects', 'meta'}
+                           'effects', 'dialog', 'meta'}
     if unknown:
         warns.append('忽略未知顶层字段：%s' % ','.join(sorted(unknown)))
     return problems, warns
@@ -322,8 +355,9 @@ def main(paths):
             bg = data.get('background') or []
             bd = data.get('borders') or {}
             fx = '点击' if (data.get('effects') or {}).get('click') else '无'
-            print('✓ %s  「%s」  图标 %d · 背景 %d 层 · 边框 %d 处 · 点击 %s · 强制 %s'
-                  % (p, label, len(icons), len(bg), len(bd), fx, data.get('force', 'auto')))
+            dlg = '自定义' if data.get('dialog') else '默认'
+            print('✓ %s  「%s」  图标 %d · 背景 %d 层 · 边框 %d 处 · 点击 %s · 对话框 %s · 强制 %s'
+                  % (p, label, len(icons), len(bg), len(bd), fx, dlg, data.get('force', 'auto')))
         for w in warns:
             print('  ! ' + w)
     return 1 if bad else 0

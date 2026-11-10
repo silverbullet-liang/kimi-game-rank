@@ -76,6 +76,11 @@
       "type": "object",
       "propertyNames": {
         "enum": [
+          "ui.theme",
+          "ui.menu",
+          "tab.mine",
+          "tab.chat",
+          "tab.rank",
           "nav.total",
           "nav.vote",
           "nav.gods",
@@ -266,7 +271,17 @@
           "tab",
           "avatar",
           "bubble",
-          "announce"
+          "announce",
+          "topbar",
+          "seg",
+          "switch",
+          "chip",
+          "toast",
+          "drawer",
+          "monCard",
+          "panelPlain",
+          "toolCard",
+          "empty"
         ]
       },
       "additionalProperties": {
@@ -299,6 +314,50 @@
               }
             }
           ]
+        }
+      }
+    },
+    "dialog": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bg": {
+          "type": "string",
+          "pattern": "^(#[0-9A-Fa-f]{3,8}|rgba?\\([^)]*\\)|hsla?\\([^)]*\\))$"
+        },
+        "fg": {
+          "type": "string",
+          "pattern": "^(#[0-9A-Fa-f]{3,8}|rgba?\\([^)]*\\)|hsla?\\([^)]*\\))$"
+        },
+        "border": {
+          "type": "string",
+          "pattern": "^(#[0-9A-Fa-f]{3,8}|rgba?\\([^)]*\\)|hsla?\\([^)]*\\))$"
+        },
+        "backdrop": {
+          "type": "string",
+          "pattern": "^(#[0-9A-Fa-f]{3,8}|rgba?\\([^)]*\\)|hsla?\\([^)]*\\))$"
+        },
+        "dark": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "bg": {
+              "type": "string",
+              "pattern": "^(#[0-9A-Fa-f]{3,8}|rgba?\\([^)]*\\)|hsla?\\([^)]*\\))$"
+            },
+            "fg": {
+              "type": "string",
+              "pattern": "^(#[0-9A-Fa-f]{3,8}|rgba?\\([^)]*\\)|hsla?\\([^)]*\\))$"
+            },
+            "border": {
+              "type": "string",
+              "pattern": "^(#[0-9A-Fa-f]{3,8}|rgba?\\([^)]*\\)|hsla?\\([^)]*\\))$"
+            },
+            "backdrop": {
+              "type": "string",
+              "pattern": "^(#[0-9A-Fa-f]{3,8}|rgba?\\([^)]*\\)|hsla?\\([^)]*\\))$"
+            }
+          }
         }
       }
     },

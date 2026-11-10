@@ -7,6 +7,18 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.61.1 · 2026-11-11 (Everything In Its Place)
+
+### Added
+
+- Themes can define the icons of the three bottom tabs (rankings / chat / mine), the menu button and the light-dark toggle
+- Themes can define a dialog's background, text, border and backdrop, with an optional separate set for dark mode that switches automatically
+- The number of stylable element positions grew from 12 to 22, covering the top bar, segmented control, switch, toast, drawer, tool card and empty state
+
+### Fixed
+
+- With dark mode combined with a seasonal skin, some cards stayed white and text contrast was poor
+
 ## v3.61.0 · 2026-11-10 (The Finishing Touch)
 
 ### Added
