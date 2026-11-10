@@ -70,7 +70,12 @@
       "weight": "100 900",
       "display": "swap"
     },
-    "fallback": ["system-ui", "-apple-system", "Segoe UI", "sans-serif"]
+    "fallback": [
+      "system-ui",
+      "-apple-system",
+      "Segoe UI",
+      "sans-serif"
+    ]
   },
   "force": "auto",
   "tokens": {
@@ -88,5 +93,21 @@
     "version": "1.0.0",
     "license": "AGPL-3.0",
     "homepage": "https://kimi-game-rank.wuaze.com"
+  },
+  "borders": {
+    "card": "border:1px solid rgba(255,255,255,.72);box-shadow:0 10px 30px rgba(30,25,80,.10);border-radius:var(--radius-lg)",
+    "cardTitle": "border-bottom:1px solid rgba(20,20,40,.06)",
+    "button": "border:1px solid rgba(124,58,237,.26);box-shadow:0 6px 18px rgba(124,58,237,.20)",
+    "ghost": "border:1px solid var(--border-soft)",
+    "input": "border:1px solid rgba(20,20,40,.10);border-radius:var(--radius-sm)",
+    "drawerItem": "border-radius:var(--radius-md)",
+    "tabbar": "border-top:1px solid var(--border-soft);box-shadow:0 -8px 24px rgba(30,25,80,.06)",
+    "bubble": "border:1px solid rgba(255,255,255,.70);border-radius:var(--radius-md)"
+  },
+  "effects": {
+    "click": {
+      "css": "background:radial-gradient(circle,rgba(124,58,237,.55) 0%,rgba(124,58,237,0) 70%);width:88px;height:88px;margin:-44px 0 0 -44px;animation:tj-ripple .62s cubic-bezier(.2,.7,.3,1) forwards",
+      "keyframes": "@keyframes tj-ripple{from{transform:scale(.18);opacity:.9}to{transform:scale(1.55);opacity:0}}"
+    }
   }
 }

@@ -1612,8 +1612,33 @@ const SLOTS = {
 const TOKENS = ['--glass-blur', '--glass-sat', '--glass-alpha', '--shadow', '--shadow-sm',
   '--border', '--border-soft', '--surface'];
 
-const STYLE_ID = 'tjson-style';
-const BG_ID = 'tjson-bg';
+/* 边框作用位置：语义键 → 站内真实选择器。主题只能给声明，不能给选择器。 */
+const BORDER_KEYS = {
+  card: '.card',
+  cardTitle: '.card-title',
+  button: '.btn',
+  ghost: '.btn-ghost',
+  iconButton: '.icon-btn',
+  input: 'input:not([type="checkbox"]):not([type="radio"]), textarea, select',
+  drawerItem: '.drawer-item',
+  tabbar: '.tabbar',
+  tab: '.tab',
+  avatar: '.avatar',
+  bubble: '.bubble',
+  announce: '.announce',
+};
+
+/* 边框允许的属性：形状与描边，不允许影响布局与定位 */
+const BORDER_PROPS = /^(border(-[a-z-]+)?|border-radius|box-shadow|outline|outline-offset|background(-color)?|background-image)$/;
+
+/* 点击特效允许的属性：默认已 fixed + pointer-events:none，主题不可覆盖这两项 */
+const FX_PROPS = /^(width|height|margin(-[a-z]+)?|border(-[a-z-]+)?|border-radius|box-shadow|background(-color)?|background-image|transform|opacity|filter|backdrop-filter|animation(-[a-z-]+)?)$/;
+
+const CLICK_BASE = 'position:fixed;z-index:2147483000;pointer-events:none;'
+  + 'width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;'
+  + 'background:var(--accent);opacity:.45;animation:tj-click-fade .55s ease-out forwards';
+
+const STYLE_ID = 'tjson-style';const BG_ID = 'tjson-bg';
 const FONT_LINK_ID = 'tjson-font';
 
 const TJ = { theme: null, force: 'auto', errors: [], warns: [] };
@@ -1700,6 +1725,38 @@ function sanitizeCss(css) {
   if (/z-index|pointer-events|display\s*:\s*none/i.test(s)) { return ''; }
   if (/[<>{}]/.test(s)) { return ''; }
   return s;
+}
+
+/**
+ * 按属性白名单筛声明：主题只能给「形状/描边/动效」这类属性，
+ * 定位与层级由站点控制，避免盖住按钮或撑破布局。
+ */
+function sanitizeDecls(css, propRe) {
+  if (typeof css !== 'string') { return ''; }
+  var out = [], parts = css.split(';');
+  for (var i = 0; i < parts.length; i++) {
+    var d = parts[i].trim();
+    if (!d) { continue; }
+    var idx = d.indexOf(':');
+    if (idx <= 0) { continue; }
+    var prop = d.slice(0, idx).trim().toLowerCase();
+    var val = d.slice(idx + 1).trim();
+    if (!val || val.length > 160) { continue; }
+    if (!propRe.test(prop)) { continue; }
+    if (/url\s*\(|expression|@import|javascript:|\/\*|[<>{}]/i.test(val)) { continue; }
+    out.push(prop + ':' + val);
+  }
+  return out.join(';');
+}
+
+/** 自定义关键帧：名字必须 tj- 开头，括号配平，禁定位与外链 */
+function sanitizeKeyframes(css) {
+  var s = String(css || '').trim();
+  if (!s || s.length > 1400) { return ''; }
+  if (!/^@keyframes\s+tj-[a-z0-9-]+\s*\{/.test(s)) { return ''; }
+  if (/url\s*\(|expression|javascript:|@import|position\s*:|pointer-events/i.test(s)) { return ''; }
+  var o = (s.match(/\{/g) || []).length, c2 = (s.match(/\}/g) || []).length;
+  return o === c2 ? s : '';
 }
 
 /* ---------- 校验 ---------- */
@@ -1895,6 +1952,42 @@ function validate(data, rawLen) {
     }
   }
 
+  /* 边框：语义键 → 声明串，只作用于站内既有元素 */
+  var borders = {};
+  if (data.borders != null) {
+    if (!data.borders || typeof data.borders !== 'object' || Array.isArray(data.borders)) {
+      errors.push('borders 必须是对象');
+    } else {
+      Object.keys(data.borders).forEach(function (k) {
+        if (!BORDER_KEYS[k]) { warns.push('borders 忽略未知位置 ' + k); return; }
+        var decl = sanitizeDecls(data.borders[k], BORDER_PROPS);
+        if (decl) { borders[k] = decl; }
+        else { warns.push('borders.' + k + ' 没有可用声明，已忽略'); }
+      });
+    }
+  }
+
+  /* 点击特效：作用于站点在点击处生成的 .tj-click 元素 */
+  var effects = null;
+  if (data.effects != null) {
+    if (!data.effects || typeof data.effects !== 'object' || Array.isArray(data.effects)) {
+      errors.push('effects 必须是对象');
+    } else {
+      var click = data.effects.click;
+      if (click != null) {
+        if (typeof click === 'string') { click = { css: click }; }
+        if (!click || typeof click !== 'object') {
+          errors.push('effects.click 必须是字符串或对象');
+        } else {
+          var fx = sanitizeDecls(click.css, FX_PROPS);
+          var kf = click.keyframes ? sanitizeKeyframes(click.keyframes) : '';
+          if (fx || kf) { effects = { click: { css: fx, keyframes: kf } }; }
+          else { errors.push('effects.click 没有可用的样式'); }
+        }
+      }
+    }
+  }
+
   /* force / tokens */
   var force = 'auto';
   if (data.force != null) {
@@ -1923,7 +2016,7 @@ function validate(data, rawLen) {
   }
 
   var known = ['schema', 'id', 'name', 'colour', 'colourDesc', 'radius', 'background',
-    'icons', 'font', 'force', 'tokens', 'meta'];
+    'icons', 'font', 'force', 'tokens', 'borders', 'effects', 'meta'];
   Object.keys(data).forEach(function (k) {
     if (known.indexOf(k) < 0) { warns.push('忽略未知字段 ' + k); }
   });
@@ -1935,7 +2028,7 @@ function validate(data, rawLen) {
     theme: {
       id: data.id, name: name, desc: desc, colour: colour, radius: radius,
       background: bg, icons: icons, iconCss: iconCss, font: font, force: force,
-      tokens: tokens, meta: data.meta || null,
+      tokens: tokens, borders: borders, effects: effects, meta: data.meta || null,
     },
   };
 }
@@ -2023,6 +2116,18 @@ function injectStyle(theme) {
   Object.keys(theme.iconCss).forEach(function (slot) {
     css.push('html[data-tjson] .ti-' + slot.replace(/\./g, '-') + '{' + theme.iconCss[slot] + '}');
   });
+  /* 边框：按语义键映射到站内既有元素，一律 !important 才压得过皮肤 */
+  Object.keys(theme.borders || {}).forEach(function (k) {
+    css.push('html[data-tjson] ' + BORDER_KEYS[k] + '{' + theme.borders[k] + ' !important}');
+  });
+  /* 点击特效：基础层由站点固定（fixed + 穿透），主题只往上叠形状与动效 */
+  if (theme.effects && theme.effects.click) {
+    var fx = theme.effects.click;
+    if (fx.keyframes) { css.push(fx.keyframes); }
+    css.push('@keyframes tj-click-fade{to{opacity:0;transform:scale(1.9)}}');
+    css.push('html[data-tjson] .tj-click{' + CLICK_BASE + (fx.css ? ';' + fx.css : '') + '}');
+  }
+
   /* 字体：只改字族，不动字号与行高 */
   if (theme.font && theme.font.family) {
     var fam = '"' + theme.font.family + '"';
@@ -2036,6 +2141,31 @@ function injectStyle(theme) {
   el.id = STYLE_ID;
   el.textContent = css.join('\n');
   document.head.appendChild(el);
+}
+
+let clickBound = false;
+
+function onClickFx(e) {
+  if (e && typeof e.button === 'number' && e.button !== 0) { return; }
+  var d = document.createElement('i');
+  d.className = 'tj-click';
+  d.setAttribute('aria-hidden', 'true');
+  d.style.left = (e.clientX | 0) + 'px';
+  d.style.top = (e.clientY | 0) + 'px';
+  document.body.appendChild(d);
+  setTimeout(function () { if (d.parentNode) { d.parentNode.removeChild(d); } }, 1500);
+}
+
+function bindClickFx(on) {
+  if (on && !clickBound) {
+    document.addEventListener('pointerdown', onClickFx, true);
+    clickBound = true;
+  } else if (!on && clickBound) {
+    document.removeEventListener('pointerdown', onClickFx, true);
+    clickBound = false;
+    var old = document.querySelectorAll('.tj-click');
+    for (var i = 0; i < old.length; i++) { if (old[i].parentNode) { old[i].parentNode.removeChild(old[i]); } }
+  }
 }
 
 function injectFont(theme) {
@@ -2088,6 +2218,7 @@ function apply(theme) {
   applyThemeIcons(theme.icons);
   injectStyle(theme);
   injectFont(theme);
+  bindClickFx(!!(theme.effects && theme.effects.click));
   TJ.theme = theme;
   TJ.force = theme.force || 'auto';
   window.__TJSON_FORCE = TJ.force;
@@ -2112,6 +2243,7 @@ function clear() {
     var n = document.getElementById(id);
     if (n) { n.remove(); }
   });
+  bindClickFx(false);
   applyThemeIcons({});
   try { if (typeof window.__rerenderDrawer === 'function') { window.__rerenderDrawer(); } } catch (e) {}
   TJ.theme = null;
@@ -2157,6 +2289,8 @@ function current() {
     layers: TJ.theme.background.length,
     icons: Object.keys(TJ.theme.icons).length,
     font: TJ.theme.font ? TJ.theme.font.family : '',
+    borders: Object.keys(TJ.theme.borders || {}).length,
+    click: !!(TJ.theme.effects && TJ.theme.effects.click),
   };
 }
 

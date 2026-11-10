@@ -75,6 +75,23 @@
 
 ---
 
+## 加点击效果和边框
+
+```json
+"borders": {
+  "card": "border:1px solid rgba(255,255,255,.72);box-shadow:0 10px 30px rgba(30,25,80,.10)",
+  "button": "border:1px solid rgba(124,58,237,.26);border-radius:14px"
+},
+"effects": {
+  "click": {
+    "css": "background:radial-gradient(circle,rgba(124,58,237,.55),transparent 70%);width:88px;height:88px;margin:-44px 0 0 -44px;animation:tj-ripple .62s ease-out forwards",
+    "keyframes": "@keyframes tj-ripple{from{transform:scale(.2);opacity:.9}to{transform:scale(1.6);opacity:0}}"
+  }
+}
+```
+
+`borders` 的键只能从那 12 个语义位置里选（`card`、`button`、`input`、`tabbar`……见 SPEC §22.1），写别的一律不生效。`effects.click` 会在每次点击处生成一个元素，主题决定它长什么样、怎么扩散，但**位置与穿透由站点写死**——主题写 `position:fixed` 或 `pointer-events:auto` 会被丢弃，这是防止做出「盖满全屏吃点击」的层。
+
 ## 校验
 
 ```bash

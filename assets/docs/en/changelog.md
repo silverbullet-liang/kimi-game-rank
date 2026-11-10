@@ -7,6 +7,18 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.61.0 · 2026-11-10 (The Finishing Touch)
+
+### Added
+
+- Themes can define an effect for taps anywhere on the page: shape, colour, spread and animation all come from the theme, and it appears right where you tap
+- Themes can define the border, radius and shadow of 12 element positions: cards, buttons, inputs, the tab bar and more
+- Section 22 of the theme specification documents both features: how to write them, which properties are allowed, what is not
+
+### Security
+
+- A theme can only supply styles, never selectors, and cannot change positioning or hit-testing: no layer can cover a button or swallow your taps
+
 ## v3.60.9 · 2026-11-09 (Every Hue Its Own)
 
 ### Added

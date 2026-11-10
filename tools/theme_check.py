@@ -21,6 +21,12 @@ ICON_SLOTS = {
     'doc': ['community', 'terms', 'privacy', 'features', 'criteria', 'ranking', 'changelog', 'ai'],
 }
 SLOTS = {'%s.%s' % (g, k) for g, ks in ICON_SLOTS.items() for k in ks}
+BORDER_KEYS = {'card', 'cardTitle', 'button', 'ghost', 'iconButton', 'input',
+               'drawerItem', 'tabbar', 'tab', 'avatar', 'bubble', 'announce'}
+BORDER_PROPS = re.compile(r'^(border(-[a-z-]+)?|border-radius|box-shadow|outline|outline-offset|background(-color)?|background-image)$')
+FX_PROPS = re.compile(r'^(width|height|margin(-[a-z]+)?|border(-[a-z-]+)?|border-radius|box-shadow|background(-color)?|background-image|transform|opacity|filter|backdrop-filter|animation(-[a-z-]+)?)$')
+DANGER_VAL = re.compile(r'url\s*\(|expression|@import|javascript:|[<>{}]', re.I)
+
 TOKENS = {'--glass-blur', '--glass-sat', '--glass-alpha', '--shadow', '--shadow-sm',
           '--border', '--border-soft', '--surface'}
 LANGS = ('zh', 'en', 'ja')
@@ -146,6 +152,63 @@ def check_icons(v, warn):
     return None
 
 
+def _decls(css, prop_re):
+    if not isinstance(css, str):
+        return None
+    keep = []
+    for part in css.split(';'):
+        d = part.strip()
+        if not d:
+            continue
+        if ':' not in d:
+            continue
+        prop, val = d.split(':', 1)
+        prop = prop.strip().lower()
+        val = val.strip()
+        if not prop_re.match(prop) or not val or len(val) > 160:
+            continue
+        if DANGER_VAL.search(val):
+            continue
+        keep.append(prop + ':' + val)
+    return ';'.join(keep)
+
+
+def check_borders(v):
+    if not isinstance(v, dict):
+        return err('borders 必须是对象')
+    for k, decl in v.items():
+        if k not in BORDER_KEYS:
+            return err('borders 位置 %r 不在白名单内（可用：%s）' % (k, ','.join(sorted(BORDER_KEYS))))
+        if not _decls(decl, BORDER_PROPS):
+            return err('borders.%s 没有可用声明（只允许边框/圆角/阴影/描边/背景）' % k)
+    return None
+
+
+def check_effects(v):
+    if not isinstance(v, dict):
+        return err('effects 必须是对象')
+    click = v.get('click')
+    if click is None:
+        return None
+    if isinstance(click, str):
+        click = {'css': click}
+    if not isinstance(click, dict):
+        return err('effects.click 必须是字符串或对象')
+    if not _decls(click.get('css'), FX_PROPS) and not click.get('keyframes'):
+        return err('effects.click 没有可用样式')
+    kf = click.get('keyframes')
+    if kf:
+        if not isinstance(kf, str) or len(kf) > 1400:
+            return err('effects.click.keyframes 非法')
+        if not re.match(r'^@keyframes\s+tj-[a-z0-9-]+\s*\{', kf):
+            return err('keyframes 名字必须以 tj- 开头')
+        if re.search(r'url\s*\(|expression|javascript:|@import|position\s*:|pointer-events', kf, re.I):
+            return err('keyframes 含禁用属性')
+        if kf.count('{') != kf.count('}'):
+            return err('keyframes 括号不配平')
+    return None
+
+
 def check_font(v):
     if not isinstance(v, dict):
         return err('font 必须是对象')
@@ -201,6 +264,14 @@ def check(data, raw_len):
         e = check_icons(data['icons'], warns)
         if e:
             problems.append(e)
+    if 'borders' in data:
+        e = check_borders(data['borders'])
+        if e:
+            problems.append(e)
+    if 'effects' in data:
+        e = check_effects(data['effects'])
+        if e:
+            problems.append(e)
     if 'font' in data:
         e = check_font(data['font'])
         if e:
@@ -218,7 +289,8 @@ def check(data, raw_len):
                 if 'important' in str(val) or 'var(' in str(val):
                     problems.append(err('tokens.%s 不允许 !important 或 var()' % k))
     unknown = set(data) - {'schema', 'id', 'name', 'colour', 'colourDesc', 'radius',
-                           'background', 'icons', 'font', 'force', 'tokens', 'meta'}
+                           'background', 'icons', 'font', 'force', 'tokens', 'borders',
+                           'effects', 'meta'}
     if unknown:
         warns.append('忽略未知顶层字段：%s' % ','.join(sorted(unknown)))
     return problems, warns
@@ -248,8 +320,10 @@ def main(paths):
         else:
             icons = data.get('icons') or {}
             bg = data.get('background') or []
-            print('✓ %s  「%s」  图标覆盖 %d 个 · 背景 %d 层 · 强制 %s'
-                  % (p, label, len(icons), len(bg), data.get('force', 'auto')))
+            bd = data.get('borders') or {}
+            fx = '点击' if (data.get('effects') or {}).get('click') else '无'
+            print('✓ %s  「%s」  图标 %d · 背景 %d 层 · 边框 %d 处 · 点击 %s · 强制 %s'
+                  % (p, label, len(icons), len(bg), len(bd), fx, data.get('force', 'auto')))
         for w in warns:
             print('  ! ' + w)
     return 1 if bad else 0

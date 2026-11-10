@@ -51,6 +51,8 @@ themes/
 | `font` | object | 否 | 字体，见 §9 |
 | `force` | string | 否 | `"auto"` / `"light"` / `"dark"`，见 §10 |
 | `tokens` | object | 否 | 逃生舱：覆盖白名单内的 CSS 变量，见 §11 |
+| `borders` | object | 否 | 12 处元素的边框与阴影，只接受声明不给选择器，见 §22.1 |
+| `effects` | object | 否 | 点击任意位置的效果（形状 / 颜色 / 扩散动画），见 §22.2 |
 | `meta` | object | 否 | 作者、版本、许可、主页，仅展示用 |
 
 ---
@@ -420,7 +422,7 @@ themes/
 |---|---|---|
 | 结构 | 保存 / 导入 | 必填字段、类型、正则、数值范围、体积、图标 key 是否在命名表内 |
 | 资源 | 应用前 | 图片 URL 可达且是图片、字体 URL 可达且返回 CORS 头、SVG 过滤结果非空 |
-| 渲染 | 应用后 | 正文对比度 ≥ 4.5:1、装饰层 `pointer-events:none`、无横向滚动条 |
+| 渲染 | 应用后 | 正文对比度 ≥ 4.5:1、装饰层与点击层 `pointer-events:none`、无横向滚动条 |
 
 渲染层这三项是「主题好不好看」之外能不能用的底线，历史上手写皮肤踩过：装饰盖住按钮、暗色主题正文看不清、背景图把页面撑出横向滚动。
 
@@ -514,6 +516,7 @@ themes/
 | XSS（SVG 内嵌脚本） | `data:image/svg+xml` 里塞 `<script>` 或 `onload=` | **两侧一致：直接拒绝整份主题**（不做修补，避免用户误以为用的是净化过的图）；`sanitizeSvg` 仍作为第二道，负责去掉外链 href 与 style |
 | CSS 注入 | `css` 字段写 `@import`、`expression()`、`javascript:` | 双侧黑名单；`css` 字段禁 `{}`、`<>`，长度 ≤1200 |
 | 布局劫持 | 图标 CSS 里写 `position:fixed` 盖住按钮 | 图标 CSS 禁 `position:fixed/absolute/sticky`、`z-index`、`pointer-events`、`display:none` |
+| 点击层劫持 | 主题造一层透明遮罩吃掉所有点击 | 点击特效的位置与穿透由站点固定（`position:fixed` + `pointer-events:none`），主题的 `position` / `pointer-events` / `z-index` 一律丢弃 |
 | 背景遮挡点击 | 图层覆盖正文 | 图层容器固定 `z-index:-1`、`pointer-events:none`；层不参与文档流 |
 | 外链追踪 | 图片来自第三方统计域名 | 只允许 https；图片带 `referrerpolicy=no-referrer`；域名由站点代理白名单兜底 |
 | SSRF / 内网探测 | URL 指向 `127.0.0.1`、`192.168.*` | 前端拒私网地址；外链仅 https |
@@ -533,3 +536,96 @@ themes/
 **人工评审**四条**：看得清（正文对比度 ≥4.5:1）、不挡手（装饰不压交互区）、不刺眼（无高频闪烁）、不跑题（图标语义与位置相符）。
 
 **收录**：通过后放进 `themes/` 正式目录，标注作者与许可。未通过的会在 Issue 里说明具体哪条不过——不是「感觉不好看」，是具体指标。
+
+---
+
+## 22. 交互效果与边框
+
+主题除了「长什么样」，还能定义「点下去有什么反应」和「元素的描边」。两者都只接受 CSS 声明，**不接受选择器**。
+
+### 22.1 borders：元素边框
+
+```json
+"borders": {
+  "card": "border:1px solid rgba(255,255,255,.72);box-shadow:0 10px 30px rgba(30,25,80,.10)",
+  "button": "border:1px solid rgba(124,58,237,.26);box-shadow:0 6px 18px rgba(124,58,237,.20)",
+  "input": "border:1px solid rgba(20,20,40,.10);border-radius:11px"
+}
+```
+
+键是**语义位置**，映射到站内既有元素，主题改不了映射：
+
+| 键 | 对应元素 |
+|---|---|
+| `card` | 卡片容器 |
+| `cardTitle` | 卡片标题行 |
+| `button` | 主按钮 |
+| `ghost` | 次要按钮 |
+| `iconButton` | 图标按钮 |
+| `input` | 输入框 / 文本域 / 下拉 |
+| `drawerItem` | 抽屉条目 |
+| `tabbar` | 底部标签栏 |
+| `tab` | 单个标签 |
+| `avatar` | 头像 |
+| `bubble` | 聊天气泡 |
+| `announce` | 公告条 |
+
+允许的属性（其余静默丢弃）：
+
+```
+border  border-*  border-radius  box-shadow  outline  outline-offset
+background  background-color  background-image
+```
+
+**为什么不让写选择器**：一旦允许 `.card,body{display:none}` 这类写法，主题就成了任意 CSS 注入点——既能藏起按钮，也能把整页挪走。用语义键，主题只能在既定位置改描边。
+
+### 22.2 effects.click：点击任意位置的效果
+
+```json
+"effects": {
+  "click": {
+    "css": "background:radial-gradient(circle,rgba(124,58,237,.55),rgba(124,58,237,0) 70%);width:88px;height:88px;margin:-44px 0 0 -44px;animation:tj-ripple .62s cubic-bezier(.2,.7,.3,1) forwards",
+    "keyframes": "@keyframes tj-ripple{from{transform:scale(.18);opacity:.9}to{transform:scale(1.55);opacity:0}}"
+  }
+}
+```
+
+工作方式：
+
+1. 站点在每次按下（`pointerdown`，仅左键）时，于点击坐标生成一个 `<i class="tj-click">`；
+2. 主题的 `css` 作用于这个元素——决定它多大、什么形状、怎么扩散；
+3. `keyframes` 可选，名字必须以 `tj-` 开头，供 `animation` 引用；
+4. 元素 1.5 秒后自动移除，不残留 DOM。
+
+站点**固定**的两项，主题不可覆盖：
+
+```css
+position: fixed;        /* 只相对视口，不参与布局 */
+pointer-events: none;   /* 永不拦截点击，连点也不会被吃掉 */
+```
+
+允许的属性：
+
+```
+width  height  margin-*  border*  border-radius  box-shadow
+background  background-color  background-image
+transform  opacity  filter  backdrop-filter  animation*
+```
+
+**为什么禁 position / pointer-events / z-index**：这三个一起改就能做出一层盖满屏幕、吃掉所有点击的透明层——那就是点击劫持。现在它们由站点写死，主题只能决定「长什么样」，不能决定「挡不挡手」。
+
+### 22.3 缺省行为
+
+| 情况 | 结果 |
+|---|---|
+| 没有 `borders` | 用站点默认描边 |
+| `borders` 里某个键没写 | 该元素用默认 |
+| 没有 `effects.click` | 不绑定任何监听，零开销 |
+| 声明全部被过滤 | 该项视为未定义，回到默认 |
+
+### 22.4 校验口径
+
+- **投稿/CI**（`theme_check.py`）从严：未知键、无可用声明、非法 keyframes 一律报错，必须改到通过
+- **站内导入**从宽：未知键忽略并提示，危险声明丢弃，主题照常应用
+
+宽进严出是有意的：用户随手改的 JSON 不该因为一个拼写错误就完全用不了；而进入官方目录的主题必须干净。
