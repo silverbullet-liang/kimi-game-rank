@@ -7,6 +7,15 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.61.3 · 2026-11-11 (True to Its Name)
+
+### Docs
+
+- The theme specification and the theme directory guide were rewritten from scratch, reorganised as fields → capabilities → safety → validation → submission, with duplicated and contradictory wording removed
+- Fixed a wrong icon position name in the examples: one place said `nav.rank`, the real name is `nav.total`
+- Added a "wired up / not yet wired" list so it is clear which icon positions take effect today and which do not yet
+- Added documentation self-check: every complete example in the docs is run through the validator, and every position name must match the implementation
+
 ## v3.61.2 · 2026-11-11 (Right Where It Belongs)
 
 ### Fixed

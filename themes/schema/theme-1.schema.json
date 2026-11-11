@@ -76,11 +76,6 @@
       "type": "object",
       "propertyNames": {
         "enum": [
-          "ui.theme",
-          "ui.menu",
-          "tab.mine",
-          "tab.chat",
-          "tab.rank",
           "nav.total",
           "nav.vote",
           "nav.gods",
@@ -111,6 +106,11 @@
           "action.retry",
           "action.download",
           "action.expand",
+          "tab.rank",
+          "tab.chat",
+          "tab.mine",
+          "ui.menu",
+          "ui.theme",
           "field.search",
           "field.password",
           "field.emoji",
