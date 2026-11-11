@@ -1766,3 +1766,9 @@ i.ic[class*='ti-'] { background-repeat: no-repeat; background-position: center; 
 .tab .ic-slot { width: 21px; height: 21px; }
 .ic-slot > .ic { width: 100%; height: 100%; fill: currentColor; }
 .ic-slot > .ic-img { object-fit: contain; }
+
+/* 导入的 JSON 主题在皮肤列表里的卡片 */
+.tj-ops { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.skin-card.tj-add { border-style: dashed; }
+.skin-card.tj-on { box-shadow: inset 0 0 0 2px var(--accent); }
+.skin-card .tj-prev { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }

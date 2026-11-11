@@ -787,7 +787,11 @@ function current() {
 /** 启动时恢复本机保存的主题；数据来自 localStorage，同样要过校验（可被篡改） */
 function restoreThemeJson() {
   var text = '';
-  try { text = localStorage.getItem('kimgr_tjson') || ''; } catch (e) { return; }
+  try {
+    /* 用户选了内置皮肤就把开关关掉：文件仍留着，但不该在刷新后又盖回来 */
+    if (localStorage.getItem('kimgr_tjson_on') !== '1') { return; }
+    text = localStorage.getItem('kimgr_tjson') || '';
+  } catch (e) { return; }
   if (!text) { return; }
   var r = applyRaw(text);
   if (!r.ok) {

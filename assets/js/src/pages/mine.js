@@ -535,10 +535,11 @@ function mountBlockList(box, isGuest) {
 }
 
 /** 外观设置里展示的皮肤：当前的限时节日皮肤排在最前，窗口外不出现 */
+/* '__tj' 是虚拟项：代表「用户导入的 JSON 主题」，与内置皮肤并列 */
 function skinKeys() {
   const now = festivalNow();
   const keys = Object.keys(SKINS).filter(k => FESTIVAL_KEYS.indexOf(k) < 0);
-  return now ? [now].concat(keys) : keys;
+  return (now ? [now] : []).concat(keys).concat(['__tj']);
 }
 
 function mountAppearance(box) {
@@ -559,12 +560,34 @@ function mountAppearance(box) {
     <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px">
       <span>设计风格</span>
       <div class="skin-row" id="skinRow">
-        ${skinKeys().map(k => `<button class="skin-card ${skin === k ? 'on' : ''}" data-s="${k}">
+        ${skinKeys().map(k => {
+          if (k === '__tj') {
+            const cur = (window.ThemeJSON && window.ThemeJSON.current()) || null;
+            const nm = cur ? tjName(cur.name) : '';
+            return `<button class="skin-card ${cur ? 'tj-on' : 'tj-add'}" data-s="__tj">
+              <span class="skin-prev tj-prev" aria-hidden="true"${cur ? ` style="background:${esc(cur.accent)}"` : ''}></span>
+              <b>${cur ? esc(nm) : t('导入主题')}</b>
+              <span class="tiny">${cur ? esc(cur.accent) : t('选择 JSON 文件')}</span>
+            </button>`;
+          }
+          return `<button class="skin-card ${skin === k ? 'on' : ''}" data-s="${k}">
           <span class="skin-prev p-${k}" aria-hidden="true"></span>
           <b>${esc(festName(SKINS[k]))}</b>
           <span class="tiny">${esc(t(SKINS[k].desc))}</span>
-        </button>`).join('')}
+        </button>`;
+        }).join('')}
       </div>
+      <div class="tj-ops">
+        <button class="btn-ghost btn-sm" type="button" id="tjImport">${t('导入文件')}</button>
+        <button class="btn-ghost btn-sm" type="button" id="tjPaste">${t('粘贴 JSON')}</button>
+        <button class="btn-ghost btn-sm" type="button" id="tjClear">${t('移除导入的主题')}</button>
+      </div>
+      <input type="file" id="tjFile" accept=".json,application/json" style="display:none">
+      <div id="tjPasteBox" style="display:none;width:100%">
+        <textarea id="tjText" rows="5" style="width:100%;margin:4px 0;padding:8px;border-radius:8px;border:1px solid var(--border-soft);background:var(--surface-solid);color:var(--text);font:12.5px/1.5 ui-monospace,monospace" placeholder="${t('粘贴主题 JSON（最大 1 MB）')}"></textarea>
+        <button class="btn-ghost btn-sm" type="button" id="tjApply">${t('应用')}</button>
+      </div>
+      <div class="tiny" id="tjState">${t('未启用。可导入他人分享的主题文件，最大 1 MB。')}</div>
     </div>
     <div class="setting-row ${FESTIVAL_KEYS.indexOf(skin) >= 0 ? 'fj-locked' : ''}" style="flex-direction:column;align-items:flex-start;gap:8px">
       <span>${t('主题色（蓝紫色 / 苹果色 / 自定义）')}</span>
@@ -587,20 +610,6 @@ function mountAppearance(box) {
         </div>
       </div>
     </div>
-    <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px">
-      <span>${t('主题 JSON')}</span>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn-ghost btn-sm" type="button" id="tjImport">${t('导入文件')}</button>
-        <button class="btn-ghost btn-sm" type="button" id="tjPaste">${t('粘贴 JSON')}</button>
-        <button class="btn-ghost btn-sm" type="button" id="tjClear">${t('恢复默认')}</button>
-      </div>
-      <input type="file" id="tjFile" accept=".json,application/json" style="display:none">
-      <div id="tjPasteBox" style="display:none;width:100%">
-        <textarea id="tjText" rows="5" style="width:100%;margin:4px 0;padding:8px;border-radius:8px;border:1px solid var(--border-soft);background:var(--surface-solid);color:var(--text);font:12.5px/1.5 ui-monospace,monospace" placeholder="${t('粘贴主题 JSON（最大 1 MB）')}"></textarea>
-        <button class="btn-ghost btn-sm" type="button" id="tjApply">${t('应用')}</button>
-      </div>
-      <div class="tiny" id="tjState">${t('未启用。可导入他人分享的主题文件，最大 1 MB。')}</div>
-    </div>
     <div class="setting-row">
       <span>返回动画</span>
       <div class="seg" style="max-width:200px" id="navAnimSeg">
@@ -615,7 +624,20 @@ function mountAppearance(box) {
     skinRow.addEventListener('click', async e => {
       const b = e.target.closest('[data-s]'); if (!b) return;
       const sk = b.dataset.s;
+
+      /* 导入的 JSON 主题：没有就开文件选择，有就提示已在用 */
+      if (sk === '__tj') {
+        const cur = window.ThemeJSON && window.ThemeJSON.current();
+        if (cur) { toast(t('当前正在使用「') + tjName(cur.name) + t('」')); return; }
+        const f = box.querySelector('#tjFile');
+        if (f) { f.click(); }
+        return;
+      }
       if (!SKINS[sk]) { return; }
+
+      /* 切到内置皮肤 = 停用导入的主题（文件保留，随时可切回） */
+      try { localStorage.setItem('kimgr_tjson_on', '0'); } catch (e2) {}
+      if (window.ThemeJSON) { window.ThemeJSON.clear(); }
 
       /* 节日皮肤是限时项，不写 kimgr_skin（服务端白名单里没有它们）：
          选中它 = 清除「退出标记」；选其它皮肤 = 记为主动退出，窗口期内不再自动启用。 */
@@ -686,8 +708,23 @@ function bindThemeJson(box) {
   const textEl = box.querySelector('#tjText');
 
   const show = () => {
-    if (!stateEl) return;
+    const clr = box.querySelector('#tjClear');
     const c = TJ.current();
+    if (clr) { clr.style.display = c ? '' : 'none'; }
+    /* 皮肤列表里的那张卡片跟着变：名字、主色点、选中态 */
+    const cards = box.querySelectorAll('#skinRow .skin-card');
+    const card = cards.length ? cards[cards.length - 1] : null;
+    if (card && card.getAttribute('data-s') === '__tj') {
+      const b = card.querySelector('b');
+      const tin = card.querySelector('.tiny');
+      const prev = card.querySelector('.tj-prev');
+      if (b) { b.textContent = c ? tjName(c.name) : t('导入主题'); }
+      if (tin) { tin.textContent = c ? c.accent : t('选择 JSON 文件'); }
+      if (prev) { prev.style.background = c ? c.accent : ''; }
+      card.classList.toggle('tj-on', !!c);
+      card.classList.toggle('tj-add', !c);
+    }
+    if (!stateEl) return;
     if (!c) {
       stateEl.textContent = t('未启用。可导入他人分享的主题文件，最大 1 MB。');
       return;
@@ -706,14 +743,14 @@ function bindThemeJson(box) {
       toast(t('主题未通过校验') + '：' + (r.errors[0] || ''));
       return;
     }
-    try { localStorage.setItem('kimgr_tjson', text); } catch (e) {}
+    try { localStorage.setItem('kimgr_tjson', text); localStorage.setItem('kimgr_tjson_on', '1'); } catch (e) {}
     show();
     toast(t('主题已应用'));
     if (r.warns.length) { toast(t('提示') + '：' + r.warns[0]); }
     /* 云同步：登录态下随账号走，7 天后自动过期 */
     if (state.role !== 'guest') {
       try { await api('theme', 'save', { json: text }); toast(t('已同步到云端（7 天有效）')); }
-      catch (e) { toast(t('云端同步失败，已在本机生效')); }
+      catch (e) { toast(t('云端同步失败，已在本机生效') + '：' + (e && e.message ? e.message : '')); }
     }
   };
 
@@ -743,10 +780,10 @@ function bindThemeJson(box) {
   const btnClear = box.querySelector('#tjClear');
   if (btnClear) btnClear.addEventListener('click', async () => {
     TJ.clear();
-    try { localStorage.removeItem('kimgr_tjson'); } catch (e) {}
+    try { localStorage.removeItem('kimgr_tjson'); localStorage.setItem('kimgr_tjson_on', '0'); } catch (e) {}
     if (textEl) textEl.value = '';
     show();
-    toast(t('已恢复默认主题'));
+    toast(t('已移除导入的主题'));
     if (state.role !== 'guest') { try { await api('theme', 'del'); } catch (e) {} }
   });
 }

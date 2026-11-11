@@ -7,6 +7,17 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.61.2 · 2026-11-11 (Right Where It Belongs)
+
+### Fixed
+
+- Cloud sync always failed when importing a theme: administrator and sub-administrator accounts can now sync too, not just regular users
+- An imported theme now appears in the design-style list alongside the built-in ones; tap it to switch, and tapping a built-in style automatically switches the imported one off
+
+### Improved
+
+- When sync fails, the reason is shown instead of a bare "failed"
+
 ## v3.61.1 · 2026-11-11 (Everything In Its Place)
 
 ### Added

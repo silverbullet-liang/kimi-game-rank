@@ -9,13 +9,18 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 
 $action = param_str('action', 'get');
-$ident  = require_user();
+/* 管理员与副管理员同样会用主题，这里不能只放行普通用户：
+   之前用 require_user() 会让站长账号一导入就收到 403，表现为「总是云同步失败」。 */
+$ident = require_token();
+if (!in_array((string)$ident['role'], array('user', 'admin', 'subadmin'), true)) {
+    fail(403, '请登录后再操作');
+}
 
 switch ($action) {
 
     case 'save': {
         csrf_verify();
-        if (!rate_limit('theme_save_' . (int)$ident['uid'], 12, 3600)) {
+        if (!rate_limit('theme_save_' . (int)$ident['uid'], 30, 3600)) {
             fail(429, '保存过于频繁，请稍后再试');
         }
         $raw = param_str('json', '');
