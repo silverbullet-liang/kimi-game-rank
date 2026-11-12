@@ -92,9 +92,9 @@ export async function renderDoc(container, ctx) {
 }
 
 /* 下载（托盘 + 下箭头） */
-const ICON_DL = '<svg viewBox="0 0 24 24" class="ic" style="width:16px;height:16px;fill:none;'
+const ICON_DL = '<span class="ic-slot" data-ic="action.download"><svg viewBox="0 0 24 24" class="ic" style="width:16px;height:16px;fill:none;'
   + 'stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round" aria-hidden="true">'
-  + '<path d="M12 3.5v10.5M7.8 10.2 12 14.4l4.2-4.2M5 18.5h14"/></svg>';
+  + '<path d="M12 3.5v10.5M7.8 10.2 12 14.4l4.2-4.2M5 18.5h14"/></svg></span>';
 
 /**
  * 文档末尾的下载条。原文已在内存中，直接落盘，不产生第二次请求。

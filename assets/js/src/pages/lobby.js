@@ -195,14 +195,14 @@ function toBottom(el) {
  *   - 只在「用户本就在底部」时自动贴底，不打扰上翻阅读
  *   - 失败一律就地给出重试入口，绝不静默
  * ============================================================ */
-const W_ICON_SMILE = '<svg viewBox="0 0 24 24" class="ic"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zM8.5 9.5a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zm7 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zM7.6 14.2a1 1 0 0 1 1.4-.1 4.6 4.6 0 0 0 6 0 1 1 0 0 1 1.3 1.5 6.6 6.6 0 0 1-8.6 0 1 1 0 0 1-.1-1.4z"/></svg>';
-const W_ICON_IMAGE = '<svg viewBox="0 0 24 24" class="ic"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 12h14l-4.5-6-3.5 4.5-2.5-2.5L5 17zm3.5-7a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2z"/></svg>';
-const W_ICON_VIDEO = '<svg viewBox="0 0 24 24" class="ic"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2v10h14V7H5zm3.4 1.2l6.2 3.8-6.2 3.8V8.2z"/></svg>';
-const W_ICON_SEND = '<svg viewBox="0 0 24 24" class="ic" style="width:18px;height:18px;fill:#fff"><path d="M3 20l18-8L3 4v6l12 2-12 2v6z"/></svg>';
+const W_ICON_SMILE = '<span class="ic-slot" data-ic="field.emoji"><svg viewBox="0 0 24 24" class="ic"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zM8.5 9.5a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zm7 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zM7.6 14.2a1 1 0 0 1 1.4-.1 4.6 4.6 0 0 0 6 0 1 1 0 0 1 1.3 1.5 6.6 6.6 0 0 1-8.6 0 1 1 0 0 1-.1-1.4z"/></svg></span>';
+const W_ICON_IMAGE = '<span class="ic-slot" data-ic="field.image"><svg viewBox="0 0 24 24" class="ic"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 12h14l-4.5-6-3.5 4.5-2.5-2.5L5 17zm3.5-7a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2z"/></svg></span>';
+const W_ICON_VIDEO = '<span class="ic-slot" data-ic="field.video"><svg viewBox="0 0 24 24" class="ic"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2v10h14V7H5zm3.4 1.2l6.2 3.8-6.2 3.8V8.2z"/></svg></span>';
+const W_ICON_SEND = '<span class="ic-slot" data-ic="action.send"><svg viewBox="0 0 24 24" class="ic" style="width:18px;height:18px;fill:#fff"><path d="M3 20l18-8L3 4v6l12 2-12 2v6z"/></svg></span>';
 
 /* ---------- 视频消息：卡片（点击才加载播放，省流量） ---------- */
-const MV_PLAY_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6L19 12z"/></svg>';
-const MV_FULL_ICON = '<svg viewBox="0 0 24 24" class="ic"><path d="M4 4h6v2H6v4H4V4zm10 0h6v6h-2V6h-4V4zM4 14h2v4h4v2H4v-6zm14 0h2v6h-6v-2h4v-4z"/></svg>';
+const MV_PLAY_ICON = '<span class="ic-slot" data-ic="media.play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6L19 12z"/></svg></span>';
+const MV_FULL_ICON = '<span class="ic-slot" data-ic="media.fullscreen"><svg viewBox="0 0 24 24" class="ic"><path d="M4 4h6v2H6v4H4V4zm10 0h6v6h-2V6h-4V4zM4 14h2v4h4v2H4v-6zm14 0h2v6h-6v-2h4v-4z"/></svg></span>';
 
 function videoCardHtml(bv, v) {
   v = v || {};
@@ -229,10 +229,24 @@ async function playVideo(card, bv) {
     card.classList.remove('mv-loading');
     card.classList.add('mv-on');
     card.innerHTML = '<div class="mv-player"><video class="mv-video" controls playsinline preload="metadata" src="' + esc(url) + '"></video>'
+      + '<div class="mv-ov" hidden>' + IC('media.pause', 'ico-lg') + '</div>'
+      + '<div class="mv-mute" hidden>' + IC('media.mute', 'ico-sm') + '</div>'
       + '<button class="mv-full" type="button" aria-label="' + t('全屏播放') + '">' + MV_FULL_ICON + '</button></div>'
       + '<div class="mv-fallback">' + t('播放不了？') + '<a href="https://www.bilibili.com/video/' + esc(bv) + '/" target="_blank" rel="noopener">' + t('去 B站观看') + '</a></div>';
     const vd = card.querySelector('video');
     const fb = card.querySelector('.mv-full');
+    /* 播放状态指示：暂停时闪一下暂停图标；静音时右上角挂个静音角标（不抢原生控件） */
+    const ovPause = card.querySelector('.mv-ov');
+    const ovMute = card.querySelector('.mv-mute');
+    let ovT = 0;
+    vd.addEventListener('pause', () => {
+      if (vd.ended) { return; }
+      ovPause.hidden = false;
+      clearTimeout(ovT);
+      ovT = setTimeout(() => { ovPause.hidden = true; }, 900);
+    });
+    vd.addEventListener('play', () => { ovPause.hidden = true; });
+    vd.addEventListener('volumechange', () => { ovMute.hidden = !vd.muted; });
     fb.addEventListener('click', () => {
       try {
         if (vd.webkitEnterFullscreen) { vd.webkitEnterFullscreen(); }        // iOS Safari
@@ -267,7 +281,7 @@ async function mountWorld(body) {
         <button class="icon-btn pk-btn" id="wEmoji" aria-label="${t('表情')}" ${canSend ? '' : 'disabled'}>${W_ICON_SMILE}</button>
         <button class="icon-btn pk-btn" id="wImage" aria-label="${t('图片')}" ${canSend ? '' : 'disabled'}>${W_ICON_IMAGE}</button>
         <button class="icon-btn pk-btn" id="wVideo" aria-label="${t('视频')}" ${canSend ? '' : 'disabled'}>${W_ICON_VIDEO}</button>
-        <button class="icon-btn pk-btn at-txt" id="wAt" aria-label="${t('@ 官方AI')}" ${canSend ? '' : 'disabled'}>@</button>
+        <button class="icon-btn pk-btn at-txt" id="wAt" aria-label="${t('@ 官方AI')}" ${canSend ? '' : 'disabled'}>${IC('field.mention', 'ico-sm')}</button>
         <div class="cnt" id="wCount">0/500</div>
         <textarea class="input" id="wInput" rows="1" maxlength="500"
           placeholder="${canSend ? t('输入消息…') : t('游客仅可查看，登录后可发言')}" ${canSend ? '' : 'disabled'}></textarea>
@@ -308,11 +322,11 @@ async function mountWorld(body) {
       inner = renderRich(m.content);
     }
     const recallBtn = (m.mine && !m.recalled)
-      ? ' · <button class="link" data-recall="1" style="border:0;background:0;font-size:12px">撤回</button>' : '';
+      ? ' · <button class="link" data-recall="1" style="border:0;background:0;font-size:12px">' + IC('action.close', 'ico-xs') + '<span>撤回</span></button>' : '';
     /* 单条删除：本人或管理员都能删；官方 AI 的消息只有管理员看得到这个按钮 */
     const delBtn = (!m.recalled && (m.mine || isAdminish()))
-      ? ' · <button class="link" data-del="1" style="border:0;background:0;font-size:12px">删除</button>' : '';
-    el.innerHTML = '<span class="av"><img src="' + esc(m.avatar) + '" alt="" draggable="false" style="user-select:none"></span>'
+      ? ' · <button class="link" data-del="1" style="border:0;background:0;font-size:12px">' + IC('action.delete', 'ico-xs') + '<span>删除</span></button>' : '';
+    el.innerHTML = '<span class="av" data-ic="user.avatar"><img src="' + esc(m.avatar) + '" alt="" draggable="false" style="user-select:none"></span>'
       + '<span class="bubble-wrap">'
       +   '<span class="who">' + userName(m.username, m.role) + ' · ' + esc(m.time)
             + (m.pending ? ' · 发送中…' : '') + recallBtn + delBtn + '</span>'
@@ -394,7 +408,7 @@ async function mountWorld(body) {
     const d = document.createElement('div');
     d.className = 'empty';
     d.style.padding = '22px';
-    d.textContent = text;
+    d.innerHTML = IC('state.empty') + '<p>' + esc(text) + '</p>';
     return d;
   }
 
@@ -402,11 +416,12 @@ async function mountWorld(body) {
     stream.innerHTML = '';
     const d = document.createElement('div');
     d.className = 'empty';
+    d.innerHTML = IC('state.error');
     const p = document.createElement('p');
     p.textContent = msg;
     const b = document.createElement('button');
     b.className = 'btn-ghost btn-sm';
-    b.textContent = t('重试');
+    b.innerHTML = IC('action.retry', 'ico-sm') + '<span>' + t('重试') + '</span>';
     b.addEventListener('click', onRetry);
     d.appendChild(p); d.appendChild(b);
     stream.appendChild(d);
@@ -529,7 +544,7 @@ async function mountWorld(body) {
       +   '<input class="input" id="wImgUrl" placeholder="' + t('粘贴图片链接（https://…png / jpg）') + '" style="margin-bottom:8px">'
       +   '<div class="row-gap">'
       +     '<button class="btn btn-sm" id="wImgLink">发送链接图片</button>'
-      +     '<button class="btn-ghost btn-sm" id="wImgUpBtn">上传本地图片</button>'
+      +     '<button class="btn-ghost btn-sm" id="wImgUpBtn">' + IC('field.upload', 'ico-sm') + '<span>上传本地图片</span></button>'
       +     '<input type="file" id="wImgFile" accept="image/*" class="sr-only">'
       +   '</div>'
       +   '<div class="tiny" id="wImgHint" style="margin-top:8px">支持 JPG / PNG / GIF / WebP，最大 2MB</div>'
@@ -719,7 +734,7 @@ function cardsHtml(cards) {
     const meta = TOOL_META[c.action] || { n: c.action || t('工具调用'), d: TOOL_META.search.d };
     const ok = c.ok !== false;
     return '<div class="tool-card ' + (ok ? 'ok' : 'err') + '">'
-      + '<svg viewBox="0 0 24 24" class="tc-ic"><path d="' + meta.d + '"/></svg>'
+      + '<span class="ic-slot" data-ic="action.more"><svg viewBox="0 0 24 24" class="tc-ic"><path d="' + meta.d + '"/></svg></span>'
       + '<span class="tc-body"><b>' + esc(meta.n) + '</b>'
       + '<span class="tiny">' + (ok ? '已完成 · ' : '失败 · ') + esc(c.summary || '') + '</span></span></div>';
   }).join('');
@@ -734,7 +749,7 @@ function addThink(container) {
   const el = document.createElement('div');
   el.className = 'ai-think open live';
   el.innerHTML = '<button type="button" class="tk-head">'
-    + '<svg viewBox="0 0 24 24" class="tk-ic"><path d="M12 3a7 7 0 0 0-4 12.7V19a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3.3A7 7 0 0 0 12 3zM9 22h6v1H9v-1z"/></svg>'
+    + '<span class="ic-slot" data-ic="field.think"><svg viewBox="0 0 24 24" class="tk-ic"><path d="M12 3a7 7 0 0 0-4 12.7V19a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3.3A7 7 0 0 0 12 3zM9 22h6v1H9v-1z"/></svg></span>'
     + '<span class="tk-title">深度思考</span><span class="tk-state">进行中</span>'
     + '<svg viewBox="0 0 24 24" class="tk-chev"><path d="M7 10l5 5 5-5z"/></svg></button>'
     + '<div class="tk-body"></div>';
@@ -766,7 +781,7 @@ function addToolCall(cards, action) {
   const el = document.createElement('div');
   el.className = 'tool-card call';
   el.dataset.action = action || '';
-  el.innerHTML = `<svg viewBox="0 0 24 24" class="tc-ic"><path d="${meta.d}"/></svg>
+  el.innerHTML = `<span class="ic-slot" data-ic="action.more"><svg viewBox="0 0 24 24" class="tc-ic"><path d="${meta.d}"/></svg></span>
     <span class="tc-body"><b>${esc(meta.n)}</b><span class="tiny">正在调用…</span></span>
     <span class="tc-dot"><i></i><i></i><i></i></span>`;
   cards.appendChild(el);
@@ -784,8 +799,8 @@ function resolveTool(cards, ev) {
   if (dot) { dot.remove(); }
 }
 
-const AI_ICON_SEND = '<svg viewBox="0 0 24 24" class="ic" style="width:18px;height:18px;fill:#fff"><path d="M3 20l18-8L3 4v6l12 2-12 2v6z"/></svg>';
-const AI_ICON_STOP = '<svg viewBox="0 0 24 24" class="ic" style="width:16px;height:16px;fill:#fff"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+const AI_ICON_SEND = '<span class="ic-slot" data-ic="action.send"><svg viewBox="0 0 24 24" class="ic" style="width:18px;height:18px;fill:#fff"><path d="M3 20l18-8L3 4v6l12 2-12 2v6z"/></svg></span>';
+const AI_ICON_STOP = '<span class="ic-slot" data-ic="action.stop"><svg viewBox="0 0 24 24" class="ic" style="width:16px;height:16px;fill:#fff"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></span>';
 
 async function mountAi(body) {
   window.__chatPollEnabled = false;         // AI 页不轮询世界对话，避免并发拖累
@@ -806,12 +821,12 @@ async function mountAi(body) {
       <div class="picker" id="pickerAi" hidden></div>
       <div class="model-bar">
         <button type="button" class="model-pick" id="modelBtn" aria-haspopup="listbox" aria-expanded="false">
-          <svg viewBox="0 0 24 24" class="mp-ic"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg>
+          <span class="ic-slot" data-ic="field.model"><svg viewBox="0 0 24 24" class="mp-ic"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg></span>
           <span class="mp-name" id="modelBtnName">模型</span>
           <svg viewBox="0 0 24 24" class="mp-chev"><path d="M7 10l5 5 5-5z"/></svg>
         </button>
         <button type="button" class="think-toggle" id="thinkBtn" aria-pressed="false" title="${t('开启后 AI 会先推理再回答（本站模型支持）')}">
-          <svg viewBox="0 0 24 24" class="tt-ic"><path d="M12 3a7 7 0 0 0-4 12.7V19a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3.3A7 7 0 0 0 12 3zM9 22h6v1H9v-1z"/></svg>
+          <span class="ic-slot" data-ic="field.think"><svg viewBox="0 0 24 24" class="tt-ic"><path d="M12 3a7 7 0 0 0-4 12.7V19a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3.3A7 7 0 0 0 12 3zM9 22h6v1H9v-1z"/></svg></span>
           <span>深度思考</span>
         </button>
       </div>
@@ -821,12 +836,12 @@ async function mountAi(body) {
       </div>
       <div class="chat-input">
         <button class="icon-btn pk-btn" id="emojiBtnAi" aria-label="${t('表情')}">
-          <svg viewBox="0 0 24 24" class="ic"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zM8.5 9.5a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zm7 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zM7.6 14.2a1 1 0 0 1 1.4-.1 4.6 4.6 0 0 0 6 0 1 1 0 0 1 1.3 1.5 6.6 6.6 0 0 1-8.6 0 1 1 0 0 1-.1-1.4z"/></svg>
+          <span class="ic-slot" data-ic="field.emoji"><svg viewBox="0 0 24 24" class="ic"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zM8.5 9.5a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zm7 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zM7.6 14.2a1 1 0 0 1 1.4-.1 4.6 4.6 0 0 0 6 0 1 1 0 0 1 1.3 1.5 6.6 6.6 0 0 1-8.6 0 1 1 0 0 1-.1-1.4z"/></svg></span>
         </button>
         <div class="cnt" id="aiCount">0/2000</div>
         <textarea class="input" id="aiInput" rows="1" maxlength="2000" placeholder="${t('向 AI 提问，可问榜单规则与作品信息…')}"></textarea>
         <button class="btn" id="aiSend" aria-label="${t('发送')}">
-          <svg viewBox="0 0 24 24" class="ic" style="width:18px;height:18px;fill:#fff"><path d="M3 20l18-8L3 4v6l12 2-12 2v6z"/></svg>
+          <span class="ic-slot" data-ic="action.send"><svg viewBox="0 0 24 24" class="ic" style="width:18px;height:18px;fill:#fff"><path d="M3 20l18-8L3 4v6l12 2-12 2v6z"/></svg></span>
         </button>
       </div>
       <div class="identity-tip">
@@ -1205,7 +1220,7 @@ function aiMsg(side, text, oid, meta) {
   const who = side === 'mine' ? esc(state.username) : t('AI 助手');
   const avatar = side === 'mine'
     ? '<img src="' + esc(state.avatar || '') + '" alt="" draggable="false" style="user-select:none">'
-    : '<span class="ai-av"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9z"/></svg></span>';
+    : '<span class="ai-av ic-slot" data-ic="user.avatar"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9z"/></svg></span>';
   el.innerHTML = `
     <span class="av">${avatar}</span>
     <span class="bubble-wrap">

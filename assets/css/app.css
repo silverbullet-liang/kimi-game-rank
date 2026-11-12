@@ -1772,3 +1772,79 @@ i.ic[class*='ti-'] { background-repeat: no-repeat; background-position: center; 
 .skin-card.tj-add { border-style: dashed; }
 .skin-card.tj-on { box-shadow: inset 0 0 0 2px var(--accent); }
 .skin-card .tj-prev { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+
+/* ── 图标位：主题可替换的槽位（75 个位置全部接入） ──────────────────
+   .ic-slot 是统一外壳，尺寸随上下文；主题覆盖后内部换成 img / css 图标。 */
+.ic-slot { display: inline-flex; align-items: center; justify-content: center; width: 21px; height: 21px; flex: none; line-height: 0; }
+.ic-slot > .ic { width: 100%; height: 100%; fill: currentColor; }
+.ic-slot > .ic-img { object-fit: contain; }
+.ic-slot.ico-xs { width: 13px; height: 13px; }
+.ic-slot.ico-sm { width: 16px; height: 16px; }
+.ic-slot.ico-lg { width: 26px; height: 26px; }
+/* 文字按钮带图标时保持单行、居中 */
+.btn, .btn-ghost, .chip, .adm-btn, .doc-dl button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn > .ic-slot, .btn-ghost > .ic-slot { width: 16px; height: 16px; }
+.chip > .ic-slot { width: 13px; height: 13px; }
+/* 各上下文沿用原图标尺寸，避免包一层后变大 */
+.announce-tag .ic-slot { width: 15px; height: 15px; }
+.brand .logo .ic-slot { width: 19px; height: 19px; }
+.icon-btn .ic-slot { width: 19px; height: 19px; }
+.tab .ic-slot { width: 21px; height: 21px; }
+.drawer-item .ic-slot { width: 18px; height: 18px; }
+.card-title .ic-slot { width: 17px; height: 17px; }
+.empty .ic-slot { width: 40px; height: 40px; margin: 0 auto 10px; opacity: .6; }
+.comment-tip .ic-slot { width: 15px; height: 15px; }
+.totop .ic-slot { width: 20px; height: 20px; }
+.lb-close .ic-slot { width: 20px; height: 20px; }
+.agree .box .ic-slot { width: 12px; height: 12px; }
+.agree .box .ic-slot > .ic { display: none; }
+.agree .box.on .ic-slot > .ic { display: block; }
+.adm-btn .ic-slot { width: 16px; height: 16px; }
+.banlock-ic .ic-slot { width: 34px; height: 34px; }
+.discpop-ic .ic-slot { width: 20px; height: 20px; }
+.discpop-x .ic-slot { width: 18px; height: 18px; }
+.img-viewer .iv-close .ic-slot { width: 18px; height: 18px; }
+.reg-video-btn .ic-slot { width: 16px; height: 16px; }
+
+/* 状态图标与提示条 */
+.toast { display: flex; align-items: center; gap: 8px; }
+.toast .ic-slot { flex: none; opacity: .9; }
+.toast.err .ic-slot { color: #ef4444; }
+.toast.ok .ic-slot { color: #22c55e; }
+.toast.warn .ic-slot { color: #f59e0b; }
+.empty > p { margin: 0; }
+.empty .ic-slot { fill: var(--text-3); }
+.offline-bar {
+  position: fixed; left: 50%; transform: translateX(-50%); top: 8px; z-index: 300;
+  display: flex; align-items: center; gap: 8px; max-width: 92vw;
+  padding: 8px 14px; border-radius: 999px; font-size: 13px;
+  background: color-mix(in srgb, var(--text-1) 88%, transparent); color: var(--bg-1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .18);
+}
+.offline-bar[hidden] { display: none; }
+/* 加载态图标：旋转 */
+.ic-slot[data-ic="state.loading"] > .ic { animation: tj-spin 1s linear infinite; }
+@keyframes tj-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ic-slot[data-ic="state.loading"] > .ic { animation: none; } }
+
+/* 视频状态浮层与头像槽位 */
+.mv-player { position: relative; }
+.mv-ov { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; color: #fff; }
+.mv-ov[hidden] { display: none; }
+.mv-ov .ic-slot { width: 54px; height: 54px; filter: drop-shadow(0 2px 10px rgba(0, 0, 0, .55)); }
+.mv-mute { position: absolute; top: 8px; right: 8px; color: #fff; pointer-events: none; }
+.mv-mute[hidden] { display: none; }
+[data-ic="user.avatar"] > .ic, [data-ic="user.avatar"] > .ic-img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.link > .ic-slot { vertical-align: -2px; }
+
+/* 正文里的动作按钮：带图标后保持单行 */
+.ops button, .link, .fold-toggle { display: inline-flex; align-items: center; gap: 4px; }
+.link-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.score-total { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.score-total .ic-slot { color: var(--accent); }
+
+/* 榜单与分区的行首图标 */
+.seg-lead, .cat-lead { width: 16px; height: 16px; fill: var(--text-3); align-self: center; margin-right: 2px; }
+
+/* 设置行的行首图标 */
+.setting-row > span:first-child { display: inline-flex; align-items: center; gap: 6px; }

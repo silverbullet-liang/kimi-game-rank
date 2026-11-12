@@ -511,7 +511,7 @@ try {
   <!-- 公告横幅 -->
   <div class="announce" id="announceBar"<?= $announceText === '' ? ' hidden' : '' ?>>
     <span class="announce-tag">
-      <svg viewBox="0 0 24 24" class="ic"><path d="M3 10v4h3l5 4V6L6 10H3zm13.5 2a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
+      <span class="ic-slot" data-ic="nav.today"><svg viewBox="0 0 24 24" class="ic"><path d="M3 10v4h3l5 4V6L6 10H3zm13.5 2a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"/></svg></span>
       <?= e(seo_t('公告', 'Notice', 'お知らせ')) ?>
     </span>
     <div class="announce-track"><span id="announceText"><?= e($announceText) ?></span></div>
@@ -520,11 +520,11 @@ try {
   <!-- 顶栏：品牌 + 控制组 -->
   <header class="topbar glass" id="topbar">
     <button class="icon-btn" id="btnBack" aria-label="<?= e(seo_t('返回', 'Back', '戻る')) ?>" hidden>
-      <svg viewBox="0 0 24 24" class="ic"><path d="M15.4 5L8 12l7.4 7L17 17.6 11.2 12 17 6.4z"/></svg>
+      <span class="ic-slot" data-ic="action.back"><svg viewBox="0 0 24 24" class="ic"><path d="M15.4 5L8 12l7.4 7L17 17.6 11.2 12 17 6.4z"/></svg></span>
     </button>
     <div class="brand" id="brandHome" role="button" tabindex="0">
       <span class="logo">
-        <svg viewBox="0 0 24 24" class="ic"><path d="M7 6h10a5 5 0 0 1 5 5v3a4 4 0 0 1-4 4h-1.2a3 3 0 0 1-2.4-1.2l-.6-.8a2 2 0 0 0-3.2 0l-.6.8A3 3 0 0 1 7.6 18H7a4 4 0 0 1-4-4v-3a5 5 0 0 1 5-5zm1.5 4.5h-2v2h-1.5v-2h-2v-1.5h2v-2h1.5v2h2v1.5zM16 10.2a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2zm2.8 0a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2z"/></svg>
+        <span class="ic-slot" data-ic="nav.total"><svg viewBox="0 0 24 24" class="ic"><path d="M7 6h10a5 5 0 0 1 5 5v3a4 4 0 0 1-4 4h-1.2a3 3 0 0 1-2.4-1.2l-.6-.8a2 2 0 0 0-3.2 0l-.6.8A3 3 0 0 1 7.6 18H7a4 4 0 0 1-4-4v-3a5 5 0 0 1 5-5zm1.5 4.5h-2v2h-1.5v-2h-2v-1.5h2v-2h1.5v2h2v1.5zM16 10.2a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2zm2.8 0a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2z"/></svg></span>
       </span>
       <span class="brand-name"><?= e(seo_t('kimi游戏榜', 'Kimi Game Rank', 'Kimiゲームランク')) ?></span>
     </div>
@@ -533,7 +533,7 @@ try {
         <span class="ic-slot" data-ic="field.search"><svg viewBox="0 0 24 24" class="ic"><path d="M10 4a6 6 0 1 0 3.7 10.7l4.3 4.3 1.4-1.4-4.3-4.3A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"/></svg></span>
       </button>
       <button class="icon-btn" id="btnTheme" aria-label="<?= e(seo_t('切换深浅色', 'Toggle theme', 'テーマ切替')) ?>">
-        <span class="ic-slot" data-ic="ui.theme"><svg viewBox="0 0 24 24" class="ic" id="themeIcon"><path d="M12 3q-.5 0-.5.5t.5.5q3.7 0 6.3 2.7T21 13q0 2.4-1.2 4.4.5-1.3.5-2.7 0-3-2.1-5.1T13 7.5q-1.8 0-3.4.9t-2.5 2.4q-.9 1.6-.9 3.4 0 1.2.4 2.2-2.1-2-2.1-4.9 0-3.7 2.6-6.3T12 3z"/></svg></span>
+        <span class="ic-slot" id="themeIcon" data-ic="theme.auto"><svg viewBox="0 0 24 24" class="ic"><path d="M12 3q-.5 0-.5.5t.5.5q3.7 0 6.3 2.7T21 13q0 2.4-1.2 4.4.5-1.3.5-2.7 0-3-2.1-5.1T13 7.5q-1.8 0-3.4.9t-2.5 2.4q-.9 1.6-.9 3.4 0 1.2.4 2.2-2.1-2-2.1-4.9 0-3.7 2.6-6.3T12 3z"/></svg></span>
       </button>
       <button class="icon-btn" id="btnMenu" aria-label="<?= e(seo_t('菜单', 'Menu', 'メニュー')) ?>">
         <span class="ic-slot" data-ic="ui.menu"><svg viewBox="0 0 24 24" class="ic"><path d="M4 7h16v2H4V7zm0 4h16v2H4v-2zm0 4h16v2H4v-2z"/></svg></span>
@@ -546,7 +546,7 @@ try {
     <input type="text" id="searchInput" placeholder="<?= e(seo_t('搜索作品标题或作者…', 'Search by title or author…', '作品名や作者で検索…')) ?>" autocomplete="off">
     <button class="btn-ghost" id="searchGo"><?= e(seo_t('搜索', 'Search', '検索')) ?></button>
     <button class="icon-btn" id="searchClose" aria-label="<?= e(seo_t('关闭', 'Close', '閉じる')) ?>">
-      <svg viewBox="0 0 24 24" class="ic"><path d="M6.4 5l5.6 5.6L17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4 6.4 5z"/></svg>
+      <span class="ic-slot" data-ic="action.close"><svg viewBox="0 0 24 24" class="ic"><path d="M6.4 5l5.6 5.6L17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4 6.4 5z"/></svg></span>
     </button>
   </div>
 
@@ -586,7 +586,7 @@ try {
   <div class="drawer-head">
     <span><?= e(seo_t('导航菜单', 'Menu', 'メニュー')) ?></span>
     <button class="icon-btn" id="drawerClose" aria-label="<?= e(seo_t('关闭', 'Close', '閉じる')) ?>">
-      <svg viewBox="0 0 24 24" class="ic"><path d="M6.4 5l5.6 5.6L17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4 6.4 5z"/></svg>
+      <span class="ic-slot" data-ic="action.close"><svg viewBox="0 0 24 24" class="ic"><path d="M6.4 5l5.6 5.6L17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4 6.4 5z"/></svg></span>
     </button>
   </div>
   <div class="drawer-list" id="drawerList"></div>
@@ -599,7 +599,7 @@ try {
 
 <!-- 回到顶部 -->
 <button class="totop" id="toTop" aria-label="<?= e(seo_t('回到顶部', 'Back to top', 'トップへ戻る')) ?>" hidden>
-  <svg viewBox="0 0 24 24" class="ic"><path d="M12 6l6 6-1.4 1.4L13 9.8V19h-2V9.8L7.4 13.4 6 12z"/></svg>
+  <span class="ic-slot" data-ic="action.expand"><svg viewBox="0 0 24 24" class="ic"><path d="M12 6l6 6-1.4 1.4L13 9.8V19h-2V9.8L7.4 13.4 6 12z"/></svg></span>
 </button>
 
 <!-- 轻提示 -->

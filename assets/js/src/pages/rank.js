@@ -51,20 +51,20 @@ export async function renderRank(container, ctx) {
       <div class="ai-sum-body" id="aiSumBody">
         <div class="ai-sum-loading"><i></i><i></i><i></i></div>
       </div>
-      <button class="link ai-sum-toggle" id="aiSumToggle" hidden>展开全部</button>
+      <button class="link ai-sum-toggle" id="aiSumToggle" hidden>${IC('action.expand', 'ico-xs')}<span>展开全部</span></button>
     </div>` : ''}
     ${q ? `<div class="search-note">
       <span>搜索「<b>${esc(q)}</b>」的结果</span>
-      <button class="link" id="clearSearch" style="border:0;background:0">清除搜索</button>
+      <button class="link" id="clearSearch" style="border:0;background:0">${IC('action.close', 'ico-xs')}<span>清除搜索</span></button>
     </div>` : ''}
-    <div class="seg" id="boardSeg">${BOARDS.map(b => `<button data-b="${b.k}" class="${b.k === board ? 'on' : ''}">${b.name}</button>`).join('')}</div>
-    <div class="cat-tabs" id="catTabs">
+    <div class="seg" id="boardSeg"><span class="ic-slot seg-lead" data-ic="field.sort"><svg viewBox="0 0 24 24" class="ic"><path d="M3 6h13v2H3V6zm0 5h10v2H3v-2zm0 5h7v2H3v-2zM17 8l4 4h-3v6h-2v-6h-3l4-4z"/></svg></span>${BOARDS.map(b => `<button data-b="${b.k}" class="${b.k === board ? 'on' : ''}">${b.name}</button>`).join('')}</div>
+    <div class="cat-tabs" id="catTabs"><span class="ic-slot cat-lead" data-ic="field.filter"><svg viewBox="0 0 24 24" class="ic"><path d="M3 5h18l-7 8v6l-4 2v-8L3 5z"/></svg></span>
       <button class="cat-tab ${cat === 'all' ? 'on' : ''}" data-c="all"><span class="n" id="cntAll">·</span><span>全部</span></button>
       ${CATS.map(c => `<button class="cat-tab ${cat === c.k ? 'on' : ''}" data-c="${c.k}"><span class="n" data-cnt="${c.k}">·</span><span>${c.name}</span></button>`).join('')}
     </div>
     <div class="rank-list" id="rankList"></div>
     <div class="rank-more" id="rankMoreBox">
-      <button class="btn btn-sm" id="rankMore" hidden>加载更多</button>
+      <button class="btn btn-sm" id="rankMore" hidden>${IC('action.expand', 'ico-sm')}<span>加载更多</span></button>
       <div class="tiny" id="rankFoot"></div>
     </div>
   `;
@@ -120,14 +120,14 @@ export async function renderRank(container, ctx) {
       const items = d.items || [];
       totalCount = Number(d.total || 0);
       if (!items.length && page === 1) {
-        list.innerHTML = '<div class="empty"><p>这里还没有作品</p></div>';
+        list.innerHTML = '<div class="empty">' + IC('state.empty') + '<p>这里还没有作品</p></div>';
       }
       items.forEach((w, idx) => list.appendChild(rankRow(w, (page - 1) * PAGE_SIZE + idx + 1)));
       shownCount += items.length;
       done = !d.has_more || items.length === 0;   // 返回空页也视作到底，避免自动续拉空转
       page++;
     } catch (e) {
-      if (reset) list.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`;
+      if (reset) list.innerHTML = `<div class="empty">${IC('state.error')}<p>${esc(e.message)}</p></div>`;
       foot.textContent = t('加载失败：') + e.message;
       errored = true;                     // 暂停自动续拉，可点按钮重试
     } finally {

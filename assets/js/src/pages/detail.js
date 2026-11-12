@@ -33,7 +33,7 @@ export async function renderDetail(container, ctx) {
   container.innerHTML = `
     <div class="detail-head">
       <button class="back-btn" id="backBtn">
-        <svg viewBox="0 0 24 24" class="ic" style="width:18px;height:18px;fill:currentColor"><path d="M15 5l-7 7 7 7 1.4-1.4L10.8 12l5.6-5.6z"/></svg>
+        <span class="ic-slot" data-ic="action.back"><svg viewBox="0 0 24 24" class="ic" style="width:18px;height:18px;fill:currentColor"><path d="M15 5l-7 7 7 7 1.4-1.4L10.8 12l5.6-5.6z"/></svg></span>
         返回榜单
       </button>
     </div>
@@ -41,7 +41,7 @@ export async function renderDetail(container, ctx) {
     <div class="card">
       <div class="radar-wrap" id="radarWrap"></div>
       <div style="text-align:center;margin-top:6px">
-        <div style="font-size:30px;font-weight:800;color:var(--accent)">${d.total}</div>
+        <div class="score-total" style="font-size:30px;font-weight:800;color:var(--accent)">${IC('action.star', 'ico-lg')}<span>${d.total}</span></div>
         <span class="rating r-${esc(d.rating)}">${esc(d.rating)}</span>
       </div>
       <div style="margin-top:12px">
@@ -56,7 +56,7 @@ export async function renderDetail(container, ctx) {
     ${((d.images && d.images.length) || d.cover) ? `
     <div class="card">
       <div class="card-title">
-        <svg viewBox="0 0 24 24" class="ic"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 12h14l-4.5-6-3.5 4.5-2.5-2.5L5 17zm3.5-7a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2z"/></svg>
+        <span class="ic-slot" data-ic="field.image"><svg viewBox="0 0 24 24" class="ic"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 12h14l-4.5-6-3.5 4.5-2.5-2.5L5 17zm3.5-7a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2z"/></svg></span>
         作品预览
       </div>
       <div class="shot-grid">
@@ -67,14 +67,18 @@ export async function renderDetail(container, ctx) {
 
     <div class="card">
       <div class="card-title">
-        <svg viewBox="0 0 24 24" class="ic"><path d="M7 6h10a5 5 0 0 1 5 5v3a4 4 0 0 1-4 4h-1a3 3 0 0 1-2.4-1.2l-.6-.8a2 2 0 0 0-3.2 0l-.6.8A3 3 0 0 1 7.4 18H7a4 4 0 0 1-4-4v-3a5 5 0 0 1 5-5z"/></svg>
+        <span class="ic-slot" data-ic="doc.features"><svg viewBox="0 0 24 24" class="ic"><path d="M7 6h10a5 5 0 0 1 5 5v3a4 4 0 0 1-4 4h-1a3 3 0 0 1-2.4-1.2l-.6-.8a2 2 0 0 0-3.2 0l-.6.8A3 3 0 0 1 7.4 18H7a4 4 0 0 1-4-4v-3a5 5 0 0 1 5-5z"/></svg></span>
         作品详情与介绍
       </div>
       <p class="muted" style="white-space:pre-wrap">${esc(d.intro || t('暂无介绍'))}</p>
       ${d.link ? `<button class="btn-link" id="openLink" data-href="${esc(d.link)}">
-        <svg viewBox="0 0 24 24" class="ic" style="width:15px;height:15px;fill:currentColor"><path d="M10.6 13.4a1 1 0 0 1 0-1.4l4.2-4.2a3 3 0 1 1 4.2 4.2l-1.8 1.8-1.4-1.4 1.8-1.8a1 1 0 0 0-1.4-1.4l-4.2 4.2a1 1 0 0 1-1.4 0zm2.8-2.8a1 1 0 0 1 0 1.4l-4.2 4.2a1 1 0 0 0 1.4 1.4l1.8-1.8 1.4 1.4-1.8 1.8a3 3 0 0 1-4.2-4.2l4.2-4.2a1 1 0 0 1 1.4 0z"/></svg>
+        <span class="ic-slot" data-ic="action.external"><svg viewBox="0 0 24 24" class="ic" style="width:15px;height:15px;fill:currentColor"><path d="M10.6 13.4a1 1 0 0 1 0-1.4l4.2-4.2a3 3 0 1 1 4.2 4.2l-1.8 1.8-1.4-1.4 1.8-1.8a1 1 0 0 0-1.4-1.4l-4.2 4.2a1 1 0 0 1-1.4 0zm2.8-2.8a1 1 0 0 1 0 1.4l-4.2 4.2a1 1 0 0 0 1.4 1.4l1.8-1.8 1.4 1.4-1.8 1.8a3 3 0 0 1-4.2-4.2l4.2-4.2a1 1 0 0 1 1.4 0z"/></svg></span>
         ${d.html_url ? '打开作品（CDN 直链）' : t('查看作品分享链接')}
       </button>
+      <div class="link-actions">
+        <button class="btn-ghost btn-sm" id="copyLink">${IC('action.copy', 'ico-sm')}<span>复制链接</span></button>
+        <button class="btn-ghost btn-sm" id="shareLink">${IC('action.share', 'ico-sm')}<span>分享</span></button>
+      </div>
       <div class="tiny" style="margin-top:6px;word-break:break-all">${esc(d.link)}</div>` : ''}
       <div class="tiny" style="margin-top:8px">作品 ID：${esc(d.source_id || '')} · 收录于 ${esc(d.added_at || '')}</div>
     </div>
@@ -86,16 +90,16 @@ export async function renderDetail(container, ctx) {
       </div>
       <div class="tiny" style="margin-top:10px">历史峰值总分 ${d.peak_score} · 更新于 ${esc(d.updated_at)}</div>
       <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
-        <button class="btn ${d.voted ? 'btn-ghost' : ''}" id="voteBtn">${d.voted ? '已点赞' : t('点赞作品')}</button>
+        <button class="btn ${d.voted ? 'btn-ghost' : ''}" id="voteBtn">${IC('action.vote', 'ico-sm')}<span>${d.voted ? '已点赞' : t('点赞作品')}</span></button>
         <span class="tiny" id="voteCount">${d.votes == null ? '' : (t('共 ') + Number(d.votes) + t(' 票'))}</span>
         <span class="tiny">点赞计入「投票榜」，每人每作品限一次</span>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title">评论区（<span id="cmtTotal">${d.comment_total}</span>）</div>
+      <div class="card-title">${IC('action.comment')}评论区（<span id="cmtTotal">${d.comment_total}</span>）</div>
       <div class="comment-tip">
-        <svg viewBox="0 0 24 24" class="ic"><path d="M12 2l8 4v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10V6l8-4z"/></svg>
+        <span class="ic-slot" data-ic="doc.community"><svg viewBox="0 0 24 24" class="ic"><path d="M12 2l8 4v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10V6l8-4z"/></svg></span>
         文明发言，共建良好社区
       </div>
       <div id="cmtForm"></div>
@@ -109,6 +113,26 @@ export async function renderDetail(container, ctx) {
   container.querySelector('#backBtn').addEventListener('click', () => history.length > 1 ? history.back() : navigate('#/rank'));
   const link = container.querySelector('#openLink');
   if (link) link.addEventListener('click', () => window.open(link.dataset.href || d.link, '_blank', 'noopener'));
+
+  /* 复制 / 分享：都只针对作品链接本身，不改任何后端行为 */
+  const copyBtn = container.querySelector('#copyLink');
+  if (copyBtn) copyBtn.addEventListener('click', async () => {
+    const url = String(d.link || '').trim();
+    if (!url) { return; }
+    try { await navigator.clipboard.writeText(url); toast('链接已复制'); }
+    catch (e) { toast('复制失败，请长按选择链接', 'err'); }
+  });
+  const shareBtn = container.querySelector('#shareLink');
+  if (shareBtn) shareBtn.addEventListener('click', async () => {
+    const url = String(d.link || '').trim();
+    if (!url) { return; }
+    if (navigator.share) {
+      try { await navigator.share({ title: String(d.title || ''), url: url }); } catch (e) {}
+      return;
+    }
+    try { await navigator.clipboard.writeText(url); toast('链接已复制'); }
+    catch (e) { toast('复制失败，请长按选择链接', 'err'); }
+  });
 
   // 预览图灯箱（自绘，非原生 dialog）
   const shots = container.querySelectorAll('.shot');
@@ -126,7 +150,7 @@ export async function renderDetail(container, ctx) {
 
   /* 票数跟着结果即时更新：投票与取消都会返回最新总数 */
   function paintVote(r) {
-    voteBtn.textContent = r.voted ? '已点赞' : t('点赞作品');
+    voteBtn.innerHTML = IC('action.vote', 'ico-sm') + '<span>' + (r.voted ? '已点赞' : t('点赞作品')) + '</span>';
     voteBtn.classList.toggle('btn-ghost', r.voted);
     if (voteNum) { voteNum.textContent = t('共 ') + Number(r.count || 0) + t(' 票'); }
   }
@@ -208,7 +232,7 @@ function openLightbox(images, index) {
   box.className = 'lightbox';
   box.innerHTML = `
     <button class="lb-close" aria-label="${t('关闭')}">
-      <svg viewBox="0 0 24 24" class="ic"><path d="M6.4 5l5.6 5.6L17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4 6.4 5z"/></svg>
+      <span class="ic-slot" data-ic="action.close"><svg viewBox="0 0 24 24" class="ic"><path d="M6.4 5l5.6 5.6L17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4 6.4 5z"/></svg></span>
     </button>
     <img class="lb-img" src="" alt="" draggable="false">
     <div class="lb-bar">
@@ -347,7 +371,7 @@ export async function renderComments(container, workId, targetType) {
         <textarea class="input" id="cmtText" maxlength="300" placeholder="${t('写下你的看法…')}"></textarea>
         <div class="tiny" style="text-align:right"><span id="cmtCount">0</span>/300</div>
       </div>
-      <button class="btn btn-sm" id="cmtSend">发表评论</button>`;
+      <button class="btn btn-sm" id="cmtSend">${IC('action.send', 'ico-sm')}<span>发表评论</span></button>`;
     const ta = form.querySelector('#cmtText');
     ta.addEventListener('input', () => { form.querySelector('#cmtCount').textContent = ta.value.length; });
     form.querySelector('#cmtSend').addEventListener('click', async () => {
@@ -383,7 +407,7 @@ export async function renderComments(container, workId, targetType) {
     const roots = st.roots;
     listBox.innerHTML = '';
     if (!roots.length) {
-      listBox.innerHTML = '<div class="empty" style="padding:20px">还没有评论，来抢沙发</div>';
+      listBox.innerHTML = '<div class="empty" style="padding:20px">' + IC('state.empty') + '<p>还没有评论，来抢沙发</p></div>';
       return;
     }
     roots.slice(0, st.shown).forEach(c => {
@@ -400,7 +424,7 @@ export async function renderComments(container, workId, targetType) {
         if (reps.length > FOLD) {
           const foldBtn = document.createElement('button');
           foldBtn.className = 'fold-toggle';
-          foldBtn.textContent = open ? t('收起回复') : t('展开全部 ') + reps.length + t(' 条回复');
+          foldBtn.innerHTML = IC('action.expand', 'ico-xs') + '<span>' + (open ? t('收起回复') : t('展开全部 ') + reps.length + t(' 条回复')) + '</span>';
           foldBtn.addEventListener('click', () => { open = !open; unfolded[c.id] = open; draw(); });
           wrap.appendChild(foldBtn);
         }
@@ -412,7 +436,7 @@ export async function renderComments(container, workId, targetType) {
       const more = document.createElement('button');
       more.className = 'btn-ghost btn-sm';
       more.style.cssText = 'width:100%;margin-top:8px';
-      more.textContent = t('查看更多评论（还有 ') + (roots.length - st.shown) + t(' 条）');
+      more.innerHTML = IC('action.more', 'ico-sm') + '<span>' + t('查看更多评论（还有 ') + (roots.length - st.shown) + t(' 条）') + '</span>';
       more.addEventListener('click', () => { st.shown = roots.length; paint(); });
       listBox.appendChild(more);
     }
@@ -430,7 +454,7 @@ export async function renderComments(container, workId, targetType) {
       if (tot) { tot.textContent = st.total; }
     } catch (e) {
       if (showSkeleton) {
-        listBox.innerHTML = `<div class="empty"><p>${esc(e.message)}</p><button class="btn-ghost btn-sm" id="cmtRetry">重试</button></div>`;
+        listBox.innerHTML = `<div class="empty">${IC('state.error')}<p>${esc(e.message)}</p><button class="btn-ghost btn-sm" id="cmtRetry">${IC('action.retry', 'ico-sm')}<span>重试</span></button></div>`;
         const rb = listBox.querySelector('#cmtRetry');
         if (rb) { rb.addEventListener('click', () => refresh(true)); }
       }
@@ -505,7 +529,7 @@ function commentReject(host, text, content, onPass) {
   const bar = document.createElement('div');
   bar.className = 'reject-note';
   bar.innerHTML = '<span class="rn-text">' + esc(text) + '</span>'
-    + '<button class="btn btn-sm" data-review="1">AI 重审</button>';
+    + '<button class="btn btn-sm" data-review="1">' + IC('action.retry', 'ico-sm') + '<span>AI 重审</span></button>';
   host.insertBefore(bar, host.firstChild);
 
   const btn = bar.querySelector('[data-review]');
@@ -540,7 +564,7 @@ function commentNode(c, workId, reload, ttype) {
   const folded = !!c.blocked || isBlocked(c.content);
   const noteText = c.blocked ? '该评论已被折叠，点击查看' : t('已按你的屏蔽规则收起，点击查看');
   box.innerHTML = `
-    <span class="av"><img src="${esc(c.avatar)}" alt="" draggable="false"></span>
+    <span class="av" data-ic="user.avatar"><img src="${esc(c.avatar)}" alt="" draggable="false"></span>
     <span class="body">
       <span class="head">
         ${userName(c.username, c.role, c.reports)}
@@ -549,14 +573,14 @@ function commentNode(c, workId, reload, ttype) {
       <span class="text">${c.reply_to ? `<span class="reply-to">@${esc(c.reply_to)}</span> ` : ''}${folded
         ? `<span class="blocked-note" data-reveal data-note="${esc(noteText)}">${noteText}</span><span class="blocked-body" hidden>${esc(c.content)}</span>`
         : esc(c.content)}</span>
-      ${c.flag === 'middle' ? '<span class="msg-flag" title="' + t('系统认为这条内容可能有恶意，但仍予放行') + '">可能有恶意'
-        + (canModerate() ? ' · <button class="link" data-act="unflag" style="border:0;background:0;font-size:12px;color:inherit;text-decoration:underline">取消标注</button>' : '')
+      ${c.flag === 'middle' ? '<span class="msg-flag" title="' + t('系统认为这条内容可能有恶意，但仍予放行') + '">' + IC('state.warn', 'ico-xs') + '可能有恶意'
+        + (canModerate() ? ' · <button class="link" data-act="unflag" style="border:0;background:0;font-size:12px;color:inherit;text-decoration:underline">' + IC('action.close', 'ico-xs') + '<span>取消标注</span></button>' : '')
         + '</span>' : ''}
       <span class="ops">
-        <button data-act="like">赞 ${c.likes || 0}</button>
-        ${canPost() ? `<button data-act="reply" data-user="${esc(c.username)}">回复</button>` : ''}
-        ${(c.mine || canModerate()) ? '<button data-act="del">删除</button>' : ''}
-        ${canModerate() ? `<button data-act="block" data-on="${c.blocked ? 1 : 0}">${c.blocked ? '取消屏蔽' : t('屏蔽')}</button>` : ''}
+        <button data-act="like">${IC('action.vote', 'ico-xs')}<span>赞 ${c.likes || 0}</span></button>
+        ${canPost() ? `<button data-act="reply" data-user="${esc(c.username)}">${IC('action.reply', 'ico-xs')}<span>回复</span></button>` : ''}
+        ${(c.mine || canModerate()) ? '<button data-act="del">' + IC('action.delete', 'ico-xs') + '<span>删除</span></button>' : ''}
+        ${canModerate() ? `<button data-act="block" data-on="${c.blocked ? 1 : 0}">${IC('action.report', 'ico-xs')}<span>${c.blocked ? '取消屏蔽' : t('屏蔽')}</span></button>` : ''}
       </span>
     </span>`;
 
@@ -569,7 +593,7 @@ function promptReply(toName) {
     const box = document.getElementById('dialog');
     box.innerHTML = `<h3>回复${toName ? ' ' + esc(toName) : ''}</h3>
       <div class="field"><textarea class="input" id="rpText" maxlength="300" placeholder="${t('写下回复…')}"></textarea></div>
-      <div class="dialog-actions"><button class="btn-ghost" data-r="0">取消</button><button class="btn" data-r="1">发送</button></div>`;
+      <div class="dialog-actions"><button class="btn-ghost" data-r="0">${IC('action.close', 'ico-sm')}<span>取消</span></button><button class="btn" data-r="1">${IC('action.send', 'ico-sm')}<span>发送</span></button></div>`;
     scrim.hidden = false;
     const ta = box.querySelector('#rpText'); ta.focus();
     const close = v => { scrim.hidden = true; box.innerHTML = ''; resolve(v); };

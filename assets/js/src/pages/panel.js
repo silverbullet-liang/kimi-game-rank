@@ -166,7 +166,7 @@ function adminLayout() {
     ${workListBlock(true)}
 
     <div class="panel-plain">
-      <h3>用户管理</h3>
+      <h3>${IC('user.admin', 'ico-sm')}用户管理</h3>
       <div class="prow">
         <input class="input" id="uq" placeholder="搜索用户名 / 8 位 UID">
         <button class="btn btn-sm" id="uSearch">搜索</button>
@@ -427,7 +427,7 @@ function backupBlock() {
       <div id="bkMeta" class="tiny muted" style="margin-bottom:10px"></div>
       <div class="row-gap">
         <button class="btn btn-sm" id="bkRunBtn">立即备份</button>
-        <button class="btn-sm btn-ghost" id="bkListBtn">刷新列表</button>
+        <button class="btn-sm btn-ghost" id="bkListBtn">${IC('field.refresh', 'ico-sm')}<span>刷新列表</span></button>
       </div>
       <div id="bkList" style="margin-top:12px"><div class="skeleton" style="height:60px"></div></div>
     </div>`;
@@ -2003,7 +2003,7 @@ async function loadWorks(container, q, readOnly, page) {
           <td>${Number(w.total_score)}</td>
           <td>${Number(w.is_hidden) === 1 ? '已下架' : t('在榜')}</td>
           <td>${readOnly ? '<span class="tiny">—</span>' : `
-            <button class="btn-ghost btn-sm" data-act="edit">编辑</button>
+            <button class="btn-ghost btn-sm" data-act="edit">${IC('action.edit', 'ico-sm')}<span>编辑</span></button>
             <button class="btn-ghost btn-sm" data-act="toggle">${Number(w.is_hidden) === 1 ? '恢复' : t('下架')}</button>
             <button class="btn-ghost btn-sm" data-act="del">删除</button>`}
           </td></tr>`).join('') + '</tbody></table>';
@@ -2209,7 +2209,7 @@ async function loadPeer(container) {
           <span class="muted">${p.enabled ? '' : '[已停用] '}${p.last_sync_at ? '上次同步 ' + esc(p.last_sync_at) + ' UTC' : t('尚未同步')}${p.last_status ? ' · ' + esc(p.last_status) : ''}</span>
         </span>
         <button class="btn btn-sm" data-a="test" data-id="${p.id}">测试</button>
-        <button class="btn btn-sm" data-a="edit" data-id="${p.id}">编辑</button>
+        <button class="btn btn-sm" data-a="edit" data-id="${p.id}">${IC('action.edit', 'ico-sm')}<span>编辑</span></button>
         <button class="btn btn-sm" data-a="del" data-id="${p.id}">删除</button>
       </div>`).join('');
   };
@@ -2292,7 +2292,7 @@ function discBlock() {
         被通报过的用户都在这里。可以随时「设置」调整理由、封禁天数或直接解封。
         累计被通报 <b>10 次</b>（单次封禁 ≥ 7 天才计入）的账号会被<b>永久删除</b>。
       </p>
-      <div class="prow"><button class="btn btn-sm" id="discRefresh">刷新列表</button></div>
+      <div class="prow"><button class="btn btn-sm" id="discRefresh">${IC('field.refresh', 'ico-sm')}<span>刷新列表</span></button></div>
       <div id="discListBox" style="margin-top:12px"><div class="skeleton" style="height:80px"></div></div>
     </div>`;
 }
@@ -2412,7 +2412,7 @@ async function loadDisc(container) {
         <td class="tiny">${it.banned ? (it.ban_until ? '至 ' + esc(it.ban_until) : t('永久')) : t('未封停')}${it.ip_banned ? ' · IP' : ''}</td>
         <td class="tiny">${Number(it.user_count || 0)} 次</td>
         <td class="tiny">${esc(it.created)}</td>
-        <td><button class="btn-ghost btn-sm" data-act="edit">设置</button>
+        <td><button class="btn-ghost btn-sm" data-act="edit">${IC('action.edit', 'ico-sm')}<span>设置</span></button>
             <button class="btn-ghost btn-sm" data-act="revoke">撤销</button></td></tr>`).join('')
       + '</tbody></table>';
 

@@ -306,21 +306,138 @@ themes/
 
 共 **75** 个位置。
 
-> 名字一旦发布不改。需要新位置只能追加。
+> 名字一旦发布不改。需要新位置只能追加。全部位置均已接入页面，不再有「写了不生效」的占位项。
 
-### 8.2 已接入与待接入
+### 8.2 每个位置出现在哪儿
 
-写了不等于生效——图标要被页面真正读取才会变。当前状态：
+75 个位置全部已接入——写进主题就会生效。下表列出各自对应的界面元素，改之前先确认它在哪儿，免得改了个看不见的地方。
 
-**已接入（换了就生效）**
+**导航与抽屉（`nav.*`）**
 
-`nav.*` 全部 12 个、`doc.*` 全部 8 个、`user.login` `user.logout` `user.admin`、`theme.*`（共用齿轮）、`tab.rank` `tab.chat` `tab.mine`、`ui.menu` `ui.theme`、`field.search`
+| 位置 | 出现在 |
+|---|---|
+| `nav.total` | 顶栏品牌标、抽屉「总排行榜」 |
+| `nav.vote` | 抽屉「投票榜」 |
+| `nav.gods` | 抽屉「诸神榜」 |
+| `nav.cold` | 抽屉「冷门榜」 |
+| `nav.chat` | 抽屉「世界对话」 |
+| `nav.submit` | 抽屉「提交作品」 |
+| `nav.mine` | 抽屉「我的」 |
+| `nav.help` | 抽屉「功能说明」 |
+| `nav.feedback` | 抽屉「反映问题 / 回复反馈」 |
+| `nav.admin` | 抽屉「控制面板」、我的页按钮 |
+| `nav.monitor` | 抽屉「异常监测」、我的页按钮 |
+| `nav.today` | 公告横幅、抽屉「关于今天」 |
 
-**已命名、尚未接入**
+**动作（`action.*`）**
 
-`action.*` 全部 18 个、`field.password` `field.emoji` `field.image` `field.video` `field.upload` `field.mention` `field.model` `field.think` `field.filter` `field.sort` `field.refresh`、`media.*` 全部 4 个、`state.*` 全部 6 个、`user.avatar` `user.verified`
+| 位置 | 出现在 |
+|---|---|
+| `action.back` | 顶栏返回、详情页「返回榜单」 |
+| `action.close` | 关闭搜索面板、关抽屉、关大图、对话框「取消」、撤回、取消标注、清除搜索 |
+| `action.more` | 评论「查看更多」、聊天工具卡 |
+| `action.vote` | 详情页「点赞作品」、评论「赞」 |
+| `action.star` | 详情页总分前的星 |
+| `action.comment` | 详情页「评论区」标题 |
+| `action.reply` | 评论「回复」、回复对话框 |
+| `action.copy` | 详情页「复制链接」 |
+| `action.share` | 详情页「分享」 |
+| `action.external` | 详情页「打开作品」 |
+| `action.edit` | 面板「编辑」「设置」 |
+| `action.delete` | 评论「删除」、聊天消息「删除」 |
+| `action.report` | 评论「屏蔽 / 取消屏蔽」 |
+| `action.send` | 聊天发送、发表评论、AI 发送、回复对话框「发送」 |
+| `action.stop` | AI「停止生成」 |
+| `action.retry` | 列表「重试」、评论「AI 重审」 |
+| `action.download` | 文档「下载原始 md 文件」 |
+| `action.expand` | 回到顶部、加载更多、展开全部回复、AI 总结「展开全部」 |
 
-这些位置的图标直接写在页面片段里，还没走注册表。写进主题不会报错，但暂时看不到变化——要生效需要逐处改造，属于后续工作。
+**输入与筛选（`field.*`）**
+
+| 位置 | 出现在 |
+|---|---|
+| `field.search` | 顶栏搜索按钮、抽屉「搜索作品」 |
+| `field.password` | 登录页密码显示 / 隐藏 |
+| `field.emoji` | 聊天表情按钮（世界对话与 AI 对话） |
+| `field.image` | 聊天图片按钮、详情页「作品预览」标题 |
+| `field.video` | 聊天视频按钮 |
+| `field.upload` | 聊天「上传本地图片」 |
+| `field.mention` | 世界对话「@」按钮 |
+| `field.model` | AI 模型选择 |
+| `field.think` | 深度思考开关、思考块标题 |
+| `field.filter` | 榜单分区行首 |
+| `field.sort` | 榜单切换行首 |
+| `field.refresh` | 面板「刷新列表」 |
+
+**媒体（`media.*`）**
+
+| 位置 | 出现在 |
+|---|---|
+| `media.play` | 视频卡播放层、注册页宣传片 |
+| `media.pause` | 视频暂停时浮现的暂停标记 |
+| `media.fullscreen` | 视频全屏按钮 |
+| `media.mute` | 视频静音时的角标 |
+
+**状态（`state.*`）**
+
+| 位置 | 出现在 |
+|---|---|
+| `state.loading` | 按钮加载态 |
+| `state.empty` | 所有列表与页面的空状态 |
+| `state.error` | 错误提示、出错空态、红色轻提示 |
+| `state.success` | 登录页协议勾选框、绿色轻提示 |
+| `state.warn` | 「可能有恶意」标注、黄色轻提示 |
+| `state.offline` | 断网提示条 |
+
+**账号（`user.*`）**
+
+| 位置 | 出现在 |
+|---|---|
+| `user.login` | 登录 / 注册按钮、抽屉登录入口 |
+| `user.logout` | 退出登录按钮、抽屉退出 |
+| `user.avatar` | 个人页、评论、聊天里的头像 |
+| `user.admin` | 面板「用户管理」 |
+| `user.verified` | 个人页的管理员 / 副管理员身份行 |
+
+**外观与语言（`theme.*`）**
+
+| 位置 | 出现在 |
+|---|---|
+| `theme.light` | 外观设置里「浅色」 |
+| `theme.dark` | 外观设置里「深色」 |
+| `theme.auto` | 外观设置里「跟随」、顶栏主题按钮（跟随系统时） |
+| `theme.palette` | 外观设置里「设计风格」 |
+| `theme.lang` | 「语言」卡片标题 |
+
+**文档（`doc.*`）**
+
+| 位置 | 出现在 |
+|---|---|
+| `doc.community` | 抽屉「社区公约」、详情页「文明发言」提示 |
+| `doc.terms` | 抽屉「用户协议」 |
+| `doc.privacy` | 抽屉「隐私政策」 |
+| `doc.features` | 抽屉「功能说明」、详情页介绍标题 |
+| `doc.criteria` | 抽屉「评分标准」 |
+| `doc.ranking` | 抽屉「入榜规则」 |
+| `doc.changelog` | 抽屉「更新日志」 |
+| `doc.ai` | 抽屉「AI 使用说明」 |
+
+**底部导航（`tab.*`）**
+
+| 位置 | 出现在 |
+|---|---|
+| `tab.rank` | 底部导航「榜单」 |
+| `tab.chat` | 底部导航「对话」 |
+| `tab.mine` | 底部导航「我的」 |
+
+**顶栏控件（`ui.*`）**
+
+| 位置 | 出现在 |
+|---|---|
+| `ui.menu` | 顶栏菜单按钮 |
+| `ui.theme` | 外观设置里「深浅色」行 |
+
+> 一个位置可能有多处宿主（例如 `action.close` 同时用于关闭搜索面板、关抽屉、关大图、对话框取消、撤回、清除搜索）。它们共用同一个图标，改一次全部生效。
 
 ---
 

@@ -3,7 +3,7 @@ import { SITE_BASE } from './base.js';
  * 应用入口：启动引导、路由、底栏、抽屉、搜索、通知轮询
  */
 import { i18nInit, t, festName, applyI18nDom, applyI18nText, watchI18n } from './i18n.js';
-import { boot, state, api, toast, dialog, prompt_, setToken, ensureGuestSession, setUnauthorizedHandler, notify, getPrefs, setPrefs, $, on, askNotifyPermission, esc, showBanLock, hideBanLock, maybeDiscPopup, maybeFestivalPopup, readBanCache, readBanCacheAsync, saveBanCache } from './core.js';
+import { boot, state, api, toast, dialog, prompt_, setToken, ensureGuestSession, setUnauthorizedHandler, notify, getPrefs, setPrefs, $, on, askNotifyPermission, esc, showBanLock, hideBanLock, maybeDiscPopup, maybeFestivalPopup, readBanCache, readBanCacheAsync, saveBanCache, initOfflineBar } from './core.js';
 import { applyTheme, saveTheme, initSystemWatcher, ACCENTS } from './theme.js';
 import { setNavigate } from './router.js';
 import { guardStart } from './guard.js';
@@ -308,6 +308,8 @@ function drawerItems() {
   }
   const base = [
     { k: 'total', label: t('总排行榜'), ic: T('nav.total', I.rank), go: '#/rank' },
+    { k: 'chat', label: t('世界对话'), ic: T('nav.chat', I.list), go: '#/chat' },
+    { k: 'mine', label: t('我的'), ic: T('nav.mine', I.users), go: '#/mine' },
     { k: 'search', label: t('搜索作品'), ic: T('field.search', I.search), act: 'search' },
     { k: 'submit', label: t('提交作品'), ic: T('nav.submit', I.list), go: '#/submit' },
     { k: 'vote', label: t('投票榜'), ic: T('nav.vote', I.vote), go: '#/rank?board=vote' },
@@ -712,6 +714,7 @@ async function main() {
 
   setNavigate(navigate);
   initSystemWatcher();
+  initOfflineBar();      // 断网提示条（state.offline）
 
   setUnauthorizedHandler(() => {
     if (state.role === 'guest') { return; }        // 游客已在 core.js 内静默续期，走到这里无需处理

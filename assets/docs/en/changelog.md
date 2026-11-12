@@ -7,6 +7,24 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.61.4 · 2026-11-12 (Fully Wired)
+
+### Themes
+
+- The 53 icon positions that previously existed in name only are now wired to real interface elements: action buttons, input toolbars, video controls, status messages, avatars and identity, appearance and language settings — writing them into a theme now takes effect
+- Every action button carries an icon, including like, reply, delete, copy link, share, retry, load more and expand replies
+- The detail page gained "Copy link" and "Share" buttons, backed by `action.copy` and `action.share`
+- The drawer menu gained "World chat" and "Mine" entries
+- Video messages show a pause mark when paused and a mute badge when muted
+- An offline banner appears at the top of the page when the connection drops
+- All empty states now carry an icon that themes can replace
+- The light/dark toggle icon follows the current mode: sun for light, moon for dark, half-circle for system
+- The theme specification gained a lookup table listing where each of the 75 positions appears
+
+### Fixes
+
+- Corrected a wrong icon position name in the specification (one place said `nav.rank`; the real name is `nav.total`)
+
 ## v3.61.3 · 2026-11-11 (True to Its Name)
 
 ### Docs

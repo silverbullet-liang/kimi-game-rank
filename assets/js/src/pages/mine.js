@@ -22,11 +22,11 @@ export async function renderMine(container) {
     container.innerHTML = `
       <div class="card">
         <div class="profile-head">
-          <span class="av">${avatarImg('guest')}</span>
+          <span class="av" data-ic="user.avatar">${avatarImg('guest')}</span>
           <div><div class="name">游客</div><div class="tiny">当前为游客模式</div></div>
         </div>
         <p class="muted tiny">游客可浏览榜单与世界对话；登录后可评论、点赞、使用 AI 对话。</p>
-        <button class="btn" id="goLogin" style="width:100%;margin-top:10px">登录 / 注册</button>
+        <button class="btn" id="goLogin" style="width:100%;margin-top:10px">${IC('user.login', 'ico-sm')}<span>登录 / 注册</span></button>
       </div>
       <div class="card">
         <div class="card-title">外观设置</div>
@@ -49,7 +49,7 @@ export async function renderMine(container) {
 
   let d;
   try { d = await api('profile', 'info'); }
-  catch (e) { container.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`; return; }
+  catch (e) { container.innerHTML = `<div class="empty">${IC('state.error')}<p>${esc(e.message)}</p></div>`; return; }
 
   const isAdmin = isAdminish();
   const s = d.settings || {};
@@ -57,10 +57,10 @@ export async function renderMine(container) {
   container.innerHTML = `
     <div class="card">
       <div class="profile-head">
-        <span class="av">${avatarImg(d.username, d.avatar)}</span>
+        <span class="av" data-ic="user.avatar">${avatarImg(d.username, d.avatar)}</span>
         <div>
           <div class="name">${userName(d.username, d.role)}</div>
-          <div class="tiny">${isAdmin ? (d.role === 'subadmin' ? '副管理员账号' : t('管理员账号')) : (t('注册于 ') + esc(d.registered_at || ''))}</div>
+          <div class="tiny">${isAdmin ? IC('user.verified', 'ico-xs') + (d.role === 'subadmin' ? '副管理员账号' : t('管理员账号')) : (t('注册于 ') + esc(d.registered_at || ''))}</div>
         </div>
       </div>
       <div class="uid-row">
@@ -89,10 +89,10 @@ export async function renderMine(container) {
       <div class="tiny" style="margin-top:6px">开启后登录要多一步：密码通过之后还要输入邮箱验证码。需要先绑定邮箱。</div>
       ${isAdmin ? '<div class="adm-actions">'
         + '<button type="button" class="adm-btn" id="panelBtn">'
-        +   '<svg viewBox="0 0 24 24" class="ic"><path d="' + G_ICON + '"/></svg><span>控制面板</span>'
+        +   '<span class="ic-slot" data-ic="nav.admin"><svg viewBox="0 0 24 24" class="ic"><path d="' + G_ICON + '"/></svg></span><span>控制面板</span>'
         + '</button>'
         + '<button type="button" class="adm-btn" id="monitorBtn">'
-        +   '<svg viewBox="0 0 24 24" class="ic"><path d="' + S_ICON + '"/></svg><span>异常监测</span>'
+        +   '<span class="ic-slot" data-ic="nav.monitor"><svg viewBox="0 0 24 24" class="ic"><path d="' + S_ICON + '"/></svg></span><span>异常监测</span>'
         + '</button>'
         + '</div>' : ''}
     </div>
@@ -150,7 +150,7 @@ export async function renderMine(container) {
     </div>
 
     <div class="card">
-      <div class="card-title">语言</div>
+      <div class="card-title">${IC('theme.lang')}语言</div>
       <div id="langSet"></div>
     </div>
 
@@ -171,7 +171,7 @@ export async function renderMine(container) {
       </div>
     </div>
 
-    <button class="btn-ghost" id="logoutBtn" style="width:100%;margin-bottom:16px">退出登录</button>
+    <button class="btn-ghost" id="logoutBtn" style="width:100%;margin-bottom:16px">${IC('user.logout', 'ico-sm')}<span>${t('退出登录')}</span></button>
   `;
 
   /* AI 免费模型额度卡片：独立拉取，失败静默（不影响页面其它部分） */
@@ -550,15 +550,15 @@ function mountAppearance(box) {
   const navOn = getPrefs().nav_anim !== 0;
   box.innerHTML = `
     <div class="setting-row">
-      <span>深浅色</span>
+      <span>${IC('ui.theme', 'ico-sm')}深浅色</span>
       <div class="seg" style="max-width:200px" id="themeSeg">
-        <button data-t="light" class="${theme === 'light' ? 'on' : ''}">浅色</button>
-        <button data-t="dark" class="${theme === 'dark' ? 'on' : ''}">深色</button>
-        <button data-t="system" class="${theme === 'system' ? 'on' : ''}">跟随</button>
+        <button data-t="light" class="${theme === 'light' ? 'on' : ''}">${IC('theme.light', 'ico-sm')}<span>浅色</span></button>
+        <button data-t="dark" class="${theme === 'dark' ? 'on' : ''}">${IC('theme.dark', 'ico-sm')}<span>深色</span></button>
+        <button data-t="system" class="${theme === 'system' ? 'on' : ''}">${IC('theme.auto', 'ico-sm')}<span>跟随</span></button>
       </div>
     </div>
     <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px">
-      <span>设计风格</span>
+      <span>${IC('theme.palette', 'ico-sm')}设计风格</span>
       <div class="skin-row" id="skinRow">
         ${skinKeys().map(k => {
           if (k === '__tj') {

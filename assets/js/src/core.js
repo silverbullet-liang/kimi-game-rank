@@ -337,6 +337,15 @@ export function btnLoading(btn, on) {
   if (!btn) { return; }
   btn.classList.toggle('loading', !!on);
   btn.disabled = !!on;
+  /* 加载态图标：只在 loading 时插入，避免每次都改 DOM */
+  const holder = btn.querySelector('[data-ic="state.loading"]');
+  if (on && !holder) {
+    const sp = document.createElement('span');
+    sp.innerHTML = IC('state.loading', 'ico-sm');
+    btn.insertBefore(sp.firstChild, btn.firstChild);
+  } else if (!on && holder) {
+    holder.remove();
+  }
 }
 
 /* ============================================================
@@ -400,6 +409,27 @@ export function namePair(snap, now) {
 /* ============================================================
  * UI 工具
  * ============================================================ */
+
+/** 统一空状态：图标 + 文案（state.empty） */
+export function emptyState(text, actionHtml) {
+  return '<div class="empty">' + IC('state.empty') + '<p>' + esc(text) + '</p>'
+    + (actionHtml || '') + '</div>';
+}
+
+/** 离线提示条：断网时出现（state.offline） */
+export function initOfflineBar() {
+  if (typeof document === 'undefined' || !document.body) { return; }
+  const bar = document.createElement('div');
+  bar.className = 'offline-bar';
+  bar.hidden = true;
+  bar.innerHTML = IC('state.offline', 'ico-sm') + '<span>' + t('网络已断开，连接恢复后会自动同步') + '</span>';
+  const app = document.getElementById('app');
+  (app || document.body).appendChild(bar);
+  const sync = () => { bar.hidden = navigator.onLine !== false; };
+  window.addEventListener('online', sync);
+  window.addEventListener('offline', sync);
+  sync();
+}
 export function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -411,8 +441,10 @@ export function toast(msg, type = '') {
      同时最多保留 3 条：超出的先移除最旧的一条，避免连点后糊满屏幕。 */
   while (wrap.children.length >= 3) { wrap.firstElementChild.remove(); }
   const el = document.createElement('div');
-  el.className = 'toast' + (type === 'err' ? ' err' : '');
-  el.textContent = msg;
+  el.className = 'toast' + (type === 'err' ? ' err' : '') + (type === 'ok' ? ' ok' : '') + (type === 'warn' ? ' warn' : '');
+  /* 状态图标：err=错误 ok=成功 warn=警告，其余不带图标 */
+  const slot = type === 'err' ? 'state.error' : type === 'ok' ? 'state.success' : type === 'warn' ? 'state.warn' : '';
+  el.innerHTML = (slot ? IC(slot, 'ico-sm') : '') + '<span>' + esc(msg) + '</span>';
   wrap.appendChild(el);
   const life = type === 'err' ? 3200 : 2400;
   setTimeout(() => {
@@ -432,7 +464,7 @@ export function dialog(title, text, confirmLabel = t('确定'), opts = {}) {
     const danger = opts.danger ? 'btn-danger' : '';
     box.innerHTML = `<h3>${esc(title)}</h3><p>${text}</p>
       <div class="dialog-actions">
-        <button class="btn-ghost" data-r="0">取消</button>
+        <button class="btn-ghost" data-r="0">${IC('action.close', 'ico-sm')}<span>取消</span></button>
         <button class="btn ${danger}" data-r="1">${esc(confirmLabel)}</button>
       </div>`;
     scrim.hidden = false;

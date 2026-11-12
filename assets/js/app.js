@@ -532,6 +532,15 @@ function btnLoading(btn, on) {
   if (!btn) { return; }
   btn.classList.toggle('loading', !!on);
   btn.disabled = !!on;
+  /* 加载态图标：只在 loading 时插入，避免每次都改 DOM */
+  const holder = btn.querySelector('[data-ic="state.loading"]');
+  if (on && !holder) {
+    const sp = document.createElement('span');
+    sp.innerHTML = IC('state.loading', 'ico-sm');
+    btn.insertBefore(sp.firstChild, btn.firstChild);
+  } else if (!on && holder) {
+    holder.remove();
+  }
 }
 
 /* ============================================================
@@ -595,6 +604,27 @@ function namePair(snap, now) {
 /* ============================================================
  * UI 工具
  * ============================================================ */
+
+/** 统一空状态：图标 + 文案（state.empty） */
+function emptyState(text, actionHtml) {
+  return '<div class="empty">' + IC('state.empty') + '<p>' + esc(text) + '</p>'
+    + (actionHtml || '') + '</div>';
+}
+
+/** 离线提示条：断网时出现（state.offline） */
+function initOfflineBar() {
+  if (typeof document === 'undefined' || !document.body) { return; }
+  const bar = document.createElement('div');
+  bar.className = 'offline-bar';
+  bar.hidden = true;
+  bar.innerHTML = IC('state.offline', 'ico-sm') + '<span>' + t('网络已断开，连接恢复后会自动同步') + '</span>';
+  const app = document.getElementById('app');
+  (app || document.body).appendChild(bar);
+  const sync = () => { bar.hidden = navigator.onLine !== false; };
+  window.addEventListener('online', sync);
+  window.addEventListener('offline', sync);
+  sync();
+}
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -606,8 +636,10 @@ function toast(msg, type = '') {
      同时最多保留 3 条：超出的先移除最旧的一条，避免连点后糊满屏幕。 */
   while (wrap.children.length >= 3) { wrap.firstElementChild.remove(); }
   const el = document.createElement('div');
-  el.className = 'toast' + (type === 'err' ? ' err' : '');
-  el.textContent = msg;
+  el.className = 'toast' + (type === 'err' ? ' err' : '') + (type === 'ok' ? ' ok' : '') + (type === 'warn' ? ' warn' : '');
+  /* 状态图标：err=错误 ok=成功 warn=警告，其余不带图标 */
+  const slot = type === 'err' ? 'state.error' : type === 'ok' ? 'state.success' : type === 'warn' ? 'state.warn' : '';
+  el.innerHTML = (slot ? IC(slot, 'ico-sm') : '') + '<span>' + esc(msg) + '</span>';
   wrap.appendChild(el);
   const life = type === 'err' ? 3200 : 2400;
   setTimeout(() => {
@@ -627,7 +659,7 @@ function dialog(title, text, confirmLabel = t('确定'), opts = {}) {
     const danger = opts.danger ? 'btn-danger' : '';
     box.innerHTML = `<h3>${esc(title)}</h3><p>${text}</p>
       <div class="dialog-actions">
-        <button class="btn-ghost" data-r="0">取消</button>
+        <button class="btn-ghost" data-r="0">${IC('action.close', 'ico-sm')}<span>取消</span></button>
         <button class="btn ${danger}" data-r="1">${esc(confirmLabel)}</button>
       </div>`;
     scrim.hidden = false;
@@ -1344,14 +1376,17 @@ function mdToHtml(md, inlineExtra) {
 /**
  * 图标注册表 —— 全站图标唯一来源
  * ------------------------------------------------------------
- * 两种形态：
+ * 三种来源：
  *   ① 内置：24×24 viewBox 的 SVG path（默认值，永远可用）
- *   ② 覆盖：主题 JSON 按「位置名」注入，值为 img: / data: / css| 前缀
- * 页面统一走 T(slot, I.xxx)，未覆盖时原样返回内置 path，零额外开销。
+ *   ② 主题覆盖：主题 JSON 按「位置名」注入 img: / data: / css| 前缀
+ *   ③ 静态槽位：页面写死的位置用 <span class="ic-slot" data-ic="位置名">，
+ *      主题切换后由 MutationObserver 自动换掉，无需重绘整页。
+ * 页面统一走 T(slot, base) 或 IC(slot)。
  */
 const I = {
   rank: 'M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3z',
   play: 'M8 5v14l11-7z',
+  send: 'M3 20l18-8L3 4v6l12 2-12 2v6z',
   search: 'M10 4a6 6 0 1 0 3.7 10.7l4.3 4.3 1.4-1.4-4.3-4.3A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8z',
   vote: 'M12 2l3 6 6.5.9-4.7 4.6 1.1 6.5L12 17l-5.9 3 1.1-6.5L2.5 8.9 9 8z',
   crown: 'M4 8l4 4 4-6 4 6 4-4-1.5 10h-13L4 8z',
@@ -1370,26 +1405,85 @@ const I = {
   gear: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 4l-2 1.5.3 2.5-2 1-1.8-1.8-2.3.8L12 18l-1.2-2-2.3-.8L6.7 17l-2-1 .3-2.5L3 12l2-1.5L4.7 8l2-1 1.8 1.8 2.3-.8L12 6l1.2 2 2.3.8L17.3 7l2 1-.3 2.5L21 12z',
   shield: 'M12 2 4 5.2v5.9c0 4.7 3.3 8.8 8 10.9 4.7-2.1 8-6.2 8-10.9V5.2L12 2z',
   clock: 'M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm0 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm1 3v5.6l4 2.3-1 1.7-5-2.9V7h2z',
+  /* —— 以下为 v3.61.3 新增：把 75 个位置全部落到真实图标 —— */
+  chevronLeft: 'M15 5l-7 7 7 7 1.4-1.4L10.8 12l5.6-5.6z',
+  chevronDown: 'M7 10l5 5 5-5z',
+  close: 'M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z',
+  more: 'M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
+  star: 'M12 2.6l3 6.1 6.7 1-4.9 4.7 1.2 6.6L12 17.8 5.9 21l1.2-6.6-4.9-4.7 6.7-1z',
+  comment: 'M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2z',
+  reply: 'M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z',
+  copy: 'M8 3h9a2 2 0 0 1 2 2v11h-2V5H8V3zM5 7h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z',
+  share: 'M18 16a3 3 0 0 0-2 .8l-7-4a3 3 0 0 0 0-1.6l7-4A3 3 0 1 0 15 5l-7 4a3 3 0 0 0 0 2l7 4A3 3 0 1 0 18 16z',
+  edit: 'M3 17.2V21h3.8L17.8 10 14 6.2 3 17.2zM20.7 7.1a1 1 0 0 0 0-1.4l-2.4-2.4a1 1 0 0 0-1.4 0l-1.8 1.8L18.9 8.9l1.8-1.8z',
+  trash: 'M6 7h12l-1 13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 7zm3-4h6l1 2h4v2H4V5h4l1-2z',
+  flag: 'M5 3h10l4 4v6h-7l-3 3H5V3zm2 2v9h1l3-3h6V8l-3-3H7z',
+  stop: 'M6 6h12v12H6z',
+  retry: 'M12 5V2L8 6l4 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z',
+  download: 'M11 3h2v9l3.5-3.5 1.4 1.4L12 16 6.1 9.9l1.4-1.4L11 12V3zM5 19h14v2H5z',
+  expand: 'M4 4h6v2H6v4H4V4zm10 0h6v6h-2V6h-4V4zM4 14h2v4h4v2H4v-6zm14 0h2v6h-6v-2h4v-4z',
+  eye: 'M12 5c5 0 9 4.5 9 7s-4 7-9 7-9-4.5-9-7 4-7 9-7zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
+  eyeOff: 'M2 4.3 3.4 3l17.6 17.6-1.4 1.3-3.2-3.2A9.9 9.9 0 0 1 12 19c-5 0-9-4.5-9-7 0-1.4 1.3-3.4 3.4-4.8L2 5.6V4.3zM12 7c5 0 9 4.5 9 7 0 1.2-.9 2.6-2.4 3.7l-3-3A4 4 0 0 0 12 7z',
+  smile: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zM8.5 9.5a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zm7 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zM7.6 14.2a1 1 0 0 1 1.4-.1 4.6 4.6 0 0 0 3.4 1.5 4.6 4.6 0 0 0 3.4-1.5 1 1 0 0 1 1.4 1.4A6.6 6.6 0 0 1 12 17a6.6 6.6 0 0 1-4.8-2.8z',
+  image: 'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 12h14l-4.5-6-3.5 4.5-2.5-2.5L5 17zm3.5-7a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2z',
+  video: 'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2v10h14V7H5zm3.4 1.2 6.2 3.8-6.2 3.8V8.2z',
+  upload: 'M12 3l5.4 5.6L16 10l-4-4v8h-2V6l-4 4-1.4-1.4L12 3zM5 19h14v2H5z',
+  at: 'M16 12v1.5a4.5 4.5 0 0 1-9 0V12a5 5 0 1 1 10 0v1a2.5 2.5 0 1 1-5 0v-1h2v1a.5.5 0 0 0 1 0V12a3 3 0 1 0-6 0v1.5a2.5 2.5 0 0 0 5 0V12h2z',
+  cpu: 'M9 2h2v2h2V2h2v2h3a1 1 0 0 1 1 1v3h2v2h-2v2h2v2h-2v3a1 1 0 0 1-1 1h-3v2h-2v-2h-2v2H9v-2H6a1 1 0 0 1-1-1v-3H3v-2h2v-2H3V8h2V5a1 1 0 0 1 1-1h3V2zm-2 5v10h10V7H7z',
+  brain: 'M12 3a7 7 0 0 0-4 12.7V19a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3.3A7 7 0 0 0 12 3zM9 22h6v1H9v-1z',
+  filter: 'M3 5h18l-7 8v6l-4 2v-8L3 5z',
+  sort: 'M3 6h13v2H3V6zm0 5h10v2H3v-2zm0 5h7v2H3v-2zM17 8l4 4h-3v6h-2v-6h-3l4-4z',
+  refresh: 'M12 5V2L8 6l4 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z',
+  pause: 'M7 5h3v14H7V5zm7 0h3v14h-3V5z',
+  fullscreen: 'M4 4h6v2H6v4H4V4zm10 0h6v6h-2V6h-4V4zM4 14h2v4h4v2H4v-6zm14 0h2v6h-6v-2h4v-4z',
+  mute: 'M4 9h4l5-4v14l-5-4H4V9zm12.5 3 2.8-2.8 1.4 1.4-2.8 2.8 2.8 2.8-1.4 1.4-2.8-2.8-2.8 2.8-1.4-1.4 2.8-2.8-2.8-2.8 1.4-1.4 2.8 2.8z',
+  spinner: 'M12 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-7-7V3z',
+  inbox: 'M5 3h14l3 10v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6L5 3zm0 2L3 13h5l1.5 2h5L16 13h5L19 5H5z',
+  alert: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z',
+  check: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1 14.4-4-4 1.4-1.4 2.6 2.6 5.6-5.6L18 9.4l-7 7z',
+  warning: 'M12 2 1 21h22L12 2zm1 15h-2v-2h2v2zm0-4h-2V9h2v4z',
+  offline: 'M2.1 3.5 3.5 2.1l18.4 18.4-1.4 1.4-3-3H12v-2h3.6l-2.2-2.2H12v-2h.1L12 10.9A6 6 0 0 0 8.5 17H8v2h1.5A8 8 0 0 0 4.2 12.3L2.1 3.5zM12 4c3.5 0 6.7 1.4 9 3.6l-1.5 1.5A9.9 9.9 0 0 0 12 6 9.9 9.9 0 0 0 4.5 9.1L3 7.6A12.9 12.9 0 0 1 12 4z',
+  badge: 'M12 2l2.4 2 3.1-.3.9 3 2.7 1.7-1.4 2.9 1.4 2.9-2.7 1.7-.9 3-3.1-.3L12 22l-2.4-2-3.1.3-.9-3-2.7-1.7L4.3 12 2.9 9.1l2.7-1.7.9-3 3.1.3L12 2zm-1 13.5 5-5-1.4-1.4L11 12.7 8.4 10.1 7 11.5l4 4z',
+  palette: 'M12 3a9 9 0 0 0 0 18h1.5a2 2 0 0 0 0-4H12a2 2 0 0 1 0-4h2a7 7 0 0 0 7-7c0-1.7-1.3-3-3-3h-2a1 1 0 0 1-1-1c0-1.1-.9-2-2-2h-1zM7.5 10a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm3-4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm3.5 4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z',
+  globe: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm6.9 7h-3a15.6 15.6 0 0 0-1.4-3.6A8 8 0 0 1 18.9 9zM12 4.1c.7 1 1.3 2.4 1.7 4.9h-3.4c.4-2.5 1-3.9 1.7-4.9zM4.1 11h3c.1 1.2.3 2.4.7 3.5H4.5a8 8 0 0 1-.4-3.5zm3.5 5.5h2.4c.4 1.3.9 2.5 1.5 3.3A8 8 0 0 1 7.6 16.5zM9.1 6.4A15.6 15.6 0 0 0 7.7 9h-3a8 8 0 0 1 4.4-2.6zM17 15.5h3a8 8 0 0 1-4.5 2.6c.6-1 1.1-2.1 1.5-3.4.3-1.1.5-2.2.6-3.2h-.1c-.1 1.2-.2 2.4-.5 3.4zM14.4 4.4c.6.8 1.1 2 1.5 3.6h3.3a8 8 0 0 0-3.3-3.3l-1.5-.3z',
+  sun: 'M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 1h1.5v3H12V1zm0 19h1.5v3H12v-3zM1 12h3v1.5H1V12zm19 0h3v1.5h-3V12zM4.2 2.8 5.6 4.2 3.4 6.4 2 5zm16.4 12.4 1.4 1.4-2.2 2.2-1.4-1.4zM22 5l-1.4-1.4-2.2 2.2 1.4 1.4zM3.4 17.6l2.2 2.2L7 18.4 4.8 16.2z',
+  moon: 'M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z',
+  auto: 'M12 2a10 10 0 1 0 0 20V2zm0 2v16a8 8 0 0 1 0-16z',
+  menu: 'M4 7h16v2H4V7zm0 4h16v2H4v-2zm0 4h16v2H4v-2z',
+  plus: 'M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5z',
+  activity: 'M3 12h4l3 8 4-16 3 8h4v2h-5.5l-1.7-4.6L10 20l-3-6H3z',
 };
 
-/** 位置 → 内置图标的键。主题 JSON 的 slot 名就是这些 key。 */
+/**
+ * 位置 → 内置图标键。共 75 个位置，与 theme-json.js 的 SLOTS 一一对应。
+ * 主题 JSON 的 icons 字段用这些键做位置名。
+ */
 const SLOT_KEYS = {
   'nav.total': 'rank', 'nav.vote': 'vote', 'nav.gods': 'crown', 'nav.cold': 'snow',
-  'nav.chat': 'list', 'nav.submit': 'list', 'nav.mine': 'users', 'nav.help': 'doc',
-  'nav.feedback': 'mail', 'nav.admin': 'shield', 'nav.monitor': 'shield', 'nav.today': 'info',
-  'action.search': 'search', 'action.vote': 'heart', 'action.external': 'plug',
-  'action.send': 'play', 'action.back': 'logout',
+  'nav.chat': 'comment', 'nav.submit': 'plus', 'nav.mine': 'users', 'nav.help': 'doc',
+  'nav.feedback': 'mail', 'nav.admin': 'shield', 'nav.monitor': 'activity', 'nav.today': 'info',
+  'action.back': 'chevronLeft', 'action.close': 'close', 'action.more': 'more',
+  'action.vote': 'heart', 'action.star': 'star', 'action.comment': 'comment',
+  'action.reply': 'reply', 'action.copy': 'copy', 'action.share': 'share',
+  'action.external': 'plug', 'action.edit': 'edit', 'action.delete': 'trash',
+  'action.report': 'flag', 'action.send': 'send', 'action.stop': 'stop',
+  'action.retry': 'retry', 'action.download': 'download', 'action.expand': 'expand',
+  'tab.rank': 'rank', 'tab.chat': 'comment', 'tab.mine': 'users',
+  'ui.menu': 'menu', 'ui.theme': 'gear',
+  'field.search': 'search', 'field.password': 'eye', 'field.emoji': 'smile',
+  'field.image': 'image', 'field.video': 'video', 'field.upload': 'upload',
+  'field.mention': 'at', 'field.model': 'cpu', 'field.think': 'brain',
+  'field.filter': 'filter', 'field.sort': 'sort', 'field.refresh': 'refresh',
+  'media.play': 'play', 'media.pause': 'pause', 'media.fullscreen': 'fullscreen',
+  'media.mute': 'mute',
+  'state.loading': 'spinner', 'state.empty': 'inbox', 'state.error': 'alert',
+  'state.success': 'check', 'state.warn': 'warning', 'state.offline': 'offline',
   'user.login': 'login', 'user.logout': 'logout', 'user.avatar': 'users',
-  'user.admin': 'shield', 'user.verified': 'shield',
+  'user.admin': 'shield', 'user.verified': 'badge',
+  'theme.light': 'sun', 'theme.dark': 'moon', 'theme.auto': 'auto',
+  'theme.palette': 'palette', 'theme.lang': 'globe',
   'doc.community': 'rule', 'doc.terms': 'doc', 'doc.privacy': 'lock', 'doc.features': 'doc',
   'doc.criteria': 'rule', 'doc.ranking': 'list', 'doc.changelog': 'clock', 'doc.ai': 'info',
-  'theme.light': 'gear', 'theme.dark': 'gear', 'theme.auto': 'gear',
-  'theme.palette': 'gear', 'theme.lang': 'gear',
-  'state.loading': 'clock', 'state.empty': 'list', 'state.error': 'info',
-  'state.success': 'info', 'state.warn': 'info', 'state.offline': 'info',
-  'tab.rank': 'rank', 'tab.chat': 'list', 'tab.mine': 'users',
-  'ui.menu': 'list', 'ui.theme': 'gear',
-  'field.search': 'search', 'field.refresh': 'clock',
 };
 
 /** 当前生效的覆盖：slot → img: / data: / css|slot / path */
@@ -1436,17 +1530,77 @@ function TIcon(slot) {
 
 /* 页面上写死的图标（底部 tab、菜单按钮等 HTML 里的 SVG）：
    主题覆盖时才替换，清除主题时还原原样。 */
-const STATIC_ORIG = new Map();
+const STATIC_ORIG = new WeakMap();
+
+/**
+ * 生成一个可被主题替换的图标位。
+ *   IC('action.vote')            → 内置心形 path
+ *   IC('action.vote','tiny')     → 额外加尺寸修饰类
+ * 生成的元素带 data-ic，主题切换后由观察器自动换掉，无需重绘整页。
+ */
+function IC(slot, mod) {
+  var key = SLOT_KEYS[slot];
+  var inner = '<svg viewBox="0 0 24 24" class="ic"><path d="' + escAttrJs(key ? I[key] : '') + '"/></svg>';
+  return '<span class="ic-slot' + (mod ? ' ' + mod : '') + '" data-ic="' + escAttrJs(slot) + '">' + inner + '</span>';
+}
+
+/** 给单个节点套用覆盖（有覆盖则替换，无覆盖则还原） */
+function icApplyNode(el) {
+  if (!el || el.nodeType !== 1) { return; }
+  var slot = el.getAttribute('data-ic');
+  if (!slot) { return; }
+  if (!STATIC_ORIG.has(el)) { STATIC_ORIG.set(el, el.innerHTML); }
+  var ovr = TIcon(slot);
+  if (ovr) {
+    if (el.getAttribute('data-ic-ovr') !== ovr) {
+      el.innerHTML = icon(ovr);
+      el.setAttribute('data-ic-ovr', ovr);
+    }
+  } else if (el.getAttribute('data-ic-ovr')) {
+    el.innerHTML = STATIC_ORIG.get(el);
+    el.removeAttribute('data-ic-ovr');
+  }
+}
 
 function refreshStaticIcons() {
   var nodes = document.querySelectorAll('[data-ic]');
+  for (var i = 0; i < nodes.length; i++) { icApplyNode(nodes[i]); }
+}
+
+/* 空状态统一带图标：.empty 里没有 state.empty 时自动补一个，主题可整体替换。
+   跳过已经手工加过的（例如评论列表、聊天页）以及空的占位容器。 */
+function decorateEmpties(root) {
+  var scope = root && root.querySelectorAll ? root : document;
+  var nodes = scope.querySelectorAll('.empty');
   for (var i = 0; i < nodes.length; i++) {
     var el = nodes[i];
-    var slot = el.getAttribute('data-ic');
-    if (!STATIC_ORIG.has(el)) { STATIC_ORIG.set(el, el.innerHTML); }
-    var ovr = TIcon(slot);
-    el.innerHTML = ovr ? icon(ovr) : STATIC_ORIG.get(el);
+    if (el.querySelector('[data-ic="state.empty"]')) { continue; }
+    if (el.querySelector('[data-ic]')) { continue; }
+    el.insertAdjacentHTML('afterbegin', IC('state.empty'));
   }
+}
+
+/* 动态插入的节点（聊天、评论、弹窗都是 innerHTML 拼出来的）也要能换图标 */
+let _icObserver = null;
+function icObserve() {
+  if (_icObserver || typeof MutationObserver === 'undefined' || !document.body) { return; }
+  _icObserver = new MutationObserver(function (muts) {
+    for (var i = 0; i < muts.length; i++) {
+      var added = muts[i].addedNodes;
+      for (var j = 0; j < added.length; j++) {
+        var n = added[j];
+        if (n.nodeType !== 1) { continue; }
+        icApplyNode(n);
+        if (n.classList && n.classList.contains('empty')) { decorateEmpties(n.parentNode || document); }
+        if (n.querySelectorAll) {
+          var sub = n.querySelectorAll('[data-ic]');
+          for (var k = 0; k < sub.length; k++) { icApplyNode(sub[k]); }
+        }
+      }
+    }
+  });
+  _icObserver.observe(document.body, { childList: true, subtree: true });
+  decorateEmpties(document);
 }
 
 /** 主题应用时注入覆盖表；传空对象即恢复默认 */
@@ -1467,7 +1621,14 @@ function applyThemeIcons(map) {
       if (typeof map[k2] === 'string' && map[k2] && !OVR[k2]) { OVR[k2] = map[k2]; }
     }
   }
-  try { refreshStaticIcons(); } catch (e) {}
+  try { refreshStaticIcons(); icObserve(); } catch (e) {}
+}
+
+
+/* 页面一就绪就开观察：空状态图标与动态插入的槽位不必等主题切换 */
+if (typeof document !== 'undefined') {
+  if (document.body) { icObserve(); }
+  else { document.addEventListener('DOMContentLoaded', icObserve); }
 }
 
 /* ========== theme.js ========== */
@@ -1570,6 +1731,25 @@ function applyTheme(opts = {}) {
 
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', a);
+
+  /* 明暗切换按钮的图标随当前模式走：浅色=太阳、深色=月亮、跟随系统=半圆。
+     主题覆盖优先；没有覆盖就用该位置的内置默认图标。 */
+  const modeSlot = theme === 'system' ? 'theme.auto' : (resolvedTheme === 'dark' ? 'theme.dark' : 'theme.light');
+  const tIcon = document.getElementById('themeIcon');
+  if (tIcon) {
+    tIcon.setAttribute('data-ic', modeSlot);
+    const ovr = (typeof TIcon === 'function') ? TIcon(modeSlot) : '';
+    if (ovr) {
+      tIcon.innerHTML = icon(ovr);
+      tIcon.setAttribute('data-ic-ovr', ovr);
+    } else {
+      const key = (typeof SLOT_KEYS !== 'undefined') ? SLOT_KEYS[modeSlot] : '';
+      if (key && typeof I !== 'undefined') {
+        tIcon.innerHTML = '<svg viewBox="0 0 24 24" class="ic"><path d="' + escAttrJs(I[key]) + '"/></svg>';
+      }
+      tIcon.removeAttribute('data-ic-ovr');
+    }
+  }
 
   /* applyTheme 会覆盖 --accent / --radius 等变量；JSON 主题在它之后再补一次，
      否则每次切换深浅色都会把主题色冲回用户偏好色。 */
@@ -3229,20 +3409,20 @@ async function renderRank(container, ctx) {
       <div class="ai-sum-body" id="aiSumBody">
         <div class="ai-sum-loading"><i></i><i></i><i></i></div>
       </div>
-      <button class="link ai-sum-toggle" id="aiSumToggle" hidden>展开全部</button>
+      <button class="link ai-sum-toggle" id="aiSumToggle" hidden>${IC('action.expand', 'ico-xs')}<span>展开全部</span></button>
     </div>` : ''}
     ${q ? `<div class="search-note">
       <span>搜索「<b>${esc(q)}</b>」的结果</span>
-      <button class="link" id="clearSearch" style="border:0;background:0">清除搜索</button>
+      <button class="link" id="clearSearch" style="border:0;background:0">${IC('action.close', 'ico-xs')}<span>清除搜索</span></button>
     </div>` : ''}
-    <div class="seg" id="boardSeg">${BOARDS.map(b => `<button data-b="${b.k}" class="${b.k === board ? 'on' : ''}">${b.name}</button>`).join('')}</div>
-    <div class="cat-tabs" id="catTabs">
+    <div class="seg" id="boardSeg"><span class="ic-slot seg-lead" data-ic="field.sort"><svg viewBox="0 0 24 24" class="ic"><path d="M3 6h13v2H3V6zm0 5h10v2H3v-2zm0 5h7v2H3v-2zM17 8l4 4h-3v6h-2v-6h-3l4-4z"/></svg></span>${BOARDS.map(b => `<button data-b="${b.k}" class="${b.k === board ? 'on' : ''}">${b.name}</button>`).join('')}</div>
+    <div class="cat-tabs" id="catTabs"><span class="ic-slot cat-lead" data-ic="field.filter"><svg viewBox="0 0 24 24" class="ic"><path d="M3 5h18l-7 8v6l-4 2v-8L3 5z"/></svg></span>
       <button class="cat-tab ${cat === 'all' ? 'on' : ''}" data-c="all"><span class="n" id="cntAll">·</span><span>全部</span></button>
       ${CATS.map(c => `<button class="cat-tab ${cat === c.k ? 'on' : ''}" data-c="${c.k}"><span class="n" data-cnt="${c.k}">·</span><span>${c.name}</span></button>`).join('')}
     </div>
     <div class="rank-list" id="rankList"></div>
     <div class="rank-more" id="rankMoreBox">
-      <button class="btn btn-sm" id="rankMore" hidden>加载更多</button>
+      <button class="btn btn-sm" id="rankMore" hidden>${IC('action.expand', 'ico-sm')}<span>加载更多</span></button>
       <div class="tiny" id="rankFoot"></div>
     </div>
   `;
@@ -3298,14 +3478,14 @@ async function renderRank(container, ctx) {
       const items = d.items || [];
       totalCount = Number(d.total || 0);
       if (!items.length && page === 1) {
-        list.innerHTML = '<div class="empty"><p>这里还没有作品</p></div>';
+        list.innerHTML = '<div class="empty">' + IC('state.empty') + '<p>这里还没有作品</p></div>';
       }
       items.forEach((w, idx) => list.appendChild(rankRow(w, (page - 1) * PAGE_SIZE + idx + 1)));
       shownCount += items.length;
       done = !d.has_more || items.length === 0;   // 返回空页也视作到底，避免自动续拉空转
       page++;
     } catch (e) {
-      if (reset) list.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`;
+      if (reset) list.innerHTML = `<div class="empty">${IC('state.error')}<p>${esc(e.message)}</p></div>`;
       foot.textContent = t('加载失败：') + e.message;
       errored = true;                     // 暂停自动续拉，可点按钮重试
     } finally {
@@ -3505,7 +3685,7 @@ async function renderDetail(container, ctx) {
   container.innerHTML = `
     <div class="detail-head">
       <button class="back-btn" id="backBtn">
-        <svg viewBox="0 0 24 24" class="ic" style="width:18px;height:18px;fill:currentColor"><path d="M15 5l-7 7 7 7 1.4-1.4L10.8 12l5.6-5.6z"/></svg>
+        <span class="ic-slot" data-ic="action.back"><svg viewBox="0 0 24 24" class="ic" style="width:18px;height:18px;fill:currentColor"><path d="M15 5l-7 7 7 7 1.4-1.4L10.8 12l5.6-5.6z"/></svg></span>
         返回榜单
       </button>
     </div>
@@ -3513,7 +3693,7 @@ async function renderDetail(container, ctx) {
     <div class="card">
       <div class="radar-wrap" id="radarWrap"></div>
       <div style="text-align:center;margin-top:6px">
-        <div style="font-size:30px;font-weight:800;color:var(--accent)">${d.total}</div>
+        <div class="score-total" style="font-size:30px;font-weight:800;color:var(--accent)">${IC('action.star', 'ico-lg')}<span>${d.total}</span></div>
         <span class="rating r-${esc(d.rating)}">${esc(d.rating)}</span>
       </div>
       <div style="margin-top:12px">
@@ -3528,7 +3708,7 @@ async function renderDetail(container, ctx) {
     ${((d.images && d.images.length) || d.cover) ? `
     <div class="card">
       <div class="card-title">
-        <svg viewBox="0 0 24 24" class="ic"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 12h14l-4.5-6-3.5 4.5-2.5-2.5L5 17zm3.5-7a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2z"/></svg>
+        <span class="ic-slot" data-ic="field.image"><svg viewBox="0 0 24 24" class="ic"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 12h14l-4.5-6-3.5 4.5-2.5-2.5L5 17zm3.5-7a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2z"/></svg></span>
         作品预览
       </div>
       <div class="shot-grid">
@@ -3539,14 +3719,18 @@ async function renderDetail(container, ctx) {
 
     <div class="card">
       <div class="card-title">
-        <svg viewBox="0 0 24 24" class="ic"><path d="M7 6h10a5 5 0 0 1 5 5v3a4 4 0 0 1-4 4h-1a3 3 0 0 1-2.4-1.2l-.6-.8a2 2 0 0 0-3.2 0l-.6.8A3 3 0 0 1 7.4 18H7a4 4 0 0 1-4-4v-3a5 5 0 0 1 5-5z"/></svg>
+        <span class="ic-slot" data-ic="doc.features"><svg viewBox="0 0 24 24" class="ic"><path d="M7 6h10a5 5 0 0 1 5 5v3a4 4 0 0 1-4 4h-1a3 3 0 0 1-2.4-1.2l-.6-.8a2 2 0 0 0-3.2 0l-.6.8A3 3 0 0 1 7.4 18H7a4 4 0 0 1-4-4v-3a5 5 0 0 1 5-5z"/></svg></span>
         作品详情与介绍
       </div>
       <p class="muted" style="white-space:pre-wrap">${esc(d.intro || t('暂无介绍'))}</p>
       ${d.link ? `<button class="btn-link" id="openLink" data-href="${esc(d.link)}">
-        <svg viewBox="0 0 24 24" class="ic" style="width:15px;height:15px;fill:currentColor"><path d="M10.6 13.4a1 1 0 0 1 0-1.4l4.2-4.2a3 3 0 1 1 4.2 4.2l-1.8 1.8-1.4-1.4 1.8-1.8a1 1 0 0 0-1.4-1.4l-4.2 4.2a1 1 0 0 1-1.4 0zm2.8-2.8a1 1 0 0 1 0 1.4l-4.2 4.2a1 1 0 0 0 1.4 1.4l1.8-1.8 1.4 1.4-1.8 1.8a3 3 0 0 1-4.2-4.2l4.2-4.2a1 1 0 0 1 1.4 0z"/></svg>
+        <span class="ic-slot" data-ic="action.external"><svg viewBox="0 0 24 24" class="ic" style="width:15px;height:15px;fill:currentColor"><path d="M10.6 13.4a1 1 0 0 1 0-1.4l4.2-4.2a3 3 0 1 1 4.2 4.2l-1.8 1.8-1.4-1.4 1.8-1.8a1 1 0 0 0-1.4-1.4l-4.2 4.2a1 1 0 0 1-1.4 0zm2.8-2.8a1 1 0 0 1 0 1.4l-4.2 4.2a1 1 0 0 0 1.4 1.4l1.8-1.8 1.4 1.4-1.8 1.8a3 3 0 0 1-4.2-4.2l4.2-4.2a1 1 0 0 1 1.4 0z"/></svg></span>
         ${d.html_url ? '打开作品（CDN 直链）' : t('查看作品分享链接')}
       </button>
+      <div class="link-actions">
+        <button class="btn-ghost btn-sm" id="copyLink">${IC('action.copy', 'ico-sm')}<span>复制链接</span></button>
+        <button class="btn-ghost btn-sm" id="shareLink">${IC('action.share', 'ico-sm')}<span>分享</span></button>
+      </div>
       <div class="tiny" style="margin-top:6px;word-break:break-all">${esc(d.link)}</div>` : ''}
       <div class="tiny" style="margin-top:8px">作品 ID：${esc(d.source_id || '')} · 收录于 ${esc(d.added_at || '')}</div>
     </div>
@@ -3558,16 +3742,16 @@ async function renderDetail(container, ctx) {
       </div>
       <div class="tiny" style="margin-top:10px">历史峰值总分 ${d.peak_score} · 更新于 ${esc(d.updated_at)}</div>
       <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
-        <button class="btn ${d.voted ? 'btn-ghost' : ''}" id="voteBtn">${d.voted ? '已点赞' : t('点赞作品')}</button>
+        <button class="btn ${d.voted ? 'btn-ghost' : ''}" id="voteBtn">${IC('action.vote', 'ico-sm')}<span>${d.voted ? '已点赞' : t('点赞作品')}</span></button>
         <span class="tiny" id="voteCount">${d.votes == null ? '' : (t('共 ') + Number(d.votes) + t(' 票'))}</span>
         <span class="tiny">点赞计入「投票榜」，每人每作品限一次</span>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title">评论区（<span id="cmtTotal">${d.comment_total}</span>）</div>
+      <div class="card-title">${IC('action.comment')}评论区（<span id="cmtTotal">${d.comment_total}</span>）</div>
       <div class="comment-tip">
-        <svg viewBox="0 0 24 24" class="ic"><path d="M12 2l8 4v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10V6l8-4z"/></svg>
+        <span class="ic-slot" data-ic="doc.community"><svg viewBox="0 0 24 24" class="ic"><path d="M12 2l8 4v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10V6l8-4z"/></svg></span>
         文明发言，共建良好社区
       </div>
       <div id="cmtForm"></div>
@@ -3581,6 +3765,26 @@ async function renderDetail(container, ctx) {
   container.querySelector('#backBtn').addEventListener('click', () => history.length > 1 ? history.back() : navigate('#/rank'));
   const link = container.querySelector('#openLink');
   if (link) link.addEventListener('click', () => window.open(link.dataset.href || d.link, '_blank', 'noopener'));
+
+  /* 复制 / 分享：都只针对作品链接本身，不改任何后端行为 */
+  const copyBtn = container.querySelector('#copyLink');
+  if (copyBtn) copyBtn.addEventListener('click', async () => {
+    const url = String(d.link || '').trim();
+    if (!url) { return; }
+    try { await navigator.clipboard.writeText(url); toast('链接已复制'); }
+    catch (e) { toast('复制失败，请长按选择链接', 'err'); }
+  });
+  const shareBtn = container.querySelector('#shareLink');
+  if (shareBtn) shareBtn.addEventListener('click', async () => {
+    const url = String(d.link || '').trim();
+    if (!url) { return; }
+    if (navigator.share) {
+      try { await navigator.share({ title: String(d.title || ''), url: url }); } catch (e) {}
+      return;
+    }
+    try { await navigator.clipboard.writeText(url); toast('链接已复制'); }
+    catch (e) { toast('复制失败，请长按选择链接', 'err'); }
+  });
 
   // 预览图灯箱（自绘，非原生 dialog）
   const shots = container.querySelectorAll('.shot');
@@ -3598,7 +3802,7 @@ async function renderDetail(container, ctx) {
 
   /* 票数跟着结果即时更新：投票与取消都会返回最新总数 */
   function paintVote(r) {
-    voteBtn.textContent = r.voted ? '已点赞' : t('点赞作品');
+    voteBtn.innerHTML = IC('action.vote', 'ico-sm') + '<span>' + (r.voted ? '已点赞' : t('点赞作品')) + '</span>';
     voteBtn.classList.toggle('btn-ghost', r.voted);
     if (voteNum) { voteNum.textContent = t('共 ') + Number(r.count || 0) + t(' 票'); }
   }
@@ -3680,7 +3884,7 @@ function openLightbox(images, index) {
   box.className = 'lightbox';
   box.innerHTML = `
     <button class="lb-close" aria-label="${t('关闭')}">
-      <svg viewBox="0 0 24 24" class="ic"><path d="M6.4 5l5.6 5.6L17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4 6.4 5z"/></svg>
+      <span class="ic-slot" data-ic="action.close"><svg viewBox="0 0 24 24" class="ic"><path d="M6.4 5l5.6 5.6L17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4 6.4 5z"/></svg></span>
     </button>
     <img class="lb-img" src="" alt="" draggable="false">
     <div class="lb-bar">
@@ -3819,7 +4023,7 @@ async function renderComments(container, workId, targetType) {
         <textarea class="input" id="cmtText" maxlength="300" placeholder="${t('写下你的看法…')}"></textarea>
         <div class="tiny" style="text-align:right"><span id="cmtCount">0</span>/300</div>
       </div>
-      <button class="btn btn-sm" id="cmtSend">发表评论</button>`;
+      <button class="btn btn-sm" id="cmtSend">${IC('action.send', 'ico-sm')}<span>发表评论</span></button>`;
     const ta = form.querySelector('#cmtText');
     ta.addEventListener('input', () => { form.querySelector('#cmtCount').textContent = ta.value.length; });
     form.querySelector('#cmtSend').addEventListener('click', async () => {
@@ -3855,7 +4059,7 @@ async function renderComments(container, workId, targetType) {
     const roots = st.roots;
     listBox.innerHTML = '';
     if (!roots.length) {
-      listBox.innerHTML = '<div class="empty" style="padding:20px">还没有评论，来抢沙发</div>';
+      listBox.innerHTML = '<div class="empty" style="padding:20px">' + IC('state.empty') + '<p>还没有评论，来抢沙发</p></div>';
       return;
     }
     roots.slice(0, st.shown).forEach(c => {
@@ -3872,7 +4076,7 @@ async function renderComments(container, workId, targetType) {
         if (reps.length > FOLD) {
           const foldBtn = document.createElement('button');
           foldBtn.className = 'fold-toggle';
-          foldBtn.textContent = open ? t('收起回复') : t('展开全部 ') + reps.length + t(' 条回复');
+          foldBtn.innerHTML = IC('action.expand', 'ico-xs') + '<span>' + (open ? t('收起回复') : t('展开全部 ') + reps.length + t(' 条回复')) + '</span>';
           foldBtn.addEventListener('click', () => { open = !open; unfolded[c.id] = open; draw(); });
           wrap.appendChild(foldBtn);
         }
@@ -3884,7 +4088,7 @@ async function renderComments(container, workId, targetType) {
       const more = document.createElement('button');
       more.className = 'btn-ghost btn-sm';
       more.style.cssText = 'width:100%;margin-top:8px';
-      more.textContent = t('查看更多评论（还有 ') + (roots.length - st.shown) + t(' 条）');
+      more.innerHTML = IC('action.more', 'ico-sm') + '<span>' + t('查看更多评论（还有 ') + (roots.length - st.shown) + t(' 条）') + '</span>';
       more.addEventListener('click', () => { st.shown = roots.length; paint(); });
       listBox.appendChild(more);
     }
@@ -3902,7 +4106,7 @@ async function renderComments(container, workId, targetType) {
       if (tot) { tot.textContent = st.total; }
     } catch (e) {
       if (showSkeleton) {
-        listBox.innerHTML = `<div class="empty"><p>${esc(e.message)}</p><button class="btn-ghost btn-sm" id="cmtRetry">重试</button></div>`;
+        listBox.innerHTML = `<div class="empty">${IC('state.error')}<p>${esc(e.message)}</p><button class="btn-ghost btn-sm" id="cmtRetry">${IC('action.retry', 'ico-sm')}<span>重试</span></button></div>`;
         const rb = listBox.querySelector('#cmtRetry');
         if (rb) { rb.addEventListener('click', () => refresh(true)); }
       }
@@ -3977,7 +4181,7 @@ function commentReject(host, text, content, onPass) {
   const bar = document.createElement('div');
   bar.className = 'reject-note';
   bar.innerHTML = '<span class="rn-text">' + esc(text) + '</span>'
-    + '<button class="btn btn-sm" data-review="1">AI 重审</button>';
+    + '<button class="btn btn-sm" data-review="1">' + IC('action.retry', 'ico-sm') + '<span>AI 重审</span></button>';
   host.insertBefore(bar, host.firstChild);
 
   const btn = bar.querySelector('[data-review]');
@@ -4012,7 +4216,7 @@ function commentNode(c, workId, reload, ttype) {
   const folded = !!c.blocked || isBlocked(c.content);
   const noteText = c.blocked ? '该评论已被折叠，点击查看' : t('已按你的屏蔽规则收起，点击查看');
   box.innerHTML = `
-    <span class="av"><img src="${esc(c.avatar)}" alt="" draggable="false"></span>
+    <span class="av" data-ic="user.avatar"><img src="${esc(c.avatar)}" alt="" draggable="false"></span>
     <span class="body">
       <span class="head">
         ${userName(c.username, c.role, c.reports)}
@@ -4021,14 +4225,14 @@ function commentNode(c, workId, reload, ttype) {
       <span class="text">${c.reply_to ? `<span class="reply-to">@${esc(c.reply_to)}</span> ` : ''}${folded
         ? `<span class="blocked-note" data-reveal data-note="${esc(noteText)}">${noteText}</span><span class="blocked-body" hidden>${esc(c.content)}</span>`
         : esc(c.content)}</span>
-      ${c.flag === 'middle' ? '<span class="msg-flag" title="' + t('系统认为这条内容可能有恶意，但仍予放行') + '">可能有恶意'
-        + (canModerate() ? ' · <button class="link" data-act="unflag" style="border:0;background:0;font-size:12px;color:inherit;text-decoration:underline">取消标注</button>' : '')
+      ${c.flag === 'middle' ? '<span class="msg-flag" title="' + t('系统认为这条内容可能有恶意，但仍予放行') + '">' + IC('state.warn', 'ico-xs') + '可能有恶意'
+        + (canModerate() ? ' · <button class="link" data-act="unflag" style="border:0;background:0;font-size:12px;color:inherit;text-decoration:underline">' + IC('action.close', 'ico-xs') + '<span>取消标注</span></button>' : '')
         + '</span>' : ''}
       <span class="ops">
-        <button data-act="like">赞 ${c.likes || 0}</button>
-        ${canPost() ? `<button data-act="reply" data-user="${esc(c.username)}">回复</button>` : ''}
-        ${(c.mine || canModerate()) ? '<button data-act="del">删除</button>' : ''}
-        ${canModerate() ? `<button data-act="block" data-on="${c.blocked ? 1 : 0}">${c.blocked ? '取消屏蔽' : t('屏蔽')}</button>` : ''}
+        <button data-act="like">${IC('action.vote', 'ico-xs')}<span>赞 ${c.likes || 0}</span></button>
+        ${canPost() ? `<button data-act="reply" data-user="${esc(c.username)}">${IC('action.reply', 'ico-xs')}<span>回复</span></button>` : ''}
+        ${(c.mine || canModerate()) ? '<button data-act="del">' + IC('action.delete', 'ico-xs') + '<span>删除</span></button>' : ''}
+        ${canModerate() ? `<button data-act="block" data-on="${c.blocked ? 1 : 0}">${IC('action.report', 'ico-xs')}<span>${c.blocked ? '取消屏蔽' : t('屏蔽')}</span></button>` : ''}
       </span>
     </span>`;
 
@@ -4041,7 +4245,7 @@ function promptReply(toName) {
     const box = document.getElementById('dialog');
     box.innerHTML = `<h3>回复${toName ? ' ' + esc(toName) : ''}</h3>
       <div class="field"><textarea class="input" id="rpText" maxlength="300" placeholder="${t('写下回复…')}"></textarea></div>
-      <div class="dialog-actions"><button class="btn-ghost" data-r="0">取消</button><button class="btn" data-r="1">发送</button></div>`;
+      <div class="dialog-actions"><button class="btn-ghost" data-r="0">${IC('action.close', 'ico-sm')}<span>取消</span></button><button class="btn" data-r="1">${IC('action.send', 'ico-sm')}<span>发送</span></button></div>`;
     scrim.hidden = false;
     const ta = box.querySelector('#rpText'); ta.focus();
     const close = v => { scrim.hidden = true; box.innerHTML = ''; resolve(v); };
@@ -4247,14 +4451,14 @@ function toBottom(el) {
  *   - 只在「用户本就在底部」时自动贴底，不打扰上翻阅读
  *   - 失败一律就地给出重试入口，绝不静默
  * ============================================================ */
-const W_ICON_SMILE = '<svg viewBox="0 0 24 24" class="ic"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zM8.5 9.5a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zm7 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zM7.6 14.2a1 1 0 0 1 1.4-.1 4.6 4.6 0 0 0 6 0 1 1 0 0 1 1.3 1.5 6.6 6.6 0 0 1-8.6 0 1 1 0 0 1-.1-1.4z"/></svg>';
-const W_ICON_IMAGE = '<svg viewBox="0 0 24 24" class="ic"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 12h14l-4.5-6-3.5 4.5-2.5-2.5L5 17zm3.5-7a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2z"/></svg>';
-const W_ICON_VIDEO = '<svg viewBox="0 0 24 24" class="ic"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2v10h14V7H5zm3.4 1.2l6.2 3.8-6.2 3.8V8.2z"/></svg>';
-const W_ICON_SEND = '<svg viewBox="0 0 24 24" class="ic" style="width:18px;height:18px;fill:#fff"><path d="M3 20l18-8L3 4v6l12 2-12 2v6z"/></svg>';
+const W_ICON_SMILE = '<span class="ic-slot" data-ic="field.emoji"><svg viewBox="0 0 24 24" class="ic"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zM8.5 9.5a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zm7 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zM7.6 14.2a1 1 0 0 1 1.4-.1 4.6 4.6 0 0 0 6 0 1 1 0 0 1 1.3 1.5 6.6 6.6 0 0 1-8.6 0 1 1 0 0 1-.1-1.4z"/></svg></span>';
+const W_ICON_IMAGE = '<span class="ic-slot" data-ic="field.image"><svg viewBox="0 0 24 24" class="ic"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 12h14l-4.5-6-3.5 4.5-2.5-2.5L5 17zm3.5-7a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2z"/></svg></span>';
+const W_ICON_VIDEO = '<span class="ic-slot" data-ic="field.video"><svg viewBox="0 0 24 24" class="ic"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2v10h14V7H5zm3.4 1.2l6.2 3.8-6.2 3.8V8.2z"/></svg></span>';
+const W_ICON_SEND = '<span class="ic-slot" data-ic="action.send"><svg viewBox="0 0 24 24" class="ic" style="width:18px;height:18px;fill:#fff"><path d="M3 20l18-8L3 4v6l12 2-12 2v6z"/></svg></span>';
 
 /* ---------- 视频消息：卡片（点击才加载播放，省流量） ---------- */
-const MV_PLAY_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6L19 12z"/></svg>';
-const MV_FULL_ICON = '<svg viewBox="0 0 24 24" class="ic"><path d="M4 4h6v2H6v4H4V4zm10 0h6v6h-2V6h-4V4zM4 14h2v4h4v2H4v-6zm14 0h2v6h-6v-2h4v-4z"/></svg>';
+const MV_PLAY_ICON = '<span class="ic-slot" data-ic="media.play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6L19 12z"/></svg></span>';
+const MV_FULL_ICON = '<span class="ic-slot" data-ic="media.fullscreen"><svg viewBox="0 0 24 24" class="ic"><path d="M4 4h6v2H6v4H4V4zm10 0h6v6h-2V6h-4V4zM4 14h2v4h4v2H4v-6zm14 0h2v6h-6v-2h4v-4z"/></svg></span>';
 
 function videoCardHtml(bv, v) {
   v = v || {};
@@ -4281,10 +4485,24 @@ async function playVideo(card, bv) {
     card.classList.remove('mv-loading');
     card.classList.add('mv-on');
     card.innerHTML = '<div class="mv-player"><video class="mv-video" controls playsinline preload="metadata" src="' + esc(url) + '"></video>'
+      + '<div class="mv-ov" hidden>' + IC('media.pause', 'ico-lg') + '</div>'
+      + '<div class="mv-mute" hidden>' + IC('media.mute', 'ico-sm') + '</div>'
       + '<button class="mv-full" type="button" aria-label="' + t('全屏播放') + '">' + MV_FULL_ICON + '</button></div>'
       + '<div class="mv-fallback">' + t('播放不了？') + '<a href="https://www.bilibili.com/video/' + esc(bv) + '/" target="_blank" rel="noopener">' + t('去 B站观看') + '</a></div>';
     const vd = card.querySelector('video');
     const fb = card.querySelector('.mv-full');
+    /* 播放状态指示：暂停时闪一下暂停图标；静音时右上角挂个静音角标（不抢原生控件） */
+    const ovPause = card.querySelector('.mv-ov');
+    const ovMute = card.querySelector('.mv-mute');
+    let ovT = 0;
+    vd.addEventListener('pause', () => {
+      if (vd.ended) { return; }
+      ovPause.hidden = false;
+      clearTimeout(ovT);
+      ovT = setTimeout(() => { ovPause.hidden = true; }, 900);
+    });
+    vd.addEventListener('play', () => { ovPause.hidden = true; });
+    vd.addEventListener('volumechange', () => { ovMute.hidden = !vd.muted; });
     fb.addEventListener('click', () => {
       try {
         if (vd.webkitEnterFullscreen) { vd.webkitEnterFullscreen(); }        // iOS Safari
@@ -4319,7 +4537,7 @@ async function mountWorld(body) {
         <button class="icon-btn pk-btn" id="wEmoji" aria-label="${t('表情')}" ${canSend ? '' : 'disabled'}>${W_ICON_SMILE}</button>
         <button class="icon-btn pk-btn" id="wImage" aria-label="${t('图片')}" ${canSend ? '' : 'disabled'}>${W_ICON_IMAGE}</button>
         <button class="icon-btn pk-btn" id="wVideo" aria-label="${t('视频')}" ${canSend ? '' : 'disabled'}>${W_ICON_VIDEO}</button>
-        <button class="icon-btn pk-btn at-txt" id="wAt" aria-label="${t('@ 官方AI')}" ${canSend ? '' : 'disabled'}>@</button>
+        <button class="icon-btn pk-btn at-txt" id="wAt" aria-label="${t('@ 官方AI')}" ${canSend ? '' : 'disabled'}>${IC('field.mention', 'ico-sm')}</button>
         <div class="cnt" id="wCount">0/500</div>
         <textarea class="input" id="wInput" rows="1" maxlength="500"
           placeholder="${canSend ? t('输入消息…') : t('游客仅可查看，登录后可发言')}" ${canSend ? '' : 'disabled'}></textarea>
@@ -4360,11 +4578,11 @@ async function mountWorld(body) {
       inner = renderRich(m.content);
     }
     const recallBtn = (m.mine && !m.recalled)
-      ? ' · <button class="link" data-recall="1" style="border:0;background:0;font-size:12px">撤回</button>' : '';
+      ? ' · <button class="link" data-recall="1" style="border:0;background:0;font-size:12px">' + IC('action.close', 'ico-xs') + '<span>撤回</span></button>' : '';
     /* 单条删除：本人或管理员都能删；官方 AI 的消息只有管理员看得到这个按钮 */
     const delBtn = (!m.recalled && (m.mine || isAdminish()))
-      ? ' · <button class="link" data-del="1" style="border:0;background:0;font-size:12px">删除</button>' : '';
-    el.innerHTML = '<span class="av"><img src="' + esc(m.avatar) + '" alt="" draggable="false" style="user-select:none"></span>'
+      ? ' · <button class="link" data-del="1" style="border:0;background:0;font-size:12px">' + IC('action.delete', 'ico-xs') + '<span>删除</span></button>' : '';
+    el.innerHTML = '<span class="av" data-ic="user.avatar"><img src="' + esc(m.avatar) + '" alt="" draggable="false" style="user-select:none"></span>'
       + '<span class="bubble-wrap">'
       +   '<span class="who">' + userName(m.username, m.role) + ' · ' + esc(m.time)
             + (m.pending ? ' · 发送中…' : '') + recallBtn + delBtn + '</span>'
@@ -4446,7 +4664,7 @@ async function mountWorld(body) {
     const d = document.createElement('div');
     d.className = 'empty';
     d.style.padding = '22px';
-    d.textContent = text;
+    d.innerHTML = IC('state.empty') + '<p>' + esc(text) + '</p>';
     return d;
   }
 
@@ -4454,11 +4672,12 @@ async function mountWorld(body) {
     stream.innerHTML = '';
     const d = document.createElement('div');
     d.className = 'empty';
+    d.innerHTML = IC('state.error');
     const p = document.createElement('p');
     p.textContent = msg;
     const b = document.createElement('button');
     b.className = 'btn-ghost btn-sm';
-    b.textContent = t('重试');
+    b.innerHTML = IC('action.retry', 'ico-sm') + '<span>' + t('重试') + '</span>';
     b.addEventListener('click', onRetry);
     d.appendChild(p); d.appendChild(b);
     stream.appendChild(d);
@@ -4581,7 +4800,7 @@ async function mountWorld(body) {
       +   '<input class="input" id="wImgUrl" placeholder="' + t('粘贴图片链接（https://…png / jpg）') + '" style="margin-bottom:8px">'
       +   '<div class="row-gap">'
       +     '<button class="btn btn-sm" id="wImgLink">发送链接图片</button>'
-      +     '<button class="btn-ghost btn-sm" id="wImgUpBtn">上传本地图片</button>'
+      +     '<button class="btn-ghost btn-sm" id="wImgUpBtn">' + IC('field.upload', 'ico-sm') + '<span>上传本地图片</span></button>'
       +     '<input type="file" id="wImgFile" accept="image/*" class="sr-only">'
       +   '</div>'
       +   '<div class="tiny" id="wImgHint" style="margin-top:8px">支持 JPG / PNG / GIF / WebP，最大 2MB</div>'
@@ -4771,7 +4990,7 @@ function cardsHtml(cards) {
     const meta = TOOL_META[c.action] || { n: c.action || t('工具调用'), d: TOOL_META.search.d };
     const ok = c.ok !== false;
     return '<div class="tool-card ' + (ok ? 'ok' : 'err') + '">'
-      + '<svg viewBox="0 0 24 24" class="tc-ic"><path d="' + meta.d + '"/></svg>'
+      + '<span class="ic-slot" data-ic="action.more"><svg viewBox="0 0 24 24" class="tc-ic"><path d="' + meta.d + '"/></svg></span>'
       + '<span class="tc-body"><b>' + esc(meta.n) + '</b>'
       + '<span class="tiny">' + (ok ? '已完成 · ' : '失败 · ') + esc(c.summary || '') + '</span></span></div>';
   }).join('');
@@ -4786,7 +5005,7 @@ function addThink(container) {
   const el = document.createElement('div');
   el.className = 'ai-think open live';
   el.innerHTML = '<button type="button" class="tk-head">'
-    + '<svg viewBox="0 0 24 24" class="tk-ic"><path d="M12 3a7 7 0 0 0-4 12.7V19a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3.3A7 7 0 0 0 12 3zM9 22h6v1H9v-1z"/></svg>'
+    + '<span class="ic-slot" data-ic="field.think"><svg viewBox="0 0 24 24" class="tk-ic"><path d="M12 3a7 7 0 0 0-4 12.7V19a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3.3A7 7 0 0 0 12 3zM9 22h6v1H9v-1z"/></svg></span>'
     + '<span class="tk-title">深度思考</span><span class="tk-state">进行中</span>'
     + '<svg viewBox="0 0 24 24" class="tk-chev"><path d="M7 10l5 5 5-5z"/></svg></button>'
     + '<div class="tk-body"></div>';
@@ -4818,7 +5037,7 @@ function addToolCall(cards, action) {
   const el = document.createElement('div');
   el.className = 'tool-card call';
   el.dataset.action = action || '';
-  el.innerHTML = `<svg viewBox="0 0 24 24" class="tc-ic"><path d="${meta.d}"/></svg>
+  el.innerHTML = `<span class="ic-slot" data-ic="action.more"><svg viewBox="0 0 24 24" class="tc-ic"><path d="${meta.d}"/></svg></span>
     <span class="tc-body"><b>${esc(meta.n)}</b><span class="tiny">正在调用…</span></span>
     <span class="tc-dot"><i></i><i></i><i></i></span>`;
   cards.appendChild(el);
@@ -4836,8 +5055,8 @@ function resolveTool(cards, ev) {
   if (dot) { dot.remove(); }
 }
 
-const AI_ICON_SEND = '<svg viewBox="0 0 24 24" class="ic" style="width:18px;height:18px;fill:#fff"><path d="M3 20l18-8L3 4v6l12 2-12 2v6z"/></svg>';
-const AI_ICON_STOP = '<svg viewBox="0 0 24 24" class="ic" style="width:16px;height:16px;fill:#fff"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+const AI_ICON_SEND = '<span class="ic-slot" data-ic="action.send"><svg viewBox="0 0 24 24" class="ic" style="width:18px;height:18px;fill:#fff"><path d="M3 20l18-8L3 4v6l12 2-12 2v6z"/></svg></span>';
+const AI_ICON_STOP = '<span class="ic-slot" data-ic="action.stop"><svg viewBox="0 0 24 24" class="ic" style="width:16px;height:16px;fill:#fff"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></span>';
 
 async function mountAi(body) {
   window.__chatPollEnabled = false;         // AI 页不轮询世界对话，避免并发拖累
@@ -4858,12 +5077,12 @@ async function mountAi(body) {
       <div class="picker" id="pickerAi" hidden></div>
       <div class="model-bar">
         <button type="button" class="model-pick" id="modelBtn" aria-haspopup="listbox" aria-expanded="false">
-          <svg viewBox="0 0 24 24" class="mp-ic"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg>
+          <span class="ic-slot" data-ic="field.model"><svg viewBox="0 0 24 24" class="mp-ic"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/></svg></span>
           <span class="mp-name" id="modelBtnName">模型</span>
           <svg viewBox="0 0 24 24" class="mp-chev"><path d="M7 10l5 5 5-5z"/></svg>
         </button>
         <button type="button" class="think-toggle" id="thinkBtn" aria-pressed="false" title="${t('开启后 AI 会先推理再回答（本站模型支持）')}">
-          <svg viewBox="0 0 24 24" class="tt-ic"><path d="M12 3a7 7 0 0 0-4 12.7V19a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3.3A7 7 0 0 0 12 3zM9 22h6v1H9v-1z"/></svg>
+          <span class="ic-slot" data-ic="field.think"><svg viewBox="0 0 24 24" class="tt-ic"><path d="M12 3a7 7 0 0 0-4 12.7V19a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3.3A7 7 0 0 0 12 3zM9 22h6v1H9v-1z"/></svg></span>
           <span>深度思考</span>
         </button>
       </div>
@@ -4873,12 +5092,12 @@ async function mountAi(body) {
       </div>
       <div class="chat-input">
         <button class="icon-btn pk-btn" id="emojiBtnAi" aria-label="${t('表情')}">
-          <svg viewBox="0 0 24 24" class="ic"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zM8.5 9.5a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zm7 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zM7.6 14.2a1 1 0 0 1 1.4-.1 4.6 4.6 0 0 0 6 0 1 1 0 0 1 1.3 1.5 6.6 6.6 0 0 1-8.6 0 1 1 0 0 1-.1-1.4z"/></svg>
+          <span class="ic-slot" data-ic="field.emoji"><svg viewBox="0 0 24 24" class="ic"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zM8.5 9.5a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zm7 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6zM7.6 14.2a1 1 0 0 1 1.4-.1 4.6 4.6 0 0 0 6 0 1 1 0 0 1 1.3 1.5 6.6 6.6 0 0 1-8.6 0 1 1 0 0 1-.1-1.4z"/></svg></span>
         </button>
         <div class="cnt" id="aiCount">0/2000</div>
         <textarea class="input" id="aiInput" rows="1" maxlength="2000" placeholder="${t('向 AI 提问，可问榜单规则与作品信息…')}"></textarea>
         <button class="btn" id="aiSend" aria-label="${t('发送')}">
-          <svg viewBox="0 0 24 24" class="ic" style="width:18px;height:18px;fill:#fff"><path d="M3 20l18-8L3 4v6l12 2-12 2v6z"/></svg>
+          <span class="ic-slot" data-ic="action.send"><svg viewBox="0 0 24 24" class="ic" style="width:18px;height:18px;fill:#fff"><path d="M3 20l18-8L3 4v6l12 2-12 2v6z"/></svg></span>
         </button>
       </div>
       <div class="identity-tip">
@@ -5257,7 +5476,7 @@ function aiMsg(side, text, oid, meta) {
   const who = side === 'mine' ? esc(state.username) : t('AI 助手');
   const avatar = side === 'mine'
     ? '<img src="' + esc(state.avatar || '') + '" alt="" draggable="false" style="user-select:none">'
-    : '<span class="ai-av"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9z"/></svg></span>';
+    : '<span class="ai-av ic-slot" data-ic="user.avatar"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9z"/></svg></span>';
   el.innerHTML = `
     <span class="av">${avatar}</span>
     <span class="bubble-wrap">
@@ -5313,11 +5532,11 @@ async function renderMine(container) {
     container.innerHTML = `
       <div class="card">
         <div class="profile-head">
-          <span class="av">${avatarImg('guest')}</span>
+          <span class="av" data-ic="user.avatar">${avatarImg('guest')}</span>
           <div><div class="name">游客</div><div class="tiny">当前为游客模式</div></div>
         </div>
         <p class="muted tiny">游客可浏览榜单与世界对话；登录后可评论、点赞、使用 AI 对话。</p>
-        <button class="btn" id="goLogin" style="width:100%;margin-top:10px">登录 / 注册</button>
+        <button class="btn" id="goLogin" style="width:100%;margin-top:10px">${IC('user.login', 'ico-sm')}<span>登录 / 注册</span></button>
       </div>
       <div class="card">
         <div class="card-title">外观设置</div>
@@ -5340,7 +5559,7 @@ async function renderMine(container) {
 
   let d;
   try { d = await api('profile', 'info'); }
-  catch (e) { container.innerHTML = `<div class="empty"><p>${esc(e.message)}</p></div>`; return; }
+  catch (e) { container.innerHTML = `<div class="empty">${IC('state.error')}<p>${esc(e.message)}</p></div>`; return; }
 
   const isAdmin = isAdminish();
   const s = d.settings || {};
@@ -5348,10 +5567,10 @@ async function renderMine(container) {
   container.innerHTML = `
     <div class="card">
       <div class="profile-head">
-        <span class="av">${avatarImg(d.username, d.avatar)}</span>
+        <span class="av" data-ic="user.avatar">${avatarImg(d.username, d.avatar)}</span>
         <div>
           <div class="name">${userName(d.username, d.role)}</div>
-          <div class="tiny">${isAdmin ? (d.role === 'subadmin' ? '副管理员账号' : t('管理员账号')) : (t('注册于 ') + esc(d.registered_at || ''))}</div>
+          <div class="tiny">${isAdmin ? IC('user.verified', 'ico-xs') + (d.role === 'subadmin' ? '副管理员账号' : t('管理员账号')) : (t('注册于 ') + esc(d.registered_at || ''))}</div>
         </div>
       </div>
       <div class="uid-row">
@@ -5380,10 +5599,10 @@ async function renderMine(container) {
       <div class="tiny" style="margin-top:6px">开启后登录要多一步：密码通过之后还要输入邮箱验证码。需要先绑定邮箱。</div>
       ${isAdmin ? '<div class="adm-actions">'
         + '<button type="button" class="adm-btn" id="panelBtn">'
-        +   '<svg viewBox="0 0 24 24" class="ic"><path d="' + G_ICON + '"/></svg><span>控制面板</span>'
+        +   '<span class="ic-slot" data-ic="nav.admin"><svg viewBox="0 0 24 24" class="ic"><path d="' + G_ICON + '"/></svg></span><span>控制面板</span>'
         + '</button>'
         + '<button type="button" class="adm-btn" id="monitorBtn">'
-        +   '<svg viewBox="0 0 24 24" class="ic"><path d="' + S_ICON + '"/></svg><span>异常监测</span>'
+        +   '<span class="ic-slot" data-ic="nav.monitor"><svg viewBox="0 0 24 24" class="ic"><path d="' + S_ICON + '"/></svg></span><span>异常监测</span>'
         + '</button>'
         + '</div>' : ''}
     </div>
@@ -5441,7 +5660,7 @@ async function renderMine(container) {
     </div>
 
     <div class="card">
-      <div class="card-title">语言</div>
+      <div class="card-title">${IC('theme.lang')}语言</div>
       <div id="langSet"></div>
     </div>
 
@@ -5462,7 +5681,7 @@ async function renderMine(container) {
       </div>
     </div>
 
-    <button class="btn-ghost" id="logoutBtn" style="width:100%;margin-bottom:16px">退出登录</button>
+    <button class="btn-ghost" id="logoutBtn" style="width:100%;margin-bottom:16px">${IC('user.logout', 'ico-sm')}<span>${t('退出登录')}</span></button>
   `;
 
   /* AI 免费模型额度卡片：独立拉取，失败静默（不影响页面其它部分） */
@@ -5841,15 +6060,15 @@ function mountAppearance(box) {
   const navOn = getPrefs().nav_anim !== 0;
   box.innerHTML = `
     <div class="setting-row">
-      <span>深浅色</span>
+      <span>${IC('ui.theme', 'ico-sm')}深浅色</span>
       <div class="seg" style="max-width:200px" id="themeSeg">
-        <button data-t="light" class="${theme === 'light' ? 'on' : ''}">浅色</button>
-        <button data-t="dark" class="${theme === 'dark' ? 'on' : ''}">深色</button>
-        <button data-t="system" class="${theme === 'system' ? 'on' : ''}">跟随</button>
+        <button data-t="light" class="${theme === 'light' ? 'on' : ''}">${IC('theme.light', 'ico-sm')}<span>浅色</span></button>
+        <button data-t="dark" class="${theme === 'dark' ? 'on' : ''}">${IC('theme.dark', 'ico-sm')}<span>深色</span></button>
+        <button data-t="system" class="${theme === 'system' ? 'on' : ''}">${IC('theme.auto', 'ico-sm')}<span>跟随</span></button>
       </div>
     </div>
     <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px">
-      <span>设计风格</span>
+      <span>${IC('theme.palette', 'ico-sm')}设计风格</span>
       <div class="skin-row" id="skinRow">
         ${skinKeys().map(k => {
           if (k === '__tj') {
@@ -6368,12 +6587,12 @@ async function renderLogin(container) {
         <div class="input-wrap">
           <input class="input" id="uPwd" type="password" autocomplete="${sub === 'register' ? 'new-password' : 'current-password'}" placeholder="${sub === 'register' ? t('设置 8-64 位密码') : t('请输入密码')}">
           <button class="icon-btn eye" id="eyeBtn" type="button" aria-label="${t('显示密码')}">
-            <svg viewBox="0 0 24 24" class="ic"><path d="M12 5c5 0 9 4.5 9 7s-4 7-9 7-9-4.5-9-7 4-7 9-7zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg>
+            <span class="ic-slot" data-ic="field.password"><svg viewBox="0 0 24 24" class="ic"><path d="M12 5c5 0 9 4.5 9 7s-4 7-9 7-9-4.5-9-7 4-7 9-7zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg></span>
           </button>
         </div>
       </div>
       <div class="agree">
-        <span class="box ${agreed ? 'on' : ''}" id="agreeBox"><svg viewBox="0 0 24 24" class="ic"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></span>
+        <span class="box ${agreed ? 'on' : ''}" id="agreeBox"><span class="ic-slot" data-ic="state.success"><svg viewBox="0 0 24 24" class="ic"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></span></span>
         <span>我已阅读并同意<span class="link" data-doc="用户协议">《用户协议》</span>${t('与')}<span class="link" data-doc="隐私政策">《隐私政策》</span>（本站为个人兴趣分享，请文明互动）</span>
       </div>
       ${sub === 'register' ? `
@@ -6389,11 +6608,11 @@ async function renderLogin(container) {
         <input class="input" id="rCode" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="${t('6 位数字')}">
       </div>` : ''}
       <div id="capBox" style="margin-bottom:12px"></div>
-      <button class="btn" id="submitBtn" style="width:100%">${sub === 'register' ? '注册并登录' : t('登录')}</button>
+      <button class="btn" id="submitBtn" style="width:100%">${IC('user.login', 'ico-sm')}<span>${sub === 'register' ? '注册并登录' : t('登录')}</span></button>
       <div class="tiny" style="text-align:center;margin-top:10px">${sub === 'register' ? '密码登录的账号可浏览榜单并参与投票' : t('忘记密码请联系管理员')}</div>
       <div class="reg-video" id="regVideo">
         <button class="reg-video-btn" id="regVideoBtn" type="button">
-          <svg viewBox="0 0 24 24" class="ic"><path d="M8 5v14l11-7z"/></svg>
+          <span class="ic-slot" data-ic="media.play"><svg viewBox="0 0 24 24" class="ic"><path d="M8 5v14l11-7z"/></svg></span>
           <span>先看看这是什么 · 8 分钟宣传片</span>
         </button>
         <div class="reg-video-frame" id="regVideoFrame"></div>
@@ -6490,7 +6709,7 @@ async function renderLogin(container) {
   function paintGuest(pane) {
     pane.innerHTML = `
       <div class="guest-box">
-        <svg viewBox="0 0 24 24" class="ic" style="width:44px;height:44px;fill:var(--text-3);margin:0 auto 10px"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5z"/></svg>
+        <span class="ic-slot" data-ic="user.avatar"><svg viewBox="0 0 24 24" class="ic" style="width:44px;height:44px;fill:var(--text-3);margin:0 auto 10px"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5z"/></svg></span>
         <div style="font-weight:700;margin-bottom:6px">游客模式</div>
         <p class="muted tiny">无需登录即可浏览全部榜单与作品详情；参与投票、评论与 AI 对话需要登录账号。</p>
         <button class="btn" id="guestBtn" style="width:100%;margin-top:14px">以游客身份进入</button>
@@ -7266,7 +7485,7 @@ function adminLayout() {
     ${workListBlock(true)}
 
     <div class="panel-plain">
-      <h3>用户管理</h3>
+      <h3>${IC('user.admin', 'ico-sm')}用户管理</h3>
       <div class="prow">
         <input class="input" id="uq" placeholder="搜索用户名 / 8 位 UID">
         <button class="btn btn-sm" id="uSearch">搜索</button>
@@ -7527,7 +7746,7 @@ function backupBlock() {
       <div id="bkMeta" class="tiny muted" style="margin-bottom:10px"></div>
       <div class="row-gap">
         <button class="btn btn-sm" id="bkRunBtn">立即备份</button>
-        <button class="btn-sm btn-ghost" id="bkListBtn">刷新列表</button>
+        <button class="btn-sm btn-ghost" id="bkListBtn">${IC('field.refresh', 'ico-sm')}<span>刷新列表</span></button>
       </div>
       <div id="bkList" style="margin-top:12px"><div class="skeleton" style="height:60px"></div></div>
     </div>`;
@@ -9103,7 +9322,7 @@ async function loadWorks(container, q, readOnly, page) {
           <td>${Number(w.total_score)}</td>
           <td>${Number(w.is_hidden) === 1 ? '已下架' : t('在榜')}</td>
           <td>${readOnly ? '<span class="tiny">—</span>' : `
-            <button class="btn-ghost btn-sm" data-act="edit">编辑</button>
+            <button class="btn-ghost btn-sm" data-act="edit">${IC('action.edit', 'ico-sm')}<span>编辑</span></button>
             <button class="btn-ghost btn-sm" data-act="toggle">${Number(w.is_hidden) === 1 ? '恢复' : t('下架')}</button>
             <button class="btn-ghost btn-sm" data-act="del">删除</button>`}
           </td></tr>`).join('') + '</tbody></table>';
@@ -9309,7 +9528,7 @@ async function loadPeer(container) {
           <span class="muted">${p.enabled ? '' : '[已停用] '}${p.last_sync_at ? '上次同步 ' + esc(p.last_sync_at) + ' UTC' : t('尚未同步')}${p.last_status ? ' · ' + esc(p.last_status) : ''}</span>
         </span>
         <button class="btn btn-sm" data-a="test" data-id="${p.id}">测试</button>
-        <button class="btn btn-sm" data-a="edit" data-id="${p.id}">编辑</button>
+        <button class="btn btn-sm" data-a="edit" data-id="${p.id}">${IC('action.edit', 'ico-sm')}<span>编辑</span></button>
         <button class="btn btn-sm" data-a="del" data-id="${p.id}">删除</button>
       </div>`).join('');
   };
@@ -9392,7 +9611,7 @@ function discBlock() {
         被通报过的用户都在这里。可以随时「设置」调整理由、封禁天数或直接解封。
         累计被通报 <b>10 次</b>（单次封禁 ≥ 7 天才计入）的账号会被<b>永久删除</b>。
       </p>
-      <div class="prow"><button class="btn btn-sm" id="discRefresh">刷新列表</button></div>
+      <div class="prow"><button class="btn btn-sm" id="discRefresh">${IC('field.refresh', 'ico-sm')}<span>刷新列表</span></button></div>
       <div id="discListBox" style="margin-top:12px"><div class="skeleton" style="height:80px"></div></div>
     </div>`;
 }
@@ -9512,7 +9731,7 @@ async function loadDisc(container) {
         <td class="tiny">${it.banned ? (it.ban_until ? '至 ' + esc(it.ban_until) : t('永久')) : t('未封停')}${it.ip_banned ? ' · IP' : ''}</td>
         <td class="tiny">${Number(it.user_count || 0)} 次</td>
         <td class="tiny">${esc(it.created)}</td>
-        <td><button class="btn-ghost btn-sm" data-act="edit">设置</button>
+        <td><button class="btn-ghost btn-sm" data-act="edit">${IC('action.edit', 'ico-sm')}<span>设置</span></button>
             <button class="btn-ghost btn-sm" data-act="revoke">撤销</button></td></tr>`).join('')
       + '</tbody></table>';
 
@@ -10011,9 +10230,9 @@ async function renderDoc(container, ctx) {
 }
 
 /* 下载（托盘 + 下箭头） */
-const ICON_DL = '<svg viewBox="0 0 24 24" class="ic" style="width:16px;height:16px;fill:none;'
+const ICON_DL = '<span class="ic-slot" data-ic="action.download"><svg viewBox="0 0 24 24" class="ic" style="width:16px;height:16px;fill:none;'
   + 'stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round" aria-hidden="true">'
-  + '<path d="M12 3.5v10.5M7.8 10.2 12 14.4l4.2-4.2M5 18.5h14"/></svg>';
+  + '<path d="M12 3.5v10.5M7.8 10.2 12 14.4l4.2-4.2M5 18.5h14"/></svg></span>';
 
 /**
  * 文档末尾的下载条。原文已在内存中，直接落盘，不产生第二次请求。
@@ -11107,6 +11326,8 @@ function drawerItems() {
   }
   const base = [
     { k: 'total', label: t('总排行榜'), ic: T('nav.total', I.rank), go: '#/rank' },
+    { k: 'chat', label: t('世界对话'), ic: T('nav.chat', I.list), go: '#/chat' },
+    { k: 'mine', label: t('我的'), ic: T('nav.mine', I.users), go: '#/mine' },
     { k: 'search', label: t('搜索作品'), ic: T('field.search', I.search), act: 'search' },
     { k: 'submit', label: t('提交作品'), ic: T('nav.submit', I.list), go: '#/submit' },
     { k: 'vote', label: t('投票榜'), ic: T('nav.vote', I.vote), go: '#/rank?board=vote' },
@@ -11509,6 +11730,7 @@ async function main() {
   applyI18nText(document.body); // 首屏已有的文本节点（公告横幅等不在路由容器里）
   watchI18n(document.body);     // 异步插入的内容（列表、公告、人机验证组件）也要翻译
   initSystemWatcher();
+  initOfflineBar();      // 断网提示条（state.offline）
 
   setUnauthorizedHandler(() => {
     if (state.role === 'guest') { return; }        // 游客已在 core.js 内静默续期，走到这里无需处理

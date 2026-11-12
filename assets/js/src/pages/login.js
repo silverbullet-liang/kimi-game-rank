@@ -179,12 +179,12 @@ export async function renderLogin(container) {
         <div class="input-wrap">
           <input class="input" id="uPwd" type="password" autocomplete="${sub === 'register' ? 'new-password' : 'current-password'}" placeholder="${sub === 'register' ? t('设置 8-64 位密码') : t('请输入密码')}">
           <button class="icon-btn eye" id="eyeBtn" type="button" aria-label="${t('显示密码')}">
-            <svg viewBox="0 0 24 24" class="ic"><path d="M12 5c5 0 9 4.5 9 7s-4 7-9 7-9-4.5-9-7 4-7 9-7zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg>
+            <span class="ic-slot" data-ic="field.password"><svg viewBox="0 0 24 24" class="ic"><path d="M12 5c5 0 9 4.5 9 7s-4 7-9 7-9-4.5-9-7 4-7 9-7zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg></span>
           </button>
         </div>
       </div>
       <div class="agree">
-        <span class="box ${agreed ? 'on' : ''}" id="agreeBox"><svg viewBox="0 0 24 24" class="ic"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></span>
+        <span class="box ${agreed ? 'on' : ''}" id="agreeBox"><span class="ic-slot" data-ic="state.success"><svg viewBox="0 0 24 24" class="ic"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></span></span>
         <span>我已阅读并同意<span class="link" data-doc="用户协议">《用户协议》</span>${t('与')}<span class="link" data-doc="隐私政策">《隐私政策》</span>（本站为个人兴趣分享，请文明互动）</span>
       </div>
       ${sub === 'register' ? `
@@ -200,11 +200,11 @@ export async function renderLogin(container) {
         <input class="input" id="rCode" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="${t('6 位数字')}">
       </div>` : ''}
       <div id="capBox" style="margin-bottom:12px"></div>
-      <button class="btn" id="submitBtn" style="width:100%">${sub === 'register' ? '注册并登录' : t('登录')}</button>
+      <button class="btn" id="submitBtn" style="width:100%">${IC('user.login', 'ico-sm')}<span>${sub === 'register' ? '注册并登录' : t('登录')}</span></button>
       <div class="tiny" style="text-align:center;margin-top:10px">${sub === 'register' ? '密码登录的账号可浏览榜单并参与投票' : t('忘记密码请联系管理员')}</div>
       <div class="reg-video" id="regVideo">
         <button class="reg-video-btn" id="regVideoBtn" type="button">
-          <svg viewBox="0 0 24 24" class="ic"><path d="M8 5v14l11-7z"/></svg>
+          <span class="ic-slot" data-ic="media.play"><svg viewBox="0 0 24 24" class="ic"><path d="M8 5v14l11-7z"/></svg></span>
           <span>先看看这是什么 · 8 分钟宣传片</span>
         </button>
         <div class="reg-video-frame" id="regVideoFrame"></div>
@@ -301,7 +301,7 @@ export async function renderLogin(container) {
   function paintGuest(pane) {
     pane.innerHTML = `
       <div class="guest-box">
-        <svg viewBox="0 0 24 24" class="ic" style="width:44px;height:44px;fill:var(--text-3);margin:0 auto 10px"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5z"/></svg>
+        <span class="ic-slot" data-ic="user.avatar"><svg viewBox="0 0 24 24" class="ic" style="width:44px;height:44px;fill:var(--text-3);margin:0 auto 10px"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5z"/></svg></span>
         <div style="font-weight:700;margin-bottom:6px">游客模式</div>
         <p class="muted tiny">无需登录即可浏览全部榜单与作品详情；参与投票、评论与 AI 对话需要登录账号。</p>
         <button class="btn" id="guestBtn" style="width:100%;margin-top:14px">以游客身份进入</button>

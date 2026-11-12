@@ -98,6 +98,25 @@ export function applyTheme(opts = {}) {
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', a);
 
+  /* 明暗切换按钮的图标随当前模式走：浅色=太阳、深色=月亮、跟随系统=半圆。
+     主题覆盖优先；没有覆盖就用该位置的内置默认图标。 */
+  const modeSlot = theme === 'system' ? 'theme.auto' : (resolvedTheme === 'dark' ? 'theme.dark' : 'theme.light');
+  const tIcon = document.getElementById('themeIcon');
+  if (tIcon) {
+    tIcon.setAttribute('data-ic', modeSlot);
+    const ovr = (typeof TIcon === 'function') ? TIcon(modeSlot) : '';
+    if (ovr) {
+      tIcon.innerHTML = icon(ovr);
+      tIcon.setAttribute('data-ic-ovr', ovr);
+    } else {
+      const key = (typeof SLOT_KEYS !== 'undefined') ? SLOT_KEYS[modeSlot] : '';
+      if (key && typeof I !== 'undefined') {
+        tIcon.innerHTML = '<svg viewBox="0 0 24 24" class="ic"><path d="' + escAttrJs(I[key]) + '"/></svg>';
+      }
+      tIcon.removeAttribute('data-ic-ovr');
+    }
+  }
+
   /* applyTheme 会覆盖 --accent / --radius 等变量；JSON 主题在它之后再补一次，
      否则每次切换深浅色都会把主题色冲回用户偏好色。 */
   if (typeof window !== 'undefined' && typeof window.__TJSON_REAPPLY === 'function') {
