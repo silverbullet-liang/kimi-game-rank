@@ -1,7 +1,7 @@
 /**
  * 榜单页
  */
-import { api, state, esc, toast, searchAiOn } from '../core.js';
+import { api, state, esc, toast, searchAiOn, userHonours } from '../core.js';
 import { navigate } from '../router.js';
 import { setHeroSrc } from '../transitions.js';
 import { mdToHtml } from '../md.js';
@@ -235,7 +235,7 @@ function rankRow(w, rank) {
       <span class="rank-title">${esc(w.title)}</span>
       <span class="rank-meta">
         <span class="chip">${esc(w.category_name)}</span>
-        <span>${esc(w.author)}</span>
+        <span>${esc(w.author)}${userHonours(w.author)}</span>
         <span>口碑 ${w.heat}</span>
       </span>
     </span>

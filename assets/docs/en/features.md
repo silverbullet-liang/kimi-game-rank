@@ -211,6 +211,16 @@ The login is used only to read this one work. It is not stored and not displayed
   - **Apply** — takes effect on this device only, without overwriting what you saved.
 - "Design spec" at the top right jumps straight to the full specification in the repository: fields, icon slots and border positions.
 
+**Three tiers of honours**
+
+Good submissions earn a badge next to the author's name, styled exactly like the administrator mark; it shows up in comments, the world chat, the rankings and the gallery:
+
+- **First to Jump In** — the very first person on the site to submit a theme (administrators and sub-administrators excluded). Awarded once, kept forever.
+- **Small Steps, Solid Gains** — two themes approved.
+- **Craftsmanship** — three themes approved, at least one of them featured.
+
+The second and third tiers are recalculated from the themes currently approved, so they step back down if a theme is removed or withdrawn. A one-off note about the contest appears on entry; the same device will not see it again for 14 days.
+
 **Worth knowing**
 
 - Once the author withdraws a theme or an administrator deletes it, it disappears from the gallery and the slot is freed.

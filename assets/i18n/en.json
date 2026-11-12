@@ -1039,5 +1039,18 @@
   "（现在 ": "(now ",
   "）": ")",
   "，站点仍在迭代。": "; the site is still evolving.",
-  "：": ": "
+  "：": ": ",
+  "主题征集进行中": "Theme contest is open",
+  "以后再说": "Later",
+  "做一套界面配色交上来，通过后全站可用；够格还有徽标挂在名字旁边，像管理员的标识一样。": "Submit a set of colours and shapes; once approved it is available to everyone, and the qualifying ones get a badge next to the name, just like the administrator mark.",
+  "去投稿": "Submit a theme",
+  "征集进行中": "Open for entries",
+  "每人默认 1 个投稿名额，被拒不占额度，撤回会把名额还回来。": "One submission slot per account by default; rejected ones do not count, and withdrawing frees the slot.",
+  "还没有徽章：第一套主题通过审核后就会出现在名字旁边": "No badge yet: your first approved theme puts one next to your name",
+  "勇于参与": "First to Jump In",
+  "积微成著": "Small Steps, Solid Gains",
+  "匠心独运": "Craftsmanship",
+  "全站第一个提交主题的人（管理员之外）": "The very first person on the site to submit a theme (administrators excluded)",
+  "累计多套主题通过审核": "Several themes approved",
+  "更多套通过，且有作品被标为推荐": "More themes approved, with at least one featured"
 }

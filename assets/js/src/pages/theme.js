@@ -6,7 +6,7 @@
  *     每张卡片两个动作：存为我的（云端，攒成自己的主题）/ 应用（只在本机生效）
  * 审核、推荐与额度在控制面板里做，与本页无关。
  */
-import { api, state, esc, toast, dialog, btnLoading } from '../core.js';
+import { api, state, esc, toast, dialog, btnLoading, honourBadge, userHonours } from '../core.js';
 import { navigate } from '../router.js';
 
 const PAGE = 20;
@@ -33,7 +33,7 @@ export async function renderTheme(container) {
   container.innerHTML = `
     <div class="th-head">
       <div>
-        <div class="th-title">${t('主题目录')}</div>
+        <div class="th-title">${t('主题目录')}<span class="th-live">${t('征集进行中')}</span></div>
         <div class="tiny muted">${t('把你做好的主题交上来，审核通过后出现在下面，所有人都能一键应用。')}</div>
       </div>
       <div class="th-head-right">
@@ -46,6 +46,7 @@ export async function renderTheme(container) {
     <div class="card" id="thSubCard">
       <div class="card-title">${IC('theme.palette')}${t('提交主题')}</div>
       <div class="th-quota" id="thQuota">${t('读取投稿额度…')}</div>
+      <div class="th-hon" id="thHon"></div>
       <div class="th-mine" id="thMine"></div>
       <div class="th-actions">
         <button class="btn btn-sm" id="thPick">${IC('field.upload', 'ico-sm')}<span>${t('选择 JSON 文件')}</span></button>
@@ -89,7 +90,7 @@ export async function renderTheme(container) {
       <span class="th-dot" style="background:${esc(row.accent || '#8A8F9C')}"></span>
       <span class="th-body">
         <b>${feat ? '<span class="th-feat">' + esc(t('推荐')) + '</span>' : ''}${esc(row.name || row.theme_id)}</b>
-        <span class="tiny muted">${esc(row.author)} · ${esc(row.created)} · ${kb(row.bytes)} · ${esc(row.theme_id)}</span>
+        <span class="tiny muted">${esc(row.author)}${userHonours(row.author)} · ${esc(row.created)} · ${kb(row.bytes)} · ${esc(row.theme_id)}</span>
       </span>
       <span class="th-ops">
         <button class="btn btn-sm" data-act="save">${IC('action.download', 'ico-sm')}<span>${t('存为我的')}</span></button>
@@ -212,6 +213,13 @@ export async function renderTheme(container) {
     try {
       const r = await api('theme', 'mine');
       quotaEl.innerHTML = quotaLine(r.quota, r.used);
+      const honEl = container.querySelector('#thHon');
+      if (honEl) {
+        const ks = r.kinds || [];
+        honEl.innerHTML = ks.length
+          ? ks.map(function (k) { return honourBadge(k); }).join('')
+          : '<span class="tiny muted">' + t('还没有徽章：第一套主题通过审核后就会出现在名字旁边') + '</span>';
+      }
       const items = r.items || [];
       mineEl.innerHTML = items.length
         ? items.map(mineRow).join('')

@@ -14,8 +14,9 @@ $action = param_str('action', 'get');
 $ident = require_token();
 $role = (string)$ident['role'];
 
-/* 目录是公开的：浏览与单条查看连游客都能用，提交 / 撤回 / 云同步才要登录账号 */
-$PUBLIC_ACTIONS = array('list', 'one');
+/* 目录与荣誉徽标是公开的：浏览、单条查看、荣誉映射连游客都能用；
+   提交 / 撤回 / 云同步 / 我的进度 才要登录账号 */
+$PUBLIC_ACTIONS = array('list', 'one', 'honours');
 if (!in_array($action, $PUBLIC_ACTIONS, true)
     && !in_array($role, array('user', 'admin', 'subadmin'), true)) {
     fail(403, '请登录后再操作');
@@ -37,12 +38,27 @@ switch ($action) {
         break;
     }
 
+    /* 全站荣誉映射：用户名 → 荣誉列表。前端只维护这一份，用户名渲染处按名字查表。
+       游客也要能拿到，否则未登录浏览时看不到任何徽标。 */
+    case 'honours': {
+        ok(array('list' => th_map(), 'catalog' => th_catalog()));
+        break;
+    }
+
+    /* 我的三阶进度：已获得什么、下一阶还差多少 */
+    case 'progress': {
+        ok(th_progress((int)$ident['uid']));
+        break;
+    }
+
     case 'mine': {
+        $pr = th_progress((int)$ident['uid']);
         ok(array(
             'items'     => ts_mine((int)$ident['uid']),
             'quota'     => ts_quota((int)$ident['uid']),
             'used'      => ts_used((int)$ident['uid']),
             'remaining' => ts_remaining((int)$ident['uid']),
+            'kinds'     => $pr['kinds'],
         ));
         break;
     }
@@ -57,13 +73,17 @@ switch ($action) {
             $p2 = req_json();
             $raw = is_array($p2) && isset($p2['json']) ? (string)$p2['json'] : '';
         }
-        ok(ts_create($ident, $raw));
+        $created = ts_create($ident, $raw);
+        th_map_flush();
+        ok($created);
         break;
     }
 
     case 'withdraw': {
         csrf_verify();
-        ok(ts_withdraw((int)$ident['uid'], param_int('id', 0)));
+        $w = ts_withdraw((int)$ident['uid'], param_int('id', 0));
+        th_map_flush();
+        ok($w);
         break;
     }
 

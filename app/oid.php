@@ -23,6 +23,7 @@ function oid_type_code(string $table): string
         'feedback'           => '06',
         'announcements'      => '07',
         'theme_submissions'  => '08',
+        'theme_honours'      => '09',
     );
     $t = str_replace('`', '', $table);
     return isset($map[$t]) ? $map[$t] : '00';

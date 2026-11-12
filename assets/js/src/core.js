@@ -20,6 +20,7 @@ export const state = {
   csrf: '',
   booted: false,
   nameFix: null,     // 存量用户名待更新：{ current, suggest } | null
+  honours: {},       // 主题征集荣誉：用户名 → ['first','volume','mastery']
 };
 
 /* ============================================================
@@ -379,6 +380,63 @@ export function badge(role) {
     + shield + mark + '</svg>' + r.label + '</span>';
 }
 
+/* ============================================================
+ * 主题征集荣誉（三阶）——与管理员的身份徽标同一套样式
+ * ------------------------------------------------------------
+ * 勇于参与：全站第一个投稿（管理员之外），授予即永久
+ * 积微成著：累计若干套通过审核
+ * 匠心独运：更多套通过，且至少一套被标为推荐
+ * 数据来自 api/theme.php?action=honours 的全站映射（按用户名查表），
+ * 因此各页渲染用户名时不必再单独取字段。
+ * ============================================================ */
+const HONOURS = {
+  first: { label: '勇于参与', cls: 'bd-h1', hint: '全站第一个提交主题的人（管理员之外）' },
+  volume: { label: '积微成著', cls: 'bd-h2', hint: '累计多套主题通过审核' },
+  mastery: { label: '匠心独运', cls: 'bd-h3', hint: '更多套通过，且有作品被标为推荐' },
+};
+
+const HONOUR_ICON = {
+  first: '<path d="M3.2 2.2v9.6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" fill="none"/>'
+    + '<path d="M4 2.7h5.6l-1.2 2.1 1.2 2.1H4z" fill="currentColor"/>',
+  volume: '<path d="M6 1.8 10.2 3.9 6 6 1.8 3.9z" fill="currentColor"/>'
+    + '<path d="M2.3 6.4 6 8.3l3.7-1.9" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linejoin="round"/>'
+    + '<path d="M2.3 8.9 6 10.8l3.7-1.9" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linejoin="round"/>',
+  mastery: '<path d="M2.2 9.1 2.9 3.9l2.3 2.1L6 2.4l.8 3.6 2.3-2.1.7 5.2z" fill="currentColor"/>'
+    + '<path d="M2.9 10.7h6.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" fill="none"/>',
+};
+
+/** 更新全站荣誉映射（app.js 启动时拉一次） */
+export function setHonours(map) {
+  state.honours = (map && typeof map === 'object') ? map : {};
+}
+
+/** 单枚荣誉徽标；不认识的 key 返回空串 */
+export function honourBadge(kind) {
+  const h = HONOURS[kind];
+  if (!h) { return ''; }
+  return '<span class="badge ' + h.cls + '" title="' + esc(t(h.label) + '：' + t(h.hint)) + '">'
+    + '<svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true" focusable="false">'
+    + (HONOUR_ICON[kind] || '') + '</svg>' + esc(t(h.label)) + '</span>';
+}
+
+/** 某用户名的全部荣誉徽标（无荣誉返回空串） */
+export function userHonours(name) {
+  const m = state.honours || {};
+  const arr = m[String(name)];
+  if (!arr || !arr.length) { return ''; }
+  let html = '';
+  for (let i = 0; i < arr.length; i++) { html += honourBadge(arr[i]); }
+  return html;
+}
+
+/** 三阶说明（活动弹窗与主题目录页共用） */
+export function honoursCatalog() {
+  return ['first', 'volume', 'mastery'].map(function (k) {
+    const h = HONOURS[k];
+    return { key: k, label: t(h.label), hint: t(h.hint), html: honourBadge(k) };
+  });
+}
+
 /** 用户名 + 徽章（统一入口，role 与通报次数由后端下发） */
 export function userName(name, role, reports, nowName) {
   const n = Number(reports || 0);
@@ -387,7 +445,7 @@ export function userName(name, role, reports, nowName) {
     : '';
   const alt = (nowName && String(nowName) !== String(name))
     ? '<span class="tiny muted">' + t('（现名：') + esc(nowName) + t('）') + '</span>' : '';
-  return '<span class="uname">' + esc(name) + '</span>' + alt + badge(role) + tag;
+  return '<span class="uname">' + esc(name) + '</span>' + alt + badge(role) + userHonours(name) + tag;
 }
 
 /** 全站对象编号标签：#000000000042；无编号返回空串 */
@@ -1081,5 +1139,54 @@ export function maybeDiscPopup(item) {
   if (Number(it.id) <= seen) { return false; }
   if (__banEl) { return false; }        // 已被全屏说明盖住，不叠加弹窗
   showDiscPopup(it);
+  return true;
+}
+
+/* ============================================================
+ * 开屏活动提示：主题征集
+ * ------------------------------------------------------------
+ * 同一设备 14 天内只弹一次；关闭即记时间戳，不依赖登录态。
+ * 内容与主题目录页共用 honoursCatalog()，避免两处措辞不一致。
+ * ============================================================ */
+export function maybeCampaignPopup() {
+  const KEY = 'kimgr_campaign_themes';
+  const COOL = 14 * 86400000;
+  let last = 0;
+  try { last = Number(localStorage.getItem(KEY) || 0); } catch (e) {}
+  const now = Date.now();
+  if (last > 0 && now - last < COOL) { return false; }
+
+  const scrim = document.getElementById('dialogScrim');
+  const box = document.getElementById('dialog');
+  if (!scrim || !box) { return false; }
+
+  const rows = honoursCatalog().map(function (x) {
+    return '<li><span class="hd-mark">' + x.html + '</span>'
+      + '<span class="hd-txt"><b>' + esc(x.label) + '</b>'
+      + '<span class="tiny muted">' + esc(x.hint) + '</span></span></li>';
+  }).join('');
+
+  box.className = 'dialog glass';
+  box.innerHTML = '<h3>' + t('主题征集进行中') + '</h3>'
+    + '<p class="tiny muted">' + t('做一套界面配色交上来，通过后全站可用；够格还有徽标挂在名字旁边，像管理员的标识一样。') + '</p>'
+    + '<ul class="honour-list">' + rows + '</ul>'
+    + '<p class="tiny muted">' + t('每人默认 1 个投稿名额，被拒不占额度，撤回会把名额还回来。') + '</p>'
+    + '<div class="dialog-actions">'
+    + '<button class="btn-ghost" data-r="0">' + t('以后再说') + '</button>'
+    + '<button class="btn" data-r="1">' + t('去投稿') + '</button>'
+    + '</div>';
+  scrim.hidden = false;
+
+  const close = function (go) {
+    scrim.hidden = true;
+    box.innerHTML = '';
+    scrim.onclick = null;
+    try { localStorage.setItem(KEY, String(Date.now())); } catch (e) {}
+    if (go) { document.dispatchEvent(new CustomEvent('kimgr:navigate', { detail: '#/theme' })); }
+  };
+  box.querySelectorAll('[data-r]').forEach(function (b) {
+    b.addEventListener('click', function () { close(b.dataset.r === '1'); });
+  });
+  scrim.onclick = function (e) { if (e.target === scrim) { close(false); } };
   return true;
 }

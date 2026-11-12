@@ -119,6 +119,9 @@ function ts_create(array $ident, string $raw): array
         array($row['oid'], $row['user_id'], $row['username'], $row['theme_id'], $row['theme_name'],
               $row['accent'], $row['bytes'], $row['body'], $row['status'], $row['created_at']));
 
+    /* 一阶荣誉「勇于参与」：全站第一个提交者，授即永久（撤回不回收） */
+    $first = function_exists('th_award_first') ? th_award_first($ident) : false;
+
     return array(
         'id'        => (int)$id,
         'oid'       => $row['oid'],
@@ -126,6 +129,7 @@ function ts_create(array $ident, string $raw): array
         'quota'     => ts_quota($uid),
         'used'      => ts_used($uid),
         'remaining' => ts_remaining($uid),
+        'first'     => $first,
     );
 }
 

@@ -330,3 +330,20 @@ CREATE TABLE IF NOT EXISTS `theme_submissions` (
   KEY `idx_ts_status` (`status`, `id`),
   KEY `idx_ts_user` (`user_id`, `status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主题投稿目录';
+
+-- ------------------------------------------------------------
+-- 主题征集荣誉（三阶徽标）
+--   一阶「勇于参与」落库并全站唯一（uk_kind）；二三阶按投稿实时统计，不落库
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `theme_honours` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `oid`        VARCHAR(16)  NOT NULL DEFAULT '' COMMENT '全站对象编号',
+  `user_id`    INT UNSIGNED NOT NULL,
+  `username`   VARCHAR(64)  NOT NULL DEFAULT '' COMMENT '授予时的用户名快照',
+  `kind`       VARCHAR(16)  NOT NULL DEFAULT '' COMMENT 'first（全站唯一）',
+  `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_oid` (`oid`),
+  UNIQUE KEY `uk_kind` (`kind`),
+  KEY `idx_th_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主题征集荣誉';

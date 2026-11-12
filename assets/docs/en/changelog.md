@@ -7,6 +7,18 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.61.7 · 2026-11-13 (Gathering of Talent)
+
+### New: contest honours
+
+- Three badges shown next to an author's name, styled like the administrator mark:
+  - **First to Jump In** — the very first person on the site to submit a theme (administrators and sub-administrators excluded), awarded once and kept forever
+  - **Small Steps, Solid Gains** — two themes approved
+  - **Craftsmanship** — three themes approved, at least one of them featured
+- Visible in comments, the world chat, the rankings, work pages and the gallery; the second and third tiers are recalculated from currently approved themes, so they step back down if a theme is removed or withdrawn
+- A one-off note about the contest appears on entry and spells out all three tiers; the same device will not see it again for 14 days
+- The gallery marks itself "Open for entries" next to the title, and the submission area shows which badges you already hold
+
 ## v3.61.6 · 2026-11-12 (A Road to Follow)
 
 ### Fixes

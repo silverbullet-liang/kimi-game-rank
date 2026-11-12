@@ -966,6 +966,7 @@ switch ($action) {
         csrf_verify();
         $verdict = (string)param_str('verdict', '');
         $r = ts_review(param_int('id', 0), $verdict, (string)param_str('reason', ''), (int)$ACTOR['uid']);
+        th_map_flush();
         app_log('theme review #' . param_int('id', 0) . ' → ' . $verdict . ' by ' . $ACTOR['username']);
         ok($r, '已处理');
         break;

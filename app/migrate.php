@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 40);
+define('SCHEMA_VERSION', 41);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -2764,6 +2764,28 @@ INCDOC36;
             app_log('schema migrated to v37（banned_devices / user_devices）');
         } catch (Throwable $e) {
             app_log('migrate v37 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v41：主题征集荣誉（一阶「勇于参与」全站唯一，落库） ---------- */
+    if ($cur < 41) {
+        try {
+            db_exec("CREATE TABLE IF NOT EXISTS `theme_honours` (
+                `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `oid` VARCHAR(16) NOT NULL DEFAULT '',
+                `user_id` INT UNSIGNED NOT NULL,
+                `username` VARCHAR(64) NOT NULL DEFAULT '',
+                `kind` VARCHAR(16) NOT NULL DEFAULT '',
+                `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uk_oid` (`oid`),
+                UNIQUE KEY `uk_kind` (`kind`),
+                KEY `idx_th_user` (`user_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主题征集荣誉'");
+            setting_set('schema_version', '41');
+            app_log('schema migrated to v41（theme_honours）');
+        } catch (Throwable $e) {
+            app_log('migrate v41 failed: ' . $e->getMessage());
         }
     }
 

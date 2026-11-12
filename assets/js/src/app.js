@@ -3,7 +3,7 @@ import { SITE_BASE } from './base.js';
  * 应用入口：启动引导、路由、底栏、抽屉、搜索、通知轮询
  */
 import { i18nInit, t, festName, applyI18nDom, applyI18nText, watchI18n } from './i18n.js';
-import { boot, state, api, toast, dialog, prompt_, setToken, ensureGuestSession, setUnauthorizedHandler, notify, getPrefs, setPrefs, $, on, askNotifyPermission, esc, showBanLock, hideBanLock, maybeDiscPopup, maybeFestivalPopup, readBanCache, readBanCacheAsync, saveBanCache, initOfflineBar } from './core.js';
+import { boot, state, api, toast, dialog, prompt_, setToken, ensureGuestSession, setUnauthorizedHandler, notify, getPrefs, setPrefs, $, on, askNotifyPermission, esc, showBanLock, hideBanLock, maybeDiscPopup, maybeFestivalPopup, maybeCampaignPopup, setHonours, readBanCache, readBanCacheAsync, saveBanCache, initOfflineBar } from './core.js';
 import { applyTheme, saveTheme, initSystemWatcher, ACCENTS } from './theme.js';
 import { setNavigate } from './router.js';
 import { guardStart } from './guard.js';
@@ -743,6 +743,7 @@ async function main() {
   }
 
   await boot();
+  await loadHonours();
   applyTheme();
   /* JSON 主题：先恢复本机保存的，再按账号拉一次云端（7 天有效，过期即无） */
   if (typeof window.restoreThemeJson === 'function') { window.restoreThemeJson(); }
@@ -786,11 +787,19 @@ async function main() {
   startPolling();
   guardStart();            // 运行时完整性守卫：只记录、不干预
   startEggs();             // 五个彩蛋：不打扰、每个只触发一次
-  maybeFestivalPopup();    // 当天有节日主题：提示一次（同一天只弹一次）
+  if (!maybeCampaignPopup()) { maybeFestivalPopup(); }   // 活动提示与节日提示不同时叠
   document.addEventListener('kimgr:navigate', function (e) { navigate(e.detail); });
 
   // 首次交互时请求通知权限
   bindToTop();   // 通知权限改为在「我的 → 设置」中显式开启
+}
+
+/** 主题征集荣誉：全站用户名 → 荣誉列表，一次拉齐；失败不影响任何功能 */
+async function loadHonours() {
+  try {
+    const r = await api('theme', 'honours', null, { silent: true, tries: 1 });
+    setHonours((r && r.list) || {});
+  } catch (e) { /* 拿不到就不显示徽标，不打断启动 */ }
 }
 
 /** 云端主题：随账号同步，过期或未登录时什么也不做 */

@@ -1,7 +1,7 @@
 /**
  * 作品详情页：雷达图 + 六维明细 + 介绍 + 评论区
  */
-import { api, state, esc, toast, dialog, btnLoading, userName, isAdminish, isBlocked, captchaFields } from '../core.js';
+import { api, state, esc, toast, dialog, btnLoading, userName, userHonours, isAdminish, isBlocked, captchaFields } from '../core.js';
 import { UI_PAGE } from '../config.js';
 import { setHeroDst } from '../transitions.js';
 import { navigate } from '../router.js';
@@ -48,7 +48,7 @@ export async function renderDetail(container, ctx) {
         <div style="font-weight:700;font-size:17px">${esc(d.title)}</div>
         <div class="rank-meta" style="margin-top:5px">
           <span class="chip">${esc(d.category_name)}</span>
-          <span>${esc(d.author)}</span>
+          <span>${esc(d.author)}${userHonours(d.author)}</span>
         </div>
       </div>
     </div>
