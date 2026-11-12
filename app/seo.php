@@ -58,7 +58,7 @@ function seo_is_mirror(): bool
 function seo_route_names(): array
 {
     return array('rank','detail','chat','mine','login','submit','doc','panel','monitor',
-                 'feedback','about','violation','discipline','history','incident','today');
+                 'feedback','about','violation','discipline','history','incident','today','theme');
 }
 
 /**
@@ -85,13 +85,14 @@ function seo_route_segments(): array
         'today'      => 'today',
         'history'    => 'history',
         'incident'   => 'incident',
+        'theme'      => 'themes',
     );
 }
 
 /** 曾用过的 URL 段：命中即 301 到新段（旧链接、旧收录都不会失效） */
 function seo_legacy_segments(): array
 {
-    return array('rank', 'detail', 'doc', 'mine', 'violation', 'discipline', 'panel');
+    return array('rank', 'detail', 'doc', 'mine', 'violation', 'discipline', 'panel', 'theme');
 }
 
 /** 文档名 ↔ URL 段（地址用英文短名，中文名仍可访问并 301 过来） */
@@ -281,6 +282,10 @@ function seo_meta_for(array $route): array
             $jsonld[] = array('@context' => 'https://schema.org', '@type' => 'ItemList',
                 'name' => $site . ' 榜单', 'itemListElement' => $items);
         }
+    } elseif ($name === 'theme') {
+        $canon = seo_abs('theme');
+        $title = $site . ' · 主题目录';
+        $desc  = 'Kimi 游戏榜主题征集：把做好的主题交上来，审核通过后全站可用，做得好的会入选官方主题库。每个账号都可投稿，游客也能直接浏览与应用。';
     } elseif ($name === 'detail') {
         $id  = (int)($route['params']['id'] ?? ($sub !== '' ? $sub : 0));
         $row = ($id > 0) ? seo_work_row($id) : null;

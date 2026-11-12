@@ -56,7 +56,7 @@ AddDefaultCharset UTF-8
     #    tools/verify_routes.php 会守住这条。
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule !^(|rankings|works|world|me|login|submit|feedback|about|banned|notices|admin|monitor|today|history|incident|rank|detail|doc|mine|violation|discipline|panel)(/|$) - [L]
+    RewriteRule !^(|rankings|works|world|me|login|submit|feedback|about|banned|notices|admin|monitor|today|history|incident|themes|rank|detail|doc|mine|violation|discipline|panel|theme)(/|$) - [L]
 
     # 4) 白名单内的前端路由交给入口
     RewriteCond %{REQUEST_FILENAME} !-f

@@ -192,7 +192,7 @@ The login is used only to read this one work. It is not stored and not displayed
 
 ## 12. Theme gallery
 
-"Theme gallery" in the menu is a standalone page for collecting and sharing themes (JSON format) made by anyone.
+"Theme gallery" in the menu is a standalone page for collecting and sharing themes (JSON format) made by anyone. Its address is `/themes`; the older `/theme` redirects here.
 
 **Submitting**
 

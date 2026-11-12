@@ -105,7 +105,7 @@ const SENSITIVE_PAGES = ['panel'];
 
 function readRoute() {
   if (location.hash && location.hash.length > 1) { return location.hash; }   // 旧式 #/ 链接优先
-  const KNOWN = ['rank', 'detail', 'chat', 'mine', 'login', 'submit', 'doc', 'panel', 'monitor', 'feedback', 'about', 'violation', 'discipline', 'history', 'incident', 'today'];
+  const KNOWN = ['rank', 'detail', 'chat', 'mine', 'login', 'submit', 'doc', 'panel', 'monitor', 'feedback', 'about', 'violation', 'discipline', 'history', 'incident', 'today', 'theme'];
 
   /* 主路径：/rank 、/detail/12 、/doc/入榜规则 */
   let path = location.pathname;

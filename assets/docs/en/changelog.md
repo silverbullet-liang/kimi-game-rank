@@ -7,6 +7,13 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.61.6 · 2026-11-12 (A Road to Follow)
+
+### Fixes
+
+- Tapping "Theme gallery" in the menu opened the "Me" page instead: the new page was never registered in the address allow-list, so its address was treated as unknown and fell back to the default page. It now opens properly, submission form included
+- The address changed from /theme to /themes to match the naming of every other page; the old address redirects, so links already shared keep working
+
 ## v3.61.5 · 2026-11-12 (A Hundred Schools)
 
 ### New: theme gallery
