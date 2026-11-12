@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `settings`        TEXT         NULL COMMENT 'JSON：notify/ip_record/glass_mode/theme/accent',
   `last_login_at`   DATETIME     NULL,
   `created_at`      DATETIME     NOT NULL COMMENT '系统写入时间 UTC',
+  `theme_quota`     TINYINT      NOT NULL DEFAULT 1 COMMENT '主题投稿额度（默认 1，管理员可提到 3）',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_username_norm` (`username_norm`),
   UNIQUE KEY `uk_uid8` (`uid8`),
@@ -304,3 +305,28 @@ CREATE TABLE IF NOT EXISTS `checkins` (
   PRIMARY KEY (`user_id`, `checkin_date`),
   KEY `idx_checkins_month` (`user_id`, `checkin_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='每日签到';
+
+-- ------------------------------------------------------------
+-- 主题投稿目录（每人默认 1 个额度；在审与已通过都占额度）
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `theme_submissions` (
+  `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `oid`           VARCHAR(16)  NOT NULL DEFAULT '' COMMENT '全站对象编号',
+  `user_id`       INT UNSIGNED NOT NULL,
+  `username`      VARCHAR(64)  NOT NULL DEFAULT '' COMMENT '投稿时的用户名快照',
+  `theme_id`      VARCHAR(32)  NOT NULL DEFAULT '' COMMENT '主题 id（theme/1）',
+  `theme_name`    VARCHAR(64)  NOT NULL DEFAULT '' COMMENT '展示名（中文优先）',
+  `accent`        VARCHAR(9)   NOT NULL DEFAULT '' COMMENT '主色 #RRGGBB',
+  `bytes`         INT          NOT NULL DEFAULT 0,
+  `body`          MEDIUMTEXT   NOT NULL COMMENT '完整主题 JSON',
+  `status`        VARCHAR(10)  NOT NULL DEFAULT 'pending' COMMENT 'pending/approved/rejected',
+  `featured`      TINYINT      NOT NULL DEFAULT 0 COMMENT '管理员推荐：置顶并特殊显示',
+  `reject_reason` VARCHAR(200) NOT NULL DEFAULT '',
+  `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `reviewed_at`   DATETIME     NULL DEFAULT NULL,
+  `reviewed_by`   INT UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_oid` (`oid`),
+  KEY `idx_ts_status` (`status`, `id`),
+  KEY `idx_ts_user` (`user_id`, `status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主题投稿目录';

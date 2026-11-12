@@ -946,6 +946,40 @@ switch ($action) {
         break;
     }
 
+    /* ---------- 主题投稿目录：审核与额度（仅主管理员） ---------- */
+
+    case 'theme_list': {
+        require_panel();
+        ok(ts_admin_list((string)param_str('status', 'pending'), trim((string)param_str('q', '')),
+             param_int('page', 1), param_int('size', 20)));
+        break;
+    }
+
+    case 'theme_get': {
+        require_panel();
+        ok(ts_one(param_int('id', 0), $ACTOR));
+        break;
+    }
+
+    case 'theme_review': {
+        require_panel();
+        csrf_verify();
+        $verdict = (string)param_str('verdict', '');
+        $r = ts_review(param_int('id', 0), $verdict, (string)param_str('reason', ''), (int)$ACTOR['uid']);
+        app_log('theme review #' . param_int('id', 0) . ' → ' . $verdict . ' by ' . $ACTOR['username']);
+        ok($r, '已处理');
+        break;
+    }
+
+    case 'theme_quota': {
+        require_panel();
+        csrf_verify();
+        $r = ts_set_quota(param_int('uid', 0), param_int('quota', 1));
+        app_log('theme quota uid=' . $r['uid'] . ' → ' . $r['quota'] . ' by ' . $ACTOR['username']);
+        ok($r, '额度已更新');
+        break;
+    }
+
     case 'peers_state': {
         require_panel();
         ok(array(

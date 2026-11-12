@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '3.61.4');
+define('APP_VERSION', '3.61.5');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);
@@ -58,6 +58,7 @@ require_once APP_ROOT . '/app/oid.php';
 require_once APP_ROOT . '/app/monitor.php';
 require_once APP_ROOT . '/app/mon_srv.php';
 require_once APP_ROOT . '/app/theme_json.php';
+require_once APP_ROOT . '/app/theme_submit.php';
 require_once APP_ROOT . '/app/crypto.php';
 require_once APP_ROOT . '/app/scoring.php';
 require_once APP_ROOT . '/app/corpus.php';

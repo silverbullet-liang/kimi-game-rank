@@ -24,6 +24,7 @@ import { renderFeedback } from './pages/feedback.js';
 import { renderSubmit } from './pages/submit.js';
 import { renderViolation, renderDiscipline } from './pages/violation.js';
 import { renderHistory, renderIncident } from './pages/history.js';
+import { renderTheme } from './pages/theme.js';
 
 const view = document.getElementById('view');
 
@@ -61,6 +62,7 @@ const routes = {
   history: renderHistory,
   incident: renderIncident,
   today: renderToday,
+  theme: renderTheme,
 };
 
 let currentPage = '';
@@ -316,6 +318,7 @@ function drawerItems() {
     { k: 'gods', label: t('诸神榜'), ic: T('nav.gods', I.crown), go: '#/rank?board=gods' },
     { k: 'cold', label: t('冷门榜'), ic: T('nav.cold', I.snow), go: '#/rank?board=cold' },
     { k: 'feedback', label: isAdmin ? '回复反馈' : t('反映问题'), ic: T('nav.feedback', I.mail), go: '#/feedback' },
+    { k: 'theme', label: t('主题目录'), ic: T('theme.palette', I.palette), go: '#/theme' },
     { k: 'help', label: t('功能说明'), ic: T('nav.help', I.doc), go: '#/doc/功能说明' },
     { k: 'aihelp', label: t('AI 使用说明'), ic: T('doc.ai', I.plug), go: '#/doc/AI 使用说明' },
     { k: 'charter', label: t('社区公约'), ic: T('doc.community', I.users), go: '#/doc/社区公约' },

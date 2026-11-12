@@ -12,11 +12,61 @@ $action = param_str('action', 'get');
 /* 管理员与副管理员同样会用主题，这里不能只放行普通用户：
    之前用 require_user() 会让站长账号一导入就收到 403，表现为「总是云同步失败」。 */
 $ident = require_token();
-if (!in_array((string)$ident['role'], array('user', 'admin', 'subadmin'), true)) {
+$role = (string)$ident['role'];
+
+/* 目录是公开的：浏览与单条查看连游客都能用，提交 / 撤回 / 云同步才要登录账号 */
+$PUBLIC_ACTIONS = array('list', 'one');
+if (!in_array($action, $PUBLIC_ACTIONS, true)
+    && !in_array($role, array('user', 'admin', 'subadmin'), true)) {
     fail(403, '请登录后再操作');
 }
 
 switch ($action) {
+
+    /* ---------- 主题目录 ---------- */
+
+    case 'list': {
+        /* 只列已通过的主题；小写 q 走服务端搜索，命中名称 / 作者 / 主题 id */
+        $r = ts_public_list(trim((string)param_str('q', '')), param_int('page', 1), param_int('size', 20));
+        ok($r);
+        break;
+    }
+
+    case 'one': {
+        ok(ts_one(param_int('id', 0), $ident));
+        break;
+    }
+
+    case 'mine': {
+        ok(array(
+            'items'     => ts_mine((int)$ident['uid']),
+            'quota'     => ts_quota((int)$ident['uid']),
+            'used'      => ts_used((int)$ident['uid']),
+            'remaining' => ts_remaining((int)$ident['uid']),
+        ));
+        break;
+    }
+
+    case 'submit': {
+        csrf_verify();
+        if (!rate_limit('theme_submit_' . (int)$ident['uid'], 6, 3600)) {
+            fail(429, '提交过于频繁，请稍后再试');
+        }
+        $raw = param_str('json', '');
+        if ($raw === '') {
+            $p2 = req_json();
+            $raw = is_array($p2) && isset($p2['json']) ? (string)$p2['json'] : '';
+        }
+        ok(ts_create($ident, $raw));
+        break;
+    }
+
+    case 'withdraw': {
+        csrf_verify();
+        ok(ts_withdraw((int)$ident['uid'], param_int('id', 0)));
+        break;
+    }
+
 
     case 'save': {
         csrf_verify();

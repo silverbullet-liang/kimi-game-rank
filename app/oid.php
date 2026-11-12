@@ -5,7 +5,7 @@
  * 编码：YYYY MM DD TT RRRR —— 共 14 位
  *   4 位年份 + 2 位月份 + 2 位日期（生成时的 UTC 日期）
  *   + 2 位类型码（每种对象一个固定码）+ 4 位随机数字。
- * 评论 / 违纪通报 / 世界对话 / AI 对话 / 作品 / 反馈 / 公告
+ * 评论 / 违纪通报 / 世界对话 / AI 对话 / 作品 / 反馈 / 公告 / 主题投稿
  * 各占一个类型码，且各对应唯一一张表，因此「同一张表内不重复」
  * 即等价于「全站不重复」。
  */
@@ -22,6 +22,7 @@ function oid_type_code(string $table): string
         'works'              => '05',
         'feedback'           => '06',
         'announcements'      => '07',
+        'theme_submissions'  => '08',
     );
     $t = str_replace('`', '', $table);
     return isset($map[$t]) ? $map[$t] : '00';

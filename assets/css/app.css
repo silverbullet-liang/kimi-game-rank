@@ -1848,3 +1848,57 @@ i.ic[class*='ti-'] { background-repeat: no-repeat; background-position: center; 
 
 /* 设置行的行首图标 */
 .setting-row > span:first-child { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ── 主题目录（#/theme） ───────────────────────────────────── */
+.th-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 4px 0 12px; }
+.th-title { font-size: 21px; font-weight: 800; letter-spacing: -.01em; }
+.th-total { display: flex; align-items: baseline; gap: 4px; color: var(--text-3); font-size: 12px; flex: none; }
+.th-total b { font-size: 20px; color: var(--accent); font-weight: 800; }
+.th-quota { margin-bottom: 8px; }
+.th-qbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px;
+  border-radius: var(--radius-sm, 11px); background: color-mix(in srgb, var(--accent) 8%, transparent); font-size: 13px; }
+.th-qbar b { color: var(--accent); }
+.th-none { padding: 6px 0 2px; }
+.th-mine { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.th-mrow { display: flex; align-items: center; gap: 9px; padding: 9px 11px; border-radius: 12px;
+  border: 1px solid var(--border-soft); background: var(--surface, transparent); }
+.th-mrow .th-body { flex: 1; min-width: 0; }
+.th-mrow .th-body b { display: block; font-size: 14px; font-weight: 700; }
+.th-tag { flex: none; font-size: 11px; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.th-tag.ok { background: color-mix(in srgb, #22c55e 16%, transparent); color: #16a34a; }
+.th-tag.bad { background: color-mix(in srgb, #ef4444 16%, transparent); color: #dc2626; }
+.th-tag.wait { background: color-mix(in srgb, #f59e0b 18%, transparent); color: #b45309; }
+.th-reason { display: block; color: #dc2626; margin-top: 2px; }
+.th-del { flex: none; font-size: 12px; }
+.th-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.th-search { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.th-search .ic-slot { color: var(--text-3); flex: none; }
+.th-search .input { flex: 1; }
+.th-list { display: flex; flex-direction: column; gap: 8px; }
+.th-card { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; padding: 11px 12px;
+  border-radius: var(--radius-md, 16px); border: 1px solid var(--border-soft);
+  background: var(--surface, transparent); color: inherit; font: inherit; cursor: pointer; }
+.th-card:hover { border-color: color-mix(in srgb, var(--accent) 42%, transparent); }
+.th-card .th-body { flex: 1; min-width: 0; }
+.th-card .th-body b { display: block; font-size: 14.5px; font-weight: 700; }
+.th-card .th-body .tiny { display: block; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.th-dot { flex: none; width: 26px; height: 26px; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
+.th-apply { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--accent); }
+.nowrap { white-space: nowrap; }
+
+/* 主题目录：推荐位与卡片动作 */
+.th-head-right { display: flex; align-items: center; gap: 12px; flex: none; }
+.th-spec { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--accent);
+  padding: 5px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  text-decoration: none; white-space: nowrap; }
+.th-spec:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.th-feat { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .04em;
+  padding: 1px 6px; margin-right: 6px; border-radius: 5px; vertical-align: 2px;
+  background: linear-gradient(135deg, #f59e0b, #ef4444); color: #fff; }
+.th-card.is-feat { border-color: color-mix(in srgb, #f59e0b 46%, transparent);
+  background: color-mix(in srgb, #f59e0b 7%, var(--surface, transparent)); }
+.th-ops { flex: none; display: inline-flex; align-items: center; gap: 6px; }
+@media (max-width: 560px) {
+  .th-ops { flex-direction: column; align-items: stretch; }
+  .th-ops .btn, .th-ops .btn-ghost { padding: 5px 9px; font-size: 12px; }
+}

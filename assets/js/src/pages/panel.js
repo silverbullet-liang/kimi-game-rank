@@ -73,6 +73,7 @@ export async function renderPanel(container) {
     loadVisitsTop(container);
     bindCommentBin(container);
     bindAnnounce(container);
+    bindPanelTheme(container);
     bindRefresh(container);
     bindReclassify(container);
     bindCatState(container);
@@ -196,10 +197,32 @@ function adminLayout() {
       <div id="subList"><div class="skeleton" style="height:60px"></div></div>
     </div>
 
+    ${panelThemeBlock()}
+
     <div class="panel-plain">
       <h3>公告设置</h3>
       <div class="field"><textarea class="input" id="annInput" placeholder="首页横幅公告内容"></textarea></div>
       <button class="btn btn-sm" id="annSave">保存公告</button>
+    </div>`;
+}
+
+/** 主题投稿（仅主管理员）：审核 + 额度 */
+function panelThemeBlock() {
+  return `
+    <div class="panel-plain">
+      <h3>${t('主题投稿')}</h3>
+      <p class="tiny muted">${t('审核提交到「主题目录」的主题：通过后所有人可一键应用，被拒的可以填原因退回；推荐的主题在目录里置顶并高亮。每个账号默认 1 个投稿额度，可按人提到 2 或 3。')}</p>
+      <div class="row-gap" id="ptSeg" style="margin-bottom:8px">
+        <button class="btn-ghost btn-sm on" data-tst="pending">${t('待审核')}</button>
+        <button class="btn-ghost btn-sm" data-tst="approved">${t('已通过')}</button>
+        <button class="btn-ghost btn-sm" data-tst="rejected">${t('未通过')}</button>
+        <button class="btn-ghost btn-sm" data-tst="all">${t('全部')}</button>
+        <button class="btn-ghost btn-sm" id="ptRefresh">${IC('field.refresh', 'ico-sm')}<span>${t('刷新')}</span></button>
+      </div>
+      <div class="th-search">
+        <input class="input" id="ptQ" placeholder="${t('搜索主题名、作者或 id')}" autocomplete="off">
+      </div>
+      <div id="ptList"><div class="skeleton" style="height:80px"></div></div>
     </div>`;
 }
 
@@ -2765,6 +2788,128 @@ async function loadSubs(container) {
 /* ============================================================
  * 公告
  * ============================================================ */
+/* ---------- 主题投稿审核 ---------- */
+
+const PT_TAG = { pending: ['wait', '待审核'], approved: ['ok', '已通过'], rejected: ['bad', '未通过'] };
+
+function ptRowHtml(it) {
+  const tg = PT_TAG[it.status] || ['wait', it.status];
+  const tgText = t(tg[1]);
+  const kbv = Math.max(1, Math.round(Number(it.bytes || 0) / 102.4) / 10);
+  return `<div class="th-mrow" data-tsid="${it.id}">
+    <span class="th-dot" style="background:${esc(it.accent || '#8A8F9C')}"></span>
+    <span class="th-body">
+      <b>${esc(it.name || it.theme_id)}</b>
+      <span class="tiny muted">${esc(it.author)} · ${esc(it.created)} · ${esc(it.theme_id)} · ${kbv} KB</span>
+      ${it.status === 'rejected' && it.reason ? '<span class="tiny th-reason">原因：' + esc(it.reason) + '</span>' : ''}
+    </span>
+    <span class="th-tag ${tg[0]}">${esc(tgText)}</span>
+    ${Number(it.featured) === 1 ? '<span class="th-feat">' + esc(t('推荐')) + '</span>' : ''}
+    <span class="tiny muted nowrap">${t('额度')} ${Number(it.used || 0)}/${Number(it.quota || 1)}</span>
+    <span class="row-gap">
+      <button class="btn-ghost btn-sm" data-pt="get">${t('查看')}</button>
+      <button class="btn btn-sm" data-pt="approve">${t('通过')}</button>
+      <button class="btn-ghost btn-sm" data-pt="reject">${t('拒绝')}</button>
+      ${it.status === 'approved'
+        ? `<button class="btn-ghost btn-sm" data-pt="feature">${Number(it.featured) === 1 ? esc(t('取消推荐')) : esc(t('推荐'))}</button>`
+        : ''}
+      <button class="btn-ghost btn-sm" data-pt="quota" data-uid="${Number(it.uid || 0)}">${t('额度')}</button>
+      <button class="btn-ghost btn-sm" data-pt="delete">${t('删除')}</button>
+    </span>
+  </div>`;
+}
+
+function bindPanelTheme(container) {
+  const seg = container.querySelector('#ptSeg');
+  const box = container.querySelector('#ptList');
+  if (!seg || !box) { return; }
+  const qEl = container.querySelector('#ptQ');
+  let status = 'pending';
+  let q = '';
+
+  async function load() {
+    box.innerHTML = '<div class="skeleton" style="height:80px"></div>';
+    try {
+      const r = await api('admin', 'theme_list', { status: status === 'all' ? '' : status, q: q, size: 30 });
+      const items = r.items || [];
+      box.innerHTML = items.length ? items.map(ptRowHtml).join('')
+        : '<div class="empty">' + IC('state.empty') + '<p>' + esc(t('没有记录')) + '</p></div>';
+    } catch (e) {
+      box.innerHTML = `<div class="empty">${IC('state.error')}<p>${esc(e.message)}</p></div>`;
+    }
+  }
+
+  seg.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tst]');
+    if (!b) { return; }
+    seg.querySelectorAll('[data-tst]').forEach(x => x.classList.toggle('on', x === b));
+    status = b.dataset.tst;
+    load();
+  });
+  const rf = container.querySelector('#ptRefresh');
+  if (rf) { rf.addEventListener('click', load); }
+  let qt = 0;
+  if (qEl) {
+    qEl.addEventListener('input', () => {
+      clearTimeout(qt);
+      qt = setTimeout(() => { q = qEl.value.trim(); load(); }, 320);
+    });
+  }
+
+  box.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-pt]');
+    if (!b) { return; }
+    const row = b.closest('[data-tsid]');
+    const id = Number(row && row.dataset.tsid);
+    const act = b.dataset.pt;
+    if (!id) { return; }
+    try {
+      if (act === 'get') {
+        const one = await api('admin', 'theme_get', { id: id });
+        const head = t('主题') + '：' + (one.name || one.theme_id) + '\n' + t('作者') + '：' + one.author
+          + '\n' + t('状态') + '：' + t((PT_TAG[one.status] || [, one.status])[1])
+          + '\n' + t('大小') + '：' + one.bytes + ' B' + (one.reason ? '\n' + t('拒绝原因') + '：' + one.reason : '');
+        await dialog(t('查看主题'), '<pre class="tiny" style="white-space:pre-wrap;max-height:46vh;overflow:auto">'
+          + esc(head + '\n\n' + String(one.json || '').slice(0, 1200)) + (String(one.json || '').length > 1200 ? '\n…' : '') + '</pre>',
+          t('关闭'));
+        return;
+      }
+      if (act === 'approve') {
+        await api('admin', 'theme_review', { id: id, verdict: 'approve' });
+        toast(t('已通过'));
+      } else if (act === 'reject') {
+        const reason = await prompt_(t('拒绝主题'), t('写一句原因，作者能在主题目录看到。'), t('拒绝'));
+        if (reason === null) { return; }
+        await api('admin', 'theme_review', { id: id, verdict: 'reject', reason: reason || '' });
+        toast(t('已拒绝'));
+      } else if (act === 'delete') {
+        const yes = await dialog(t('删除这条投稿'), t('删除后不可恢复，作者的投稿额度会被释放。'), t('删除'), { danger: 1 });
+        if (!yes) { return; }
+        await api('admin', 'theme_review', { id: id, verdict: 'delete' });
+        toast(t('已删除'));
+      } else if (act === 'feature') {
+        const isFeat = (row.querySelector('[data-pt="feature"]') || {}).textContent === '取消推荐';
+        await api('admin', 'theme_review', { id: id, verdict: isFeat ? 'unfeature' : 'feature' });
+        toast(isFeat ? t('已取消推荐') : t('已推荐（目录里置顶并高亮）'));
+      } else if (act === 'quota') {
+        const uid = Number(b.dataset.uid || 0);
+        const cur = (b.closest('[data-tsid]').querySelector('.nowrap') || {}).textContent || '';
+        const v = await prompt_(t('投稿额度'), t('可填 1、2 或 3。当前：') + cur.trim(), '1');
+        if (v === null) { return; }
+        const n = Number(String(v).trim());
+        if (!(n >= 1 && n <= 3)) { toast(t('只能填 1~3'), 'err'); return; }
+        await api('admin', 'theme_quota', { uid: uid, quota: n });
+        toast(t('额度已更新'));
+      }
+      load();
+    } catch (err) {
+      toast((err && err.message) || t('操作失败'), 'err');
+    }
+  });
+
+  load();
+}
+
 function bindAnnounce(container) {
   const inp = container.querySelector('#annInput');
   if (!inp) return;

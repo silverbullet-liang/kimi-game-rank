@@ -190,7 +190,34 @@ The login is used only to read this one work. It is not stored and not displayed
 - The name must pass content review; the cover must be an http(s) link.
 - If the work cannot be read (wrong ID, expired login) the reason is stated directly and nothing is stored.
 
-## 12. FAQ
+## 12. Theme gallery
+
+"Theme gallery" in the menu is a standalone page for collecting and sharing themes (JSON format) made by anyone.
+
+**Submitting**
+
+- Each account has **1** submission slot by default; an administrator can raise it to **2** or **3** per user in the control panel.
+- Slots count themes that are pending or approved. Rejected ones do not count, and withdrawing frees the slot.
+- Two ways to submit: choose a `.json` file, or paste the JSON directly. Files must stay under 1 MB.
+- A theme id can appear only once; if it is taken, pick another id.
+- Submissions wait for review; until approved, only you can see them.
+
+**Browsing and applying**
+
+- The total number of themes sits at the top; below is every approved theme, searchable by name, author or theme id.
+- Themes featured by an administrator carry a "Featured" badge, are pinned to the front and highlighted.
+- Each card has two actions:
+  - **Save as mine** — adds it to your own themes, switchable later in Mine → Appearance (requires login).
+  - **Apply** — takes effect on this device only, without overwriting what you saved.
+- "Design spec" at the top right jumps straight to the full specification in the repository: fields, icon slots and border positions.
+
+**Worth knowing**
+
+- Once the author withdraws a theme or an administrator deletes it, it disappears from the gallery and the slot is freed.
+- When rejecting, an administrator can leave a short reason; the author sees it under "My submissions" on this page.
+- Gallery themes are validated like any other: files containing scripts, `@import`, inline events or similar are rejected outright.
+
+## 13. FAQ
 
 1. **Why can't I see "Control panel"?** It is an administrator-only interface — see section 10.
 2. **Why can't I like or post?** Check that you are signed in (guests can only browse).

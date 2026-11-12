@@ -7,6 +7,25 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.61.5 · 2026-11-12 (A Hundred Schools)
+
+### New: theme gallery
+
+- A standalone "Theme gallery" page in the menu: submit the theme you made, and everyone can use it once approved
+- Each account starts with 1 submission slot; administrators can raise it to 2 or 3 per user
+- Slots count pending and approved themes; rejections do not count and withdrawing frees the slot
+- Submit by picking a file or pasting JSON, up to 1 MB; dangerous constructs are rejected outright
+- The gallery lists every approved theme with the total count, searchable by name, author or id
+- Two actions per card: **Save as mine** (adds it to your themes, switchable in Appearance) and **Apply** (this device only)
+- Administrators can mark a theme as featured: pinned and highlighted in the gallery
+- "Design spec" at the top right jumps to the full specification in the repository
+
+### Control panel
+
+- New "Theme submissions" section: pending / approved / rejected / all, with search
+- Approve, reject (with a reason), delete, feature or unfeature
+- Adjust a user's submission slots (1 to 3)
+
 ## v3.61.4 · 2026-11-12 (Fully Wired)
 
 ### Themes

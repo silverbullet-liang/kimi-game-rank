@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 38);
+define('SCHEMA_VERSION', 40);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -2764,6 +2764,54 @@ INCDOC36;
             app_log('schema migrated to v37（banned_devices / user_devices）');
         } catch (Throwable $e) {
             app_log('migrate v37 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v40：主题投稿的推荐位（管理员置顶 + 特殊显示） ---------- */
+    if ($cur < 40) {
+        try {
+            if (table_exists('theme_submissions') && !col_ok('theme_submissions', 'featured')) {
+                db_exec("ALTER TABLE `theme_submissions` ADD COLUMN `featured` TINYINT NOT NULL DEFAULT 0 AFTER `status`");
+            }
+            setting_set('schema_version', '40');
+            app_log('schema migrated to v40（theme_submissions.featured）');
+        } catch (Throwable $e) {
+            app_log('migrate v40 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v39：主题投稿目录（每人默认 1 个额度，管理员可提到 3） ---------- */
+    if ($cur < 39) {
+        try {
+            db_exec("CREATE TABLE IF NOT EXISTS `theme_submissions` (
+                `id` INT NOT NULL AUTO_INCREMENT,
+                `oid` VARCHAR(16) NOT NULL DEFAULT '',
+                `user_id` INT NOT NULL,
+                `username` VARCHAR(64) NOT NULL DEFAULT '',
+                `theme_id` VARCHAR(32) NOT NULL DEFAULT '',
+                `theme_name` VARCHAR(64) NOT NULL DEFAULT '',
+                `accent` VARCHAR(9) NOT NULL DEFAULT '',
+                `bytes` INT NOT NULL DEFAULT 0,
+                `body` MEDIUMTEXT NOT NULL,
+                `status` VARCHAR(10) NOT NULL DEFAULT 'pending',
+                `featured` TINYINT NOT NULL DEFAULT 0,
+                `reject_reason` VARCHAR(200) NOT NULL DEFAULT '',
+                `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                `reviewed_at` DATETIME NULL DEFAULT NULL,
+                `reviewed_by` INT NOT NULL DEFAULT 0,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uk_oid` (`oid`),
+                KEY `idx_ts_status` (`status`, `id`),
+                KEY `idx_ts_user` (`user_id`, `status`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主题投稿目录'");
+            /* 投稿额度：默认 1，管理员可在控制面板提到 3 */
+            if (!col_ok('users', 'theme_quota')) {
+                db_exec("ALTER TABLE `users` ADD COLUMN `theme_quota` TINYINT NOT NULL DEFAULT 1");
+            }
+            setting_set('schema_version', '39');
+            app_log('schema migrated to v39（theme_submissions / users.theme_quota）');
+        } catch (Throwable $e) {
+            app_log('migrate v39 failed: ' . $e->getMessage());
         }
     }
 

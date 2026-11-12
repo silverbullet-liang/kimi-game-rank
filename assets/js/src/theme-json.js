@@ -766,6 +766,14 @@ function applyRaw(raw) {
   return r;
 }
 
+/** 应用主题并记住：刷新后仍生效（数据同样过校验，可被篡改的本地副本也要拦） */
+function applySave(raw) {
+  var r = applyRaw(raw);
+  if (!r.ok) { return r; }
+  try { localStorage.setItem('kimgr_tjson', raw); localStorage.setItem('kimgr_tjson_on', '1'); } catch (e) {}
+  return r;
+}
+
 /** 读取当前主题的摘要，供 UI 展示 */
 function current() {
   if (!TJ.theme) { return null; }
@@ -803,6 +811,7 @@ const ThemeJSON = {
   parse: parse,
   apply: apply,
   applyRaw: applyRaw,
+  applySave: applySave,
   clear: clear,
   current: current,
   reapply: function () { if (TJ.theme) { applyVars(TJ.theme); } },
