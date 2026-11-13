@@ -8,6 +8,7 @@
  */
 import { api, state, esc, toast, dialog, btnLoading, honourBadge, userHonours } from '../core.js';
 import { navigate } from '../router.js';
+import { SITE_BASE } from '../base.js';
 
 const PAGE = 20;
 const MAX_BYTES = 1048576;
@@ -37,6 +38,7 @@ export async function renderTheme(container) {
         <div class="tiny muted">${t('把你做好的主题交上来，审核通过后出现在下面，所有人都能一键应用。')}</div>
       </div>
       <div class="th-head-right">
+        <a class="th-spec" href="${SITE_BASE}/themes.html">${IC('doc.changelog', 'ico-sm')}<span>${t('活动页')}</span></a>
         <a class="th-spec" href="${SPEC_URL}" target="_blank" rel="noopener">${IC('doc.features', 'ico-sm')}<span>${t('设计规范')}</span></a>
         <div class="th-total"><b id="thTotal">·</b><span>${t('个主题')}</span></div>
       </div>

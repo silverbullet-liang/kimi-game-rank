@@ -7,6 +7,15 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.61.8 · 2026-11-13 (Spread the Word)
+
+### New: contest landing page
+
+- A standalone page at `/themes.html` explains in one place how to take part, how far a theme can go, and the conditions for all three honour tiers plus the review criteria
+- Three entry points on the page — submit, main site, mirror — one tap each on mobile, plus "copy the submission link"
+- The gallery now links to it from its top-right corner, so it is reachable without leaving the site
+- The same page is published to GitHub Pages as well; both copies stay identical and it works offline
+
 ## v3.61.7 · 2026-11-13 (Gathering of Talent)
 
 ### New: contest honours
