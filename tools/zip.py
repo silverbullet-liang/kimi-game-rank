@@ -29,6 +29,7 @@ SKIP = (
     os.path.join(PROJ, 'tools') + os.sep,          # 构建与校验脚本
     os.path.join(PROJ, 'docs') + os.sep,           # 设计与研究文档
     os.path.join(PROJ, 'standalone') + os.sep,     # 更新日志 / 跳转页独立版（另发）
+    os.path.join(PROJ, 'site') + os.sep,           # GitHub Pages 源目录（themes.html 副本）
     os.path.join(PROJ, '.github') + os.sep,        # 仓库配置：只属于 GitHub，不进站点
     os.path.join(PROJ, '.git') + os.sep,
     os.path.join(PROJ, 'assets', 'js', 'src') + os.sep,   # 前端源码：线上只用合并后的 app.js
