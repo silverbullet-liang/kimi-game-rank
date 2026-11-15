@@ -37,6 +37,28 @@ return array(
         'force_https' => true,
     ),
 
+    /* ---------- Cloudflare 安全盾（源站保护，可通过配置关闭） ----------
+     * 作用：只接受经过 Cloudflare 的请求，直连源站一律拒绝。
+     * 原理：CF 侧用 Transform Rule 或 Worker 注入一个私有头（下面的 secret），
+     *       这个值只有 CF 与本站知道；客户端直连时伪造不出来，所以一秒钟被挡在门外。
+     * 关闭方式：enabled 改 false 即可（或把 secret 清空，模块会自动失效并在日志留痕）。
+     *
+     * hosts 的含义：只在这些域名上生效。主站填自有域名，镜像站留空 ——
+     *              一份代码两个站，镜像站天然不启用这套盾。
+     * allow 的含义：放行的路径前缀（定时任务、站点互通端点等，它们不打 CF）。
+     * deny  的含义：拒绝方式 —— errors404（伪装成 404）/ suspend（伪装成站点已停用）/ http404（直接 404）。
+     */
+    'cf_shield' => array(
+        'enabled' => true,
+        'hosts'   => array('kimi-game-rank.nx.kg'),
+        'secret'  => '',                       /* 接入 CF 后填入随机长串（与 CF 侧注入头一致） */
+        'header'  => 'HTTP_X_ORIGIN_AUTH',
+        'mode'    => 'enforce',                /* enforce = 拦截；observe = 只记录不拦（灰度用） */
+        'deny'    => 'errors404',
+        'allow'   => array('cron.php', 'api/peer.php'),
+    ),
+
+
     /* ---------- 站点互通（多站互为镜像） ---------- */
     'peers' => array(
         // 本站私钥：64 位十六进制（32 字节）。留空则互通功能整体不可用。

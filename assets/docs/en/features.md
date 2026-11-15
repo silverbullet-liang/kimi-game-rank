@@ -227,7 +227,41 @@ The second and third tiers are recalculated from the themes currently approved, 
 - When rejecting, an administrator can leave a short reason; the author sees it under "My submissions" on this page.
 - Gallery themes are validated like any other: files containing scripts, `@import`, inline events or similar are rejected outright.
 
-## 13. FAQ
+## 13. Access check
+
+While the site is under a traffic attack, an access check is enabled. **Some origins must pass a single human check before browsing**; once passed, everything works normally for 2 hours without asking again.
+
+- Only origins that sent a large burst of requests in a very short window are asked; ordinary visitors rarely see it
+- The check is provided by Cloudflare Turnstile; if it cannot load, the page falls back to two backup channels, and if none of them work it shows a hint and a retry button
+- Once passed, the browser remembers it for about 2 hours; changing network or IP requires checking again
+- A verified origin gets exactly the same features as usual
+
+
+### Origin protection
+
+The site now accepts **only requests that passed through Cloudflare**.
+
+- Normal access through the site's domain: **exactly as before** — no extra check, no slowdown
+- Connecting directly to the origin address: you will be sent to a "page not found" screen
+- This can be switched off in the configuration; the mirror site does not enable it
+- If you genuinely need direct access (for example a self-built tool), please contact the site owner first
+
+---
+
+---
+
+## 14. Site freeze
+
+When the site receives an extreme burst of traffic it switches to **static mode**: the whole site becomes a single minimal page and every API is unavailable for a while. This exists so the host does not suspend the whole account — stopping ourselves is better than being suspended for 24 hours.
+
+- It is triggered by the volume of requests arriving in a short window; normal visits never trigger it
+- While frozen, nothing can be read or written; the page only says the content is being organised
+- **A freeze does not lift itself.** Only the site owner can restore it, and only after the traffic has settled — restoring too early simply freezes again
+- A freeze affects access only: your account, works and comments are untouched and everything is back to normal afterwards
+
+---
+
+## 15. FAQ
 
 1. **Why can't I see "Control panel"?** It is an administrator-only interface — see section 10.
 2. **Why can't I like or post?** Check that you are signed in (guests can only browse).
@@ -241,4 +275,4 @@ The second and third tiers are recalculated from the themes currently approved, 
 
 **Related documents**: [AI Guide](/docs/ai) · [Community Guidelines](/docs/community) · [Scoring Standard](/docs/scoring) · [Admission Rules](/docs/admission) · [Terms of Service](/docs/terms) · [Privacy Policy](/docs/privacy) · [Changelog](/docs/changelog)
 
-> Last updated: 2026-10-22
+> Last updated: 2026-11-14

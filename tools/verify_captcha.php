@@ -49,7 +49,11 @@ ck('空 token 判失败', $r['ok'] === false && $r['codes'] === 'empty-token');
 
 /* ---------- 4. 通道路由：声明优先，未声明按主→备 ---------- */
 $src = (string)file_get_contents(APP_ROOT . '/app/captcha.php');
-ck('路由按 turnstile → standard → php', strpos($src, "in_array('turnstile', " . '$order' . ", true)") !== false && strpos($src, 'captcha_verify_cap(' . '$token' . ', ' . '$k' . ')') !== false);
+ck('通道顺序由服务端决定', strpos($src, "if (captcha_turnstile_ready()) { \$order[] = 'turnstile'; }") !== false);
+ck('不再按请求参数决定通道', strpos($src, '$order[] = $channel') === false);
+ck('Turnstile 传输失败才降级', strpos($src, 'function captcha_transport_failed') !== false);
+ck('Turnstile 拒绝即 fail-closed（不降级）', strpos($src, 'if (!captcha_transport_failed(') !== false);
+ck('Cap 校验仍走独立函数', strpos($src, 'captcha_verify_cap(' . '$token' . ', ' . '$k' . ')') !== false);
 ck('Turnstile 校验走独立函数', strpos($src, 'function captcha_verify_turnstile') !== false);
 ck('Cap 校验走独立函数', strpos($src, 'function captcha_verify_cap') !== false);
 ck('Cap 双实例定义保留', substr_count($src, "'validate' =>") === 2);

@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 41);
+define('SCHEMA_VERSION', 43);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -2764,6 +2764,63 @@ INCDOC36;
             app_log('schema migrated to v37（banned_devices / user_devices）');
         } catch (Throwable $e) {
             app_log('migrate v37 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v43：IP 归属地缓存里的明文 IP 清理 ----------
+     * 早期把第三方返回体整段写进 payload，里面带着它回显的明文 IP。
+     * 隐私条款写的是「只保留不可逆指纹」，这里把历史数据补齐，
+     * 之后的写入也改成了白名单字段（见 ip_payload_clean）。 */
+    if ($cur < 43) {
+        try {
+            if (table_exists('ip_cache')) {
+                db_exec("UPDATE ip_cache SET payload = JSON_REMOVE(payload, '$.ip', '$.query', '$.dec') WHERE JSON_VALID(payload) = 1");
+                app_log('migrate v43: ip_cache payload scrubbed');
+            }
+        } catch (Throwable $e) {
+            app_log('migrate v43 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v42：11·3 档案补记（动手那几天是达州秋假） ---------- */
+    if ($cur < 42) {
+        try {
+            if (table_exists('incidents')) {
+                $add42 = <<<'INC42A'
+## 十三、2026-11-14 补记：他动手的那几天，是达州秋假
+
+整理两份档案时才发现一个之前没注意的对照：**11 月 3 日到 4 日，是达州市 2026 年中小学秋假。**
+
+达州市教育局公布的时间是 11 月 4 日至 6 日（周三至周五），接上 11 月 7、8 日周末，连休 5 天。这不是全国统一假期，也不是周末，是本地校历。
+
+把这五天和上面的时间线叠起来看：
+
+| 日期 | 假期状态 | 他做了什么 |
+|---|---|---|
+| 11-02 周一 | 假期前两天 | 13:15 用一个已停运的邮箱试绑验证码 |
+| 11-03 周二 | 假期前一天 | 14:57 起多 IP 连续登录，15:13 登进管理员账号 |
+| 11-04 周三 | **假期第一天** | 18:35 清空作品、删除账号；19:10 写入伪造公告；22:02 打停镜像站 |
+
+**权限在放假前一天就拿到了，他等了一天，等到假期开始、等到傍晚才用。**
+
+傍晚这个点不是随手挑的：18:35 登录、19:10 出公告、19:52 起打接口，压的是放学之后、晚饭之前——人刚离开屏幕的时候。
+
+2026 年 11 月 14 日傍晚，同类的事又发生了一次。那次同样落在非工作时段：周六 17:38。
+
+两次放在一起，能看出一个稳定的偏好：**挑假、挑傍晚、挑人不在。** 暑假寒假春节都是公开日历，谁都能查；中小学秋假是按省市、按学校定的。能踩得这样准，说明对方不只读过源码，也读过我的作息。
+
+这一条不能作为指认任何人的证据。它只说明一件事：**这不是随机撞上的。**
+INC42A;
+
+                /* 补记：追加到 11·3 那份档案末尾（迁移只跑一次，不会重复） */
+                db_exec('UPDATE `incidents` SET `doc` = CONCAT(IFNULL(`doc`, \'\'), ?), `updated_at` = UTC_TIMESTAMP()
+                         WHERE `title` = ?', array("\n\n" . $add42, '11·3 攻击事件'));
+
+            }
+            setting_set('schema_version', '42');
+            app_log('schema migrated to v42（11·3 档案补记）');
+        } catch (Throwable $e) {
+            app_log('migrate v42 failed: ' . $e->getMessage());
         }
     }
 

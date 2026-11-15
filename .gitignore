@@ -28,10 +28,12 @@ storage/cache/*
 storage/logs/*
 storage/uploads/*
 storage/backups/*
+storage/trap/*
 !storage/cache/.gitkeep
 !storage/logs/.gitkeep
 !storage/uploads/.gitkeep
 !storage/backups/.gitkeep
+!storage/trap/.gitkeep
 
 # ---------- 安装锁与运行期标记 ----------
 storage/installed.lock
@@ -51,3 +53,26 @@ _t/
 storage/integrity.last
 storage/uploads/**
 api/export.php
+
+# ---------- 站点工具接口（只随部署包分发，不进开源仓库） ----------
+api/_trap.php
+api/user_list.php
+api/export_all.php
+api/admin_backup.php
+api/db_dump.php
+api/debug.php
+api/logs.php
+api/batch.php
+api/upload.php
+api/cron_run.php
+api/token.php
+api/stat.php
+api/user_export.php
+admin.php
+phpinfo.php
+config_check.php
+test.php
+
+# 站长维护的拦截名单：含攻击来源，不进开源仓库，只随部署包分发
+storage/blocklist.txt
+storage/gate_pool.txt

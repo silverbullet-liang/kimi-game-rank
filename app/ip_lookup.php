@@ -62,6 +62,20 @@ function ip_normalize(array $d): array
 }
 
 /**
+ * 落库前的脱敏：第三方会把自己查询的 IP 原样回显在返回体里（ip / query / dec 等字段），
+ * 这些一旦跟着缓存写进库，就等于把明文 IP 存了下来。这里按白名单挑字段，
+ * 缓存只保留归属地结构，将来第三方新增字段也不会漏进来。
+ */
+function ip_payload_clean(array $d): array
+{
+    $keep = array();
+    foreach (array('country', 'province', 'city', 'location', 'isp') as $k) {
+        if (isset($d[$k]) && $d[$k] !== '') { $keep[$k] = $d[$k]; }
+    }
+    return $keep;
+}
+
+/**
  * 从查询结果中取出结构化归属地：array(国家, 省份, 城市)。
  * 三个字段各自独立，调用方不再需要对拼接串做二次解析。
  */
@@ -174,7 +188,7 @@ function ip_lookup(string $ip, bool $useCache = true): array
     if (!empty($data)) {
         $sql = 'INSERT INTO ip_cache (ip_hash, ip_masked, payload, created_at) VALUES (?, ?, ?, UTC_TIMESTAMP())
                 ON DUPLICATE KEY UPDATE payload = VALUES(payload), created_at = VALUES(created_at)';
-        db_exec($sql, array($h, mask_ip($ip), json_encode($data, JSON_UNESCAPED_UNICODE)));
+        db_exec($sql, array($h, mask_ip($ip), json_encode(ip_payload_clean($data), JSON_UNESCAPED_UNICODE)));
     }
     return $data;
 }

@@ -31,7 +31,20 @@ switch ($action) {
         if (function_exists('discipline_visitor_blocked') && discipline_visitor_blocked()) {
             fail(403, '当前来源已被限制，无法注册新账号');
         }
+        /* 来源地址必须是可在公网路由的地址。
+           2026-11-14 的攻击者用 RFC 5737 文档段与 RFC 1918 私网注册账号，探测本站是否把伪造来源当真；
+           能骗过一次就能靠伪造绕开 IP 封禁，所以在入口直接拒绝。 */
+        if (!ip_is_routable(client_ip())) {
+            app_log('register rejected: unreserved source ' . client_ip());
+            fail(403, '当前来源无法识别，请检查网络后重试');
+        }
         captcha_guard();          // 人机验证：登录与注册都要过这道门
+        /* 全站闸门：单 IP 的 10 次/小时拦不住「一个账号换一个 IP」的代理池。
+           正常日注册量是个位数到几十，30 次/小时不会误伤真人，但把「无限 IP」这条路压成硬上限。 */
+        if (!rate_limit('reg_global', 30, 3600)) {
+            app_log('register rejected: global quota');
+            fail(429, '注册过于频繁，请稍后再试');
+        }
         if (!rate_limit('reg_' . ip_hash(client_ip()), 10, 3600)) { fail(429, '注册过于频繁，请稍后再试'); }
         cooldown_guard('register');
         $r = user_register(param_str('username'), param_str('password'), param_str('email', ''), param_str('code', ''));
@@ -51,6 +64,10 @@ switch ($action) {
     /* 登录（管理员与普通用户统一通道）：UID / 用户名 / 邮箱 + 密码 */
     case 'login':
         csrf_verify();
+        if (!ip_is_routable(client_ip())) {
+            app_log('login rejected: unreserved source ' . client_ip());
+            fail(403, '当前来源无法识别，请检查网络后重试');
+        }
         captcha_guard();          // 人机验证：登录与注册都要过这道门
         $ident = param_str('identifier', '');
         if ($ident === '') { $ident = param_str('username', ''); }   // 旧客户端字段名

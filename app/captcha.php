@@ -181,14 +181,18 @@ function captcha_verify(string $token, string $channel = '', string $ip = ''): a
     $token = trim($token);
     if ($token === '') { return array('ok' => false, 'via' => '', 'codes' => 'empty-token'); }
 
+    /* 通道顺序一律由服务端决定。
+     *
+     * 2026-11-14 的攻击者用请求参数 cap_channel=standard 把弱通道（Cap，纯计算题，
+     * 脚本几十毫秒可解）排到了第一位，于是强通道 Turnstile 全程没有参与校验，
+     * 180 个空账号就这样被放了进来。
+     *
+     * 因此：谁能参与、以什么顺序参与，只能由服务端根据「配置是否可用」决定。
+     * $channel 参数保留只为兼容旧调用签名，不再参与任何决策。
+     */
     $order = array();
-    if ($channel !== '') {
-        if ($channel === 'turnstile' || isset(captcha_channels()[$channel])) { $order[] = $channel; }
-    }
-    if (captcha_turnstile_ready() && !in_array('turnstile', $order, true)) { $order[] = 'turnstile'; }
-    foreach (array_keys(captcha_channels()) as $k) {
-        if (!in_array($k, $order, true)) { $order[] = $k; }
-    }
+    if (captcha_turnstile_ready()) { $order[] = 'turnstile'; }
+    foreach (array_keys(captcha_channels()) as $k) { $order[] = $k; }
 
     $last = '';
     foreach ($order as $k) {
@@ -196,12 +200,30 @@ function captcha_verify(string $token, string $channel = '', string $ip = ''): a
             $r = captcha_verify_turnstile($token, $ip);
             if (!empty($r['ok'])) { return array('ok' => true, 'via' => 'turnstile', 'codes' => ''); }
             $last = 'turnstile:' . $r['codes'];
-        } else {
-            if (captcha_verify_cap($token, $k)) { return array('ok' => true, 'via' => $k, 'codes' => ''); }
-            $last = $k . ':rejected';
+            /* 只有「连不上 Turnstile」才允许降级到备通道（避免 CF 故障导致全站无法登录）；
+               token 本身无效（invalid-input-response 等）必须立刻拒绝，不能拿 Cap 兜过去。 */
+            if (!captcha_transport_failed((string)$r['codes'])) {
+                app_log('captcha turnstile rejected: ' . $r['codes']);
+                return array('ok' => false, 'via' => 'turnstile', 'codes' => $last);
+            }
+            app_log('captcha turnstile unreachable, degrade: ' . $r['codes']);
+            continue;
         }
+        if (captcha_verify_cap($token, $k)) { return array('ok' => true, 'via' => $k, 'codes' => ''); }
+        $last = $k . ':rejected';
     }
     return array('ok' => false, 'via' => '', 'codes' => $last);
+}
+
+/** Turnstile 的失败是否属于传输层故障（可降级），而非 token 无效（不可降级） */
+function captcha_transport_failed(string $codes): bool
+{
+    $c = strtolower($codes);
+    if ($c === '') { return true; }
+    foreach (array('http-0', 'bad-json', 'curl', 'internal-error', 'timeout', 'timed out') as $m) {
+        if (strpos($c, $m) !== false) { return true; }
+    }
+    return false;
 }
 
 /**
@@ -216,7 +238,7 @@ function captcha_guard()
     if (trim($token) === '') { $token = param_str('cf_token', ''); }
     if (trim($token) === '') { fail(400, '请先完成人机验证'); }
 
-    $r = captcha_verify($token, param_str('cap_channel', ''), client_ip());
+    $r = captcha_verify($token, '', client_ip());
     if (empty($r['ok'])) {
         app_log('captcha rejected via=' . $r['via'] . ' reason=' . $r['codes']);
         fail(400, '人机验证未通过，请重新验证后再试');

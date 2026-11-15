@@ -271,6 +271,12 @@ function username_fix_info(string $name, int $uid, string $uid8)
  */
 function client_ip(): string
 {
+    /* 已通过 Cloudflare 安全盾验签时，CF 送来的真实客户端地址优先于 REMOTE_ADDR
+       （否则记录到的是 CF 边缘节点的 IP）。该值只在验签通过后写入，客户端伪造不了。 */
+    if (!empty($GLOBALS['__CF_VERIFIED_IP'])) {
+        $cfip = (string)$GLOBALS['__CF_VERIFIED_IP'];
+        if (filter_var($cfip, FILTER_VALIDATE_IP) !== false) { return $cfip; }
+    }
     $remote = isset($_SERVER['REMOTE_ADDR']) ? (string)$_SERVER['REMOTE_ADDR'] : '';
     $trusted = cfg('security.trusted_proxies', array());
     if (!is_array($trusted) || !$trusted || !ip_in_ranges($remote, $trusted)) {
@@ -289,6 +295,44 @@ function client_ip(): string
         if (!ip_in_ranges($chain[$i], $trusted)) { return $chain[$i]; }
     }
     return $remote !== '' ? $remote : '0.0.0.0';
+}
+
+/**
+ * IP 是否可在公网路由。
+ * 专用段、私网、环回、链路本地、文档示例段一律返回 false。
+ *
+ * 为什么需要它：2026-11-14 的攻击者用 RFC 5737 文档段（203.0.113.30 / 198.51.100.82）
+ * 与 RFC 1918 私网（10.35.74.165）注册账号，目的是探测「本站会不会把伪造的来源当真」。
+ * 能骗过一次，就能靠伪造绕开 IP 封禁。所以这类地址在业务入口一律拒绝。
+ */
+function ip_is_routable(string $ip): bool
+{
+    if ($ip === '' || filter_var($ip, FILTER_VALIDATE_IP) === false) { return false; }
+    $flags = FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE;
+    if (filter_var($ip, FILTER_VALIDATE_IP, $flags) === false) { return false; }
+    /* NO_RES_RANGE 已覆盖 192.0.2.0/24、198.51.100.0/24、203.0.113.0/24 与 100.64.0.0/10；
+       这里再显式兜一层，防止不同 PHP 版本行为差异。 */
+    foreach (array('192.0.2.0/24', '198.51.100.0/24', '203.0.113.0/24', '100.64.0.0/10') as $cidr) {
+        if (ip_in_cidr($ip, $cidr)) { return false; }
+    }
+    return true;
+}
+
+/** 单地址是否落在某个 CIDR 内（IPv4 / IPv6 通用，供 ip_is_routable 兜底） */
+function ip_in_cidr(string $ip, string $cidr): bool
+{
+    $parts = explode('/', $cidr);
+    if (count($parts) !== 2) { return $ip === $cidr; }
+    $net = @inet_pton($parts[0]);
+    $bin = @inet_pton($ip);
+    if ($net === false || $bin === false || strlen($net) !== strlen($bin)) { return false; }
+    $bits = (int)$parts[1];
+    $bytes = intdiv($bits, 8);
+    if ($bytes > 0 && substr($bin, 0, $bytes) !== substr($net, 0, $bytes)) { return false; }
+    $rest = $bits % 8;
+    if ($rest === 0) { return true; }
+    $mask = 0xFF << (8 - $rest) & 0xFF;
+    return (ord($bin[$bytes]) & $mask) === (ord($net[$bytes]) & $mask);
 }
 
 /** IP 是否落在任一网段内；支持单地址与 CIDR（IPv4 / IPv6 均可） */

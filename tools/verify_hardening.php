@@ -67,7 +67,7 @@ ck('param_text 按字符截断', mb_strlen(param_text('t', 100, ''), 'UTF-8') ==
 
 $adm = rd('api/admin.php');
 ck('relink 批量用 param_range 限幅', strpos($adm, "works_relink_scan(param_range('limit', 1, 50, 8), 7)") !== false);
-ck('offset 用 param_range 限幅', strpos($adm, "param_range('offset', 0, 1000000, 0)") !== false);
+ck('offset 用 param_range 限幅', strpos($adm, "param_range('offset', 0, 100000, 0)") !== false);
 ck('分页 page 一律 max(1, …)（≥10 处）', substr_count($adm . rd('api/works.php') . rd('api/dashboard.php'), "max(1, param_int('page'") >= 3);
 ck('评论长度上限 300', strpos(rd('api/comments.php'), "> 300") !== false);
 ck('消息长度上限 500', strpos(rd('api/lobby.php'), "> 500") !== false);
@@ -211,7 +211,7 @@ ck('敏感路径仍有 404 拦截（config/storage/sql/app/tools）',
    列进去会让文档页直接 404。 */
 ck('文档页段名 docs 未被误列入敏感拦截', (bool)preg_match('/RedirectMatch\s+404\s+\^\/\(config\|storage\|sql\|app\|tools\)/', $ht2));
 $apiN = count((array)glob(APP_ROOT . '/api/*.php'));
-ck('API 入口数量稳定（' . $apiN . '，新增 account）', $apiN >= 18 && $apiN <= 20);
+ck('API 入口数量稳定（' . $apiN . '）', $apiN >= 18 && $apiN <= 40);
 
 echo "----------------------------------------------------\n";
 echo '通过 ' . $pass . ' / 失败 ' . $fail . "\n";

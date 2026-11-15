@@ -7,6 +7,80 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.63.0 · 2026-11-16 (Double Gates)
+
+> From the *Book of Changes*: "Double gates and night watches, to meet the violent guest" — set more than one gate, and keep watch through the night.
+
+### New: origin protection
+
+The site now accepts **only requests that passed through Cloudflare**. Connecting directly to the origin address leads to a "page not found" screen and reveals nothing about where the site actually lives.
+
+- Normal access through the site's domain: **exactly as before** — no extra check, no slowdown
+- This can be switched off in the configuration; once off, direct connections work again immediately
+- The mirror site does not enable it
+
+### Fixed: who decides the human check
+
+Previously, the order of verification channels could be influenced by a request parameter — effectively handing the choice of "which check to use" to the visitor. It is now decided **entirely by the site**.
+
+- For ordinary users: **no perceptible change**
+- For scripts: the trick of "pick the easiest channel yourself" no longer works
+
+### New: a global ceiling on registration
+
+The per-source limit stays as before, and a site-wide hourly ceiling is added on top.
+
+Normal daily registration is in the single digits to a few dozen — far below the ceiling, so real people will not meet it.
+
+### New: source address check
+
+When registering or signing in, the source address must be an identifiable public address. Forged addresses, private-network addresses, and documentation-reserved addresses are rejected and recorded.
+
+### New: "A Record of What Happened"
+
+A record of the two incidents, 11·3 and 11·14 — when, how large, by what mechanism — plus what we changed afterwards and the one thing we have not solved. The two are unrelated and are written separately.
+
+It is in the "More" menu.
+
+---
+
+## v3.62.0 · 2026-11-15 (Let the Wind Blow)
+
+### New: access check
+
+The site has been under a sustained flood of requests, so an access check is now in place:
+
+- **Individual origins with a record of high-frequency bursts must pass one human check before browsing**; once passed, everything works normally for 2 hours without asking again
+- The check is provided by Cloudflare Turnstile; if it cannot load, the page falls back to two backup channels, and if none work it shows a hint and a retry button
+- Only origins that sent a large burst of requests in a very short window are asked; ordinary visitors rarely see it
+- A verified origin gets exactly the same features as usual
+
+### Load reductions shipped in the same batch
+
+Not new features — without them the site could not stay up:
+
+- Automatic refresh for comments and new messages now **backs off step by step**: with nothing new, the interval stretches from 45 seconds to 3 minutes; it stops entirely while the page is in the background and refreshes once immediately when you return
+- The control panel now refreshes every 60 seconds instead of 30
+- Document pages are cached per version, so the same version is not downloaded twice
+
+### New: static mode under extreme traffic
+
+When the site receives an extreme burst of traffic it switches to a static page and every API pauses. **A freeze does not lift itself** — only the site owner can restore it, so even someone holding in-site admin rights cannot open that door. See section 14 of the feature guide.
+
+### Fix: the location cache used to keep the raw IP
+
+The location cache stored the third party's raw response in full, including the IP address that was being looked up. It now keeps only country, province, city, the location string and the carrier, and existing records were cleaned up. This brings the site in line with the privacy policy promise: only irreversible fingerprints, never plain IP addresses.
+
+### Note
+
+This is an emergency measure, not a permanent one. It will be turned off once the flood stops, or once requests can be stopped before they reach the host.
+
+### Known limitation
+
+This check cannot stop the kind of attack that exhausts the host's daily quota — by then the request has already arrived and the cost is already paid. The real fix is to keep requests from reaching the host at all.
+
+---
+
 ## v3.61.8 · 2026-11-13 (Spread the Word)
 
 ### New: contest landing page

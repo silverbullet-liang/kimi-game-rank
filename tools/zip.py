@@ -72,7 +72,9 @@ SKIP_FILES = (
 # 被整目录排除后仍需保留的骨架文件。
 # 少了它们，解压出来的包根本没有 storage/cache、storage/logs 这些目录，
 # 线上写日志 / 写缓存 / 落迁移锁都会失败（锁写不进 → 每个请求都重跑一遍建表检查）。
-SKELETON = ('.gitkeep', '.htaccess')
+# blocklist.txt / gate_pool.txt 是站长自己维护的名单，属于配置而不是运行期产物，
+# 必须随包分发；否则新部署上来名单为空，黑名单与准入池都形同没装。
+SKELETON = ('.gitkeep', '.htaccess', 'blocklist.txt', 'gate_pool.txt')
 
 RE_STORAGE = re.compile('^' + re.escape(PROJ) + r'/storage/(.+)$')
 

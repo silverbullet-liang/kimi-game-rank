@@ -34,7 +34,7 @@ ck('已收录标记用一次 IN 查询', strpos($admin, 'FROM works WHERE commun
 ck('panel.js 有 bindCommunitySearch', strpos($panel, 'function bindCommunitySearch(container)') !== false, true);
 ck('在 bindAddWork 内挂载', strpos($panel, "bindCommunitySearch(container);") !== false, true);
 ck('搜索块在收录区（addWorkBlock）', strpos($panel, '从社区搜索并一键收录') !== false, true);
-ck('调 community_search 接口', strpos($panel, "'admin.php', 'community_search'") !== false, true);
+ck('调 community_search 接口', strpos($panel, "'admin', 'community_search'") !== false, true);
 ck('每页 10 条', strpos($panel, 'const PAGE = 10;') !== false, true);
 ck('滚到底自动加载', strpos($panel, 'atEnd()') !== false, true);
 ck('添加复用 add_work 手动分支', strpos($panel, "mode: 'manual', work_id: id") !== false, true);

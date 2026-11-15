@@ -91,6 +91,7 @@ We use a small number of cookies and browser storage to **provide and protect th
 | `kimgr_qrdev` / `kimi_qr_wid` | Local storage | Remembers the **device identifier** used for QR sign-in (a browser identifier supplied by Kimi, used only to generate the code) | Until you clear it |
 | `kimgr_geo` | Local storage | Caches the **location** you authorised (latitude, longitude, time) for a later check of the same restriction | 24 hours, then expires |
 | `kimgr_disc_seen` | Local storage | Remembers the **latest violation notice** you have read, so it is not shown again | Until you clear it |
+| `kimgr_gate` | Cookie | After your access origin is asked to pass a human check, records that **the check was passed**, so you are not asked on every request | About 2 hours (configurable); invalid once your IP changes |
 | `kimgr_ban` / `kimgr_b` | Local storage, session storage, IndexedDB, Cache Storage, cookie | Records **whether the access origin is restricted**, so the restriction notice appears immediately on refresh or navigation; written only while restricted and cleared automatically when lifted | Until lifted or expired (at most 30 days) |
 
 1. **We do not use**: third-party analytics (traffic analysis, tracking SDKs), advertising cookies, cross-site tracking; we embed no social plugins and **never sell** cookie or local-storage data.
@@ -105,6 +106,7 @@ We **never sell** your personal information. We share it only in the following *
 
 | Service (full name) | Site / docs | What is shared | Purpose |
 | --- | --- | --- | --- |
+| Cloudflare, Inc. (reverse proxy & CDN) | [cloudflare.com](https://www.cloudflare.com) | Your IP address, request headers, request path | **Origin protection**: the site accepts only requests forwarded by Cloudflare; direct connections to the origin are refused |
 | Moonshot AI · Kimi Community | [www.kimi.com](https://www.kimi.com) | No personal information (public work information only); when an administrator chooses "fill in by QR code", their browser submits a login code once to the Kimi login service | Retrieving work data and pages; letting an administrator obtain their own community credential |
 | Miren API (BugPk resolver) | [api.mir6.com](https://api.mir6.com) | The Bilibili video link / BV number you submit | Resolving video information and playback address (used only for the pre-send preview and playback) |
 | Bilibili | [www.bilibili.com](https://www.bilibili.com) | Public information about the Bilibili video (video page) | Getting title, description, cover and duration for display and moderation |
@@ -236,5 +238,5 @@ To exercise these rights, contact us as described above; we will respond within 
 
 ---
 
-> Last updated: 2026-10-22
+> Last updated: 2026-11-14
 > This policy, together with the [Terms of Service](/docs/terms), forms your agreement on using this service. Please read both.

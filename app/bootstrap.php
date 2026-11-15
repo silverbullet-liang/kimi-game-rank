@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '3.61.8');
+define('APP_VERSION', '3.63.0');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);
@@ -41,6 +41,24 @@ if (!function_exists('mb_strlen')) {
 }
 
 $APP_CONFIG = require APP_ROOT . '/config/config.php';
+
+/* ---------- 永久拒绝名单：比熔断更早，命中直接 403 ---------- */
+require_once APP_ROOT . '/app/blocklist.php';
+blk_guard();
+
+/* ---------- Cloudflare 安全盾：只接受经过 CF 的请求，直连源站一律拒绝 ----------
+ * 必须放在连接数据库之前 —— 它只读请求头与配置，被挡的请求不进业务逻辑、不耗配额。
+ * 通过后会把 CF-Connecting-IP 记为真实客户端 IP，供 client_ip() 采用。 */
+require_once APP_ROOT . '/app/cf_shield.php';
+cf_shield_guard(isset($APP_CONFIG['cf_shield']) && is_array($APP_CONFIG['cf_shield'])
+    ? $APP_CONFIG['cf_shield'] : array());
+
+/* ---------- 流量看门：请求量异常时先出维护页，避免整站被主机停掉 ----------
+ * 必须放在连库之前 —— 熔断期间不加载数据库，也不跑迁移与后台任务。
+ * storage/breaker.off 存在则永不熔断（调试用）。 */
+require_once APP_ROOT . '/app/breaker.php';
+brk_guard();
+
 
 /* ---------- 时区与错误 ---------- */
 date_default_timezone_set('UTC');            // 库内全 UTC，展示层再转本地
@@ -104,6 +122,7 @@ require_once APP_ROOT . '/app/discipline.php';
 require_once APP_ROOT . '/app/peer_crypto.php';
 require_once APP_ROOT . '/app/peer_sync.php';
 require_once APP_ROOT . '/app/audit.php';
+require_once APP_ROOT . '/app/gate.php';   /* 访问准入：命中 IP 池的来源强制人机验证 */
 require_once APP_ROOT . '/app/migrate.php';
 require_once APP_ROOT . '/app/autoinstall.php';
 
@@ -153,6 +172,13 @@ if (is_api_request()) {
         app_log('discipline api guard failed: ' . $e->getMessage());
     }
 }
+
+/* ---------- 访问准入：命中 IP 池的来源强制人机验证 ----------
+ * 放在违纪守卫之后 —— 账号已被封停的先去看封禁通知，不必再过一道验证。
+ * 命中即拦：API 返回 403（前端据此刷新出验证页），页面直接渲染验证页。
+ * 注意：请求走到这里，主机已经记了一次 hit，这道闸门不减少配额消耗，
+ * 挡的是裸脚本与批量抓取。 */
+try { gate_guard(); } catch (Throwable $e) { app_log('gate guard failed: ' . $e->getMessage()); }
 
 /* ---------- 全局异常兜底 ---------- */
 set_exception_handler(function ($e) {

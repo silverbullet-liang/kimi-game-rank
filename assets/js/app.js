@@ -501,6 +501,13 @@ async function apiOnce(file, action, data = null, opts = {}) {
     if (Number(json.code) === 403 && __bm.indexOf(t('封停')) >= 0 && typeof window.__forceBan === 'function') {
       try { window.__forceBan(); } catch (e) {}
     }
+    /* 访问准入：当前来源被要求过人机验证。刷新即可看到验证页，验完原地回到原路由 */
+    if (Number(json.code) === 403 && __bm.indexOf('人机验证') >= 0) {
+      if (!window.__gateReloading) {
+        window.__gateReloading = 1;
+        setTimeout(() => { location.reload(); }, 120);
+      }
+    }
     throw new ApiError(Number(json.code) || resp.status,
       json.msg || json.error || (t('请求失败（HTTP ') + resp.status + '）'));
   }
