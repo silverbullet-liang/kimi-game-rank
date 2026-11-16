@@ -1,6 +1,6 @@
 {
-    "version": "3.63.0",
-    "at": "2026-11-15 23:33:11",
+    "version": "3.64.0",
+    "at": "2026-11-16 11:23:14",
     "algo": "sha256+md5",
     "files": {
         "index.php": {
@@ -24,13 +24,13 @@
             "size": 11504
         },
         "assets/css/app.css": {
-            "sha256": "753759b59d67857bce1af02cd73015e5a13556931d2d9cc9fa888b1a4c11b6a5",
-            "md5": "55cfb3e57c8bcf7e5ee34cc21621defe",
-            "size": 107961
+            "sha256": "90043a1abcae5e0499a11d5cc9a6560b39da519ae4463da6fb18dc00a3992f5d",
+            "md5": "316f7cec66f77d089d81c0645910ccae",
+            "size": 108332
         },
         "app/bootstrap.php": {
-            "sha256": "1ca1fcec544e3e4d69d516d626baf8943fe930c79d9abce36cf9f3a2a7d74813",
-            "md5": "f0693e13acc7b976fd988efe4f73fece",
+            "sha256": "19fb86093abe2986a66352c3226adeffa8a47187c2170f1b25f3e46b6520065d",
+            "md5": "fc5680060aa6c6d39adbe4c4a04eac34",
             "size": 11492
         },
         "app/helpers.php": {
@@ -139,5 +139,5 @@
             "size": 12400
         }
     },
-    "sig": "6933f48a1d9679ba1220edcb8acf790a98707dfa48aa3a00e8c34bfb49065336"
+    "sig": "d91df223e081f599127eb29a19b198122123f6e2ad3a8bbf7648524f64aec014"
 }

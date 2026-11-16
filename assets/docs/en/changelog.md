@@ -7,6 +7,28 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.64.0 · 2026-11-16 (Sweat-Blue)
+
+> Bamboo slips were roasted over a fire until they sweated out their moisture, so they would not be eaten by insects — that step was called *sha qing*, and so the annals themselves came to be called *han qing*, "sweat-blue". Here it means: the record is copied verbatim, not a word changed.
+
+### New: the 11·14 file is now the full report
+
+The 11·14 entry under *Remembering* now carries the **original text** of the full investigation report — some forty-nine thousand characters, not a word altered. Seventeen volumes plus appendices: the registration flood inside twenty-six minutes, the 180 accounts' source distribution and work rhythm, the technical proof of the three gaps, the six-dimension comparison against 11·3, the capability grading and the one-page conclusion.
+
+- Folded by volume — open the one you want instead of scrolling the whole thing
+- Independent of the 11·3 entry: not merged, not a sequel, and the report itself spells out the evidence for "unrelated"
+- The same original text is in the open-source repository, so it can be checked line by line
+
+### Fixed: long sections were cut off when opened
+
+Previously, a section taller than a fixed limit was clipped at the bottom once expanded — three sections of the 11·14 report exceeded it. Sections now open to their real height, however long.
+
+### Fixed: wide tables pushed the page sideways on phones
+
+The report contains many tables. On narrow screens they used to widen the whole page. Each wide table now scrolls on its own and the page itself stays put.
+
+---
+
 ## v3.63.0 · 2026-11-16 (Double Gates)
 
 > From the *Book of Changes*: "Double gates and night watches, to meet the violent guest" — set more than one gate, and keep watch through the night.

@@ -29,6 +29,7 @@ storage/logs/*
 storage/uploads/*
 storage/backups/*
 storage/trap/*
+storage/breaker_hb.json
 !storage/cache/.gitkeep
 !storage/logs/.gitkeep
 !storage/uploads/.gitkeep

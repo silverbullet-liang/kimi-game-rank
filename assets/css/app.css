@@ -1699,13 +1699,20 @@ html[data-theme="dark"] .mon-app { --mok:#4ade80; --mwarn:#fbbf24; --mbad:#f8717
   border-right: 2px solid var(--text-3); border-bottom: 2px solid var(--text-3);
   transform: rotate(45deg); transition: transform .2s ease; }
 .inc-sec.open .inc-ico { transform: rotate(-135deg); border-color: var(--accent); }
-.inc-body { max-height: 0; overflow: hidden; transition: max-height .34s cubic-bezier(.4,0,.2,1); }
-.inc-sec.open .inc-body { max-height: 4000px; }
-.inc-inner { padding: 0 16px 16px; font-size: 14px; line-height: 1.78; color: var(--text-2); }
+/* 折叠用 grid-template-rows 0fr→1fr 过渡：
+   不设高度上限，档案章节再长也不会被裁掉（旧写法 max-height:4000px 会截断长节）。 */
+.inc-body { display: grid; grid-template-rows: 0fr;
+  transition: grid-template-rows .34s cubic-bezier(.4,0,.2,1); }
+.inc-sec.open .inc-body { grid-template-rows: 1fr; }
+.inc-inner { min-height: 0; overflow: hidden; padding: 0 16px;
+  font-size: 14px; line-height: 1.78; color: var(--text-2);
+  overflow-wrap: break-word; }
+.inc-inner > *:last-child { margin-bottom: 14px; }
 .inc-inner h3 { font-size: 14px; margin: 16px 0 8px; color: var(--text); }
 .inc-inner > *:first-child { margin-top: 0; }
 .inc-inner p { margin: 0 0 10px; }
-.inc-inner table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: 13px; }
+.inc-inner table { display: block; overflow-x: auto; width: 100%; border-collapse: collapse;
+  margin: 8px 0 12px; font-size: 13px; -webkit-overflow-scrolling: touch; }
 .inc-inner th, .inc-inner td { border: 1px solid var(--border-soft); padding: 7px 9px; text-align: left; }
 .inc-inner th { background: color-mix(in srgb, var(--accent) 7%, transparent); }
 .inc-inner ul, .inc-inner ol { padding-left: 20px; margin: 6px 0 10px; }

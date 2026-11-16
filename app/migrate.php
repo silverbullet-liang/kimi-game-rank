@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 43);
+define('SCHEMA_VERSION', 44);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -2764,6 +2764,46 @@ INCDOC36;
             app_log('schema migrated to v37（banned_devices / user_devices）');
         } catch (Throwable $e) {
             app_log('migrate v37 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v44：11·14 攻击事件档案 ----------
+     * 正文不是二次创作，直接复用调查报告原文 app/data/incident-1114.md。
+     * 与 11·3 各自独立成篇：不合并、不排序、不互相引用为同一事件。
+     * 已存在时只在「现存正文比原文短」时补写，不覆盖更完整的版本。 */
+    if ($cur < 44) {
+        try {
+            if (table_exists('incidents')) {
+                $f44   = APP_ROOT . '/app/data/incident-1114.md';
+                $doc44 = is_file($f44) ? (string)@file_get_contents($f44) : '';
+                if ($doc44 !== '') {
+                    $hit = db_one('SELECT id, CHAR_LENGTH(IFNULL(doc, \'\')) AS dlen FROM incidents
+                                    WHERE title = ? ORDER BY id LIMIT 1', array('11·14 攻击事件'));
+                    if ($hit === null) {
+                        db_insert('INSERT INTO incidents (oid, title, started_at, ended_at, summary, doc, culprit, severity, is_public, created_at, updated_at)
+                                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, UTC_TIMESTAMP(), UTC_TIMESTAMP())',
+                            array(
+                                function_exists('oid_new') && oid_ready('incidents') ? oid_new('incidents') : '20261116003471',
+                                '11·14 攻击事件',
+                                '2026-11-14 09:00:00',
+                                '2026-11-15 09:52:00',
+                                '26 分钟内注册接口被投入 180 个账号：一账号一来源地址、覆盖 30 个国家与地区、零内容、从未打开过页面。双站当日与次日两度被暂停，工单后恢复。与 11·3 无关联，不作合并。',
+                                $doc44,
+                                '未确认 · 与 11·3 无关联，不作指认',
+                                'severe'
+                            ));
+                        app_log('schema v44：写入 11·14 档案');
+                    } elseif ((int)$hit['dlen'] < mb_strlen($doc44)) {
+                        db_exec('UPDATE incidents SET doc = ?, updated_at = UTC_TIMESTAMP() WHERE id = ?',
+                            array($doc44, (int)$hit['id']));
+                        app_log('schema v44：11·14 档案补写为完整原文');
+                    }
+                }
+            }
+            setting_set('schema_version', '44');
+            app_log('schema migrated to v44（11·14 事件档案）');
+        } catch (Throwable $e) {
+            app_log('migrate v44 failed: ' . $e->getMessage());
         }
     }
 
