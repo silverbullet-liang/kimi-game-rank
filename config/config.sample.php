@@ -94,11 +94,12 @@ return array(
     'cf_challenge' => array(
         'enabled'    => true,
         'bots_skip'  => true,
-        'auth'       => 'managed',        /* managed = Managed Challenge */
+        'auth'       => 'interactive',    /* interactive = Interactive Challenge */
         'probe'      => 'interactive',    /* interactive = Interactive Challenge */
-        'write_api'  => 'managed',
+        'write_api'  => 'interactive',
         'exclude'    => array('/api/ai', '/api/lobby', '/api/peer', '/api/monitor'),
-        'rate_limit' => array('per_minute' => 120, 'action' => 'managed'),
+        /* 免费版限速只接受 block，period 只能是 10 秒、mitigation 只能是 10 秒 */
+        'rate_limit' => array('requests' => 200, 'period' => 10, 'mitigation' => 10, 'action' => 'block'),
     ),
 
     'secrets' => array(

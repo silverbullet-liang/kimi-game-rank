@@ -28,7 +28,7 @@ function cf_challenge_settings(array $conf): array
         'probe'      => 'off',
         'write_api'  => 'off',
         'exclude'    => array(),
-        'rate_limit' => array('per_minute' => 0, 'action' => 'off'),
+        'rate_limit' => array('requests' => 0, 'period' => 10, 'mitigation' => 10, 'action' => 'block'),
     );
     foreach (array('auth', 'probe', 'write_api') as $k) {
         $v = isset($conf[$k]) ? strtolower(trim((string)$conf[$k])) : 'off';
@@ -41,10 +41,19 @@ function cf_challenge_settings(array $conf): array
         }
     }
     if (isset($conf['rate_limit']) && is_array($conf['rate_limit'])) {
-        $n = isset($conf['rate_limit']['per_minute']) ? (int)$conf['rate_limit']['per_minute'] : 0;
-        $a = isset($conf['rate_limit']['action']) ? strtolower(trim((string)$conf['rate_limit']['action'])) : 'managed';
-        if (!in_array($a, array('managed', 'interactive'), true)) { $a = 'managed'; }
-        $out['rate_limit'] = array('per_minute' => max(0, $n), 'action' => $a);
+        $rl = $conf['rate_limit'];
+        $n  = isset($rl['requests']) ? (int)$rl['requests'] : 0;
+        $p  = isset($rl['period']) ? (int)$rl['period'] : 10;
+        $mt = isset($rl['mitigation']) ? (int)$rl['mitigation'] : 10;
+        $a  = isset($rl['action']) ? strtolower(trim((string)$rl['action'])) : 'block';
+        /* 免费版限速只接受 block；managed / interactive 在付费版才可用，这里保留取值 */
+        if (!in_array($a, array('block', 'managed', 'interactive'), true)) { $a = 'block'; }
+        $out['rate_limit'] = array(
+            'requests'   => max(0, $n),
+            'period'     => in_array($p, array(10, 60, 120, 300, 600), true) ? $p : 10,
+            'mitigation' => in_array($mt, array(10, 60, 120, 300, 600, 3600), true) ? $mt : 10,
+            'action'     => $a,
+        );
     }
     return $out;
 }
@@ -71,9 +80,7 @@ function cf_challenge_rules(array $s, string $host): array
             'description' => CF_CH_TAGS . ': 放行已验证机器人（搜索引擎、监控）',
             'expression'  => '(cf.client.bot)',
             'action'      => 'skip',
-            'action_parameters' => array(
-                'products' => array('waf', 'rateLimit', 'uaBlock', 'bic', 'hot', 'securityLevel', 'zoneLockdown'),
-            ),
+            'action_parameters' => array('ruleset' => 'current'),
             'enabled' => true,
         );
     }
@@ -111,16 +118,19 @@ function cf_challenge_rules(array $s, string $host): array
         );
     }
 
-    if ($s['rate_limit']['per_minute'] > 0) {
+    $rl = $s['rate_limit'];
+    if ($rl['requests'] > 0) {
         $rate[] = array(
-            'description' => CF_CH_TAGS . ': 单 IP 每分钟超过 ' . $s['rate_limit']['per_minute'] . ' 次 → Challenge',
+            'description' => CF_CH_TAGS . ': 同一 IP 每 ' . $rl['period'] . ' 秒超过 ' . $rl['requests'] . ' 次 → '
+                             . ($rl['action'] === 'block' ? 'Block' : $rl['action']),
             'expression'  => '(http.host eq "' . $host . '")',
-            'action'      => cf_challenge_action($s['rate_limit']['action']),
+            'action'      => $rl['action'] === 'block' ? 'block' : cf_challenge_action($rl['action']),
+            /* cf.colo.id 必填：Cloudflare 按机房分别计数 */
             'ratelimit'   => array(
-                'characteristics'      => array('ip.src'),
-                'period'               => 60,
-                'requests_per_period'  => $s['rate_limit']['per_minute'],
-                'mitigation_timeout'   => 600,
+                'characteristics'     => array('ip.src', 'cf.colo.id'),
+                'period'              => $rl['period'],
+                'requests_per_period' => $rl['requests'],
+                'mitigation_timeout'  => $rl['mitigation'],
             ),
             'enabled' => true,
         );
@@ -144,8 +154,9 @@ function cf_challenge_summary(array $s): array
         'probe'      => $kind($s['probe']),
         'write_api'  => $kind($s['write_api']),
         'exclude'    => $s['exclude'],
-        'rate_limit' => $s['rate_limit']['per_minute'] > 0
-            ? ('每分钟 ' . $s['rate_limit']['per_minute'] . ' 次 · ' . $kind($s['rate_limit']['action']))
+        'rate_limit' => $s['rate_limit']['requests'] > 0
+            ? ('每 ' . $s['rate_limit']['period'] . ' 秒 ' . $s['rate_limit']['requests'] . ' 次 · '
+               . ($s['rate_limit']['action'] === 'block' ? 'Block' : $kind($s['rate_limit']['action'])))
             : '不限速',
     );
 }
