@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 44);
+define('SCHEMA_VERSION', 47);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -2764,6 +2764,87 @@ INCDOC36;
             app_log('schema migrated to v37（banned_devices / user_devices）');
         } catch (Throwable $e) {
             app_log('migrate v37 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v47：11·14 档案补附卷 N（第二次攻击未整理说明） ----------
+     * 站点换域名（kimi-game-rank.de5.net）与新主机账号同步推进；
+     * 正文仍以文件为准整份替换，md5 相同则跳过。 */
+    if ($cur < 47) {
+        try {
+            if (table_exists('incidents')) {
+                $a47 = APP_ROOT . '/app/data/incident-1114.md';
+                $b47 = APP_ROOT . '/app/data/incident-1114-load.md';
+                $doc47 = (is_file($a47) ? (string)@file_get_contents($a47) : '')
+                       . (is_file($b47) ? (string)@file_get_contents($b47) : '');
+                if ($doc47 !== '') {
+                    $have47 = (string)db_val("SELECT MD5(IFNULL(doc, '')) FROM incidents WHERE title = ? ORDER BY id LIMIT 1",
+                        array('11·14 攻击事件'));
+                    if ($have47 !== md5($doc47)) {
+                        db_exec('UPDATE incidents SET doc = ?, updated_at = UTC_TIMESTAMP() WHERE title = ?',
+                            array($doc47, '11·14 攻击事件'));
+                        app_log('schema v47：11·14 档案补附卷 N');
+                    }
+                }
+            }
+            setting_set('schema_version', '47');
+            app_log('schema migrated to v47（附卷 N）');
+        } catch (Throwable $e) {
+            app_log('migrate v47 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v46：11·14 档案正文整份重写（时间线剔除 11·3 内容） ----------
+     * 原因：原报告的时间线把 11-02~11-06（11·3 事件）与 11-14 串成一条叙事，
+     * 而两起事件完全无关。速览、附卷 K 各阶段、作息分布与跨度表已按此删除。
+     * 正文以文件为准整份替换（原文件 + 附卷 M），md5 相同则跳过。 */
+    if ($cur < 46) {
+        try {
+            if (table_exists('incidents')) {
+                $a46 = APP_ROOT . '/app/data/incident-1114.md';
+                $b46 = APP_ROOT . '/app/data/incident-1114-load.md';
+                $doc46 = (is_file($a46) ? (string)@file_get_contents($a46) : '')
+                       . (is_file($b46) ? (string)@file_get_contents($b46) : '');
+                if ($doc46 !== '') {
+                    $have46 = (string)db_val("SELECT MD5(IFNULL(doc, '')) FROM incidents WHERE title = ? ORDER BY id LIMIT 1",
+                        array('11·14 攻击事件'));
+                    if ($have46 !== md5($doc46)) {
+                        db_exec('UPDATE incidents SET doc = ?, updated_at = UTC_TIMESTAMP() WHERE title = ?',
+                            array($doc46, '11·14 攻击事件'));
+                        app_log('schema v46：11·14 档案整份重写');
+                    }
+                }
+            }
+            setting_set('schema_version', '46');
+            app_log('schema migrated to v46（11·14 档案时间线剔除 11·3）');
+        } catch (Throwable $e) {
+            app_log('migrate v46 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v45：11·14 档案补记「机器侧负载」 ----------
+     * 内存峰值、单请求耗时、入口进程失败这些数据原先只在面板与采样表里，
+     * 档案正文没写。补记单独成卷（附卷 M），不改动既有各卷。
+     * 幂等：正文已含「附卷 M」则跳过。 */
+    if ($cur < 45) {
+        try {
+            if (table_exists('incidents')) {
+                $f45 = APP_ROOT . '/app/data/incident-1114-load.md';
+                if (is_file($f45)) {
+                    $add45 = (string)@file_get_contents($f45);
+                    $has45 = (int)db_val("SELECT COUNT(*) FROM incidents WHERE title = ? AND doc LIKE '%附卷 M · 机器侧负载%'",
+                        array('11·14 攻击事件'));
+                    if ($add45 !== '' && $has45 === 0) {
+                        db_exec('UPDATE incidents SET doc = CONCAT(IFNULL(doc, \'\'), ?), updated_at = UTC_TIMESTAMP()
+                                  WHERE title = ?', array($add45, '11·14 攻击事件'));
+                        app_log('schema v45：11·14 档案补记机器侧负载');
+                    }
+                }
+            }
+            setting_set('schema_version', '45');
+            app_log('schema migrated to v45（11·14 档案补记负载）');
+        } catch (Throwable $e) {
+            app_log('migrate v45 failed: ' . $e->getMessage());
         }
     }
 

@@ -50,11 +50,11 @@ return array(
      */
     'cf_shield' => array(
         'enabled' => true,
-        'hosts'   => array('kimi-game-rank.nx.kg'),
+        'hosts'   => array('your-domain.example'),
         'secret'  => '',                       /* 接入 CF 后填入随机长串（与 CF 侧注入头一致） */
         'header'  => 'HTTP_X_ORIGIN_AUTH',
         'mode'    => 'enforce',                /* enforce = 拦截；observe = 只记录不拦（灰度用） */
-        'deny'    => 'errors404',
+        'deny'    => 'suspend',
         'allow'   => array('cron.php', 'api/peer.php'),
     ),
 
@@ -77,6 +77,30 @@ return array(
     ),
 
     /* ---------- 密钥（install.php 生成后自动回填，请勿手改） ---------- */
+    /* ---------- Cloudflare 挑战层（Managed / Interactive Challenge） ----------
+     * 与 cf_shield 是两件事：安全盾管「谁能连到源站」，挑战层管「连到了的人要先过哪一关」。
+     * 这里的取值只描述「CF 侧应当有哪些规则」，真正的规则建在 Cloudflare 控制台 / API，
+     * 本段是唯一口径：tools/cf_rules.php 会按这里的值生成可直接粘贴的规则清单。
+     *
+     * enabled   —— 关闭这一段 = CF 侧应当删除对应挑战规则（站点本身不受影响）
+     * bots_skip —— 已验证的搜索引擎与监控机器人跳过挑战。必须为 true，
+     *              否则爬虫会被反复挑战，站点在搜索引擎里彻底消失。
+     * auth      —— 注册与登录接口：managed / interactive / off
+     * probe     —— 探测路径（/probe/* 之类）：managed / interactive / off
+     * write_api —— 其余写接口：managed / interactive / off
+     * exclude   —— 不套挑战的路径前缀（流式 AI、对话、互通、定时任务等，被挑战会直接断流）
+     * rate_limit—— 单 IP 每分钟超过多少次后出挑战；action 同上；0 表示不限速
+     */
+    'cf_challenge' => array(
+        'enabled'    => true,
+        'bots_skip'  => true,
+        'auth'       => 'managed',        /* managed = Managed Challenge */
+        'probe'      => 'interactive',    /* interactive = Interactive Challenge */
+        'write_api'  => 'managed',
+        'exclude'    => array('/api/ai', '/api/lobby', '/api/peer', '/api/monitor'),
+        'rate_limit' => array('per_minute' => 120, 'action' => 'managed'),
+    ),
+
     'secrets' => array(
         'rc4_key'      => '',   // RC4 密钥（admin密钥sha256 + md5(1970101) + sha256(jgybhjhjh:jji) + 512位随机串）
         'aes_key'      => '',   // AES 密钥（100 位随机）

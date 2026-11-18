@@ -25,7 +25,7 @@ function conf(array $over = array()): array
         'secret'  => 'S3cretOriginValue_0123456789',
         'header'  => 'HTTP_X_ORIGIN_AUTH',
         'mode'    => 'enforce',
-        'deny'    => 'errors404',
+        'deny'    => 'suspend',
         'allow'   => array('cron.php', 'api/peer.php'),
     ), $over));
 }
@@ -36,8 +36,9 @@ ok('enabled 生效', $c['enabled'] === true);
 ok('hosts 小写化', in_array('kimi-game-rank.nx.kg', $c['hosts'], true));
 ok('header 大写化', $c['header'] === 'HTTP_X_ORIGIN_AUTH');
 ok('mode 默认 enforce', $c['mode'] === 'enforce');
-ok('非法 deny 回落到 errors404', conf(array('deny' => 'xyz'))['deny'] === 'errors404');
+ok('非法 deny 回落到 suspend', conf(array('deny' => 'xyz'))['deny'] === 'suspend');
 ok('合法 deny=suspend 保留', conf(array('deny' => 'suspend'))['deny'] === 'suspend');
+ok('默认即 suspend', cf_shield_settings(array('enabled' => true))['deny'] === 'suspend');
 ok('mode=observe 保留', conf(array('mode' => 'observe'))['mode'] === 'observe');
 
 echo "\n== 放行场景 ==\n";
@@ -68,6 +69,11 @@ ok('密钥为前缀的短值 → 拦截', cf_shield_decide(conf(), $H, 'index.ph
 ok('超长垃圾值 → 拦截', cf_shield_decide(conf(), $H, 'index.php', str_repeat('a', 4096))['action'] === 'deny');
 ok('备份文件不被 allow 放过', cf_shield_decide(conf(array('allow' => array('cron.php'))), $H, 'cron.php.bak', '')['action'] === 'deny');
 ok('目录遍历不会绕过 allow', cf_shield_decide(conf(), $H, 'xx/cron.php', '')['action'] === 'deny');
+
+echo "\n== 拒绝方式 ==\n";
+ok('默认 suspend（伪装站点已停用）', conf()['deny'] === 'suspend');
+ok('errors404 可显式指定', conf(array('deny' => 'errors404'))['deny'] === 'errors404');
+ok('http404 可显式指定', conf(array('deny' => 'http404'))['deny'] === 'http404');
 
 echo "\n结果：通过 {$pass}，失败 {$fail}\n";
 exit($fail === 0 ? 0 : 1);

@@ -7,6 +7,59 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.67.0 · 2026-11-17 (Moved to the Tall Tree)
+
+> From the *Book of Songs*: "out of the dark valley, up to the tall tree" — change where you live, the tree stays the same tree.
+
+### Changed: new domain
+
+The site now lives at **kimi-game-rank.de5.net**, with a new hosting account. Neither of the previous accounts can be restored, the mirror site is retired, and from now on there is one site only.
+
+### New: an appendix on the second attack
+
+Volume N is appended to the 11·14 report and runs to a single paragraph: the second attack came after the accounts had been permanently suspended; the site served nothing but the suspension page and no code was changed, yet requests kept arriving, and the quota refilled within minutes of each restoration. The raw material could not be assembled (force majeure), so the volume carries no figures and draws no inferences.
+
+One thing can be stated without data: a site that is not open does not generate requests by itself.
+
+### Changed: the origin-protection target domain
+
+Origin protection now matches the new domain; the old domain entry is replaced.
+
+---
+
+## v3.66.0 · 2026-11-17 (Drawn Apart)
+
+> Two accounts on one page make a false ledger. This release does one thing: draws the unrelated part off the timeline.
+
+### Fixed: the 11·14 timeline no longer contains 11·3
+
+The original report ran 2–6 November together with 11·14 into a single "13 days 4 hours" narrative. The two events are unrelated, so they are now separated:
+
+- The overview table keeps only the 11·14 nodes; all seven 11·3 lines are removed
+- The minute-by-minute timeline drops the 11·3 phases and leaves one line in their place pointing to the 11·3 file
+- The working-hours distribution and the span table are recalculated for the remaining range: 07 Nov → 15 Nov, 7 days 21 hours (previously "13 days 4 hours")
+- "Is there a temporal continuation?" changed from yes to no — consistent with the conclusion that the two events are unrelated
+- The comparison section against 11·3 stays: it exists to explain why these are not the same event, and it is not a timeline
+
+---
+
+## v3.65.0 · 2026-11-17 (Entered)
+
+> *Entered* is a bookkeeping word: an entry only counts once it is written down in the ledger. This release adds no features; it writes down what the machines actually went through during the 11·14 round.
+
+### New: the 11·14 file gains a "machine load" appendix
+
+A new appendix (M) at the end of the report, dealing in numbers rather than judgements:
+
+- Host panel, that day: 5.58 million requests, 3.6 GB transferred, peak entry-process failures 6,800 (main site) and 8,547 (mirror)
+- Site-side sampling: in the same half hour the request count was about 1,186× the previous day's, the slowest single request took 28.85 s, and memory peaked at the 128 MB ceiling
+- Three readings: memory hit a hard ceiling rather than creeping up; there were zero 5xx responses throughout (the site did not crash, it was slowed); entry-process failures and request latency are two ends of the same thing
+- Four boundaries: the panel's "daily total" and "curve peak" cannot be added together; site-side figures are a 30% sample; the panel's CPU value is a counter, not a percentage; the raw access log is held by the host
+
+Every existing volume is untouched; the appendix stands on its own.
+
+---
+
 ## v3.64.0 · 2026-11-16 (Sweat-Blue)
 
 > Bamboo slips were roasted over a fire until they sweated out their moisture, so they would not be eaten by insects — that step was called *sha qing*, and so the annals themselves came to be called *han qing*, "sweat-blue". Here it means: the record is copied verbatim, not a word changed.

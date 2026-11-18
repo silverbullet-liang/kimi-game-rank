@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '3.64.0');
+define('APP_VERSION', '3.68.0');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);
@@ -50,6 +50,7 @@ blk_guard();
  * 必须放在连接数据库之前 —— 它只读请求头与配置，被挡的请求不进业务逻辑、不耗配额。
  * 通过后会把 CF-Connecting-IP 记为真实客户端 IP，供 client_ip() 采用。 */
 require_once APP_ROOT . '/app/cf_shield.php';
+require_once APP_ROOT . '/app/cf_challenge.php';
 cf_shield_guard(isset($APP_CONFIG['cf_shield']) && is_array($APP_CONFIG['cf_shield'])
     ? $APP_CONFIG['cf_shield'] : array());
 

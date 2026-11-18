@@ -791,7 +791,7 @@ function http_fetch(string $url, int $timeout = 8, int $maxBytes = 300000): arra
         CURLOPT_FOLLOWLOCATION => false,          // 重定向由 http_fetch_follow 逐跳校验后跟随
         CURLOPT_TIMEOUT        => $timeout,
         CURLOPT_CONNECTTIMEOUT => 5,
-        CURLOPT_USERAGENT      => 'KimiGameRankBot/1.0 (+https://kimi-game-rank.wuaze.com)',
+        CURLOPT_USERAGENT      => 'KimiGameRankBot/1.0 (+https://kimi-game-rank.de5.net)',
         CURLOPT_SSL_VERIFYPEER => true,
         /* 体积限制改用 WRITEFUNCTION 累积并截断：
            PROGRESSFUNCTION 在部分共享主机上不可用，会让请求直接失败。 */

@@ -16,7 +16,10 @@
  *   'secret'  => '随机长串'      与 CF 侧注入的头值一致；空=未配置，模块自动失效
  *   'header'  => 'HTTP_X_ORIGIN_AUTH'  私有头名（$_SERVER 形式）
  *   'mode'    => 'enforce'       enforce=拦截 / observe=只记录不拦
- *   'deny'    => 'errors404'     拒绝方式：errors404 | suspend | http404
+ *   'deny'    => 'suspend'    拒绝方式，默认 suspend：302 到 https://suspended-domain.net/
+ *                                （与主机商暂停账户时的表现一致）
+ *                                errors404 = 302 到 errors.infinityfree.net/errors/404/
+ *                                http404   = 本地直接回 404（不跳转）
  *   'allow'   => array(...)      放行的路径前缀（定时任务、互通端点等）
  *
  * 校验通过后，会把 CF-Connecting-IP 记为客户端真实 IP（供 client_ip() 采用）。
@@ -45,7 +48,7 @@ function cf_shield_settings(array $conf): array
         }
     }
     $mode = isset($conf['mode']) ? strtolower(trim((string)$conf['mode'])) : 'enforce';
-    $deny = isset($conf['deny']) ? strtolower(trim((string)$conf['deny'])) : 'errors404';
+    $deny = isset($conf['deny']) ? strtolower(trim((string)$conf['deny'])) : 'suspend';
     $header = isset($conf['header']) ? trim((string)$conf['header']) : '';
     $header = $header === '' ? CF_SH_DEFAULT_HEADER : strtoupper($header);
 
@@ -55,7 +58,7 @@ function cf_shield_settings(array $conf): array
         'secret'  => isset($conf['secret']) ? trim((string)$conf['secret']) : '',
         'header'  => $header,
         'mode'    => $mode === 'observe' ? 'observe' : 'enforce',
-        'deny'    => in_array($deny, array('suspend', 'http404'), true) ? $deny : 'errors404',
+        'deny'    => in_array($deny, array('errors404', 'http404'), true) ? $deny : 'suspend',
         'allow'   => $allow,
     );
 }
