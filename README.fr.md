@@ -32,6 +32,7 @@ Un site qui rassemble les jeux, outils, œuvres littéraires et créations déri
 | Détail d'une œuvre | Graphique radar à six dimensions, détail par dimension, présentation et commentaires (réponses imbriquées sans limite) |
 | Discussion | Discussion mondiale (interrogation en temps réel) + discussion avec l'IA (sortie en flux, recherche web, règles du site injectées) ; les images s'ouvrent en plein écran au toucher |
 | Profil | Avatar, usage de l'IA, informations IP et historique des visites, réglages d'apparence |
+| Appareils connectés | Jusqu'à 3 appareils par compte, listés avec icône du type, navigateur, marque et moteur ; vous pouvez en déconnecter un ou changer à distance le compte de cet appareil (le mot de passe est vérifié côté serveur et n'est jamais conservé) ; les connexions douteuses sont marquées en jaune / orange / rouge |
 | Connexion | Connexion par mot de passe / inscription / mode invité, avec une vérification humaine en un clic à la connexion et à l'inscription |
 | Modération des contenus | Commentaires, discussion et images téléversées reçoivent une note de gravité de 1 à 10 avant publication : seuls les niveaux élevés sont bloqués, les niveaux intermédiaires passent avec une mention |
 | Panneau d'administration | Collecte et mise à jour en masse, sauvegarde de la base, modération des commentaires, gestion des étiquettes, co-administrateurs |

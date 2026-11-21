@@ -32,6 +32,7 @@ A site that collects games, tools, literary works and fan creations from the com
 | Work details | Six-dimension radar chart, dimension breakdown, description and comment threads (unlimited nesting) |
 | Chat | World chat (live polling) + AI chat (streaming output, web search, site rules injected); images open full-screen on tap |
 | Profile | Avatar, AI usage, IP information and visit log, appearance settings |
+| Signed-in devices | Up to 3 devices per account, listed with a type icon, browser, brand and engine; sign one out, or switch the account on that device remotely (the password is verified server-side and never stored); questionable sign-ins are marked yellow / orange / red |
 | Sign-in | Password login / registration / guest mode, with a one-click human check on login and sign-up |
 | Content moderation | Every comment, message and uploaded image is graded 1–10 for severity before it appears: only the top grades are blocked, mid grades pass with a "possibly malicious" note. Fallback channels if a service is unavailable |
 | Admin panel | Ingest and bulk refresh, database backup, comment moderation, tag management, sub-admins |

@@ -32,6 +32,7 @@ Un sito che raccoglie giochi, strumenti, opere letterarie e lavori amatoriali de
 | Dettaglio opera | Grafico radar a sei dimensioni, dettaglio per dimensione, descrizione e commenti (risposte annidate senza limiti) |
 | Chat | Chat mondiale (polling in tempo reale) + chat con l'AI (output in streaming, ricerca sul web, regole del sito iniettate); le immagini si aprono a schermo intero con un tocco |
 | Profilo | Avatar, utilizzo dell'AI, informazioni sull'IP e registro delle visite, impostazioni di aspetto |
+| Dispositivi connessi | Fino a 3 dispositivi per account, elencati con icona del tipo, browser, marca e motore; puoi disconnetterne uno o cambiare da remoto l'account su quel dispositivo (la password è verificata lato server e non viene mai salvata); accessi dubbi marcati in giallo / arancione / rosso |
 | Accesso | Login con password / registrazione / modalità ospite, con una verifica umana a un clic in accesso e registrazione |
 | Moderazione dei contenuti | Commenti, chat e immagini caricate ricevono un grado di gravità 1–10 prima della pubblicazione: solo i gradi più alti vengono bloccati, quelli intermedi passano con una nota |
 | Pannello di amministrazione | Acquisizione e aggiornamento in blocco, backup del database, moderazione dei commenti, gestione dei tag, co-amministratori |
