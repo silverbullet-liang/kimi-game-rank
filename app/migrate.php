@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 49);
+define('SCHEMA_VERSION', 54);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -2764,6 +2764,151 @@ INCDOC36;
             app_log('schema migrated to v37（banned_devices / user_devices）');
         } catch (Throwable $e) {
             app_log('migrate v37 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v53：登录设备管理（3 台上限 / 列表 / 风险标记） ---------- */
+    if ($cur < 53) {
+        try {
+            db_exec("CREATE TABLE IF NOT EXISTS `login_devices` (
+                `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `user_id` INT NOT NULL,
+                `dev_hash` CHAR(64) NOT NULL,
+                `ua` VARCHAR(255) NOT NULL DEFAULT '',
+                `type` VARCHAR(12) NOT NULL DEFAULT 'desktop' COMMENT 'desktop/mobile/tablet/tv/car/kimi',
+                `browser` VARCHAR(32) NOT NULL DEFAULT '',
+                `kernel` VARCHAR(16) NOT NULL DEFAULT '',
+                `brand` VARCHAR(40) NOT NULL DEFAULT '',
+                `fp` VARCHAR(32) NOT NULL DEFAULT '' COMMENT 'canvas/webgl 指纹短哈希（前端上报）',
+                `ip_hash` CHAR(64) NOT NULL DEFAULT '',
+                `ip_net` VARCHAR(40) NOT NULL DEFAULT '' COMMENT '最近一次 /16 或 /32 网段',
+                `ip_nets` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '历史网段（逗号分隔，最多 8 个）',
+                `country` CHAR(2) NOT NULL DEFAULT '',
+                `token_hash` CHAR(64) NOT NULL DEFAULT '' COMMENT '最近一次登录的令牌哈希（登出/踢出时拉黑）',
+                `first_at` DATETIME NOT NULL,
+                `last_at` DATETIME NOT NULL,
+                `last_op_at` DATETIME NULL COMMENT '最近一次业务操作',
+                `pages` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '前端上报次数（有前端痕迹）',
+                `ops` INT UNSIGNED NOT NULL DEFAULT 0,
+                `active` TINYINT(1) NOT NULL DEFAULT 1,
+                `kick_reason` VARCHAR(16) NOT NULL DEFAULT '',
+                `kicked_at` DATETIME NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uk_ud` (`user_id`, `dev_hash`),
+                KEY `idx_ud_user_active` (`user_id`, `active`, `last_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='登录设备（3 台上限 / 可远程下线）'");
+            setting_set('schema_version', '53');
+            app_log('schema migrated to v53（登录设备管理）');
+        } catch (Throwable $e) {
+            app_log('migrate v53 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v54：远程切换账号（在设备列表里替某台设备换号） ---------- */
+    if ($cur < 54) {
+        try {
+            $cols = array(
+                'switch_uid'  => "INT NOT NULL DEFAULT 0 COMMENT '待领取的目标账号 uid'",
+                'switch_role' => "VARCHAR(12) NOT NULL DEFAULT '' COMMENT '目标账号角色 user/subadmin/admin'",
+                'switch_name' => "VARCHAR(64) NOT NULL DEFAULT '' COMMENT '目标账号名（提示文案用）'",
+                'switch_at'   => "DATETIME NULL COMMENT '发起切换的时刻'",
+            );
+            foreach ($cols as $c => $def) {
+                if (!column_exists('login_devices', $c)) {
+                    db_exec("ALTER TABLE `login_devices` ADD COLUMN `$c` $def");
+                }
+            }
+            /* 领取与「有待领取」探测都按令牌哈希查，必须走索引 */
+            try { db_exec('ALTER TABLE `login_devices` ADD KEY `idx_tok` (`token_hash`)'); }
+            catch (Throwable $e) { /* 已存在 */ }
+            setting_set('schema_version', '54');
+            app_log('schema migrated to v54（远程切换账号）');
+        } catch (Throwable $e) {
+            app_log('migrate v54 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v52：补记 11-21 免费版开关实测结果（托管规则集已上线） ---------- */
+    if ($cur < 52) {
+        try {
+            if (table_exists('incidents')) {
+                $a52 = APP_ROOT . '/app/data/incident-1114.md';
+                $b52 = APP_ROOT . '/app/data/incident-1114-load.md';
+                $doc52 = (is_file($a52) ? (string)@file_get_contents($a52) : '')
+                       . (is_file($b52) ? (string)@file_get_contents($b52) : '');
+                if ($doc52 !== '') {
+                    $have52 = (string)db_val("SELECT MD5(IFNULL(doc, '')) FROM incidents WHERE title = ? ORDER BY id LIMIT 1",
+                        array('11·14 攻击事件'));
+                    if ($have52 !== md5($doc52)) {
+                        db_exec('UPDATE incidents SET doc = ?, updated_at = UTC_TIMESTAMP() WHERE title = ?',
+                            array($doc52, '11·14 攻击事件'));
+                        app_log('schema v52：补 11-21 开关实测');
+                    }
+                }
+            }
+            setting_set('schema_version', '52');
+            app_log('schema migrated to v52');
+        } catch (Throwable $e) {
+            app_log('migrate v52 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v51：补记第二次试探与「所有机房」的防护边界 ----------
+     * 档案新增 O.8（11-21 试探）与 O.9（为什么没有一键拦机房的开关、名单扩到 69 家）。
+     * 正文整份替换，md5 相同则跳过。 */
+    if ($cur < 51) {
+        try {
+            if (table_exists('incidents')) {
+                $a51 = APP_ROOT . '/app/data/incident-1114.md';
+                $b51 = APP_ROOT . '/app/data/incident-1114-load.md';
+                $doc51 = (is_file($a51) ? (string)@file_get_contents($a51) : '')
+                       . (is_file($b51) ? (string)@file_get_contents($b51) : '');
+                if ($doc51 !== '') {
+                    $have51 = (string)db_val("SELECT MD5(IFNULL(doc, '')) FROM incidents WHERE title = ? ORDER BY id LIMIT 1",
+                        array('11·14 攻击事件'));
+                    if ($have51 !== md5($doc51)) {
+                        db_exec('UPDATE incidents SET doc = ?, updated_at = UTC_TIMESTAMP() WHERE title = ?',
+                            array($doc51, '11·14 攻击事件'));
+                        app_log('schema v51：补记第二次试探与防护边界');
+                    }
+                }
+            }
+            setting_set('schema_version', '51');
+            app_log('schema migrated to v51（O.8 / O.9）');
+        } catch (Throwable $e) {
+            app_log('migrate v51 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v50：11·14 档案结构整理（附卷 12 卷并 8 卷）+ 第三次第二次试探 ----------
+     * 用户反馈附卷太多、翻着累：A–L 与 M/N/O 按主题并成八卷，正文内容一字未删，
+     * 只重排层级、补旧→新编号对照。同时补记 11-21 的第二轮试探。
+     * 正文仍以文件为准整份替换，md5 相同则跳过。 */
+    if ($cur < 50) {
+        try {
+            if (table_exists('incidents')) {
+                $a50 = APP_ROOT . '/app/data/incident-1114.md';
+                $b50 = APP_ROOT . '/app/data/incident-1114-load.md';
+                $doc50 = (is_file($a50) ? (string)@file_get_contents($a50) : '')
+                       . (is_file($b50) ? (string)@file_get_contents($b50) : '');
+                if ($doc50 !== '') {
+                    $have50 = (string)db_val("SELECT MD5(IFNULL(doc, '')) FROM incidents WHERE title = ? ORDER BY id LIMIT 1",
+                        array('11·14 攻击事件'));
+                    if ($have50 !== md5($doc50)) {
+                        db_exec('UPDATE incidents SET doc = ?, summary = ?, updated_at = UTC_TIMESTAMP() WHERE title = ?',
+                            array(
+                                $doc50,
+                                '第一次注水与打配额，第二次迁站期间继续灌流量，第三次在 11-18/19 与 11-21 两次试探：首次撞到限速、开始摸管理接口。',
+                                '11·14 攻击事件'
+                            ));
+                        app_log('schema v50：档案结构整理 + 第二次试探');
+                    }
+                }
+            }
+            setting_set('schema_version', '50');
+            app_log('schema migrated to v50（附卷并卷）');
+        } catch (Throwable $e) {
+            app_log('migrate v50 failed: ' . $e->getMessage());
         }
     }
 

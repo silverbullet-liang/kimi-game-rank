@@ -7,6 +7,77 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.70.0 · 2026-11-21 (Each in Its Place)
+
+### Added: signed-in device management
+
+The "Mine" page now shows where the account is signed in. An account keeps at most **3 devices** online at once.
+
+- **Device list**: a device-type icon on the left (computer / phone / tablet / TV / car head unit / inside the Kimi app), the browser name in the middle, brand and engine underneath (for example Samsung · Blink), plus a browser fingerprint when one has been reported. Chinese browsers keep their own names (Huawei, Xiaomi, vivo, OPPO, Quark, UC, QQ) instead of all reporting as Chrome.
+- **One-tap sign-out**: any device can be signed out from the right-hand side and its credential stops working at once.
+- **Remote account switch**: the "Switch" button on the same row changes the account on that device. Enter the target account and its password; once the password checks out on our side, that device reloads under the new account on its next request. The person using it does not have to do anything, and your other devices stay signed in. Accounts with email two-step verification and suspended accounts cannot be switched remotely.
+- **Switch on this device**: "Switch account on this device" at the bottom of the list signs out this browser and returns it to the sign-in page.
+- **Three-device limit**: when a fourth device signs in, the one idle longest is signed out automatically and you are told which one. Being pushed out also takes effect immediately.
+
+### Added: yellow / orange / red marks for questionable devices
+
+Three independent conditions; one marks the device "Check" (yellow), two "Suspicious" (orange), all three "High risk" (red). Hovering the mark explains why:
+
+- the same device has been seen on **3 or more different IP ranges** — a wide spread, as if it moved or came through a proxy;
+- more than **10 minutes after signing in there is still no browser-side trace** — page scripts never ran;
+- more than **24 hours after signing in there has been no activity at all**.
+
+These marks are advisory and never ban an account by themselves: changing networks, using a private window, or leaving a tab idle can each trip one of them, so acting on it is still a human decision.
+
+---
+
+## v3.69.2 · 2026-11-21 (Ramparts)
+
+### Changed: hardening pushed as far as "block every data centre" allows
+
+We looked for a Cloudflare toggle that permanently blocks all hosting-provider traffic. **There is none.** The three things reachable on the free plan were checked: the managed free ruleset's 42 rules are all exploit signatures (Log4j, Shellshock, plugin CVEs) and know nothing about where traffic comes from; Browser Integrity Check only catches sloppy headless clients; Bot Fight Mode challenges rather than blocks, and residential proxies walk through. Custom rules have no "this IP belongs to a hosting provider" field either.
+
+So it comes down to lists. Two things were done:
+
+- **The two probing providers are blocked at the network level**: AS216014 (BestDC) 193.47.62.0/24, and AS218785 (TC DATACENTER) 45.138.12.0/24 plus 185.218.86.0/24 — whole prefixes, so changing address does not help.
+- **The ASN list grew from 41 to 69**, each new entry checked against its AS registration (Selectel, Clouvider, Timeweb, Pfcloud, GTHost, Hostwinds, Aeza, InterServer, Hostinger, Leaseweb, Psychz, FranTech, M247, netcup, Scaleway, UpCloud, Zenlayer and others). One was removed: AS45517 in the old list is a Sri Lankan carrier, not a data centre — completeness is not worth blocking real users.
+
+### Changed: "Remember" gains the second probe and the limits of that list
+
+Appendix 8 now carries two new sections: O.8 on the 21 Nov round (403 up to 694, the first 331 responses of 429, 508 rising to 103, and 199 requests probing `/api/admin`), and O.9 explaining why no one-click switch exists and exactly how far a list can go.
+
+---
+
+## v3.69.1 · 2026-11-21 (Consolidated)
+
+### Changed: the 11·14 report in "Remember" has been reorganised
+
+Fifteen appendices (A through L, plus the three added later for machine load, the second attack and the third) were tiring to navigate. They are now grouped into eight by theme:
+
+| New | Content |
+|---|---|
+| 1 | Actor and toolchain |
+| 2 | Statistics and baseline |
+| 3 | Request anatomy |
+| 4 | Interaction record and legal analysis |
+| 5 | Cost, benefit and one-page conclusion |
+| 6 | Method and its limits |
+| 7 | Timeline and capability grading |
+| 8 | Machine load and the two events after |
+
+**Nothing was deleted** — only re-layered and merged by topic. A mapping table from old letters to new numbers sits under the contents list, so anyone quoting an old number can still find the passage.
+
+### Added: the second probe of the third event (21 Nov)
+
+After the first probe (18/19 Nov), a second run of the same shape appeared on 21 Nov. Two things changed:
+
+- **It hit the rate limit for the first time**: 331 responses of 429, where the previous round had none. The pacing is denser, not the same slow script replayed.
+- **It started probing the admin endpoint**: 199 requests to `/api/admin`, absent from the previous round's top-ten paths. That endpoint needs a session, so nothing can be read — but it tests whether the admin entry is exposed separately.
+
+Seven-day total: 8,650 requests, still nothing that crushes a shared host (the first event was 5.58 million). The verdict is unchanged: a portent, not a full third attack.
+
+---
+
 ## v3.69.0 · 2026-11-21 (On to the Sea, Never Turning Back)
 
 > From Li Bai's *Bring in the Wine*: "Do you not see the waters of the Yellow River come down from heaven, rushing to the sea, never to return?" The river only goes forward. After several attacks the site keeps shipping — this release is the proof.

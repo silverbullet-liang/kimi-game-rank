@@ -1,7 +1,7 @@
 /**
  * 登录页：密码登录 / 注册 / 游客模式（无验证码）
  */
-import { api, state, esc, toast, setToken, askNotifyPermission, btnLoading } from '../core.js';
+import { api, state, esc, toast, setToken, askNotifyPermission, btnLoading, reportDevice } from '../core.js';
 import { navigate } from '../router.js';
 import { applyTheme } from '../theme.js';
 import { mountCaptcha, resetCaptcha, captchaToken, captchaChannel, captchaConfig } from '../captcha.js';
@@ -343,6 +343,14 @@ export async function renderLogin(container) {
     // 登录后回「我的」；游客进入回榜单（路由会重绘页面与抽屉，无需整页刷新）
     navigate(guest ? '#/rank' : '#/mine');
     if (!guest && typeof window.__nameFixCheck === 'function') { window.__nameFixCheck(); }
+    /* 登录成功即上报一次前端指纹：证明这台设备真的跑着浏览器（风险判据用）。
+       顺带提示被挤下线的旧设备——上限 3 台。 */
+    if (!guest) {
+      reportDevice();
+      if (d && d.kicked && d.kicked.length) {
+        toast('已下线最久未用的设备：' + d.kicked.join('、'));
+      }
+    }
   }
 
   paint();

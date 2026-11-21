@@ -448,7 +448,10 @@ function login_finish(array $u, bool $skipTwofa = false): array
         db_exec('UPDATE users SET last_login_at = UTC_TIMESTAMP() WHERE id = ?', array((int)$u['id']));
         stats_bump('logins');
         record_visit((int)$u['id']);
-        return array('uid' => 0, 'role' => 'admin', 'token' => issue_admin_token(), 'username' => 'admin');
+        $__t = issue_admin_token();
+        $__k = function_exists('dev_register') ? dev_register((int)$u['id'], $__t) : array('kicked' => array());
+        return array('uid' => 0, 'role' => 'admin', 'token' => $__t, 'username' => 'admin',
+            'kicked' => $__k['kicked']);
     }
 
     /* 被封停的账号**允许登录**：登进来才看得到「全屏封禁说明」（处理原因、封禁天数、
@@ -460,11 +463,15 @@ function login_finish(array $u, bool $skipTwofa = false): array
     stats_bump('logins');
     record_visit((int)$u['id']);
     if ((string)$u['role'] === 'subadmin') {
-        return array('uid' => (int)$u['id'], 'role' => 'subadmin',
-            'token' => issue_subadmin_token((string)$u['username'], (int)$u['id']),
-            'username' => (string)$u['username']);
+        $__t = issue_subadmin_token((string)$u['username'], (int)$u['id']);
+        $__k = function_exists('dev_register') ? dev_register((int)$u['id'], $__t) : array('kicked' => array());
+        return array('uid' => (int)$u['id'], 'role' => 'subadmin', 'token' => $__t,
+            'username' => (string)$u['username'], 'kicked' => $__k['kicked']);
     }
-    return array('uid' => (int)$u['id'], 'role' => 'user', 'token' => issue_user_token((int)$u['id']), 'username' => (string)$u['username']);
+    $__t = issue_user_token((int)$u['id']);
+    $__k = function_exists('dev_register') ? dev_register((int)$u['id'], $__t) : array('kicked' => array());
+    return array('uid' => (int)$u['id'], 'role' => 'user', 'token' => $__t,
+        'username' => (string)$u['username'], 'kicked' => $__k['kicked']);
 }
 
 /**

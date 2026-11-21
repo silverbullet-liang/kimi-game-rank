@@ -118,6 +118,13 @@ How to use it:
      - When two skins match the same day, the one earlier in the catalogue wins (for example 8/19 in years when it is both Doctors' Day and Qixi).
    - **Profile**: avatar and profile card;
    - **Feedback entry**: goes straight to "Feedback".
+6. **Signed-in devices**: an account keeps at most **3 devices** signed in at once. When a fourth signs in, the one idle longest is signed out automatically and you are told which one.
+   The "Mine" page lists them: an icon on the left for the device type (computer / phone / tablet / TV / car head unit / inside the Kimi app), the device name in the middle (Edge, Safari, Chrome, Kimi App WebView — Chinese browsers keep their own names instead of all reporting as Chrome), with brand and engine underneath (for example Samsung · Blink) and a browser fingerprint when one has been reported; on the right you can **sign a device out** with one tap, or **switch the account on that device remotely** — enter the target account and its password, and once the password checks out that device reloads under the new account on its next request. The person using it does nothing, and your other devices stay signed in (accounts with email two-step verification or suspended accounts cannot be switched remotely). "Switch account on this device" at the bottom signs out the browser you are using and returns it to the sign-in page.
+   A device that is signed out or pushed out loses its credential immediately and has to sign in again on its next action.
+   **Risk marks**: one of the conditions below marks the device "Check" (yellow), two mark it "Suspicious" (orange), all three mark it "High risk" (red). Hovering the mark shows the reason:
+   - the same device has been seen on **3 or more different IP ranges** (a wide spread, as if it moved or came through a proxy);
+   - more than **10 minutes after signing in there is still no browser-side trace** (page scripts never ran);
+   - more than **24 hours after signing in there has been no activity at all**.
 4. **Privacy**: you can **turn visit history off at any time** in settings, and request deletion of what has already been recorded. See the [Privacy Policy](/docs/privacy).
 
 ---

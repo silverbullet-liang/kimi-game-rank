@@ -82,7 +82,9 @@ core_auth = read("app/auth.php")
 chk("consent_cross_at" in core_auth, "注册后写入同意时间")
 mig = read("app/migrate.php")
 chk("consent_cross_at" in mig, "迁移含 users.consent_cross_at")
-chk("SCHEMA_VERSION', 49" in mig, "SCHEMA_VERSION 已到 49")
+chk(re.search(r"define\('SCHEMA_VERSION', (\d+)\)", mig) is not None
+    and int(re.search(r"define\('SCHEMA_VERSION', (\d+)\)", mig).group(1)) >= 49,
+    "SCHEMA_VERSION 已包含 consent_cross_at 迁移（≥49）")
 
 # ---------- 3. 并发闸门与 5xx 重试 ----------
 core = read("assets/js/src/core.js")

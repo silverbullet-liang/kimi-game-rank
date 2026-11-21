@@ -230,6 +230,52 @@ function apiRetriable(e) {
   return c === 0 || (c >= 500 && c <= 599);
 }
 
+/* ---------------- 设备指纹上报 ----------------
+ * 服务器需要「这台设备确实跑着浏览器」的证据，用来给登录设备判风险
+ * （登录后一直没有前端痕迹 = 可能是脚本拿着令牌在跑）。
+ * 指纹由 canvas 渲染结果 + 屏幕尺寸算 FNV-1a，不采集任何个人内容，
+ * 只在本机算完上传一个 8 位十六进制串。 */
+function canvasFp() {
+  try {
+    const c = document.createElement('canvas');
+    c.width = 200; c.height = 40;
+    const x = c.getContext('2d');
+    if (!x) { return ''; }
+    x.textBaseline = 'top';
+    x.font = '14px "Arial"';
+    x.fillStyle = '#f60';
+    x.fillRect(0, 0, 200, 40);
+    x.fillStyle = '#069';
+    x.fillText('kimi-game-rank|' + (navigator.language || ''), 2, 8);
+    x.fillStyle = 'rgba(102,204,0,0.7)';
+    x.fillText('kimi-game-rank|' + (navigator.language || ''), 4, 20);
+    const data = c.toDataURL();
+    let h = 2166136261;
+    for (let i = 0; i < data.length; i++) {
+      h ^= data.charCodeAt(i);
+      h = (h * 16777619) >>> 0;
+    }
+    const scr = (screen.width || 0) + 'x' + (screen.height || 0);
+    let h2 = 2166136261;
+    for (let i = 0; i < scr.length; i++) { h2 ^= scr.charCodeAt(i); h2 = (h2 * 16777619) >>> 0; }
+    return ('00000000' + h.toString(16)).slice(-8) + ('00000000' + h2.toString(16)).slice(-4);
+  } catch (e) { return ''; }
+}
+
+/* 每个浏览器会话上报一次即可（localStorage 记 6 小时） */
+export function reportDevice() {
+  if (!state.token) { return; }
+  try {
+    const k = 'kimgr_dvrep';
+    const last = Number(localStorage.getItem(k) || 0);
+    if (last && Date.now() - last < 6 * 3600 * 1000) { return; }
+    const fp = canvasFp();
+    if (!fp) { return; }
+    localStorage.setItem(k, String(Date.now()));
+    api('device', 'hello', { fp: fp }, { silent: true, retry: false }).catch(() => {});
+  } catch (e) {}
+}
+
 export async function api(file, action, data = null, opts = {}) {
   cdCheck(file, action, data);   // 冷却期内直接拒绝，不发无谓请求
   if (opts.silent !== true) { loading(true); }
@@ -271,6 +317,56 @@ export async function api(file, action, data = null, opts = {}) {
     if (opts.silent !== true) { loading(false); }
   }
 }
+
+/**
+ * 被远程切号时领取新身份。
+ * 旧令牌已经进了黑名单，但它正是领取凭证——只在原设备的本地存储里，
+ * 伪造设备号拿不到。领到即换令牌并重载；领不到返回 false，走原本的失效流程。
+ */
+let __claiming = null;
+/* 领到新身份后置真：并发请求里剩下的 401 必须用新令牌重放，
+   否则它们会把刚拿到的新令牌当成失效清掉，整页掉回游客。 */
+let __switchDone = false;
+function claimSwitch(useTok) {
+  if (__claiming) { return __claiming; }
+  const tok = useTok || state.token;
+  if (!tok) { return Promise.resolve(false); }
+  __claiming = (async function () {
+    try {
+      const resp = await fetch(API_BASE + '/device?action=claim', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + tok,
+          'X-Token': tok,
+          'X-Device-Id': deviceId(),
+        },
+        credentials: 'same-origin',
+        body: '{}',
+      });
+      const j = await resp.json();
+      if (!j || Number(j.code) !== 0 || !j.data || !j.data.token) { return false; }
+      const d = j.data;
+      setToken(d.token);
+      __switchDone = true;
+      state.role = d.role || 'user';
+      state.uid = Number(d.uid || 0);
+      state.username = d.username || state.username;
+      try { toast(t('本机账号已由管理员切换为 ') + state.username); } catch (e) {}
+      setTimeout(function () { location.reload(); }, 300);
+      return true;
+    } catch (e) {
+      return false;
+    } finally {
+      setTimeout(function () { __claiming = null; }, 1500);
+    }
+  })();
+  return __claiming;
+}
+
+/** 页面主动触发领取（本机刚被换号时不必等下一次 401） */
+export function claimSwitchNow() { return claimSwitch(); }
 
 async function apiOnce(file, action, data = null, opts = {}) {
   file = String(file || '').replace(/\.php$/i, '');   // 端点规整化：对外一律无扩展名
@@ -322,6 +418,14 @@ async function apiOnce(file, action, data = null, opts = {}) {
       if (renewed) {
         return await apiOnce(file, action, data, Object.assign({}, opts, { _reauth: true }));
       }
+    }
+    /* 本机刚被换过号：并发的其它请求拿的还是旧令牌，直接用新令牌重放 */
+    if (__switchDone && !opts._claim) {
+      return await apiOnce(file, action, data, Object.assign({}, opts, { _claim: true }));
+    }
+    /* 已登录却 401：先看是不是被管理员在设备列表里换了号 */
+    if (state.role !== 'guest' && !opts._claim && await claimSwitch()) {
+      return await apiOnce(file, action, data, Object.assign({}, opts, { _claim: true }));
     }
     if (onUnauthorized) { onUnauthorized(); }
     throw new ApiError(401, t('登录态已失效'));
@@ -672,6 +776,11 @@ export async function boot() {
     const q = { first: want ? 1 : 0 };
     if (want) { q.category = want.category; q.board = want.board; q.size = want.size; }
     const d = await api('start', 'app', q, { silent: true, tries: 2 });
+    /* 管理员替这台设备换了号：旧令牌已作废，先用它把新身份领回来。
+       必须在采用响应里的游客令牌之前判断，否则旧令牌会被覆盖、再也领不回来。 */
+    if (d && Number(d.sw) === 1) {
+      if (await claimSwitch(bootTok)) { state.booted = true; return state; }
+    }
     if (d && d.token) { setToken(d.token); }
     applyIdentity(d);
     state.announce = (d && d.announce !== undefined) ? String(d.announce || '') : '';

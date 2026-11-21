@@ -38,6 +38,11 @@ $data['announce']   = site_announce();
 $data['categories'] = site_category_counts();
 $data['version']    = APP_VERSION;
 
+/* 本机有「待领取的账号切换」（管理员在设备列表里替这台设备换了号）。
+   旧令牌本身就是凭证，命中才置 1；前端据此换令牌并重载。 */
+try { $data['sw'] = dev_switch_pending(bearer_token()) ? 1 : 0; }
+catch (Throwable $e) { $data['sw'] = 0; }
+
 /* 违纪通报：本人是否被封停（带详情，供全屏封禁说明）+ 最新一条（供全站弹窗）。
    管理员与副管理员不受封禁限制，一律给 null。 */
 $data['ban']  = null;

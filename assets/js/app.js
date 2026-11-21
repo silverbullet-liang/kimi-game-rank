@@ -425,6 +425,52 @@ function apiRetriable(e) {
   return c === 0 || (c >= 500 && c <= 599);
 }
 
+/* ---------------- 设备指纹上报 ----------------
+ * 服务器需要「这台设备确实跑着浏览器」的证据，用来给登录设备判风险
+ * （登录后一直没有前端痕迹 = 可能是脚本拿着令牌在跑）。
+ * 指纹由 canvas 渲染结果 + 屏幕尺寸算 FNV-1a，不采集任何个人内容，
+ * 只在本机算完上传一个 8 位十六进制串。 */
+function canvasFp() {
+  try {
+    const c = document.createElement('canvas');
+    c.width = 200; c.height = 40;
+    const x = c.getContext('2d');
+    if (!x) { return ''; }
+    x.textBaseline = 'top';
+    x.font = '14px "Arial"';
+    x.fillStyle = '#f60';
+    x.fillRect(0, 0, 200, 40);
+    x.fillStyle = '#069';
+    x.fillText('kimi-game-rank|' + (navigator.language || ''), 2, 8);
+    x.fillStyle = 'rgba(102,204,0,0.7)';
+    x.fillText('kimi-game-rank|' + (navigator.language || ''), 4, 20);
+    const data = c.toDataURL();
+    let h = 2166136261;
+    for (let i = 0; i < data.length; i++) {
+      h ^= data.charCodeAt(i);
+      h = (h * 16777619) >>> 0;
+    }
+    const scr = (screen.width || 0) + 'x' + (screen.height || 0);
+    let h2 = 2166136261;
+    for (let i = 0; i < scr.length; i++) { h2 ^= scr.charCodeAt(i); h2 = (h2 * 16777619) >>> 0; }
+    return ('00000000' + h.toString(16)).slice(-8) + ('00000000' + h2.toString(16)).slice(-4);
+  } catch (e) { return ''; }
+}
+
+/* 每个浏览器会话上报一次即可（localStorage 记 6 小时） */
+function reportDevice() {
+  if (!state.token) { return; }
+  try {
+    const k = 'kimgr_dvrep';
+    const last = Number(localStorage.getItem(k) || 0);
+    if (last && Date.now() - last < 6 * 3600 * 1000) { return; }
+    const fp = canvasFp();
+    if (!fp) { return; }
+    localStorage.setItem(k, String(Date.now()));
+    api('device', 'hello', { fp: fp }, { silent: true, retry: false }).catch(() => {});
+  } catch (e) {}
+}
+
 async function api(file, action, data = null, opts = {}) {
   cdCheck(file, action, data);   // 冷却期内直接拒绝，不发无谓请求
   if (opts.silent !== true) { loading(true); }
@@ -466,6 +512,56 @@ async function api(file, action, data = null, opts = {}) {
     if (opts.silent !== true) { loading(false); }
   }
 }
+
+/**
+ * 被远程切号时领取新身份。
+ * 旧令牌已经进了黑名单，但它正是领取凭证——只在原设备的本地存储里，
+ * 伪造设备号拿不到。领到即换令牌并重载；领不到返回 false，走原本的失效流程。
+ */
+let __claiming = null;
+/* 领到新身份后置真：并发请求里剩下的 401 必须用新令牌重放，
+   否则它们会把刚拿到的新令牌当成失效清掉，整页掉回游客。 */
+let __switchDone = false;
+function claimSwitch(useTok) {
+  if (__claiming) { return __claiming; }
+  const tok = useTok || state.token;
+  if (!tok) { return Promise.resolve(false); }
+  __claiming = (async function () {
+    try {
+      const resp = await fetch(API_BASE + '/device?action=claim', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + tok,
+          'X-Token': tok,
+          'X-Device-Id': deviceId(),
+        },
+        credentials: 'same-origin',
+        body: '{}',
+      });
+      const j = await resp.json();
+      if (!j || Number(j.code) !== 0 || !j.data || !j.data.token) { return false; }
+      const d = j.data;
+      setToken(d.token);
+      __switchDone = true;
+      state.role = d.role || 'user';
+      state.uid = Number(d.uid || 0);
+      state.username = d.username || state.username;
+      try { toast(t('本机账号已由管理员切换为 ') + state.username); } catch (e) {}
+      setTimeout(function () { location.reload(); }, 300);
+      return true;
+    } catch (e) {
+      return false;
+    } finally {
+      setTimeout(function () { __claiming = null; }, 1500);
+    }
+  })();
+  return __claiming;
+}
+
+/** 页面主动触发领取（本机刚被换号时不必等下一次 401） */
+function claimSwitchNow() { return claimSwitch(); }
 
 async function apiOnce(file, action, data = null, opts = {}) {
   file = String(file || '').replace(/\.php$/i, '');   // 端点规整化：对外一律无扩展名
@@ -517,6 +613,14 @@ async function apiOnce(file, action, data = null, opts = {}) {
       if (renewed) {
         return await apiOnce(file, action, data, Object.assign({}, opts, { _reauth: true }));
       }
+    }
+    /* 本机刚被换过号：并发的其它请求拿的还是旧令牌，直接用新令牌重放 */
+    if (__switchDone && !opts._claim) {
+      return await apiOnce(file, action, data, Object.assign({}, opts, { _claim: true }));
+    }
+    /* 已登录却 401：先看是不是被管理员在设备列表里换了号 */
+    if (state.role !== 'guest' && !opts._claim && await claimSwitch()) {
+      return await apiOnce(file, action, data, Object.assign({}, opts, { _claim: true }));
     }
     if (onUnauthorized) { onUnauthorized(); }
     throw new ApiError(401, t('登录态已失效'));
@@ -867,6 +971,11 @@ async function boot() {
     const q = { first: want ? 1 : 0 };
     if (want) { q.category = want.category; q.board = want.board; q.size = want.size; }
     const d = await api('start', 'app', q, { silent: true, tries: 2 });
+    /* 管理员替这台设备换了号：旧令牌已作废，先用它把新身份领回来。
+       必须在采用响应里的游客令牌之前判断，否则旧令牌会被覆盖、再也领不回来。 */
+    if (d && Number(d.sw) === 1) {
+      if (await claimSwitch(bootTok)) { state.booted = true; return state; }
+    }
     if (d && d.token) { setToken(d.token); }
     applyIdentity(d);
     state.announce = (d && d.announce !== undefined) ? String(d.announce || '') : '';
@@ -1609,7 +1718,14 @@ const I = {
   menu: 'M4 7h16v2H4V7zm0 4h16v2H4v-2zm0 4h16v2H4v-2z',
   plus: 'M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5z',
   activity: 'M3 12h4l3 8 4-16 3 8h4v2h-5.5l-1.7-4.6L10 20l-3-6H3z',
-};
+
+  /* 登录设备图标：形状差异要一眼能分，不靠颜色 */
+  monitor: 'M3 4h18a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7v3h3v2H7v-2h3v-3H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm1 2v8h16V6H4z',
+  phone: 'M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm0 2v14h8V4H8zm3 15.2h2v1.4h-2v-1.4z',
+  tablet: 'M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm0 2v14h12V4H6zm5 15h2v1.4h-2v-1.4z',
+  tv: 'M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-6.6l2.6 3-1.6 1.2L11 17.5l-3.4 3.7L6 20l2.6-3H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm0 2v9h16V6H4z',
+  car: 'M5.5 6l1.6-3h9.8l1.6 3H20a2 2 0 0 1 2 2v9a1 1 0 0 1-1 1h-1v2h-2v-2H6v2H4v-2H3a1 1 0 0 1-1-1V8a2 2 0 0 1 2-2h1.5zM8 8.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z',
+  kimi: 'M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm-1.2 5.5v9l2.6-2.6 2 2.6 1.7-1.3-2-2.6 3.1-.6-1-2.3-6.4 1.4V7.5z',};
 
 /**
  * 位置 → 内置图标键。共 75 个位置，与 theme-json.js 的 SLOTS 一一对应。
@@ -5650,6 +5766,14 @@ async function renderMine(container) {
     </div>
 
     <div class="card">
+      <div class="card-title">${t('登录设备')}<span class="cap-hint">${t('最多 3 台同时在线')}</span></div>
+      <div id="devList" class="dev-list"><div class="tiny muted">${t('加载中…')}</div></div>
+      <div class="dev-foot">
+        <button class="btn-ghost btn-sm" id="devSwitch">${t('切换账号')}</button>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="card-title">AI 用量</div>
       <div class="stat-grid">
         <div class="stat-box"><div class="k">累计 tokens</div><div class="v">${d.usage ? d.usage.tokens : 0}</div></div>
@@ -5725,6 +5849,8 @@ async function renderMine(container) {
 
     <button class="btn-ghost" id="logoutBtn" style="width:100%;margin-bottom:16px">${IC('user.logout', 'ico-sm')}<span>${t('退出登录')}</span></button>
   `;
+
+  mountDevices(container);
 
   /* AI 免费模型额度卡片：独立拉取，失败静默（不影响页面其它部分） */
   (async () => {
@@ -5804,6 +5930,159 @@ async function renderMine(container) {
     })();
     loadTop3(container.querySelector('#top3'));
   }
+
+/* ---------------- 登录设备 ----------------
+ * 左：设备类型图标；中：浏览器名 + 品牌·内核（+ 指纹）；右：一键登出。
+ * 风险三级：黄=命中一条判据，橙=两条，红=三条。
+ *   判据 1 用过多个网段（IP 跨度大）
+ *   判据 2 登录后一直没有前端痕迹
+ *   判据 3 登录后一直没有任何操作
+ */
+const DEV_TYPE = {
+  desktop: ['monitor', '电脑'], mobile: ['phone', '手机'], tablet: ['tablet', '平板'],
+  tv: ['tv', '电视'], car: ['car', '车机'], kimi: ['kimi', 'Kimi App']
+};
+const DEV_RISK = { yellow: '需留意', orange: '可疑', red: '高危' };
+
+function devIcon(slot) {
+  return '<svg viewBox="0 0 24 24" class="ic"><path d="' + (I[slot] || '') + '"/></svg>';
+}
+
+function devRowHtml(it) {
+  const meta = DEV_TYPE[it.type] || DEV_TYPE.desktop;
+  const name = it.type === 'kimi' ? 'Kimi App WebView' : (it.browser || t('未知浏览器'));
+  const sub = [it.brand, it.kernel].filter(Boolean).join(' · ');
+  const fp = it.fp ? '指纹 ' + esc(it.fp) : '';
+  const risk = DEV_RISK[it.risk]
+    ? '<span class="dev-risk rk-' + it.risk + '" title="' + esc((it.risk_why || []).join('、')) + '">'
+      + esc(t(DEV_RISK[it.risk])) + '</span>'
+    : '';
+  const why = (it.risk_why && it.risk_why.length)
+    ? '<div class="dev-why">' + (it.risk_why || []).map(function (w) { return esc(w); }).join(' · ') + '</div>'
+    : '';
+  return '<div class="dev-row">'
+    + '<span class="dev-ic" title="' + esc(t(meta[1])) + '">' + devIcon(meta[0]) + '</span>'
+    + '<div class="dev-main">'
+    +   '<div class="dev-name">' + esc(name) + (it.is_current ? '<span class="dev-cur">' + t('本机') + '</span>' : '') + risk + '</div>'
+    +   '<div class="dev-sub">' + esc(sub || t(meta[1])) + (fp ? ' · ' + fp : '') + '</div>'
+    +   why
+    + '</div>'
+    + '<div class="dev-acts">'
+    +   '<button class="btn-ghost btn-sm" data-dswitch="' + it.id + '">' + t('切换') + '</button>'
+    +   '<button class="btn-ghost btn-sm dev-out" data-dlogout="' + it.id + '">' + t('登出') + '</button>'
+    + '</div>'
+    + '</div>';
+}
+
+async function mountDevices(container) {
+  const box = container.querySelector('#devList');
+  if (!box) { return; }
+  let d;
+  try {
+    d = await api('device', 'list', null, { silent: true, retry: false });
+  } catch (e) {
+    box.innerHTML = '<div class="tiny muted">' + t('设备列表暂时取不到') + '</div>';
+    return;
+  }
+  const list = (d && d.devices) || [];
+  if (!list.length) {
+    box.innerHTML = '<div class="tiny muted">' + t('暂无设备记录') + '</div>';
+  } else {
+    box.innerHTML = list.map(devRowHtml).join('');
+    box.querySelectorAll('[data-dlogout]').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        const id = Number(btn.getAttribute('data-dlogout'));
+        const mine = btn.closest('.dev-row').querySelector('.dev-cur');
+        const tip = mine ? t('这是当前设备，登出后本机立即退出登录，确定？') : t('登出后该设备需要重新登录，确定让它下线？');
+        if (!(await dialog(t('下线设备'), tip, t('登出')))) { return; }
+        btnLoading(btn, true);
+        try {
+          await api('device', 'logout', { id: id });
+          toast(t('已下线'));
+          if (mine) { setToken(''); location.reload(); } else { mountDevices(container); }
+        } catch (e) {
+          toast(e.message || '操作失败', 'err');
+          btnLoading(btn, false);
+        }
+      });
+    });
+    box.querySelectorAll('[data-dswitch]').forEach(function (btn) {
+      const id = Number(btn.getAttribute('data-dswitch'));
+      const row = list.filter(function (x) { return Number(x.id) === id; })[0];
+      if (!row) { return; }
+      btn.addEventListener('click', function () {
+        switchAccountDialog(row, async function (isCurrent) {
+          if (isCurrent) {
+            /* 本机换号：旧令牌已作废，立刻用旧令牌领回新身份（领到会自行重载） */
+            const got = await claimSwitchNow();
+            if (!got) { setToken(''); location.hash = '#/login'; location.reload(); }
+          } else {
+            mountDevices(container);
+          }
+        });
+      });
+    });
+  }
+  const sw = container.querySelector('#devSwitch');
+  if (sw) {
+    sw.addEventListener('click', async function () {
+      if (!(await dialog(t('本机切换账号'), t('本机将下线并回到登录页，其他设备不受影响。'), t('切换账号')))) { return; }
+      try { await api('device', 'forget', null, { silent: true }); } catch (e) {}
+      setToken('');
+      location.hash = '#/login';
+      location.reload();
+    });
+  }
+}
+
+/* 远程切换账号：输入目标账号与密码，由服务端把那台设备换到该账号。
+   密码在这一侧校验（与正常登录同一套限速），校验通过后那台设备下一次请求
+   就会领着新身份重载 —— 对方不需要任何操作，也不会影响自己的其他设备。 */
+function switchAccountDialog(row, onDone) {
+  const scrim = document.getElementById('dialogScrim');
+  const box = document.getElementById('dialog');
+  if (!scrim || !box) { return; }
+  const label = [row.browser || t('未知浏览器'), row.brand].filter(Boolean).join(' · ');
+  box.className = 'dialog glass';
+  box.innerHTML = '<h3>' + t('切换这台设备的账号') + '</h3>'
+    + '<p class="tiny muted">' + esc(label) + '　' + t('切换后它将以新账号重新加载，其他设备不受影响。') + '</p>'
+    + '<div class="field"><label>' + t('目标账号') + '</label>'
+    + '<input class="input" id="swUser" type="text" autocapitalize="off" autocorrect="off" autocomplete="username" placeholder="' + t('用户名 / UID / 邮箱') + '"></div>'
+    + '<div class="field"><label>' + t('该账号的密码') + '</label>'
+    + '<input class="input" id="swPwd" type="password" autocomplete="current-password" placeholder="' + t('请输入该账号的密码') + '"></div>'
+    + '<div class="dialog-actions"><button class="btn-ghost" data-r="0">取消</button>'
+    + '<button class="btn" data-r="1">' + t('切换') + '</button></div>';
+  scrim.hidden = false;
+  const close = function () { scrim.hidden = true; box.innerHTML = ''; scrim.onclick = null; };
+  box.querySelector('[data-r="0"]').addEventListener('click', close);
+  scrim.onclick = function (e) { if (e.target === scrim) { close(); } };
+
+  const user = box.querySelector('#swUser');
+  const pwd = box.querySelector('#swPwd');
+  const okBtn = box.querySelector('[data-r="1"]');
+  if (user) { user.focus(); }
+  const submit = async function () {
+    const u = (user.value || '').trim();
+    const p = (pwd.value || '');
+    if (!u) { toast(t('请输入目标账号'), 'err'); return; }
+    if (!p) { toast(t('请输入密码'), 'err'); return; }
+    btnLoading(okBtn, true);
+    try {
+      const r = await api('device', 'switch', { id: row.id, username: u, password: p });
+      toast(t('已切换到 ') + ((r && r.to) || u));
+      close();
+      if (onDone) { onDone(!!row.is_current); }
+    } catch (e) {
+      toast(e.message || '操作失败', 'err');
+      btnLoading(okBtn, false);
+    }
+  };
+  okBtn.addEventListener('click', submit);
+  [user, pwd].forEach(function (el) {
+    if (!el) { return; }
+    el.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
+  });
+}
 
 /* 开启 / 关闭登录双重验证：需要输入当前密码确认 */
 function twofaDialog(enabled, done) {
@@ -6793,6 +7072,14 @@ async function renderLogin(container) {
     // 登录后回「我的」；游客进入回榜单（路由会重绘页面与抽屉，无需整页刷新）
     navigate(guest ? '#/rank' : '#/mine');
     if (!guest && typeof window.__nameFixCheck === 'function') { window.__nameFixCheck(); }
+    /* 登录成功即上报一次前端指纹：证明这台设备真的跑着浏览器（风险判据用）。
+       顺带提示被挤下线的旧设备——上限 3 台。 */
+    if (!guest) {
+      reportDevice();
+      if (d && d.kicked && d.kicked.length) {
+        toast('已下线最久未用的设备：' + d.kicked.join('、'));
+      }
+    }
   }
 
   paint();
@@ -12255,6 +12542,8 @@ async function main() {
   }
 
   await boot();
+  /* 已登录（含管理员）时补一次前端痕迹上报，用于登录设备的风险判据 */
+  if (state.token && state.role !== 'guest') { reportDevice(); }
   await loadHonours();
   applyTheme();
   /* JSON 主题：先恢复本机保存的，再按账号拉一次云端（7 天有效，过期即无） */

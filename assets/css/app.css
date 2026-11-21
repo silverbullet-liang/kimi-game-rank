@@ -1960,3 +1960,35 @@ i.ic[class*='ti-'] { background-repeat: no-repeat; background-position: center; 
 .th-hon { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
 .th-hon .badge { margin-left: 0; }
 .th-hon .tiny { margin-left: 2px; }
+
+/* ---------- 登录设备（我的页） ----------
+ * 三栏：图标 / 名称+信息 / 登出。风险等级只用一个小色点文字，
+ * 不做整行染色，避免把正常设备也搞得像告警。 */
+.cap-hint { margin-left: 8px; font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
+.dev-list { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.dev-row { display: flex; align-items: center; gap: 12px; padding: 10px 2px; border-top: 1px solid var(--line); }
+.dev-row:first-child { border-top: 0; }
+.dev-ic { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px;
+  background: var(--soft); color: var(--fg); }
+.dev-ic .ic { width: 20px; height: 20px; fill: currentColor; }
+.dev-main { flex: 1 1 auto; min-width: 0; }
+.dev-name { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
+.dev-sub { margin-top: 2px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dev-why { margin-top: 2px; font-size: 12px; color: var(--muted); opacity: .85; }
+.dev-cur { flex: none; padding: 0 6px; border-radius: 6px; font-size: 11px; font-weight: 500;
+  background: var(--soft); color: var(--muted); }
+.dev-risk { flex: none; padding: 0 6px; border-radius: 6px; font-size: 11px; font-weight: 500; }
+.dev-risk.rk-yellow { background: rgba(232, 163, 61, .16); color: #b4781c; }
+.dev-risk.rk-orange { background: rgba(224, 114, 45, .16); color: #c05a1c; }
+.dev-risk.rk-red { background: rgba(214, 64, 58, .16); color: #c02b25; }
+.dev-acts { flex: none; display: flex; align-items: center; gap: 6px; }
+.dev-out { flex: none; }
+.dev-foot { display: flex; justify-content: flex-end; margin-top: 8px; }
+:root[data-theme="dark"] .dev-risk.rk-yellow { color: #e8b45c; }
+:root[data-theme="dark"] .dev-risk.rk-orange { color: #f0904a; }
+:root[data-theme="dark"] .dev-risk.rk-red { color: #f06b63; }
+@media (max-width: 420px) {
+  .dev-ic { width: 30px; height: 30px; }
+  .dev-name { font-size: 13px; }
+  .dev-acts { flex-direction: column; gap: 4px; }
+}

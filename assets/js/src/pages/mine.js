@@ -1,7 +1,7 @@
 /**
  * 我的页：个人信息 / AI 用量 / IP 与访问记录 / 设置 / 控制面板入口
  */
-import { api, state, esc, toast, dialog, btnLoading, setToken, ensureGuestSession, askNotifyPermission, userName, isAdminish, getPrefs, setPrefs } from '../core.js';
+import { api, state, esc, toast, dialog, btnLoading, setToken, claimSwitchNow, ensureGuestSession, askNotifyPermission, userName, isAdminish, getPrefs, setPrefs } from '../core.js';
 import { LANGS, I18N, setLang, festName } from '../i18n.js';
 import { navigate } from '../router.js';
 import { saveTheme, ACCENTS, SKINS, hexToHsl, FESTIVAL_KEYS, festivalNow } from '../theme.js';
@@ -98,6 +98,14 @@ export async function renderMine(container) {
     </div>
 
     <div class="card">
+      <div class="card-title">${t('登录设备')}<span class="cap-hint">${t('最多 3 台同时在线')}</span></div>
+      <div id="devList" class="dev-list"><div class="tiny muted">${t('加载中…')}</div></div>
+      <div class="dev-foot">
+        <button class="btn-ghost btn-sm" id="devSwitch">${t('切换账号')}</button>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="card-title">AI 用量</div>
       <div class="stat-grid">
         <div class="stat-box"><div class="k">累计 tokens</div><div class="v">${d.usage ? d.usage.tokens : 0}</div></div>
@@ -173,6 +181,8 @@ export async function renderMine(container) {
 
     <button class="btn-ghost" id="logoutBtn" style="width:100%;margin-bottom:16px">${IC('user.logout', 'ico-sm')}<span>${t('退出登录')}</span></button>
   `;
+
+  mountDevices(container);
 
   /* AI 免费模型额度卡片：独立拉取，失败静默（不影响页面其它部分） */
   (async () => {
@@ -252,6 +262,159 @@ export async function renderMine(container) {
     })();
     loadTop3(container.querySelector('#top3'));
   }
+
+/* ---------------- 登录设备 ----------------
+ * 左：设备类型图标；中：浏览器名 + 品牌·内核（+ 指纹）；右：一键登出。
+ * 风险三级：黄=命中一条判据，橙=两条，红=三条。
+ *   判据 1 用过多个网段（IP 跨度大）
+ *   判据 2 登录后一直没有前端痕迹
+ *   判据 3 登录后一直没有任何操作
+ */
+const DEV_TYPE = {
+  desktop: ['monitor', '电脑'], mobile: ['phone', '手机'], tablet: ['tablet', '平板'],
+  tv: ['tv', '电视'], car: ['car', '车机'], kimi: ['kimi', 'Kimi App']
+};
+const DEV_RISK = { yellow: '需留意', orange: '可疑', red: '高危' };
+
+function devIcon(slot) {
+  return '<svg viewBox="0 0 24 24" class="ic"><path d="' + (I[slot] || '') + '"/></svg>';
+}
+
+function devRowHtml(it) {
+  const meta = DEV_TYPE[it.type] || DEV_TYPE.desktop;
+  const name = it.type === 'kimi' ? 'Kimi App WebView' : (it.browser || t('未知浏览器'));
+  const sub = [it.brand, it.kernel].filter(Boolean).join(' · ');
+  const fp = it.fp ? '指纹 ' + esc(it.fp) : '';
+  const risk = DEV_RISK[it.risk]
+    ? '<span class="dev-risk rk-' + it.risk + '" title="' + esc((it.risk_why || []).join('、')) + '">'
+      + esc(t(DEV_RISK[it.risk])) + '</span>'
+    : '';
+  const why = (it.risk_why && it.risk_why.length)
+    ? '<div class="dev-why">' + (it.risk_why || []).map(function (w) { return esc(w); }).join(' · ') + '</div>'
+    : '';
+  return '<div class="dev-row">'
+    + '<span class="dev-ic" title="' + esc(t(meta[1])) + '">' + devIcon(meta[0]) + '</span>'
+    + '<div class="dev-main">'
+    +   '<div class="dev-name">' + esc(name) + (it.is_current ? '<span class="dev-cur">' + t('本机') + '</span>' : '') + risk + '</div>'
+    +   '<div class="dev-sub">' + esc(sub || t(meta[1])) + (fp ? ' · ' + fp : '') + '</div>'
+    +   why
+    + '</div>'
+    + '<div class="dev-acts">'
+    +   '<button class="btn-ghost btn-sm" data-dswitch="' + it.id + '">' + t('切换') + '</button>'
+    +   '<button class="btn-ghost btn-sm dev-out" data-dlogout="' + it.id + '">' + t('登出') + '</button>'
+    + '</div>'
+    + '</div>';
+}
+
+async function mountDevices(container) {
+  const box = container.querySelector('#devList');
+  if (!box) { return; }
+  let d;
+  try {
+    d = await api('device', 'list', null, { silent: true, retry: false });
+  } catch (e) {
+    box.innerHTML = '<div class="tiny muted">' + t('设备列表暂时取不到') + '</div>';
+    return;
+  }
+  const list = (d && d.devices) || [];
+  if (!list.length) {
+    box.innerHTML = '<div class="tiny muted">' + t('暂无设备记录') + '</div>';
+  } else {
+    box.innerHTML = list.map(devRowHtml).join('');
+    box.querySelectorAll('[data-dlogout]').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        const id = Number(btn.getAttribute('data-dlogout'));
+        const mine = btn.closest('.dev-row').querySelector('.dev-cur');
+        const tip = mine ? t('这是当前设备，登出后本机立即退出登录，确定？') : t('登出后该设备需要重新登录，确定让它下线？');
+        if (!(await dialog(t('下线设备'), tip, t('登出')))) { return; }
+        btnLoading(btn, true);
+        try {
+          await api('device', 'logout', { id: id });
+          toast(t('已下线'));
+          if (mine) { setToken(''); location.reload(); } else { mountDevices(container); }
+        } catch (e) {
+          toast(e.message || '操作失败', 'err');
+          btnLoading(btn, false);
+        }
+      });
+    });
+    box.querySelectorAll('[data-dswitch]').forEach(function (btn) {
+      const id = Number(btn.getAttribute('data-dswitch'));
+      const row = list.filter(function (x) { return Number(x.id) === id; })[0];
+      if (!row) { return; }
+      btn.addEventListener('click', function () {
+        switchAccountDialog(row, async function (isCurrent) {
+          if (isCurrent) {
+            /* 本机换号：旧令牌已作废，立刻用旧令牌领回新身份（领到会自行重载） */
+            const got = await claimSwitchNow();
+            if (!got) { setToken(''); location.hash = '#/login'; location.reload(); }
+          } else {
+            mountDevices(container);
+          }
+        });
+      });
+    });
+  }
+  const sw = container.querySelector('#devSwitch');
+  if (sw) {
+    sw.addEventListener('click', async function () {
+      if (!(await dialog(t('本机切换账号'), t('本机将下线并回到登录页，其他设备不受影响。'), t('切换账号')))) { return; }
+      try { await api('device', 'forget', null, { silent: true }); } catch (e) {}
+      setToken('');
+      location.hash = '#/login';
+      location.reload();
+    });
+  }
+}
+
+/* 远程切换账号：输入目标账号与密码，由服务端把那台设备换到该账号。
+   密码在这一侧校验（与正常登录同一套限速），校验通过后那台设备下一次请求
+   就会领着新身份重载 —— 对方不需要任何操作，也不会影响自己的其他设备。 */
+function switchAccountDialog(row, onDone) {
+  const scrim = document.getElementById('dialogScrim');
+  const box = document.getElementById('dialog');
+  if (!scrim || !box) { return; }
+  const label = [row.browser || t('未知浏览器'), row.brand].filter(Boolean).join(' · ');
+  box.className = 'dialog glass';
+  box.innerHTML = '<h3>' + t('切换这台设备的账号') + '</h3>'
+    + '<p class="tiny muted">' + esc(label) + '　' + t('切换后它将以新账号重新加载，其他设备不受影响。') + '</p>'
+    + '<div class="field"><label>' + t('目标账号') + '</label>'
+    + '<input class="input" id="swUser" type="text" autocapitalize="off" autocorrect="off" autocomplete="username" placeholder="' + t('用户名 / UID / 邮箱') + '"></div>'
+    + '<div class="field"><label>' + t('该账号的密码') + '</label>'
+    + '<input class="input" id="swPwd" type="password" autocomplete="current-password" placeholder="' + t('请输入该账号的密码') + '"></div>'
+    + '<div class="dialog-actions"><button class="btn-ghost" data-r="0">取消</button>'
+    + '<button class="btn" data-r="1">' + t('切换') + '</button></div>';
+  scrim.hidden = false;
+  const close = function () { scrim.hidden = true; box.innerHTML = ''; scrim.onclick = null; };
+  box.querySelector('[data-r="0"]').addEventListener('click', close);
+  scrim.onclick = function (e) { if (e.target === scrim) { close(); } };
+
+  const user = box.querySelector('#swUser');
+  const pwd = box.querySelector('#swPwd');
+  const okBtn = box.querySelector('[data-r="1"]');
+  if (user) { user.focus(); }
+  const submit = async function () {
+    const u = (user.value || '').trim();
+    const p = (pwd.value || '');
+    if (!u) { toast(t('请输入目标账号'), 'err'); return; }
+    if (!p) { toast(t('请输入密码'), 'err'); return; }
+    btnLoading(okBtn, true);
+    try {
+      const r = await api('device', 'switch', { id: row.id, username: u, password: p });
+      toast(t('已切换到 ') + ((r && r.to) || u));
+      close();
+      if (onDone) { onDone(!!row.is_current); }
+    } catch (e) {
+      toast(e.message || '操作失败', 'err');
+      btnLoading(okBtn, false);
+    }
+  };
+  okBtn.addEventListener('click', submit);
+  [user, pwd].forEach(function (el) {
+    if (!el) { return; }
+    el.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
+  });
+}
 
 /* 开启 / 关闭登录双重验证：需要输入当前密码确认 */
 function twofaDialog(enabled, done) {

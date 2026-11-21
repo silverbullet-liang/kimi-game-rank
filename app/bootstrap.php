@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '3.69.0');
+define('APP_VERSION', '3.70.0');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);
@@ -120,6 +120,7 @@ require_once APP_ROOT . '/app/checkin.php';
 require_once APP_ROOT . '/app/uid.php';
 require_once APP_ROOT . '/app/ip_lookup.php';
 require_once APP_ROOT . '/app/discipline.php';
+require_once APP_ROOT . '/app/devices.php';
 require_once APP_ROOT . '/app/peer_crypto.php';
 require_once APP_ROOT . '/app/peer_sync.php';
 require_once APP_ROOT . '/app/audit.php';
@@ -193,6 +194,20 @@ if (is_api_request() && PHP_SAPI !== 'cli') {
  * 注意：请求走到这里，主机已经记了一次 hit，这道闸门不减少配额消耗，
  * 挡的是裸脚本与批量抓取。 */
 try { gate_guard(); } catch (Throwable $e) { app_log('gate guard failed: ' . $e->getMessage()); }
+
+/* ---------- 设备活跃与操作痕迹：给「登录设备」的风险判据供数 ----------
+ * 只对已登录的写请求计数，且 5 分钟节流一次，不给共享主机添负担。
+ * device.php 自身不计（上报指纹不算业务操作）。 */
+if (is_api_request() && PHP_SAPI !== 'cli' && function_exists('dev_op_touch')) {
+    try {
+        $__m = isset($_SERVER['REQUEST_METHOD']) ? strtoupper((string)$_SERVER['REQUEST_METHOD']) : 'GET';
+        $__f = basename(isset($_SERVER['SCRIPT_FILENAME']) ? (string)$_SERVER['SCRIPT_FILENAME'] : '');
+        if ($__m !== 'GET' && $__f !== 'device.php') {
+            $__id = current_identity();
+            if ($__id !== null && (int)$__id['uid'] > 0) { dev_op_touch((int)$__id['uid']); }
+        }
+    } catch (Throwable $e) { /* 静默 */ }
+}
 
 /* ---------- 全局异常兜底 ---------- */
 set_exception_handler(function ($e) {
