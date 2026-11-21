@@ -7,6 +7,18 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.70.1 · 2026-11-21 (The Name Matches the Thing)
+
+### Fixed: devices that were signed in but never appeared
+
+The previous version only recorded a device at the moment you signed in. Two kinds of devices therefore never showed up: those already signed in before that version (they had not signed in again since), and those whose browser never delivered a device identifier (some in-app WebViews, private browsing, or a gateway stripping custom headers).
+
+It now works on the principle "signed in counts as one device": any request carrying a valid sign-in credential adds that device to the list within ten minutes, with no need to sign in again. When no identifier arrives, a soft identifier derived from the browser details and network prefix is used instead — less precise, but the device no longer disappears entirely.
+
+Two related fixes: an administrator's activity was not being recorded (so the "no operations at all" check was always true for them), and the request that opens the "Mine" page now registers the current device first, so you see yourself as soon as the page loads.
+
+---
+
 ## v3.70.0 · 2026-11-21 (Each in Its Place)
 
 ### Added: signed-in device management

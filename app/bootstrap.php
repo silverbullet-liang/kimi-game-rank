@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '3.70.0');
+define('APP_VERSION', '3.70.1');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);
@@ -196,15 +196,22 @@ if (is_api_request() && PHP_SAPI !== 'cli') {
 try { gate_guard(); } catch (Throwable $e) { app_log('gate guard failed: ' . $e->getMessage()); }
 
 /* ---------- 设备活跃与操作痕迹：给「登录设备」的风险判据供数 ----------
- * 只对已登录的写请求计数，且 5 分钟节流一次，不给共享主机添负担。
- * device.php 自身不计（上报指纹不算业务操作）。 */
-if (is_api_request() && PHP_SAPI !== 'cli' && function_exists('dev_op_touch')) {
+ * ① 只要令牌有效就把这台设备补登记进列表（10 分钟节流）——升级前就已登录的会话、
+ *    登录时没带上设备标识的会话，都会在下一次请求里自动出现，不必重新登录。
+ * ② 写请求记一次业务操作（5 分钟节流），供「有没有任何操作」判据使用。
+ * 两处都按 dev_owner_uid 换算，管理员不再被漏掉。device.php 自身不计。 */
+if (is_api_request() && PHP_SAPI !== 'cli' && function_exists('dev_ensure')) {
     try {
         $__m = isset($_SERVER['REQUEST_METHOD']) ? strtoupper((string)$_SERVER['REQUEST_METHOD']) : 'GET';
         $__f = basename(isset($_SERVER['SCRIPT_FILENAME']) ? (string)$_SERVER['SCRIPT_FILENAME'] : '');
-        if ($__m !== 'GET' && $__f !== 'device.php') {
-            $__id = current_identity();
-            if ($__id !== null && (int)$__id['uid'] > 0) { dev_op_touch((int)$__id['uid']); }
+        $__id = current_identity();
+        if ($__id !== null) {
+            $__uid = function_exists('dev_owner_uid') ? dev_owner_uid($__id) : (int)$__id['uid'];
+            if ($__uid > 0) {
+                /* 包括 device.php 自己：打开「我的」页时先把本机补登记，列表里立刻就能看到它 */
+                dev_ensure($__uid, bearer_token());
+                if ($__m !== 'GET' && $__f !== 'device.php') { dev_op_touch($__uid); }
+            }
         }
     } catch (Throwable $e) { /* 静默 */ }
 }

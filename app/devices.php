@@ -28,12 +28,28 @@ function dev_owner_uid(array $id): int
     return 0;
 }
 
-/** 设备指纹（与封停体系同一套哈希，换浏览器标签不换设备） */
+/**
+ * 设备指纹（与封停体系同一套哈希，换浏览器标签不换设备）。
+ * 少数环境（部分 App 内 WebView、隐私模式、被网关过滤自定义头）不带 X-Device-Id，
+ * 此时退化成「UA + 语言 + /24 网段」的软指纹 —— 原则是「只要登录了就算一台」，
+ * 不能让这些设备在列表里整个消失。两套指纹哈希域不同，不会互相撞车。
+ */
 function dev_hash_of_request(): string
 {
-    if (function_exists('discipline_dev_of_request')) { return discipline_dev_of_request(); }
-    $h = isset($_SERVER['HTTP_X_DEVICE_ID']) ? (string)$_SERVER['HTTP_X_DEVICE_ID'] : '';
-    return $h === '' ? '' : hash('sha256', 'dev|' . $h);
+    $h = function_exists('discipline_dev_of_request') ? discipline_dev_of_request() : '';
+    if ($h !== '') { return $h; }
+
+    $ua   = isset($_SERVER['HTTP_USER_AGENT']) ? (string)$_SERVER['HTTP_USER_AGENT'] : '';
+    $lang = isset($_SERVER['HTTP_ACCEPT_LANGUAGE']) ? (string)$_SERVER['HTTP_ACCEPT_LANGUAGE'] : '';
+    $ip   = function_exists('client_ip') ? client_ip() : '';
+    $seg  = $ip;
+    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+        $p = explode('.', $ip);
+        $seg = $p[0] . '.' . $p[1] . '.' . $p[2];
+    }
+    $seed = $ua . '|' . $lang . '|' . $seg;
+    if (trim($seed, '|') === '') { return ''; }
+    return hash('sha256', (string)cfg('secrets.cron_key', 'kimgr') . '|devsoft|' . $seed);
 }
 
 /**
@@ -215,6 +231,37 @@ function dev_enforce_limit(int $uid, int $exceptId = 0): array
         app_log('dev_limit failed: ' . $e->getMessage());
     }
     return $kicked;
+}
+
+/**
+ * 惰性补登记：只要这台设备当前持有有效令牌，就算「登录着」。
+ * 用来兜住两类历史缺口 —— 升级前就已经登录的会话、登录时没带上设备标识的会话。
+ * 10 分钟节流一次，避免每个请求都写库。
+ */
+function dev_ensure(int $uid, string $token)
+{
+    if ($uid <= 0 || $token === '' || !table_exists('login_devices')) { return; }
+    $dh = dev_hash_of_request();
+    if ($dh === '') { return; }
+    $k = 'devens_' . substr($dh, 0, 16);
+    if (function_exists('cache_get') && cache_get($k, 600) !== null) { return; }
+    try {
+        $r = db_one('SELECT id, token_hash, active FROM login_devices WHERE user_id = ? AND dev_hash = ? LIMIT 1',
+            array($uid, $dh));
+        if ($r === null) {
+            dev_register($uid, $token);   // 走同一套类型解析与 3 台上限
+        } elseif ((string)$r['token_hash'] !== hash('sha256', $token) || (int)$r['active'] !== 1) {
+            /* 同一台设备重新登录过（令牌变了）：继续算在线。
+               被登出 / 被挤下线的设备令牌已进黑名单，根本走不到这里，不会「复活」。 */
+            db_exec('UPDATE login_devices SET active = 1, token_hash = ?, last_at = UTC_TIMESTAMP(),
+                        kicked_at = NULL, kick_reason = \'\' WHERE id = ?',
+                array(hash('sha256', $token), (int)$r['id']));
+            dev_enforce_limit($uid, (int)$r['id']);
+        }
+        if (function_exists('cache_set')) { cache_set($k, array(1), 600); }
+    } catch (Throwable $e) {
+        app_log('dev_ensure failed: ' . $e->getMessage());
+    }
 }
 
 /** 前端痕迹上报（canvas 指纹 + 屏幕信息），同时刷新 last_at */

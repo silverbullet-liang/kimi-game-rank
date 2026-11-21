@@ -258,5 +258,55 @@ reset_state();
 chk(dev_switch_pending('OLDTOKEN') === false, '无切换 → false');
 chk(dev_switch_pending('') === false, '空令牌 → false');
 
+echo "== 设备标识缺失时的软指纹 ==\n";
+reset_state();
+$_SERVER['REMOTE_ADDR'] = '203.0.113.9';
+$_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (Linux; Android 13; wv) Chrome/114.0 Mobile';
+$_SERVER['HTTP_ACCEPT_LANGUAGE'] = 'zh-CN,zh;q=0.9';
+$GLOBALS['DEV'] = '';
+$h1 = dev_hash_of_request();
+$h2 = dev_hash_of_request();
+chk($h1 !== '' && strlen($h1) === 64, '没有 X-Device-Id 也能算出软指纹');
+chk($h1 === $h2, '软指纹稳定（同一 UA + 语言 + 网段）');
+$GLOBALS['DEV'] = 'strong-dev';
+chk(dev_hash_of_request() === 'strong-dev', '带了强指纹就优先用强指纹');
+
+echo "== 惰性补登记（只要登着就算） ==\n";
+reset_state();
+$GLOBALS['DEV'] = 'h1';
+$GLOBALS['VAL'] = 0;
+dev_ensure(7, 'TOK');
+chk(sql_has('INSERT INTO login_devices'), '未登记的设备被补进列表');
+chk(sql_has('ON DUPLICATE KEY UPDATE'), '走的是同一套登记逻辑');
+
+reset_state();
+$GLOBALS['DEV'] = 'h1';
+$GLOBALS['ONE_RULES'] = array('FROM login_devices WHERE user_id = ? AND dev_hash = ?' =>
+    array('id' => 5, 'token_hash' => 'stale', 'active' => 0));
+dev_ensure(7, 'TOK');
+chk(sql_has('SET active = 1, token_hash = ?'), '令牌换过的老设备置回在线');
+$a = sql_args('SET active = 1, token_hash = ?');
+chk(is_array($a) && $a[0] === hash('sha256', 'TOK') && (int)$a[1] === 5, '写入的是当前令牌的哈希');
+
+reset_state();
+$GLOBALS['DEV'] = 'h1';
+$GLOBALS['ONE_RULES'] = array('FROM login_devices WHERE user_id = ? AND dev_hash = ?' =>
+    array('id' => 5, 'token_hash' => hash('sha256', 'TOK'), 'active' => 1));
+dev_ensure(7, 'TOK');
+chk(!sql_has('INSERT INTO login_devices') && !sql_has('SET active = 1'), '已经在线且令牌一致 → 不写库');
+
+reset_state();
+$GLOBALS['DEV'] = 'h1';
+$k = 'devens_' . substr(dev_hash_of_request(), 0, 16);
+$GLOBALS['CACHE'][$k] = array(1);
+dev_ensure(7, 'TOK');
+chk(count($GLOBALS['SQL']) === 0, '节流期内完全不查库');
+
+reset_state();
+$GLOBALS['DEV'] = 'h1';
+dev_ensure(0, 'TOK');
+dev_ensure(7, '');
+chk(count($GLOBALS['SQL']) === 0, '无账号或空令牌直接跳过');
+
 echo "\n通过 $pass 项，失败 $failN 项\n";
 exit($failN > 0 ? 1 : 0);
