@@ -7,6 +7,30 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.69.0 · 2026-11-21 (On to the Sea, Never Turning Back)
+
+> From Li Bai's *Bring in the Wine*: "Do you not see the waters of the Yellow River come down from heaven, rushing to the sea, never to return?" The river only goes forward. After several attacks the site keeps shipping — this release is the proof.
+
+### New: International Data Transfer Notice
+
+The Site's data lives outside mainland China: the server is hosted abroad, pages pass through overseas edge nodes, and moderation calls overseas services. Under Articles 38 and 39 of the PRC Personal Information Protection Law, such transfers require separate notice and **separate** consent — they cannot be folded into the general consent in the Terms of Service.
+
+So it is now a document of its own: what data travels, to which recipients, on what legal basis, what rights you have, and how to withdraw.
+
+The English version is **not a translation**. For readers in Europe, the UK and the US it is written against the EU GDPR (including Chapter V), the UK GDPR, California's CCPA/CPRA and the other state privacy statutes, Canada's PIPEDA, Australia's APP 8 and Singapore's PDPA — the rules that actually apply where you are, rather than Chinese statutes rendered into English.
+
+### Changed: a separate tick at sign-in
+
+There used to be one box: "I agree to the Terms of Service and the Privacy Policy". International transfer now has its own line and its own tick, required before you can sign in or register. Without it you can still browse public pages, the leaderboard and the documentation.
+
+The tick is timestamped and stored with your account as evidence of consent.
+
+### Fixed: the admin panel occasionally reported "HTTP 508"
+
+Opening the panel fired several module requests at once; the host caps how many requests it will handle simultaneously, and the surplus received its error page instead of data. Requests are now queued — surplus ones wait their turn — and transient errors of that shape are retried automatically instead of being shown to you.
+
+---
+
 ## v3.67.0 · 2026-11-17 (Moved to the Tall Tree)
 
 > From the *Book of Songs*: "out of the dark valley, up to the tall tree" — change where you live, the tree stays the same tree.

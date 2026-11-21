@@ -1,46 +1,21 @@
 <?php
 /**
- * 人机验证（主：Cloudflare Turnstile；备：Cap PoW 双实例）
+ * 人机验证：只用 Cloudflare Turnstile，没有备用通道。
  * ------------------------------------------------------------
- * 主通道 Turnstile：通常无需操作即通过；服务端用 secret 去 siteverify 复核，
- *                   并核对签发域名，防 token 被挪用到别处。
- * 备通道 Cap：主通道脚本加载失败 / 长时间没渲染出来时自动切换；
- *             两个公共实例互为备份，token 不通用，按 channel 指明来源。
- *
- * 安全要点：
- *   · token 一律由服务端校验，前端说了不算；只有 success=true 才放行；
- *   · token 一次性，重放无效（Turnstile 另有 300 秒有效期）；
- *   · 校验失败一律 fail-closed（拒绝），绝不因为「验证服务可能挂了」就放开；
- *   · 没声明 channel 时按 turnstile → standard → php 依次试：拿 A 通道的 token
- *     去校验 B 通道必然失败，无害；正常只会有一次有效请求。
+ * 为什么不留备通道：备通道只能是更弱的验证（纯计算题，脚本几十毫秒可解）。
+ * 只要存在「主通道不通就退到弱通道」的路径，攻击者就能靠让主通道加载失败
+ * 把整道门关掉 —— 2026-11-14 那 180 个空账号就是这么进来的。
+ * 所以这里只有一条路：Turnstile 复核通过才放行，复核失败一律拒绝（fail-closed），
+ * 不降级、不切换、不猜测。
  *
  * 配置（config/api_keys.php）：
  *   'turnstile' => array('sitekey' => '…', 'secret' => '…')
- *   未配置 Turnstile 时主通道自动缺席，直接用备通道 Cap —— 门不会因此消失。
+ * 密钥缺失时人机验证直接不可用（而非自动放行），面板里能看到原因。
  */
 declare(strict_types=1);
 
 define('TURNSTILE_VERIFY_URL', 'https://challenges.cloudflare.com/turnstile/v0/siteverify');
 define('TURNSTILE_SCRIPT', 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit');
-
-/** Cap 备通道：两个公共实例（token 互不通用） */
-function captcha_channels(): array
-{
-    return array(
-        'standard' => array(
-            'label'    => 'captcha.gurl.eu.org',
-            'validate' => 'https://captcha.gurl.eu.org/api/validate',
-            'script'   => 'https://captcha.gurl.eu.org/cap.min.js',
-            'api'      => 'https://captcha.gurl.eu.org/api/',
-        ),
-        'php' => array(
-            'label'    => 'cap-pow.wuw.li',
-            'validate' => 'https://cap-pow.wuw.li/api/validate',
-            'script'   => 'https://cap-pow.wuw.li/cap-pow.js',
-            'css'      => 'https://cap-pow.wuw.li/cap-pow.css',
-        ),
-    );
-}
 
 /** Turnstile 配置段（缺文件/缺段一律返回空数组） */
 function captcha_keys(): array
@@ -86,20 +61,10 @@ function captcha_enabled(): bool
 /** 前端渲染所需的最小配置（不含任何密钥 —— Cap 公共实例 secret 为空） */
 function captcha_client_config(): array
 {
-    $chs = array();
-    foreach (captcha_channels() as $k => $c) {
-        $chs[$k] = array(
-            'label'  => (string)$c['label'],
-            'script' => (string)$c['script'],
-            'api'    => isset($c['api']) ? (string)$c['api'] : '',
-            'css'    => isset($c['css']) ? (string)$c['css'] : '',
-        );
-    }
     return array(
-        'on'       => captcha_enabled(),
-        'sitekey'  => captcha_sitekey(),
-        'script'   => TURNSTILE_SCRIPT,
-        'channels' => $chs,
+        'on'      => captcha_enabled(),
+        'sitekey' => captcha_sitekey(),
+        'script'  => TURNSTILE_SCRIPT,
     );
 }
 
@@ -149,81 +114,20 @@ function captcha_verify_turnstile(string $token, string $ip = ''): array
     return array('ok' => true, 'host' => $host, 'codes' => '');
 }
 
-/** Cap 备通道：向某个实例校验 */
-function captcha_verify_cap(string $token, string $key): bool
-{
-    $chs = captcha_channels();
-    if (!isset($chs[$key])) { return false; }
-    $ch = curl_init($chs[$key]['validate']);
-    curl_setopt_array($ch, array(
-        CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => json_encode(array('token' => $token, 'secret' => ''), JSON_UNESCAPED_UNICODE),
-        CURLOPT_HTTPHEADER     => array('Content-Type: application/json'),
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 10,
-        CURLOPT_CONNECTTIMEOUT => 4,
-        CURLOPT_SSL_VERIFYPEER => true,
-    ));
-    $resp = curl_exec($ch);
-    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    if (!is_string($resp) || $code < 200 || $code >= 300) { return false; }
-    $j = json_decode($resp, true);
-    return is_array($j) && !empty($j['success']);
-}
-
 /**
- * 校验 token：按声明的通道先校验，没声明就按主→备依次试。
- * 返回 array(ok, via, codes)，via 记录实际通过的通道，便于排障。
+ * 校验 token：只认 Turnstile。$channel 参数保留只为兼容旧调用签名，不参与任何决策。
+ * 返回 array(ok, via, codes)。
  */
 function captcha_verify(string $token, string $channel = '', string $ip = ''): array
 {
     $token = trim($token);
     if ($token === '') { return array('ok' => false, 'via' => '', 'codes' => 'empty-token'); }
+    if (!captcha_turnstile_ready()) { return array('ok' => false, 'via' => '', 'codes' => 'not-configured'); }
 
-    /* 通道顺序一律由服务端决定。
-     *
-     * 2026-11-14 的攻击者用请求参数 cap_channel=standard 把弱通道（Cap，纯计算题，
-     * 脚本几十毫秒可解）排到了第一位，于是强通道 Turnstile 全程没有参与校验，
-     * 180 个空账号就这样被放了进来。
-     *
-     * 因此：谁能参与、以什么顺序参与，只能由服务端根据「配置是否可用」决定。
-     * $channel 参数保留只为兼容旧调用签名，不再参与任何决策。
-     */
-    $order = array();
-    if (captcha_turnstile_ready()) { $order[] = 'turnstile'; }
-    foreach (array_keys(captcha_channels()) as $k) { $order[] = $k; }
-
-    $last = '';
-    foreach ($order as $k) {
-        if ($k === 'turnstile') {
-            $r = captcha_verify_turnstile($token, $ip);
-            if (!empty($r['ok'])) { return array('ok' => true, 'via' => 'turnstile', 'codes' => ''); }
-            $last = 'turnstile:' . $r['codes'];
-            /* 只有「连不上 Turnstile」才允许降级到备通道（避免 CF 故障导致全站无法登录）；
-               token 本身无效（invalid-input-response 等）必须立刻拒绝，不能拿 Cap 兜过去。 */
-            if (!captcha_transport_failed((string)$r['codes'])) {
-                app_log('captcha turnstile rejected: ' . $r['codes']);
-                return array('ok' => false, 'via' => 'turnstile', 'codes' => $last);
-            }
-            app_log('captcha turnstile unreachable, degrade: ' . $r['codes']);
-            continue;
-        }
-        if (captcha_verify_cap($token, $k)) { return array('ok' => true, 'via' => $k, 'codes' => ''); }
-        $last = $k . ':rejected';
-    }
-    return array('ok' => false, 'via' => '', 'codes' => $last);
-}
-
-/** Turnstile 的失败是否属于传输层故障（可降级），而非 token 无效（不可降级） */
-function captcha_transport_failed(string $codes): bool
-{
-    $c = strtolower($codes);
-    if ($c === '') { return true; }
-    foreach (array('http-0', 'bad-json', 'curl', 'internal-error', 'timeout', 'timed out') as $m) {
-        if (strpos($c, $m) !== false) { return true; }
-    }
-    return false;
+    $r = captcha_verify_turnstile($token, $ip);
+    if (!empty($r['ok'])) { return array('ok' => true, 'via' => 'turnstile', 'codes' => ''); }
+    app_log('captcha turnstile rejected: ' . $r['codes']);
+    return array('ok' => false, 'via' => 'turnstile', 'codes' => (string)$r['codes']);
 }
 
 /**

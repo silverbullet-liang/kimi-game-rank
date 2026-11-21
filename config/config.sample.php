@@ -94,9 +94,9 @@ return array(
     'cf_challenge' => array(
         'enabled'    => true,
         'bots_skip'  => true,
-        'auth'       => 'interactive',    /* interactive = Interactive Challenge */
+        'auth'       => 'off',            /* 必须 off：CF 挑战会拦掉 XHR，注册登录由 Turnstile 把关 */
         'probe'      => 'interactive',    /* interactive = Interactive Challenge */
-        'write_api'  => 'interactive',
+        'write_api'  => 'off',            /* 同上：写接口一律不在 CF 层挑战 */
         'exclude'    => array('/api/ai', '/api/lobby', '/api/peer', '/api/monitor'),
         /* 免费版限速只接受 block，period 只能是 10 秒、mitigation 只能是 10 秒 */
         'rate_limit' => array('requests' => 200, 'period' => 10, 'mitigation' => 10, 'action' => 'block'),
@@ -137,6 +137,7 @@ return array(
     'security' => array(
         'token_ttl'        => 604800,   // 登录 token 有效期（秒，7 天滑动）
         'guest_token_ttl'  => 86400,    // 游客 token 有效期（24h）
+        'api_per_minute'   => 120,      // 单 IP 每分钟的 API 请求上限（超限 429 锁 30 秒），防裸脚本打穿源站
         'trusted_proxies'  => array(),  // 受信反向代理网段；留空=只信 REMOTE_ADDR（推荐）
         'login_max_fails'  => 5,        // 同一 IP 在锁定时长内的失败次数上限
         'login_account_max_fails' => 8, // 同一账号在锁定时长内的失败次数上限（跨 IP 累计）

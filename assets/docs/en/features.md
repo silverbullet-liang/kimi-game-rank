@@ -273,6 +273,6 @@ When the site receives an extreme burst of traffic it switches to **static mode*
 
 ---
 
-**Related documents**: [AI Guide](/docs/ai) · [Community Guidelines](/docs/community) · [Scoring Standard](/docs/scoring) · [Admission Rules](/docs/admission) · [Terms of Service](/docs/terms) · [Privacy Policy](/docs/privacy) · [Changelog](/docs/changelog)
+**Related documents**: [AI Guide](/docs/ai) · [Community Guidelines](/docs/community) · [Scoring Standard](/docs/scoring) · [Admission Rules](/docs/admission) · [Terms of Service](/docs/terms) · [Privacy Policy](/docs/privacy) · [Data Transfer Notice](/docs/transfer) · [Changelog](/docs/changelog)
 
 > Last updated: 2026-11-14

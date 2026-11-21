@@ -201,11 +201,41 @@ export function isBlocked(text) {
 let onUnauthorized = null;
 export function setUnauthorizedHandler(fn) { onUnauthorized = fn; }
 
+/* ---------------- 请求并发闸门 ----------------
+ * 共享主机对「同一时刻占用的入口进程」有硬顶。控制面板打开时一次放出七八个
+ * 请求，总会有一半拿到 508 / 520 这类 HTML 错误页，用户看到的就是「各种接口
+ * 返回 508，重试又好了」。
+ * 排队比失败好：超出并发额度的请求等一个名额，而不是直接报错。
+ */
+const API_MAX_CONCURRENCY = 3;
+let __apiBusy = 0;
+const __apiQueue = [];
+function apiSlot() {
+  if (__apiBusy < API_MAX_CONCURRENCY) { __apiBusy++; return Promise.resolve(); }
+  return new Promise(res => __apiQueue.push(res));
+}
+function apiRelease() {
+  const next = __apiQueue.shift();
+  if (next) { next(); }        // 名额直接转交，不减 busy
+  else { __apiBusy--; }
+}
+
+/* 哪些失败值得再试一次：
+ *   code=0      —— 网络层失败（超时、连接被重置）
+ *   5xx         —— 网关类瞬时错误。508/520/522/524 是共享主机与 CDN 在压力下的
+ *                  标准返回，隔一两秒重试多半就通，不该让用户看见。
+ * 4xx（含 401/403/429）与业务错误一律不重试：重试只会放大问题。 */
+function apiRetriable(e) {
+  const c = Number(e && e.code);
+  return c === 0 || (c >= 500 && c <= 599);
+}
+
 export async function api(file, action, data = null, opts = {}) {
   cdCheck(file, action, data);   // 冷却期内直接拒绝，不发无谓请求
   if (opts.silent !== true) { loading(true); }
-  const maxTries = Math.max(1, Number(opts.tries || 3));   // 网络层失败最多尝试 3 次
+  const maxTries = Math.max(1, Number(opts.tries || 3));   // 网络层与网关类失败最多 3 次
   let lastErr = null;
+  if (!opts.__noSlot) { await apiSlot(); }
   try {
     for (let i = 0; i < maxTries; i++) {
       try {
@@ -221,16 +251,23 @@ export async function api(file, action, data = null, opts = {}) {
             && String(e.message || '').indexOf('密钥验证') >= 0) {
           let again = false;
           try { again = await window.__panelReauth(); } catch (err) { again = false; }
-          if (again) { return api(file, action, data, Object.assign({}, opts, { __reauth: true })); }
+          if (again) {
+            /* 复用外层已经拿到的并发名额（__noSlot），否则递归那一层再排队，
+               几路同时失效就会互相卡住。 */
+            return api(file, action, data, Object.assign({}, opts, { __reauth: true, __noSlot: true }));
+          }
         }
-        // 仅对「网络层失败」（code=0）重试；HTTP/业务错误立即抛出
-        if (!e || e.code !== 0 || opts.retry === false || i === maxTries - 1) { break; }
+        /* 网络层失败与网关类 5xx 重试；4xx 与业务错误立即抛出 */
+        if (!apiRetriable(e) || opts.retry === false || i === maxTries - 1) { break; }
         try { console.warn(t('[api] 第 ') + (i + 1) + t(' 次失败，准备重试：') + file + '?' + action, e.message); } catch (err) {}
-        await new Promise(r => setTimeout(r, 1200 * (i + 1)));
+        /* 5xx 是瞬时拥塞，退避短一点；网络层失败稍长 */
+        const backoff = (Number(e.code) >= 500 ? 500 : 1200) * (i + 1) + Math.round(Math.random() * 300);
+        await new Promise(r => setTimeout(r, backoff));
       }
     }
     throw lastErr;
   } finally {
+    if (!opts.__noSlot) { apiRelease(); }
     if (opts.silent !== true) { loading(false); }
   }
 }
@@ -293,8 +330,14 @@ async function apiOnce(file, action, data = null, opts = {}) {
   try { json = await resp.json(); } catch (e) {
     /* 拿到的是网页而不是数据：多半被主机/WAF 拦下（例如文件被拒返回 403 错误页）。
        必须说清是「被拦」而不是笼统的「请求失败」，否则排查时无从下手。 */
-    throw new ApiError(resp.status || 502,
-      t('服务返回了网页而不是数据（HTTP ') + resp.status + t('），可能被主机拦截，请刷新后重试'));
+    const __st = Number(resp.status) || 502;
+    /* 5xx 且拿到 HTML：共享主机在并发压力下会吐错误页（508 循环、520 源站错误）。
+       这类是瞬时的，交给 api() 去重试；文案不要写「被拦截」，那会把排查带偏。 */
+    if (__st >= 500 && __st <= 599) {
+      throw new ApiError(__st, t('主机繁忙（HTTP ') + __st + t('），请稍后再试'));
+    }
+    throw new ApiError(__st,
+      t('服务返回了网页而不是数据（HTTP ') + __st + t('），可能被主机拦截，请刷新后重试'));
   }
   if (!json || json.code === undefined || json.code === null) {
     throw new ApiError(resp.status || 502,

@@ -62,6 +62,9 @@ function blk_match(string $ip, string $rule): bool
 {
     if ($ip === '') { return false; }
 
+    /* 先按地址族粗筛：名单里绝大多数是 IPv6 段，IPv4 请求不该为它们各跑两遍 inet_pton */
+    if ((strpos($rule, ':') !== false) !== (strpos($ip, ':') !== false)) { return false; }
+
     /* 网段 */
     if (strpos($rule, '/') !== false) {
         $p = explode('/', $rule, 2);
@@ -100,7 +103,9 @@ function blk_guard()
     $ip = blk_ip();
     if ($ip === '') { return; }
 
+    $is6 = strpos($ip, ':') !== false;
     foreach ($rules as $r) {
+        if ((strpos($r, ':') !== false) !== $is6) { continue; }
         if (!blk_match($ip, $r)) { continue; }
 
         /* 记一行，便于日后核对是否误伤（追加写，失败不影响拒绝） */

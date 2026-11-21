@@ -269,7 +269,7 @@ function login_mark(string $ip, bool $success, string $norm = '')
 /* ============================================================
  * 注册 / 登录 / 游客 / 退出
  * ============================================================ */
-function user_register(string $username, string $password, string $email = '', string $code = ''): array
+function user_register(string $username, string $password, string $email = '', string $code = '', bool $crossConsent = false): array
 {
     $raw = $username;
     $nfc = nfc_normalize($raw);
@@ -331,6 +331,16 @@ function user_register(string $username, string $password, string $email = '', s
             app_log('register bind failed: ' . $e->getMessage());
         }
     }
+    /* 个人信息出境的单独同意：前端不勾选就发不出注册请求，这里只负责留痕。
+       列不存在（迁移未跑）时静默跳过，绝不让登记同意这件事挡住宿主注册。 */
+    if ($crossConsent) {
+        try {
+            if (column_exists('users', 'consent_cross_at')) {
+                db_exec('UPDATE users SET consent_cross_at = UTC_TIMESTAMP() WHERE id = ? AND consent_cross_at IS NULL', array($uid));
+            }
+        } catch (Throwable $e) { app_log('consent_cross record failed: ' . $e->getMessage()); }
+    }
+
     return array('uid' => $uid, 'token' => issue_user_token($uid), 'username' => $clean, 'email' => $boundMail);
 }
 

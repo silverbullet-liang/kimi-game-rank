@@ -11,6 +11,8 @@ export async function renderLogin(container) {
   let tab = (/[?&]tab=code\b/.test(location.search)) ? 'code' : 'password';   // password | code | guest
   let sub = 'login';      // login | register
   let agreed = false;
+  /* 个人信息出境的单独同意（《个人信息保护法》第 39 条要求单列，不能并进上面那一条） */
+  let crossAgreed = false;
 
   function paint() {
     container.innerHTML = `
@@ -187,6 +189,10 @@ export async function renderLogin(container) {
         <span class="box ${agreed ? 'on' : ''}" id="agreeBox"><span class="ic-slot" data-ic="state.success"><svg viewBox="0 0 24 24" class="ic"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></span></span>
         <span>我已阅读并同意<span class="link" data-doc="用户协议">《用户协议》</span>${t('与')}<span class="link" data-doc="隐私政策">《隐私政策》</span>（本站为个人兴趣分享，请文明互动）</span>
       </div>
+      <div class="agree">
+        <span class="box ${crossAgreed ? 'on' : ''}" id="crossBox"><span class="ic-slot" data-ic="state.success"><svg viewBox="0 0 24 24" class="ic"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></span></span>
+        <span>我已阅读<span class="link" data-doc="跨境数据传输协议">《跨境数据传输协议》</span>，<span style="font-weight:600;color:var(--accent)">单独同意</span>我的个人信息被传输至境外处理</span>
+      </div>
       ${sub === 'register' ? `
       <div class="field">
         <label>邮箱（可选，绑定后可用于验证码登录）</label>
@@ -212,6 +218,7 @@ export async function renderLogin(container) {
 
     pane.querySelectorAll('[data-sub]').forEach(b => b.addEventListener('click', () => { sub = b.dataset.sub; paintPassword(pane); }));
     pane.querySelector('#agreeBox').addEventListener('click', () => { agreed = !agreed; pane.querySelector('#agreeBox').classList.toggle('on', agreed); });
+    pane.querySelector('#crossBox').addEventListener('click', () => { crossAgreed = !crossAgreed; pane.querySelector('#crossBox').classList.toggle('on', crossAgreed); });
     pane.querySelectorAll('[data-doc]').forEach(l => l.addEventListener('click', () => navigate('#/doc/' + encodeURIComponent(l.dataset.doc))));
     const vBtn = pane.querySelector('#regVideoBtn');
     const vBox = pane.querySelector('#regVideoFrame');
@@ -270,11 +277,14 @@ export async function renderLogin(container) {
       const pwd = pane.querySelector('#uPwd').value;
       if (!name || !pwd) { toast(sub === 'register' ? '请填写用户名与密码' : '请填写账号与密码', 'err'); return; }
       if (!agreed) { toast('请先勾选同意协议', 'err'); return; }
+      if (!crossAgreed) { toast('请先单独同意《跨境数据传输协议》', 'err'); return; }
       const payload = {
         username: name, identifier: name, password: pwd,
         cap_token: captchaToken(), cap_channel: captchaChannel(),
       };
       if (sub === 'register') {
+        /* 出境单独同意的凭证：后端据此记录同意时间（协议第六条承诺了「与账号关联保存」） */
+        payload.cross_consent = 1;
         const rm = (pane.querySelector('#rMail').value || '').trim();
         const rc = (pane.querySelector('#rCode').value || '').replace(/\D/g, '');
         if (rm !== '') {

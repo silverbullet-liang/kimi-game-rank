@@ -9,7 +9,7 @@ import { I18N, docLangOf } from '../i18n.js';
 const SLUG = {
   '功能说明': 'features', 'AI 使用说明': 'ai', '社区公约': 'community',
   '评分标准': 'scoring', '入榜规则': 'admission', '用户协议': 'terms',
-  '隐私政策': 'privacy', '更新日志': 'changelog'
+  '隐私政策': 'privacy', '跨境数据传输协议': 'transfer', '更新日志': 'changelog'
 };
 /* 地址里的段是英文 slug（/docs/scoring），而文档本体按中文名索引。
    这里一次性建反向表，两种写法都能认。 */

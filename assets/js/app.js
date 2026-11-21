@@ -396,11 +396,41 @@ function isBlocked(text) {
 let onUnauthorized = null;
 function setUnauthorizedHandler(fn) { onUnauthorized = fn; }
 
+/* ---------------- 请求并发闸门 ----------------
+ * 共享主机对「同一时刻占用的入口进程」有硬顶。控制面板打开时一次放出七八个
+ * 请求，总会有一半拿到 508 / 520 这类 HTML 错误页，用户看到的就是「各种接口
+ * 返回 508，重试又好了」。
+ * 排队比失败好：超出并发额度的请求等一个名额，而不是直接报错。
+ */
+const API_MAX_CONCURRENCY = 3;
+let __apiBusy = 0;
+const __apiQueue = [];
+function apiSlot() {
+  if (__apiBusy < API_MAX_CONCURRENCY) { __apiBusy++; return Promise.resolve(); }
+  return new Promise(res => __apiQueue.push(res));
+}
+function apiRelease() {
+  const next = __apiQueue.shift();
+  if (next) { next(); }        // 名额直接转交，不减 busy
+  else { __apiBusy--; }
+}
+
+/* 哪些失败值得再试一次：
+ *   code=0      —— 网络层失败（超时、连接被重置）
+ *   5xx         —— 网关类瞬时错误。508/520/522/524 是共享主机与 CDN 在压力下的
+ *                  标准返回，隔一两秒重试多半就通，不该让用户看见。
+ * 4xx（含 401/403/429）与业务错误一律不重试：重试只会放大问题。 */
+function apiRetriable(e) {
+  const c = Number(e && e.code);
+  return c === 0 || (c >= 500 && c <= 599);
+}
+
 async function api(file, action, data = null, opts = {}) {
   cdCheck(file, action, data);   // 冷却期内直接拒绝，不发无谓请求
   if (opts.silent !== true) { loading(true); }
-  const maxTries = Math.max(1, Number(opts.tries || 3));   // 网络层失败最多尝试 3 次
+  const maxTries = Math.max(1, Number(opts.tries || 3));   // 网络层与网关类失败最多 3 次
   let lastErr = null;
+  if (!opts.__noSlot) { await apiSlot(); }
   try {
     for (let i = 0; i < maxTries; i++) {
       try {
@@ -416,16 +446,23 @@ async function api(file, action, data = null, opts = {}) {
             && String(e.message || '').indexOf('密钥验证') >= 0) {
           let again = false;
           try { again = await window.__panelReauth(); } catch (err) { again = false; }
-          if (again) { return api(file, action, data, Object.assign({}, opts, { __reauth: true })); }
+          if (again) {
+            /* 复用外层已经拿到的并发名额（__noSlot），否则递归那一层再排队，
+               几路同时失效就会互相卡住。 */
+            return api(file, action, data, Object.assign({}, opts, { __reauth: true, __noSlot: true }));
+          }
         }
-        // 仅对「网络层失败」（code=0）重试；HTTP/业务错误立即抛出
-        if (!e || e.code !== 0 || opts.retry === false || i === maxTries - 1) { break; }
+        /* 网络层失败与网关类 5xx 重试；4xx 与业务错误立即抛出 */
+        if (!apiRetriable(e) || opts.retry === false || i === maxTries - 1) { break; }
         try { console.warn(t('[api] 第 ') + (i + 1) + t(' 次失败，准备重试：') + file + '?' + action, e.message); } catch (err) {}
-        await new Promise(r => setTimeout(r, 1200 * (i + 1)));
+        /* 5xx 是瞬时拥塞，退避短一点；网络层失败稍长 */
+        const backoff = (Number(e.code) >= 500 ? 500 : 1200) * (i + 1) + Math.round(Math.random() * 300);
+        await new Promise(r => setTimeout(r, backoff));
       }
     }
     throw lastErr;
   } finally {
+    if (!opts.__noSlot) { apiRelease(); }
     if (opts.silent !== true) { loading(false); }
   }
 }
@@ -488,8 +525,14 @@ async function apiOnce(file, action, data = null, opts = {}) {
   try { json = await resp.json(); } catch (e) {
     /* 拿到的是网页而不是数据：多半被主机/WAF 拦下（例如文件被拒返回 403 错误页）。
        必须说清是「被拦」而不是笼统的「请求失败」，否则排查时无从下手。 */
-    throw new ApiError(resp.status || 502,
-      t('服务返回了网页而不是数据（HTTP ') + resp.status + t('），可能被主机拦截，请刷新后重试'));
+    const __st = Number(resp.status) || 502;
+    /* 5xx 且拿到 HTML：共享主机在并发压力下会吐错误页（508 循环、520 源站错误）。
+       这类是瞬时的，交给 api() 去重试；文案不要写「被拦截」，那会把排查带偏。 */
+    if (__st >= 500 && __st <= 599) {
+      throw new ApiError(__st, t('主机繁忙（HTTP ') + __st + t('），请稍后再试'));
+    }
+    throw new ApiError(__st,
+      t('服务返回了网页而不是数据（HTTP ') + __st + t('），可能被主机拦截，请刷新后重试'));
   }
   if (!json || json.code === undefined || json.code === null) {
     throw new ApiError(resp.status || 502,
@@ -2957,42 +3000,27 @@ function clearHero() {
 
 /* ========== captcha.js ========== */
 /**
- * 人机验证（主：Cloudflare Turnstile；备：Cap PoW 双实例）
+ * 人机验证：只用 Cloudflare Turnstile，没有备用通道。
  * ------------------------------------------------------------
- * 主通道 Turnstile：官方 explicit 渲染，通常无需操作即通过；
- *   脚本加载失败或 3.5 秒内没渲染出来（被墙、组件异常）就切 Cap 备通道。
- * 备通道沿用原来的双实例：standard（官方 cap-widget）→ php（cap-pow.js），
- *   前者再 3 秒没渲染就切后者 —— 与原双通道行为一致。
+ * 为什么不留备通道：备通道都是更弱的验证（纯计算题，脚本几十毫秒可解），
+ * 一旦存在「主通道不通就自动退到弱通道」的路径，攻击者只要想办法让主通道
+ * 加载失败，就等于关掉了整道门。宁可登不进去，也不退到弱验证。
  *
- * 三个通道的 token 互不通用，提交时连 channel 一起交回服务端，
- * 服务端按声明通道校验（没声明就依次试，拿错通道的 token 必然失败、无害）。
- *
- * token 都是一次性的：提交失败后必须 reset 重新验证，取新 token。
+ * 因此这里没有任何自动切换、没有超时探测：加载不出来就提示刷新，
+ * 校验一律由服务端向 Turnstile 复核，前端说了不算。
  */
 
 
 const CH = { token: '', channel: '' };
-let activeChannel = '';
 let cfWidget = null;
 let cfLoading = null;
 const LANG_MAP = { zh: 'zh-cn', en: 'en', ja: 'ja' };
 
 function captchaConfig() {
-  return (typeof window !== 'undefined' && window.__CAPTCHA) || { on: false, sitekey: '', script: '', channels: {} };
+  return (typeof window !== 'undefined' && window.__CAPTCHA) || { on: false, sitekey: '', script: '' };
 }
 function captchaToken() { return CH.token; }
 function captchaChannel() { return CH.channel; }
-
-/** Cap 实例的配套脚本加载（Turnstile 用 loadTurnstile，只加载一次） */
-function loadScript(src) {
-  return new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = src;
-    s.onload = () => resolve(true);
-    s.onerror = () => reject(new Error('load-failed'));
-    document.head.appendChild(s);
-  });
-}
 
 function loadTurnstile(src) {
   if (window.turnstile) { return Promise.resolve(true); }
@@ -3009,7 +3037,7 @@ function loadTurnstile(src) {
   return cfLoading;
 }
 
-/** 重置：提交失败后调用，token 已失效，必须重新获取 */
+/** 重置：提交失败后 token 已失效，必须重新取一个 */
 function resetCaptcha(host) {
   if (window.turnstile && cfWidget !== null) {
     try { window.turnstile.remove(cfWidget); } catch (e) { /* 已销毁则忽略 */ }
@@ -3017,7 +3045,6 @@ function resetCaptcha(host) {
   cfWidget = null;
   CH.token = '';
   CH.channel = '';
-  activeChannel = '';
   if (host) {
     host.dataset.cfMounted = '';
     host.innerHTML = '';
@@ -3027,7 +3054,7 @@ function resetCaptcha(host) {
 
 /**
  * 把验证组件挂到 host 里。onChange(token, channel) 在验证通过后被调用
- * （token 为空串表示已重置 / 尚未通过 / 已过期）。
+ * （token 为空串表示尚未通过 / 已过期）。
  */
 function mountCaptcha(host, onChange) {
   if (!host) { return; }
@@ -3036,113 +3063,26 @@ function mountCaptcha(host, onChange) {
 
   const cfg = captchaConfig();
   if (!cfg.on) { host.innerHTML = ''; return; }
-  /* 同一个宿主已挂过就不重复挂；宿主被重建（切登录/注册）时会自然重来 */
   if (host.dataset.cfMounted === '1') { return; }
   host.dataset.cfMounted = '1';
   CH.token = '';
   CH.channel = '';
   cb('', '');
 
-  const std = (cfg.channels || {}).standard || {};
-  const php = (cfg.channels || {}).php || {};
-  host.innerHTML = '<div class="cap-box">'
-    + '<div id="cfSlot"></div>'
-    + '<div id="capStd" style="display:none"></div>'
-    + '<div id="capPhp" style="display:none"></div>'
-    + '<div class="tiny muted" id="capHint" style="margin-top:6px">' + t('正在加载人机验证…') + '</div>'
-    + '</div>';
-
-  const hint = host.querySelector('#capHint');
-
-  /* ---------- 备通道：Cap 双实例（原逻辑原样保留） ---------- */
-  function switchToCap(which, why) {
-    if (activeChannel === which) { return; }
-    /* 切换原因只进控制台，不显示给用户：内部措辞容易被误读成组件坏了 */
-    if (why) { try { console.debug('[captcha] switched to', which, '|', why); } catch (e) {} }
-    /* 主通道若已渲染出 widget，先销毁，避免残留 iframe */
-    if (window.turnstile && cfWidget !== null) {
-      try { window.turnstile.remove(cfWidget); } catch (e) { /* 已销毁则忽略 */ }
-      cfWidget = null;
-    }
-    activeChannel = which;
-    CH.token = '';
-    CH.channel = '';
-    cb('', '');
-    host.querySelector('#cfSlot').style.display = 'none';
-
-    if (which === 'php') {
-      host.querySelector('#capStd').style.display = 'none';
-      const box = host.querySelector('#capPhp');
-      box.style.display = 'block';
-      if (!php.script) { hint.textContent = t('人机验证暂不可用，请稍后再试'); return; }
-      hint.textContent = t('备用通道加载中');
-      if (php.css && !document.querySelector('link[data-cap-php]')) {
-        const l = document.createElement('link');
-        l.rel = 'stylesheet';
-        l.href = php.css;
-        l.setAttribute('data-cap-php', '1');
-        document.head.appendChild(l);
-      }
-      /* PHP 实例的组件结构固定，class 名不能改 */
-      box.innerHTML = '<div class="cap-wrap"><div class="captcha">'
-        + '<div class="cap-ct" id="cap-ct" role="button" tabindex="0" aria-label="' + t('点击进行人机验证') + '">'
-        + '<div class="cap-cb"><div class="cap-check">'
-        + '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="4,12 9,17 20,6"></polyline></svg>'
-        + '</div><svg class="cap-ring" viewBox="0 0 32 32" aria-hidden="true">'
-        + '<circle class="cap-ring-bg" cx="16" cy="16" r="14"></circle>'
-        + '<circle class="cap-ring-fg" cx="16" cy="16" r="14"></circle></svg></div>'
-        + '<div class="cap-lw"><span class="cap-label active">' + t('验证你是人类') + '</span></div>'
-        + '</div></div></div>';
-      loadScript(php.script).then(() => {
-        const wait = (n) => {
-          if (window.CapPow) {
-            window.CapPow.onDone = (token) => { hint.textContent = t('验证通过'); cb(token, 'php'); };
-            window.CapPow.onFail = (msg) => { hint.textContent = t('验证失败：') + (msg || t('未知')); cb('', ''); };
-          } else if (n < 30) { setTimeout(() => wait(n + 1), 300); }
-          else { hint.textContent = t('人机验证暂不可用，请刷新重试'); }
-        };
-        wait(0);
-      }).catch(() => { hint.textContent = t('人机验证加载失败，请刷新重试'); });
-      return;
-    }
-
-    /* standard：官方 cap-widget */
-    host.querySelector('#capPhp').style.display = 'none';
-    const stdBox = host.querySelector('#capStd');
-    stdBox.style.display = 'block';
-    if (!std.script) { switchToCap('php', t('未配置')); return; }
-    hint.textContent = t('主通道不可用，已切换到备用通道');
-    const w = document.createElement('cap-widget');
-    w.id = 'cap-widget';
-    if (std.api) { w.setAttribute('data-cap-api-endpoint', std.api); }
-    w.addEventListener('solve', (e) => { hint.textContent = t('验证通过'); cb(e.detail.token, 'standard'); });
-    w.addEventListener('progress', (e) => { hint.textContent = t('计算中… ') + Math.round(e.detail.progress) + '%'; });
-    w.addEventListener('error', (e) => { hint.textContent = t('验证出错：') + ((e.detail && e.detail.message) || t('未知')); });
-    stdBox.appendChild(w);
-    activeChannel = 'standard';
-    loadScript(std.script).catch(() => switchToCap('php', t('脚本加载失败')));
-    /* 只有「组件既没升级出 shadowRoot、也没有任何子节点、且还没拿到 token」才算失败；
-       时间放宽到 5 秒，避免慢网络下把正在初始化的组件判死。 */
-    setTimeout(() => {
-      if (activeChannel !== 'standard' || CH.token) { return; }
-      const inst = host.querySelector('#cap-widget');
-      const ok = inst && (inst.shadowRoot || inst.children.length > 0);
-      if (!ok) { switchToCap('php', t('组件未出现')); }
-    }, 5000);
+  if (!cfg.sitekey || !cfg.script) {
+    host.innerHTML = '<div class="tiny muted">' + t('人机验证未配置，请联系管理员') + '</div>';
+    return;
   }
 
-  /* ---------- 主通道：Cloudflare Turnstile ---------- */
-  if (!cfg.sitekey || !cfg.script) { switchToCap('standard', t('未配置')); return; }
-  activeChannel = 'turnstile';
+  host.innerHTML = '<div class="cap-box">'
+    + '<div id="cfSlot"></div>'
+    + '<div class="tiny muted" id="capHint" style="margin-top:6px">' + t('正在加载人机验证…') + '</div>'
+    + '</div>';
+  const hint = host.querySelector('#capHint');
   const slot = host.querySelector('#cfSlot');
-  /* 是否渲染成功只认 render() 的返回与回调，绝不用「DOM 里有没有 iframe」当判据：
-     widget 有时已渲染完毕，但采样时机/框架差异让探测落空，按 DOM 判断会把正常
-     工作的组件销毁并切走 —— 表现就是「明明渲染了却说没渲染」。 */
-  let cfState = 'idle';
-  const markRendered = () => { cfState = 'rendered'; hint.textContent = ''; };
 
   loadTurnstile(cfg.script).then(() => {
-    if (activeChannel !== 'turnstile' || !window.turnstile) { return; }
+    if (!window.turnstile) { hint.textContent = t('人机验证加载失败，请刷新重试'); return; }
     const dark = document.documentElement.dataset.theme === 'dark';
     try {
       cfWidget = window.turnstile.render(slot, {
@@ -3151,38 +3091,17 @@ function mountCaptcha(host, onChange) {
         language: LANG_MAP[I18N.lang] || 'zh-cn',
         size: 'flexible',
         callback: (token) => { hint.textContent = t('验证通过'); cb(token, 'turnstile'); },
-        'expired-callback': () => { if (activeChannel === 'turnstile') { hint.textContent = t('验证已过期，请重新验证'); cb('', ''); } },
-        'timeout-callback': () => { if (activeChannel === 'turnstile') { hint.textContent = t('验证超时，请重新验证'); cb('', ''); } },
-        'error-callback': () => {
-          if (activeChannel !== 'turnstile') { return; }
-          cfState = 'failed';
-          cb('', '');
-          switchToCap('standard', t('验证出错'));
-        }
+        'expired-callback': () => { hint.textContent = t('验证已过期，请重新验证'); cb('', ''); },
+        'timeout-callback': () => { hint.textContent = t('验证超时，请重新验证'); cb('', ''); },
+        'error-callback': () => { hint.textContent = t('验证出错，请刷新重试'); cb('', ''); }
       });
-      markRendered();
+      hint.textContent = '';
     } catch (e) {
-      cfState = 'failed';
-      switchToCap('standard', t('渲染失败'));
+      hint.textContent = t('人机验证加载失败，请刷新重试');
     }
   }).catch(() => {
-    if (activeChannel !== 'turnstile') { return; }
-    cfState = 'failed';
-    switchToCap('standard', t('脚本未加载'));
+    hint.textContent = t('人机验证加载失败，请刷新重试');
   });
-
-  /* 6 秒兜底：只处理「脚本压根没回来」这一种情况。已渲染的一律不动；
-     即便 DOM 探测不到，也只改提示文案，不做任何破坏性动作。 */
-  setTimeout(() => {
-    if (activeChannel !== 'turnstile') { return; }
-    if (cfState === 'rendered') {
-      if (!slot.querySelector('iframe') && slot.children.length === 0) {
-        hint.textContent = t('验证框若长时间未显示，请刷新重试');
-      }
-      return;
-    }
-    switchToCap('standard', t('脚本未加载'));
-  }, 6000);
 }
 
 /* ========== guard.js ========== */
@@ -6542,6 +6461,8 @@ async function renderLogin(container) {
   let tab = (/[?&]tab=code\b/.test(location.search)) ? 'code' : 'password';   // password | code | guest
   let sub = 'login';      // login | register
   let agreed = false;
+  /* 个人信息出境的单独同意（《个人信息保护法》第 39 条要求单列，不能并进上面那一条） */
+  let crossAgreed = false;
 
   function paint() {
     container.innerHTML = `
@@ -6718,6 +6639,10 @@ async function renderLogin(container) {
         <span class="box ${agreed ? 'on' : ''}" id="agreeBox"><span class="ic-slot" data-ic="state.success"><svg viewBox="0 0 24 24" class="ic"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></span></span>
         <span>我已阅读并同意<span class="link" data-doc="用户协议">《用户协议》</span>${t('与')}<span class="link" data-doc="隐私政策">《隐私政策》</span>（本站为个人兴趣分享，请文明互动）</span>
       </div>
+      <div class="agree">
+        <span class="box ${crossAgreed ? 'on' : ''}" id="crossBox"><span class="ic-slot" data-ic="state.success"><svg viewBox="0 0 24 24" class="ic"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></span></span>
+        <span>我已阅读<span class="link" data-doc="跨境数据传输协议">《跨境数据传输协议》</span>，<span style="font-weight:600;color:var(--accent)">单独同意</span>我的个人信息被传输至境外处理</span>
+      </div>
       ${sub === 'register' ? `
       <div class="field">
         <label>邮箱（可选，绑定后可用于验证码登录）</label>
@@ -6743,6 +6668,7 @@ async function renderLogin(container) {
 
     pane.querySelectorAll('[data-sub]').forEach(b => b.addEventListener('click', () => { sub = b.dataset.sub; paintPassword(pane); }));
     pane.querySelector('#agreeBox').addEventListener('click', () => { agreed = !agreed; pane.querySelector('#agreeBox').classList.toggle('on', agreed); });
+    pane.querySelector('#crossBox').addEventListener('click', () => { crossAgreed = !crossAgreed; pane.querySelector('#crossBox').classList.toggle('on', crossAgreed); });
     pane.querySelectorAll('[data-doc]').forEach(l => l.addEventListener('click', () => navigate('#/doc/' + encodeURIComponent(l.dataset.doc))));
     const vBtn = pane.querySelector('#regVideoBtn');
     const vBox = pane.querySelector('#regVideoFrame');
@@ -6801,11 +6727,14 @@ async function renderLogin(container) {
       const pwd = pane.querySelector('#uPwd').value;
       if (!name || !pwd) { toast(sub === 'register' ? '请填写用户名与密码' : '请填写账号与密码', 'err'); return; }
       if (!agreed) { toast('请先勾选同意协议', 'err'); return; }
+      if (!crossAgreed) { toast('请先单独同意《跨境数据传输协议》', 'err'); return; }
       const payload = {
         username: name, identifier: name, password: pwd,
         cap_token: captchaToken(), cap_channel: captchaChannel(),
       };
       if (sub === 'register') {
+        /* 出境单独同意的凭证：后端据此记录同意时间（协议第六条承诺了「与账号关联保存」） */
+        payload.cross_consent = 1;
         const rm = (pane.querySelector('#rMail').value || '').trim();
         const rc = (pane.querySelector('#rCode').value || '').replace(/\D/g, '');
         if (rm !== '') {
@@ -10415,7 +10344,7 @@ function startPanelPolling(container) {
 const SLUG = {
   '功能说明': 'features', 'AI 使用说明': 'ai', '社区公约': 'community',
   '评分标准': 'scoring', '入榜规则': 'admission', '用户协议': 'terms',
-  '隐私政策': 'privacy', '更新日志': 'changelog'
+  '隐私政策': 'privacy', '跨境数据传输协议': 'transfer', '更新日志': 'changelog'
 };
 /* 地址里的段是英文 slug（/docs/scoring），而文档本体按中文名索引。
    这里一次性建反向表，两种写法都能认。 */
@@ -11912,6 +11841,7 @@ function drawerItems() {
     { k: 'join', label: t('入榜规则'), ic: T('doc.ranking', I.list), go: '#/doc/入榜规则' },
     { k: 'terms', label: t('用户协议'), ic: T('doc.terms', I.doc), go: '#/doc/用户协议' },
     { k: 'privacy', label: t('隐私政策'), ic: T('doc.privacy', I.lock), go: '#/doc/隐私政策' },
+    { k: 'transfer', label: t('跨境数据传输协议'), ic: T('doc.transfer', I.globe), go: '#/doc/跨境数据传输协议' },
     { k: 'changelog', label: t('更新日志'), ic: T('doc.changelog', I.doc), go: '#/doc/更新日志' },
     { k: 'pentest', label: t('渗透测试'), ic: I.shield, url: REPO_URL },
     { k: 'admins', label: t('管理者名单'), ic: I.users, go: '#/about' },

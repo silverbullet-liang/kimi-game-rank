@@ -69,10 +69,17 @@ if (is_file($real)) {
         $ln = trim($ln);
         if ($ln !== '' && $ln[0] !== '#') { $lines[] = $ln; }
     }
-    $hasNet = false;
-    foreach ($lines as $ln) { if (strpos($ln, '/') !== false) { $hasNet = true; } }
-    chk($hasNet === false, '生效条目全是单机，没有网段（不误伤同段邻居）');
-    chk(count($lines) === 4, '生效条目正好 4 条');
+    /* 云厂商与保留段是 2026-11-19 有意加入的（用户要求封云与不可达来源），
+       但两条红线不能破：家用宽带段不能进，Cloudflare 与源站段更不能进。 */
+    chk(count($lines) >= 3600, '名单已收录云段与保留段（当前 ' . count($lines) . ' 条）');
+    chk(strpos($raw, '10.0.0.0/8') !== false, '含 RFC1918 内部段');
+    chk(strpos($raw, '2001:db8::/32') !== false, '含 IPv6 文档段');
+    chk(strpos($raw, '175.27.0.248') !== false, '含 ima 平台出口（腾讯云）');
+    foreach (array('104.16.', '172.64.', '162.158.', '173.245.', '185.27.134') as $cf) {
+        $bad = false;
+        foreach ($lines as $ln) { if (strpos($ln, $cf) === 0) { $bad = true; break; } }
+        chk($bad === false, '不含 Cloudflare / 源站段 ' . $cf);
+    }
 }
 
 echo "\n== 拒绝响应 ==";

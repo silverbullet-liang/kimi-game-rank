@@ -206,7 +206,7 @@ total = 1200 × Π ( P'^α )                    (α is the pillar weight)
 | 2026-10-04 | Scoring mode default changed to "update information only": listed works keep their scores on update, and only the main administrator can switch it |
 | Earlier | Six-dimension weights and thresholds fixed and published (200 per dimension / 1200 total) |
 
-**Related documents**: [Features](/docs/features) · [AI Guide](/docs/ai) · [Community Guidelines](/docs/community) · [Admission Rules](/docs/admission) · [Terms of Service](/docs/terms) · [Privacy Policy](/docs/privacy)
+**Related documents**: [Features](/docs/features) · [AI Guide](/docs/ai) · [Community Guidelines](/docs/community) · [Admission Rules](/docs/admission) · [Terms of Service](/docs/terms) · [Privacy Policy](/docs/privacy) · [Data Transfer Notice](/docs/transfer)
 
 ---
 

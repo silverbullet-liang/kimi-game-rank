@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 47);
+define('SCHEMA_VERSION', 49);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -2764,6 +2764,54 @@ INCDOC36;
             app_log('schema migrated to v37（banned_devices / user_devices）');
         } catch (Throwable $e) {
             app_log('migrate v37 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v49：users.consent_cross_at（个人信息出境单独同意的凭证） ----------
+     * 《个人信息保护法》第 39 条要求向境外提供个人信息须取得单独同意；
+     * 《跨境数据传输协议》第六条向用户承诺「勾选记录会与账号关联保存」，
+     * 因此注册时记下同意时间。空值 = 未记录（旧账号）。 */
+    if ($cur < 49) {
+        try {
+            if (table_exists('users') && !column_exists('users', 'consent_cross_at')) {
+                db_exec("ALTER TABLE `users` ADD COLUMN `consent_cross_at` DATETIME NULL COMMENT '个人信息出境单独同意时间（UTC）' AFTER `registered_at`");
+                app_log('schema v49：users.consent_cross_at');
+            }
+            setting_set('schema_version', '49');
+            app_log('schema migrated to v49（出境单独同意凭证）');
+        } catch (Throwable $e) {
+            app_log('migrate v49 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v48：11·14 档案补附卷 O（第三次攻击征兆，2026-11-18/19） ----------
+     * 正文以文件为准整份替换（原文件 + 附卷 M/N/O），md5 相同则跳过。
+     * 同步把列表页摘要改成三次事件的口径。 */
+    if ($cur < 48) {
+        try {
+            if (table_exists('incidents')) {
+                $a48 = APP_ROOT . '/app/data/incident-1114.md';
+                $b48 = APP_ROOT . '/app/data/incident-1114-load.md';
+                $doc48 = (is_file($a48) ? (string)@file_get_contents($a48) : '')
+                       . (is_file($b48) ? (string)@file_get_contents($b48) : '');
+                if ($doc48 !== '') {
+                    $have48 = (string)db_val("SELECT MD5(IFNULL(doc, '')) FROM incidents WHERE title = ? ORDER BY id LIMIT 1",
+                        array('11·14 攻击事件'));
+                    if ($have48 !== md5($doc48)) {
+                        db_exec('UPDATE incidents SET doc = ?, summary = ?, updated_at = UTC_TIMESTAMP() WHERE title = ?',
+                            array(
+                                $doc48,
+                                '第一次注水与打配额，第二次迁站期间继续灌流量，第三次（11-18/19）三个机房 IP 定向打注册登录——截至建档只是征兆。',
+                                '11·14 攻击事件'
+                            ));
+                        app_log('schema v48：11·14 档案补附卷 O');
+                    }
+                }
+            }
+            setting_set('schema_version', '48');
+            app_log('schema migrated to v48（附卷 O）');
+        } catch (Throwable $e) {
+            app_log('migrate v48 failed: ' . $e->getMessage());
         }
     }
 

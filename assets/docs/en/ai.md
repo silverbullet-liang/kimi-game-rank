@@ -135,6 +135,6 @@ Quota resets per **calendar day in UTC**, i.e. **08:00 Beijing time** each day. 
 
 ---
 
-**Related documents**: [Features](/docs/features) · [Community Guidelines](/docs/community) · [Scoring Standard](/docs/scoring) · [Admission Rules](/docs/admission) · [Terms of Service](/docs/terms) · [Privacy Policy](/docs/privacy) · [Changelog](/docs/changelog)
+**Related documents**: [Features](/docs/features) · [Community Guidelines](/docs/community) · [Scoring Standard](/docs/scoring) · [Admission Rules](/docs/admission) · [Terms of Service](/docs/terms) · [Privacy Policy](/docs/privacy) · [Data Transfer Notice](/docs/transfer) · [Changelog](/docs/changelog)
 
 > Last updated: 2026-10-22

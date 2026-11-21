@@ -47,7 +47,8 @@ switch ($action) {
         }
         if (!rate_limit('reg_' . ip_hash(client_ip()), 10, 3600)) { fail(429, '注册过于频繁，请稍后再试'); }
         cooldown_guard('register');
-        $r = user_register(param_str('username'), param_str('password'), param_str('email', ''), param_str('code', ''));
+        $r = user_register(param_str('username'), param_str('password'), param_str('email', ''), param_str('code', ''),
+            (int)param('cross_consent', 0) === 1);
         ok(array('token' => $r['token'], 'role' => 'user', 'uid' => $r['uid'], 'username' => $r['username'],
                  'email' => $r['email']),
            $r['email'] !== '' ? '注册成功，邮箱已绑定' : '注册成功');

@@ -7,7 +7,7 @@
  * 票在有效期内此来源像正常访客一样使用全站。
  *
  * 验证通道与站内完全一致（见 app/captcha.php）：
- *   Cloudflare Turnstile（主）→ Cap standard → Cap php（备）
+ *   Cloudflare Turnstile（唯一通道，没有备用、不降级）
  *
  * 池的来源，任一命中即算：
  *   ① storage/gate_pool.txt —— 每行一条：明文 IP 或 64 位指纹，支持 8+ 位指纹前缀，# 开头为注释
@@ -50,28 +50,40 @@ function gate_pool_lines(): array
 /** 清池缓存（改了池之后即时生效） */
 function gate_pool_reset()
 {
-    unset($GLOBALS['__GATE_POOL'], $GLOBALS['__GATE_BANNED']);
+    unset($GLOBALS['__GATE_POOL'], $GLOBALS['__GATE_INDEX'], $GLOBALS['__GATE_BANNED']);
+}
+
+/**
+ * 池索引：64 位指纹走集合查找，8–63 位前缀单独成表。
+ * ------------------------------------------------------------
+ * 池子可能上万条（两次攻击的来源），逐行比较 + 每行算一次 sha256 会让每个请求多花几十毫秒，
+ * 所以一次性建成索引，命中判定退化成一次数组查找。
+ */
+function gate_pool_index(): array
+{
+    if (isset($GLOBALS['__GATE_INDEX'])) { return $GLOBALS['__GATE_INDEX']; }
+    $exact = array();
+    $prefix = array();
+    foreach (gate_pool_lines() as $raw) {
+        $l = trim((string)$raw);
+        if ($l === '' || $l[0] === '#') { continue; }
+        $v = strtolower($l);
+        if (preg_match('/^[0-9a-f]{64}$/', $v)) { $exact[$v] = 1; continue; }
+        if (preg_match('/^[0-9a-f]{8,63}$/', $v)) { $prefix[] = $v; continue; }
+        if (filter_var($l, FILTER_VALIDATE_IP)) { $exact[discipline_ip_hash($l)] = 1; }
+    }
+    $GLOBALS['__GATE_INDEX'] = array('exact' => $exact, 'prefix' => $prefix);
+    return $GLOBALS['__GATE_INDEX'];
 }
 
 /** 指纹是否命中池 */
 function gate_pool_match(string $hash): bool
 {
     if ($hash === '') { return false; }
-    foreach (gate_pool_lines() as $raw) {
-        $l = trim((string)$raw);
-        if ($l === '' || $l[0] === '#') { continue; }
-        $v = strtolower($l);
-        if (preg_match('/^[0-9a-f]{64}$/', $v)) {
-            if ($v === $hash) { return true; }
-            continue;
-        }
-        if (preg_match('/^[0-9a-f]{8,63}$/', $v)) {
-            if (strpos($hash, $v) === 0) { return true; }
-            continue;
-        }
-        if (filter_var($l, FILTER_VALIDATE_IP)) {
-            if (discipline_ip_hash($l) === $hash) { return true; }
-        }
+    $idx = gate_pool_index();
+    if (isset($idx['exact'][$hash])) { return true; }
+    foreach ($idx['prefix'] as $p) {
+        if (strpos($hash, $p) === 0) { return true; }
     }
     return false;
 }
@@ -250,7 +262,7 @@ function gate_page_html(): string
         . '</body></html>';
 }
 
-/** 验证页脚本：Turnstile 主 → Cap standard → Cap php，任一道通过即提交 */
+/** 验证页脚本：只有 Cloudflare Turnstile 一条路，加载不出来就提示刷新 */
 function gate_page_js(): string
 {
     return <<<'JS'
@@ -259,40 +271,29 @@ function gate_page_js(): string
   var slot = document.getElementById('slot');
   var hint = document.getElementById('hint');
   var retry = document.getElementById('retry');
-  var done = false, stage = '', token = '', channel = '';
-  var tsWidget = null;
+  var done = false, token = '', tsWidget = null;
 
   function say(t, ok) { hint.textContent = t; hint.className = ok ? 'ok' : ''; }
-  function loadScript(src) {
-    return new Promise(function (res, rej) {
-      var s = document.createElement('script');
-      s.src = src; s.onload = function () { res(1); }; s.onerror = function () { rej(new Error('load')); };
-      document.head.appendChild(s);
-    });
-  }
 
-  /* 提交：把 token 与通道一起交回服务端校验，成功后原地刷新 */
   function submit() {
     if (done || !token) { return; }
     done = true; say('验证通过，正在进入…', true);
-    var body = 'action=verify&cap_token=' + encodeURIComponent(token)
-             + '&cap_channel=' + encodeURIComponent(channel);
     fetch('/api/gate.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-      body: body
+      body: 'action=verify&cap_token=' + encodeURIComponent(token) + '&cap_channel=turnstile'
     }).then(function (r) { return r.json(); }).then(function (j) {
       if (j && j.code === 0) { location.reload(); return; }
-      done = false; token = ''; say((j && j.msg) || '验证未通过，请重试');
-      restart();
+      done = false; token = ''; say((j && j.msg) || '验证未通过，请重试'); restart();
     }).catch(function () { done = false; token = ''; say('网络异常，请重试'); restart(); });
   }
 
-  function mountTurnstile() {
-    stage = 'turnstile';
-    if (!cfg.sitekey || !cfg.script) { return mountStd(); }
-    loadScript(cfg.script).then(function () {
-      if (!window.turnstile) { return mountStd(); }
+  function mount() {
+    if (!cfg.sitekey || !cfg.script) { say('人机验证未配置，请联系管理员'); return; }
+    var s = document.createElement('script');
+    s.src = cfg.script;
+    s.onload = function () {
+      if (!window.turnstile) { say('人机验证加载失败，请刷新重试'); return; }
       var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme:dark)').matches;
       slot.innerHTML = '';
       try {
@@ -301,76 +302,26 @@ function gate_page_js(): string
           theme: dark ? 'dark' : 'light',
           language: (navigator.language || 'zh-CN'),
           size: 'flexible',
-          callback: function (t) { token = t; channel = 'turnstile'; submit(); },
+          callback: function (t) { token = t; submit(); },
           'expired-callback': function () { token = ''; say('验证已过期，请重新验证'); },
           'timeout-callback': function () { token = ''; say('验证超时，请重新验证'); },
-          'error-callback': function () { token = ''; if (stage === 'turnstile') { mountStd(); } }
+          'error-callback': function () { token = ''; say('验证出错，请点下方重试'); }
         });
         say('');
-      } catch (e) { mountStd(); }
-    }).catch(function () { mountStd(); });
-    setTimeout(function () {
-      if (stage !== 'turnstile' || token) { return; }
-      if (!slot.querySelector('iframe') && slot.children.length === 0) { mountStd(); }
-    }, 6000);
-  }
-
-  function mountStd() {
-    if (stage === 'standard' || stage === 'php') { return; }
-    stage = 'standard';
-    var c = (cfg.channels || {}).standard || {};
-    if (!c.script) { return mountPhp(); }
-    say('已切换到备用验证通道');
-    slot.innerHTML = '';
-    var w = document.createElement('cap-widget');
-    if (c.api) { w.setAttribute('data-cap-api-endpoint', c.api); }
-    w.addEventListener('solve', function (e) { token = e.detail.token; channel = 'standard'; submit(); });
-    w.addEventListener('progress', function (e) { say('计算中… ' + Math.round(e.detail.progress) + '%'); });
-    w.addEventListener('error', function () { say('验证出错，请点下方重试'); });
-    slot.appendChild(w);
-    loadScript(c.script).catch(function () { mountPhp(); });
-    setTimeout(function () {
-      if (stage !== 'standard' || token) { return; }
-      if (!w.shadowRoot && w.children.length === 0) { mountPhp(); }
-    }, 5000);
-  }
-
-  function mountPhp() {
-    if (stage === 'php') { return; }
-    stage = 'php';
-    var c = (cfg.channels || {}).php || {};
-    if (!c.script) { say('验证组件暂不可用，请稍后刷新'); return; }
-    say('正在加载最后一条通道');
-    if (c.css) {
-      var l = document.createElement('link');
-      l.rel = 'stylesheet'; l.href = c.css; document.head.appendChild(l);
-    }
-    slot.innerHTML = '<div class="cap-wrap"><div class="captcha"><div class="cap-ct" id="capct">'
-      + '<div class="cap-cb"><div class="cap-check">✓</div></div>'
-      + '<div class="cap-lw"><span class="cap-label active">点我验证</span></div>'
-      + '</div></div></div>';
-    loadScript(c.script).then(function () {
-      var n = 0;
-      (function wait() {
-        if (window.CapPow) {
-          window.CapPow.onDone = function (t) { token = t; channel = 'php'; submit(); };
-          var ct = document.getElementById('capct');
-          if (ct) { ct.addEventListener('click', function () { try { window.CapPow.init(); } catch (e) {} }); }
-          return;
-        }
-        if (n++ < 30) { setTimeout(wait, 300); } else { say('验证组件暂不可用，请稍后刷新'); }
-      })();
-    }).catch(function () { say('验证组件加载失败，请稍后刷新'); });
+      } catch (e) { say('人机验证加载失败，请刷新重试'); }
+    };
+    s.onerror = function () { say('人机验证加载失败，请刷新重试'); };
+    document.head.appendChild(s);
   }
 
   function restart() {
-    done = false; token = ''; channel = ''; stage = '';
+    done = false; token = '';
     if (window.turnstile && tsWidget !== null) { try { window.turnstile.remove(tsWidget); } catch (e) {} tsWidget = null; }
-    mountTurnstile();
+    mount();
   }
 
   retry.addEventListener('click', restart);
-  mountTurnstile();
+  mount();
 })();
 JS;
 }

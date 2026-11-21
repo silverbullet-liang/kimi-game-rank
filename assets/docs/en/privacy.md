@@ -234,7 +234,7 @@ To exercise these rights, contact us as described above; we will respond within 
 2. We respond within a reasonable period, normally no more than 15 working days.
 3. If you believe our processing infringes your lawful rights and you are not satisfied with our answer, you may **complain to the authority responsible for personal information protection** (the relevant laws and remedies can be found in the [National Laws and Regulations Database](https://flk.npc.gov.cn/)), or bring an action before a competent people's court.
 
-**Related documents**: [Terms of Service](/docs/terms) · [Community Guidelines](/docs/community) · [Features](/docs/features) · [AI Guide](/docs/ai) · [Scoring Standard](/docs/scoring) · [Admission Rules](/docs/admission) · [Changelog](/docs/changelog)
+**Related documents**: [Terms of Service](/docs/terms) · [Community Guidelines](/docs/community) · [Features](/docs/features) · [AI Guide](/docs/ai) · [Scoring Standard](/docs/scoring) · [Admission Rules](/docs/admission) · [Changelog](/docs/changelog) · [Data Transfer Notice](/docs/transfer)
 
 ---
 

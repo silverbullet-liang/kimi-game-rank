@@ -40,6 +40,7 @@ Un sito che raccoglie giochi, strumenti, opere letterarie e lavori amatoriali de
 | Temi festivi | **48** temi a tempo limitato, ognuno con design e palette propri (date solari fisse, date lunari, l'ennesimo giorno della settimana di un mese e finestre di più giorni); si attivano e disattivano da soli in base alla data, solo Halloween forza il tema scuro |
 | Temi | Diversi temi visivi; i caratteri tipografici sono scaricati dal browser direttamente da CDN pubbliche, senza consumare traffico del tuo server |
 | Punteggio | Sei dimensioni raggruppate in tre pilastri (qualità / impegno / riconoscimento); i voti sono assegnati **per quota di classifica** — solo il 2% migliore ottiene SSS, il 10% SS — così i giudizi restano significativi con la crescita del sito |
+| Trasferimenti internazionali | «Informativa sul trasferimento internazionale dei dati», redatta separatamente per GDPR UE (capo V), UK GDPR, leggi statali USA (CCPA/CPRA e VA / CO / CT / UT), PIPEDA, APP 8 e PDPA — con una casella di consenso dedicata all'accesso |
 
 ## Stack tecnico e requisiti
 

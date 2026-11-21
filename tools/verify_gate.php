@@ -41,10 +41,6 @@ function captcha_client_config(): array
         'on'      => captcha_enabled(),
         'sitekey' => 'test-sitekey',
         'script'  => 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit',
-        'channels' => array(
-            'standard' => array('label' => 'captcha.gurl.eu.org', 'script' => 'https://a/cap.min.js', 'api' => 'https://a/api/', 'css' => ''),
-            'php'      => array('label' => 'cap-pow.wuw.li', 'script' => 'https://b/cap-pow.js', 'api' => '', 'css' => 'https://b/cap-pow.css'),
-        ),
     );
 }
 
@@ -59,7 +55,7 @@ function chk($cond, $name)
 }
 function reset_state()
 {
-    unset($GLOBALS['__GATE_POOL'], $GLOBALS['__GATE_BANNED']);
+    unset($GLOBALS['__GATE_POOL'], $GLOBALS['__GATE_INDEX'], $GLOBALS['__GATE_BANNED']);
     $GLOBALS['SETTING'] = array();
     $GLOBALS['BANNED']  = array();
     $_COOKIE = array();
@@ -150,10 +146,27 @@ reset_state();
 $html = gate_page_html();
 chk(strpos($html, '__GATE_CFG') !== false, '页面内嵌通道配置');
 chk(strpos($html, '/api/gate.php') !== false, '页面提交到 api/gate.php');
-chk(strpos($html, 'turnstile.render') !== false, '主通道是 Turnstile');
-chk(strpos($html, 'cap-widget') !== false, '备通道 1 是 Cap standard');
-chk(strpos($html, 'CapPow') !== false, '备通道 2 是 Cap php');
-chk(strpos($html, '</script>') !== false && substr_count($html, '<script') === 2, '只有两段脚本、无提前闭合');
+chk(strpos($html, 'turnstile.render') !== false, '验证通道是 Turnstile');
+chk(strpos($html, 'cap-widget') === false, '没有 Cap standard 备通道');
+chk(strpos($html, 'CapPow') === false, '没有 Cap php 备通道');
+chk(strpos($html, 'cap-pow') === false, '没有 cap-pow 外部资源');
+chk(substr_count($html, '<script') === 2, '只有两段脚本、无提前闭合');
+
+/* 池实现：上万条时必须是索引查找，且池文件里不留明文 IP */
+$poolFile = dirname(__DIR__) . '/storage/gate_pool.txt';
+if (is_file($poolFile)) {
+    $raw = (string)file_get_contents($poolFile);
+    $plain = 0;
+    foreach (explode("\n", $raw) as $ln) {
+        $ln = trim($ln);
+        if ($ln === '' || $ln[0] === '#') { continue; }
+        if (filter_var($ln, FILTER_VALIDATE_IP)) { $plain++; }
+    }
+    chk($plain === 0, '池文件里不留明文 IP（全部是加盐指纹）');
+    chk(substr_count($raw, "\n") > 1000, '池已载入事件来源（当前 ' . substr_count($raw, "\n") . ' 行）');
+}
+$gsrc = (string)file_get_contents(dirname(__DIR__) . '/app/gate.php');
+chk(strpos($gsrc, 'function gate_pool_index') !== false, '池走索引查找（不是逐行比较）');
 
 echo "\n----------------------------------------\n";
 echo "通过 $pass 项，失败 $fail 项\n";

@@ -135,6 +135,6 @@ AI 助手是一个可联网、可查站内数据的对话式助手：
 
 ---
 
-**相关文档**：[《功能说明》](/docs/features) · [《社区公约》](/docs/community) · [《评分标准》](/docs/scoring) · [《入榜规则》](/docs/admission) · [《用户协议》](/docs/terms) · [《隐私政策》](/docs/privacy) · [《更新日志》](/docs/changelog)
+**相关文档**：[《功能说明》](/docs/features) · [《社区公约》](/docs/community) · [《评分标准》](/docs/scoring) · [《入榜规则》](/docs/admission) · [《用户协议》](/docs/terms) · [《隐私政策》](/docs/privacy) · [《跨境数据传输协议》](/docs/transfer) · [《更新日志》](/docs/changelog)
 
 > 最后更新：2026-10-10

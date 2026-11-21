@@ -274,6 +274,6 @@ Thank you for keeping to these guidelines.
 
 ---
 
-**Related documents**: [Terms of Service](/docs/terms) · [Privacy Policy](/docs/privacy) · [Features](/docs/features) · [AI Guide](/docs/ai) · [Scoring Standard](/docs/scoring) · [Admission Rules](/docs/admission) · [Changelog](/docs/changelog)
+**Related documents**: [Terms of Service](/docs/terms) · [Privacy Policy](/docs/privacy) · [Data Transfer Notice](/docs/transfer) · [Features](/docs/features) · [AI Guide](/docs/ai) · [Scoring Standard](/docs/scoring) · [Admission Rules](/docs/admission) · [Changelog](/docs/changelog)
 
 > Last updated: 2026-10-22

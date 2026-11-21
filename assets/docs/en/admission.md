@@ -111,6 +111,6 @@ A work is taken off the leaderboard when any of these applies:
 
 ---
 
-**Related documents**: [Features](/docs/features) · [Community Guidelines](/docs/community) · [Scoring Standard](/docs/scoring) · [Terms of Service](/docs/terms) · [Privacy Policy](/docs/privacy) · [Changelog](/docs/changelog)
+**Related documents**: [Features](/docs/features) · [Community Guidelines](/docs/community) · [Scoring Standard](/docs/scoring) · [Terms of Service](/docs/terms) · [Privacy Policy](/docs/privacy) · [Data Transfer Notice](/docs/transfer) · [Changelog](/docs/changelog)
 
 > Last updated: 2026-10-22

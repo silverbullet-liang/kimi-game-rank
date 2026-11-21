@@ -328,6 +328,7 @@ function drawerItems() {
     { k: 'join', label: t('入榜规则'), ic: T('doc.ranking', I.list), go: '#/doc/入榜规则' },
     { k: 'terms', label: t('用户协议'), ic: T('doc.terms', I.doc), go: '#/doc/用户协议' },
     { k: 'privacy', label: t('隐私政策'), ic: T('doc.privacy', I.lock), go: '#/doc/隐私政策' },
+    { k: 'transfer', label: t('跨境数据传输协议'), ic: T('doc.transfer', I.globe), go: '#/doc/跨境数据传输协议' },
     { k: 'changelog', label: t('更新日志'), ic: T('doc.changelog', I.doc), go: '#/doc/更新日志' },
     { k: 'pentest', label: t('渗透测试'), ic: I.shield, url: REPO_URL },
     { k: 'admins', label: t('管理者名单'), ic: I.users, go: '#/about' },

@@ -40,6 +40,7 @@ Un site qui rassemble les jeux, outils, œuvres littéraires et créations déri
 | Thèmes de fête | **48** thèmes à durée limitée, chacun avec son propre design et sa palette (dates solaires fixes, dates lunaires, le Nième jour de la semaine d'un mois et fenêtres de plusieurs jours) ; ils s'activent et se retirent automatiquement selon la date, seul Halloween force le thème sombre |
 | Thèmes | Plusieurs thèmes visuels ; les polices sont chargées par le navigateur directement depuis des CDN publiques, sans consommer la bande passante de votre serveur |
 | Notation | Six dimensions regroupées en trois piliers (qualité / implication / reconnaissance) ; les mentions sont attribuées **par quota de classement** — seuls les 2 % premiers obtiennent SSS, les 10 % premiers SS — les notes restent donc significatives à mesure que le site grandit |
+| Transferts internationaux | « Notice de transfert international des données », rédigée séparément pour le RGPD UE (chapitre V), le UK GDPR, les lois des États américains (CCPA/CPRA et VA / CO / CT / UT), la PIPEDA, l'APP 8 et la PDPA — avec une case de consentement distincte à la connexion |
 
 ## Pile technique et prérequis
 

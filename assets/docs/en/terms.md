@@ -261,7 +261,7 @@ When using the service you **must not**, including but not limited to:
 
 For any question, complaint, report or rights claim, submit it through the site's "Feedback" (optionally marked "visible to administrators only") or contact the site owner, `admin`. We respond within a reasonable period.
 
-**Related documents**: [Community Guidelines](/docs/community) · [Features](/docs/features) · [AI Guide](/docs/ai) · [Privacy Policy](/docs/privacy) · [Scoring Standard](/docs/scoring) · [Admission Rules](/docs/admission) · [Changelog](/docs/changelog)
+**Related documents**: [Community Guidelines](/docs/community) · [Features](/docs/features) · [AI Guide](/docs/ai) · [Privacy Policy](/docs/privacy) · [Data Transfer Notice](/docs/transfer) · [Scoring Standard](/docs/scoring) · [Admission Rules](/docs/admission) · [Changelog](/docs/changelog)
 
 ---
 

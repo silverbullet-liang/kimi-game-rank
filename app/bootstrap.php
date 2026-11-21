@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '3.68.0');
+define('APP_VERSION', '3.69.0');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);
@@ -172,6 +172,19 @@ if (is_api_request()) {
     } catch (Throwable $e) {
         app_log('discipline api guard failed: ' . $e->getMessage());
     }
+}
+
+/* ---------- 频率闸门：单 IP 每分钟的 API 请求上限 ----------
+ * 防的是「过了 CF 仍能打的裸脚本」把共享主机的入口进程打光，
+ * 那类压力在监控里表现为大量 520 / 508，而不是 4xx。
+ * 阈值 120/分钟：正常一屏 6–10 个请求，留十余倍余量；
+ * 超限锁 30 秒并返回 429，不弹验证 —— XHR 完不成挑战，弹了等于报错。
+ * 只对 api/ 下的请求计数，页面请求不受影响。 */
+if (is_api_request() && PHP_SAPI !== 'cli') {
+    try {
+        op_window_guard('rq_' . substr(discipline_ip_hash(client_ip()), 0, 24),
+            (int)cfg('security.api_per_minute', 120), 60, 30);
+    } catch (Throwable $e) { app_log('req gate: ' . $e->getMessage()); }
 }
 
 /* ---------- 访问准入：命中 IP 池的来源强制人机验证 ----------
