@@ -14,7 +14,7 @@ Una classifica a punteggio su sei dimensioni per la **community di Kimi**. PHP +
 [![PHP](https://img.shields.io/badge/PHP-7.0%2B-777BB4)](https://www.php.net/)
 [![MySQL](https://img.shields.io/badge/MySQL-5.7%2B-4479A1)](https://www.mysql.com/)
 
-**Sito**: [kimi-game-rank.wuaze.com](https://kimi-game-rank.wuaze.com) · **Mirror**: [kimi-game-rank.byethost33.com](https://kimi-game-rank.byethost33.com)
+**Sito**: [kimi-game-rank.de5.net](https://kimi-game-rank.de5.net) · Il sito mirror è stato dismesso
 
 > Questo è un **progetto non ufficiale**. Non ha alcun legame con Kimi o Moonshot AI.
 

@@ -14,7 +14,7 @@
 [![PHP](https://img.shields.io/badge/PHP-7.0%2B-777BB4)](https://www.php.net/)
 [![MySQL](https://img.shields.io/badge/MySQL-5.7%2B-4479A1)](https://www.mysql.com/)
 
-**公開サイト**: [kimi-game-rank.wuaze.com](https://kimi-game-rank.wuaze.com) · **ミラー**: [kimi-game-rank.byethost33.com](https://kimi-game-rank.byethost33.com)
+**公開サイト**: [kimi-game-rank.de5.net](https://kimi-game-rank.de5.net) · ミラーサイトは運用を終了しました
 
 > 本プロジェクトは **Kimi の公式プロジェクトではありません**。Moonshot AI とは一切関係ありません。
 

@@ -14,7 +14,7 @@
 [![PHP](https://img.shields.io/badge/PHP-7.0%2B-777BB4)](https://www.php.net/)
 [![MySQL](https://img.shields.io/badge/MySQL-5.7%2B-4479A1)](https://www.mysql.com/)
 
-**在线站点**: [kimi-game-rank.wuaze.com](https://kimi-game-rank.wuaze.com) · **镜像站**: [kimi-game-rank.byethost33.com](https://kimi-game-rank.byethost33.com)
+**在线站点**: [kimi-game-rank.de5.net](https://kimi-game-rank.de5.net) · 镜像站已退役，不再保留
 
 > 本项目**非 Kimi 官方项目**，与月之暗面（Moonshot AI）无从属关系。
 

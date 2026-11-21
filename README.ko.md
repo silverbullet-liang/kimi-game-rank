@@ -14,7 +14,7 @@
 [![PHP](https://img.shields.io/badge/PHP-7.0%2B-777BB4)](https://www.php.net/)
 [![MySQL](https://img.shields.io/badge/MySQL-5.7%2B-4479A1)](https://www.mysql.com/)
 
-**사이트**: [kimi-game-rank.wuaze.com](https://kimi-game-rank.wuaze.com) · **미러**: [kimi-game-rank.byethost33.com](https://kimi-game-rank.byethost33.com)
+**사이트**: [kimi-game-rank.de5.net](https://kimi-game-rank.de5.net) · 미러 사이트는 운영을 종료했습니다
 
 > 이 프로젝트는 **Kimi의 공식 프로젝트가 아닙니다**. Moonshot AI와 아무런 제휴 관계가 없습니다.
 

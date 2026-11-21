@@ -14,7 +14,7 @@ A six-dimension scoring leaderboard for the **Kimi community**. PHP + MySQL, zer
 [![PHP](https://img.shields.io/badge/PHP-7.0%2B-777BB4)](https://www.php.net/)
 [![MySQL](https://img.shields.io/badge/MySQL-5.7%2B-4479A1)](https://www.mysql.com/)
 
-**Live site**: [kimi-game-rank.wuaze.com](https://kimi-game-rank.wuaze.com) · **Mirror**: [kimi-game-rank.byethost33.com](https://kimi-game-rank.byethost33.com)
+**Live site**: [kimi-game-rank.de5.net](https://kimi-game-rank.de5.net) · No mirror — the old mirror has been retired.
 
 > This is an **unofficial project**. It is not affiliated with Kimi or Moonshot AI.
 
