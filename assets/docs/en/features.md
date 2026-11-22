@@ -73,7 +73,7 @@ The four leaderboards use **the same works and the same six-dimension score** (g
 5. **Images are cleaned up with the message lifecycle** to save space: recalling a message deletes its image, and images no longer referenced, or belonging to messages that have scrolled out of the displayed range, are removed too. A removed image shows an "image cleaned up" placeholder rather than a broken icon.
 6. Chat content is visible to everyone — **do not post personal information** there (phone numbers, addresses, account passwords and so on). Administrators may act on content that breaks the rules.
 7. **@ the official AI**: type `@` in a message and choose "Official AI", or use the `@` button beside the input box, to have the official AI answer that message. The reply appears as **AI**, usually under 150 words of plain text, and its cost is **deducted from the quota of the person who asked** (see section 3 of the [AI Guide](/docs/ai)). It **can look things up** — site data, arithmetic, weather, time, lunar dates and festivals (at most 2 lookups per reply) — and marks sources with a faint "Reference: ..." line. It **reads no personal account data**.
-7. **@ members**: typing `@` (or tapping the `@` button beside the input box) lists **members who really exist and are not suspended**, matched by the start of the name; tap to insert. Only a username that truly exists is marked as a mention — text typed after a bare `@` is not treated as calling anyone.
+8. **@ members**: typing `@` (or tapping the `@` button beside the input box) lists **members who really exist and are not suspended**, matched by the start of the name; tap to insert. Only a username that truly exists is marked as a mention — text typed after a bare `@` is not treated as calling anyone.
 
 ---
 
@@ -107,8 +107,8 @@ How to use it:
 **QR sign-in**: the "Sign in with QR code" tab shows a code; scan it with a phone that is already signed in and confirm there, and this device is signed in without typing a password. A human check is required both before the code is generated and when the phone confirms, and the code is valid for two minutes and works once.
 3. **Two-factor sign-in**: with a linked address you can turn it on in "Mine". Password sign-in then sends a code to that address and only issues the credential once the code matches. The switch asks for your current password, and it applies to administrator accounts as well.
 4. **Verification mail heals itself**: a failed delivery is retried and moved to another delivery channel; when the anonymous channel runs out of quota, a different sending account is picked up automatically — you never have to do anything twice.
-3. **Guest mode**: browse without registering; signing in unlocks voting, comments and the AI chat.
-5. The "Mine" page contains:
+5. **Guest mode**: browse without registering; signing in unlocks voting, comments and the AI chat.
+6. The "Mine" page contains:
    - **Check-in**: a daily check-in adds AI quota, and consecutive days give extra bonuses (the page shows the exact amounts);
    - **AI quota card**: available models, your calls today, site-wide remainder;
    - **Settings**: interface style (including festival themes), notification switches, visit-history switch, search AI summary switch;
@@ -120,14 +120,14 @@ How to use it:
      - When two skins match the same day, the one earlier in the catalogue wins (for example 8/19 in years when it is both Doctors' Day and Qixi).
    - **Profile**: avatar and profile card;
    - **Feedback entry**: goes straight to "Feedback".
-6. **Signed-in devices**: an account keeps at most **3 devices** signed in at once. When a fourth signs in, the one idle longest is signed out automatically and you are told which one.
+7. **Signed-in devices**: an account keeps at most **3 devices** signed in at once. When a fourth signs in, the one idle longest is signed out automatically and you are told which one.
    The "Mine" page lists them: an icon on the left for the device type (computer / phone / tablet / TV / car head unit / inside the Kimi app), the device name in the middle (Edge, Safari, Chrome, Kimi App WebView — Chinese browsers keep their own names instead of all reporting as Chrome), with brand and engine underneath (for example Samsung · Blink) and a browser fingerprint when one has been reported; on the right you can **sign a device out** with one tap, or **switch the account on that device remotely** — enter the target account and its password, and once the password checks out that device reloads under the new account on its next request. The person using it does nothing, and your other devices stay signed in (accounts with email two-step verification or suspended accounts cannot be switched remotely). "Switch account on this device" at the bottom signs out the browser you are using and returns it to the sign-in page.
    A device that is signed out or pushed out loses its credential immediately and has to sign in again on its next action.
    **Risk marks**: one of the conditions below marks the device "Check" (yellow), two mark it "Suspicious" (orange), all three mark it "High risk" (red). Hovering the mark shows the reason:
    - the same device has been seen on **3 or more different IP ranges** (a wide spread, as if it moved or came through a proxy);
    - more than **10 minutes after signing in there is still no browser-side trace** (page scripts never ran);
    - more than **24 hours after signing in there has been no activity at all**.
-4. **Privacy**: you can **turn visit history off at any time** in settings, and request deletion of what has already been recorded. See the [Privacy Policy](/docs/privacy).
+8. **Privacy**: you can **turn visit history off at any time** in settings, and request deletion of what has already been recorded. See the [Privacy Policy](/docs/privacy).
 
 ---
 

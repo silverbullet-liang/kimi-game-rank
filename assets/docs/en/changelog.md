@@ -7,6 +7,12 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.72.1 · 2026-11-22
+
+### Fixed: numbering in document lists
+
+Numbered lists in Features (sections 3 and 7) and Terms (section 5) had duplicates and gaps — two items numbered 4 in one section, or a jump from 11 straight to 13. They now run in order, and the English page is corrected the same way. Not a word of the content changed; only the numbers.
+
 ## v3.72.0 · 2026-11-22 (Night Watch)
 
 ### Changed: protection now judges by origin and behaviour, not just volume
