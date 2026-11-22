@@ -163,10 +163,6 @@ final class Pack {
 
     /* ============================ 生成配置 ============================ */
 
-    static String phpQuote(String s) {
-        return "'" + (s == null ? "" : s).replace("\\", "\\\\").replace("'", "\\'") + "'";
-    }
-
     private static String readText(File f) throws IOException {
         InputStream in = new java.io.FileInputStream(f);
         java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
@@ -194,18 +190,18 @@ final class Pack {
     }
 
     private static String dbBlock(Store.Site s, String name) {
-        return "\n        'host'    => " + phpQuote(s.dbHost)
+        return "\n        'host'    => " + Cfg.phpQuote(s.dbHost)
                 + ",\n        'port'    => " + (Store.blank(s.dbPort) ? "3306" : s.dbPort.trim())
-                + ",\n        'name'    => " + phpQuote(name)
-                + ",\n        'user'    => " + phpQuote(s.dbLogin)
-                + ",\n        'pass'    => " + phpQuote(s.dbPass)
+                + ",\n        'name'    => " + Cfg.phpQuote(name)
+                + ",\n        'user'    => " + Cfg.phpQuote(s.dbLogin)
+                + ",\n        'pass'    => " + Cfg.phpQuote(s.dbPass)
                 + ",\n        'charset' => 'utf8mb4',\n    ";
     }
 
     /** 互通：本站私钥 + 其余各站的地址与公钥（全互联） */
     private static String peersBlock(Store.Site self, List<Store.Site> all) {
         StringBuilder sb = new StringBuilder();
-        sb.append("\n        'private_key'   => ").append(phpQuote(self.privKey));
+        sb.append("\n        'private_key'   => ").append(Cfg.phpQuote(self.privKey));
         sb.append(",\n        'sync_settings' => array(),\n        'sites' => array(");
         List<Store.Site> others = new ArrayList<Store.Site>();
         for (int i = 0; i < all.size(); i++) { if (all.get(i) != self) { others.add(all.get(i)); } }
@@ -214,9 +210,9 @@ final class Pack {
         });
         for (int i = 0; i < others.size(); i++) {
             Store.Site o = others.get(i);
-            sb.append("\n            array('name' => ").append(phpQuote(o.name))
-              .append(", 'base_url' => ").append(phpQuote(normUrl(o.domain)))
-              .append(", 'pubkey' => ").append(phpQuote(o.pubKey)).append("),");
+            sb.append("\n            array('name' => ").append(Cfg.phpQuote(o.name))
+              .append(", 'base_url' => ").append(Cfg.phpQuote(normUrl(o.domain)))
+              .append(", 'pubkey' => ").append(Cfg.phpQuote(o.pubKey)).append("),");
         }
         sb.append("\n        ),\n    ");
         return sb.toString();
@@ -249,11 +245,20 @@ final class Pack {
             php = replaceBlock(php, "peers", peers);
         }
 
-        php = php.replaceFirst("('name'\\s*=>\\s*)'[^']*'", "$1" + Matcher.quoteReplacement(phpQuote(
-                Store.blank(s.name) ? "Kimi游戏榜" : s.name.trim())));   // 仅第一处 site.name
-        php = php.replaceFirst("('url'\\s*=>\\s*)'[^']*'", "$1" + Matcher.quoteReplacement(phpQuote(normUrl(s.domain))));
-        php = php.replaceFirst("('secret_raw'\\s*=>\\s*)'[^']*'", "$1" + Matcher.quoteReplacement(phpQuote(s.adminRaw)));
+        /* 站点名只能落在 site 段里。早先按「第一个 'name'」全局替换，
+           而 sample 里第一个 'name' 属于 db 段——结果把库名改成了站点名，
+           部署出来的站点连不上自己的库。这里改成按段定位。 */
+        int[] site = Cfg.rangeOf(php, "site");
+        if (site != null) {
+            php = Cfg.setScalar(php, site, "name", Cfg.phpQuote(
+                    Store.blank(s.name) ? "Kimi游戏榜" : s.name.trim()));
+            php = Cfg.setScalar(php, site, "url", Cfg.phpQuote(normUrl(s.domain)));
+        }
+        int[] adm = Cfg.rangeOf(php, "admin");
+        if (adm != null) { php = Cfg.setScalar(php, adm, "secret_raw", Cfg.phpQuote(s.adminRaw)); }
 
+        php = Cfg.applyAdv(php, Adv.CFG, s.adv);           /* 高级配置：用户的覆盖项 */
+        php = Cfg.sealConfig(php, s.domain);               /* 占位域名 → 真实域名 / 空 */
         writeText(new File(root, "config/config.php"), php);
         new File(root, "config/config.sample.php").delete();
     }
@@ -267,13 +272,15 @@ final class Pack {
         List<String> keys = splitKeys(s.aiKey);
         StringBuilder arr = new StringBuilder();
         for (int i = 0; i < keys.size(); i++) {
-            arr.append("\n        ").append(phpQuote(keys.get(i))).append(",");
+            arr.append("\n        ").append(Cfg.phpQuote(keys.get(i))).append(",");
         }
         if (keys.isEmpty()) { arr.append("\n        // 未填写：AI 功能不可用，站点其余功能不受影响\n    "); }
         else { arr.append("\n    "); }
         php = replaceBlock(php, "keys", arr.toString());
-        php = php.replaceFirst("('key'\\s*=>\\s*)'[^']*'",
-                "$1" + Matcher.quoteReplacement(phpQuote("")));      // OpenRouter 未填，留空
+        int[] or = Cfg.rangeOf(php, "openrouter");
+        php = Cfg.setScalar(php, or, "key", Cfg.phpQuote(""));      // OpenRouter 未填，留空
+        php = Cfg.applyAdv(php, Adv.KEYS, s.adv);               // 其余项：填了才写
+        php = Cfg.sealApiKeys(php, s.adv);                      // CHANGE_ME 占位口令必须清掉
 
         writeText(new File(root, "config/api_keys.php"), php);
         new File(root, "config/api_keys.sample.php").delete();

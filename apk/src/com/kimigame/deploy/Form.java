@@ -125,7 +125,7 @@ final class Form implements MainActivity.Screen {
         MaterialCardView key = Ui.card(a);
         Ui.add(key, Ui.title(a, "管理员密钥"), 0);
         final MaterialTextView[] shaRef = new MaterialTextView[1];
-        field(a, key, "密钥原文", d.adminRaw, "登录后台时输入这个", T_TEXT, new Setter() {
+        field(a, key, "密钥原文", d.adminRaw, "登录后台时输入这个", T_PASS, new Setter() {
             public void set(String v) {
                 d.adminRaw = v;
                 if (shaRef[0] != null) {
@@ -166,6 +166,9 @@ final class Form implements MainActivity.Screen {
             public void set(String v) { d.pageSize = v; }
         });
         Ui.add(bd, opt, 14);
+
+        /* ---- 高级设置（默认收起；留空即沿用源码默认） ---- */
+        Ui.add(bd, advBlock(a, d.adv), 14);
 
         /* ---- 连接信息（自动部署才需要） ---- */
         if (Store.MODE_AUTO.equals(Store.mode)) {
@@ -419,6 +422,49 @@ final class Form implements MainActivity.Screen {
         Ui.edit(t).setText(value == null ? "" : value);
         watch(t, set);
         Ui.add(box, t, box.getChildCount() == 0 ? 0 : 16);
+    }
+
+    /**
+     * 高级设置：按段分组、默认收起。
+     *
+     * 这里一个默认值都不预置——空框就是「沿用源码样例里的值」。
+     * 密钥类用密码框显示，产物里也不会出现占位串或写死的口令。
+     */
+    private ViewGroup advBlock(final MainActivity a, final java.util.LinkedHashMap<String, String> adv) {
+        MaterialCardView card = Ui.card(a);
+        Ui.add(card, Ui.title(a, "高级设置"), 0);
+        Ui.add(card, Ui.sub(a, "留空即沿用源码默认值。这里不预置任何密钥：输入框是空的，"
+                + "打包产物里也不会出现 CHANGE_ME 这类占位串或写死的口令。"), 6);
+
+        final LinearLayout body = Ui.col(a);
+        java.util.List<String> secs = Adv.secList(Adv.CFG);
+        for (int si = 0; si < secs.size(); si++) {
+            final String sec = secs.get(si);
+            Ui.add(body, Ui.label(a, Adv.secTitle(sec)), body.getChildCount() == 0 ? 4 : 22);
+            for (int i = 0; i < Adv.CFG.length; i++) {
+                final Adv.Item it = Adv.CFG[i];
+                if (!it.sec.equals(sec)) { continue; }
+                final String path = it.path();
+                String v = adv.get(path);
+                int type = it.kind == Adv.K_NUM ? T_NUM : (it.kind == Adv.K_SECRET ? T_PASS : T_TEXT);
+                field(a, body, it.title, v == null ? "" : v, it.hint, type, new Setter() {
+                    public void set(String x) { adv.put(path, x); }
+                });
+            }
+        }
+        body.setVisibility(View.GONE);
+
+        final MaterialButton toggle = Ui.outlined(a, "展开高级设置（" + Adv.CFG.length + " 项）");
+        Ui.add(card, toggle, 14);
+        Ui.add(card, body, 12);
+        toggle.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                boolean open = body.getVisibility() != View.VISIBLE;
+                body.setVisibility(open ? View.VISIBLE : View.GONE);
+                toggle.setText(open ? "收起高级设置" : "展开高级设置（" + Adv.CFG.length + " 项）");
+            }
+        });
+        return card;
     }
 
     private static void watch(TextInputLayout t, final Setter set) {

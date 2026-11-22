@@ -58,6 +58,11 @@ final class Store {
         String aiKey = "";
         String pageSize = "";
 
+        /* 高级配置：键为 "段.键"（如 "security.api_per_minute"），值一律存字符串。
+           空 = 沿用源码样例里的默认值；敏感项（密钥类）空则由打包器自动生成随机值，
+           既不留占位串，也不把任何现成凭据写进产物。 */
+        java.util.LinkedHashMap<String, String> adv = new java.util.LinkedHashMap<String, String>();
+
         // 连接信息（自动部署用；手动模式可留空）
         String conn = "ftp";           // ftp | ssh
         String host = "";
@@ -111,6 +116,7 @@ final class Store {
             t.conn = conn; t.host = host; t.port = port; t.login = login; t.pass = pass;
             t.remoteDir = remoteDir; t.sshPriv = sshPriv; t.ftpMode = ftpMode;
             t.privKey = privKey; t.pubKey = pubKey; t.paired = paired;
+            t.adv = new java.util.LinkedHashMap<String, String>(adv);
             return t;
         }
     }
@@ -203,6 +209,9 @@ final class Store {
         o.put("privKey", s.privKey);
         o.put("pubKey", s.pubKey);
         o.put("paired", s.paired);
+        JSONObject adv = new JSONObject();
+        for (java.util.Map.Entry<String, String> e : s.adv.entrySet()) { adv.put(e.getKey(), e.getValue()); }
+        o.put("adv", adv);
         return o;
     }
 
@@ -233,6 +242,11 @@ final class Store {
         s.privKey = o.optString("privKey", "");
         s.pubKey = o.optString("pubKey", "");
         s.paired = o.optBoolean("paired", false);
+        JSONObject adv = o.optJSONObject("adv");
+        if (adv != null) {
+            java.util.Iterator<String> it = adv.keys();
+            while (it.hasNext()) { String k = it.next(); s.adv.put(k, adv.optString(k, "")); }
+        }
         return s;
     }
 

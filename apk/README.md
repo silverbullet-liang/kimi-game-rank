@@ -21,6 +21,18 @@
 压缩包命名 `kimi-game-rank-<站点名>.zip`，保存到
 `/storage/emulated/0/Download/kimi-game-rank/`（Android 10+ 走 MediaStore，不需要存储权限）。
 
+## 高级设置（默认收起）
+
+表单里有一块「高级设置」，覆盖源码 `config/config.sample.php` 与 `config/api_keys.php` 里的每一项可配置内容：站点时区与强制 HTTPS、管理员用户名、AI 限额与模型、全站频次、安全与登录、熔断、可疑链接、规则源、液态玻璃、内容审核、私有盾、人机验证（含其限速）、OpenRouter、Turnstile、排障口令。
+
+规则只有一条：**留空 = 沿用源码默认值**，工具不预置、不生成、不写死任何值。
+
+- 密钥类（私有盾 secret、OpenRouter key、Turnstile secret、排障口令）默认是空的，输入框也是密码框；
+- 产物里不会出现 `CHANGE_ME_DEBUG_KEY`、`YOUR_OPENROUTER_API_KEY`、`your-domain.example` 这类占位串 —— 排障口令没填就清空（等于排障页不可访问），盾的 hosts 没填就用你填的域名，取不到就写成空数组（盾不生效）；
+- 站点名只写进 `site.name`，**不会**再覆盖 `db.name`（旧版本按「第一个 name」替换，会把库名改成站点名，导致连不上库）。
+
+不填任何高级项时，产物配置与源码样例逐字节相同 —— 这一点有自动化测试守着（`apk/test/CfgTest.java`，27 项）。
+
 ## 表单里几处容易填错的
 
 | 项 | 说明 |

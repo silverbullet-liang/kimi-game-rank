@@ -7,7 +7,19 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
-## v3.72.1 · 2026-11-22
+## v3.73.0 · 2026-11-22 (Sharp Tools)
+
+### Updated: the Android deploy tool now covers every setting
+
+The companion deploy tool (APK) can now configure everything the source has: site timezone and forced HTTPS, administrator username, AI limits and models, site-wide rate limits, security and sign-in, the circuit breaker, suspicious links, rule sources, liquid glass, content moderation, the origin shield, human verification (including its rate limit), OpenRouter, Turnstile and the diagnostic passphrase. They all live under "Advanced", collapsed by default.
+
+One rule: **leave it blank and the source default applies**. The tool never pre-fills, generates or hard-codes a key, and the produced config no longer contains placeholders such as `CHANGE_ME_DEBUG_KEY`, `YOUR_OPENROUTER_API_KEY` or `your-domain.example` — an empty diagnostic passphrase stays empty (which means those pages are unreachable), and the shield's host falls back to the domain you entered or stays empty (shield inactive). Key fields are masked.
+
+### Fixed: the database name was overwritten by the site name
+
+The old build replaced the site name on the first `name` it found — and the first `name` in the config belongs to the database block. The database name ended up being the site name, so the deployed site could not connect to its own database. Site names now go into the `site` section only.
+
+## v3.72.1 · 2026-11-22 (Numbered)
 
 ### Fixed: numbering in document lists
 
