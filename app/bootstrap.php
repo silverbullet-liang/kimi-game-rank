@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '3.71.0');
+define('APP_VERSION', '3.72.0');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);
@@ -126,6 +126,7 @@ require_once APP_ROOT . '/app/peer_crypto.php';
 require_once APP_ROOT . '/app/peer_sync.php';
 require_once APP_ROOT . '/app/audit.php';
 require_once APP_ROOT . '/app/gate.php';   /* 访问准入：命中 IP 池的来源强制人机验证 */
+require_once APP_ROOT . '/app/sentinel.php';   /* 多维哨兵：单来源速率 / 管理接口探测 / 登录撞库 */
 require_once APP_ROOT . '/app/migrate.php';
 require_once APP_ROOT . '/app/autoinstall.php';
 
@@ -194,6 +195,8 @@ if (is_api_request() && PHP_SAPI !== 'cli') {
  * 命中即拦：API 返回 403（前端据此刷新出验证页），页面直接渲染验证页。
  * 注意：请求走到这里，主机已经记了一次 hit，这道闸门不减少配额消耗，
  * 挡的是裸脚本与批量抓取。 */
+try { sen_guard(); } catch (Throwable $e) { app_log('sentinel failed: ' . $e->getMessage()); }
+
 try { gate_guard(); } catch (Throwable $e) { app_log('gate guard failed: ' . $e->getMessage()); }
 
 /* ---------- 设备活跃与操作痕迹：给「登录设备」的风险判据供数 ----------

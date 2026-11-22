@@ -7,6 +7,30 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.72.0 · 2026-11-22 (Night Watch)
+
+### Changed: protection now judges by origin and behaviour, not just volume
+
+There used to be a single view: site-wide requests per minute. That view has two flaws — a slow script can stay under the threshold forever, while a normal peak (several dozen visitors at once) could be mistaken for an attack and freeze the whole site, needing a manual restore.
+
+Counters are now kept per dimension, and **only the small set that actually misbehaves is handled — never the whole site**:
+
+- one origin sending far too much (over 600 requests a minute) → that origin alone is refused for ten minutes;
+- one origin failing sign-in repeatedly (30 times in ten minutes) → its sign-in is refused for half an hour;
+- **one device trying 8 or more different accounts within ten minutes** → that device's sign-in is refused for an hour. This is the credential-stuffing case: traffic that rotates IPs but keeps the device never trips an IP-only threshold, because each address only tries a few times;
+- a non-administrator hammering the admin entry (20 times in ten minutes) → that origin alone is refused for an hour;
+- site-wide sign-in failures spiking (300 in ten minutes with a failure rate above 80%) → recorded as a "sign-in under pressure" signal.
+
+Site-wide freezing stays, but no longer on volume alone: it triggers at twice the threshold, or at the threshold when one of the signals above is present. A plain peak no longer stops the site.
+
+### Added: a separate gate for bulk registration
+
+One origin registering more than 8 accounts in ten minutes is refused and stays refused for half an hour; abnormal site-wide registration volume is recorded as a signal too. The 11·14 incident began with registration flooding.
+
+Ordinary visitors never touch these thresholds: a page view is a dozen requests, a day holds one or two sign-ins, and one device is one account.
+
+---
+
 ## v3.71.0 · 2026-11-22 (Each to Its Own)
 
 ### Added: sign-in with a QR code

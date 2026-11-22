@@ -258,6 +258,15 @@ function login_mark(string $ip, bool $success, string $norm = '')
 {
     db_exec('INSERT INTO login_attempts (ip_hash, user_norm, success, created_at) VALUES (?, ?, ?, UTC_TIMESTAMP())',
         array(ip_hash($ip), $norm, $success ? 1 : 0));
+
+    /* 多维哨兵：失败按「来源 / 设备 / 全站」三路累计，成功则清掉该来源的账。
+       设备维度专抓「换 IP 但设备不变」的撞库——那类流量单个 IP 只试几次，
+       只看 IP 永远碰不到登录锁的阈值。 */
+    if (function_exists('sen_auth_try')) {
+        $__dev = function_exists('discipline_dev_of_request') ? discipline_dev_of_request() : '';
+        sen_auth_try();
+        if ($success) { sen_auth_ok($__dev); } else { sen_auth_fail((string)$norm, $__dev); }
+    }
     if ($success) {
         db_exec('DELETE FROM login_attempts WHERE ip_hash = ? AND success = 0', array(ip_hash($ip)));
         if ($norm !== '') {
@@ -271,6 +280,16 @@ function login_mark(string $ip, bool $success, string $norm = '')
  * ============================================================ */
 function user_register(string $username, string $password, string $email = '', string $code = '', bool $crossConsent = false): array
 {
+    /* 批量注册也是攻击形态（11·14 就是注册灌入）：单来源十分钟连开 5 个号就挡住，
+       全站同一时段注册量异常则记一个信号，交给熔断判定。 */
+    if (function_exists('sen_bump')) {
+        $__iph = sen_ip_hash();
+        if (sen_bump('reg', $__iph, 600) >= 8) { sen_pen('reg_ip', $__iph, 1800); }
+        sen_bump('reg', 'all', 600);
+        if (sen_sum('reg', 'all', 600, 6) >= 150) { sen_pen('reg_all', 'all', 900); }
+        if (sen_pen_left('reg_ip', $__iph) > 0) { fail(429, '注册过于频繁，请稍后再试'); }
+    }
+
     $raw = $username;
     $nfc = nfc_normalize($raw);
     $clean = strip_invisible($nfc);
@@ -505,6 +524,16 @@ function user_login(string $identifier, string $password): array
 {
     $raw = trim($identifier);
     $ip  = client_ip();
+
+    /* 哨兵已判定这个来源 / 这台设备在撞登录：直接拒绝，不再往下算密码 */
+    if (function_exists('sen_login_blocked')) {
+        $__sen = sen_login_blocked();
+        if (!empty($__sen['block'])) {
+            timing_delay();
+            fail(429, '尝试过于频繁，请稍后再试');
+        }
+    }
+
     /* 限速键：邮箱按归一邮箱计，其余按用户名规整值计 —— 同一账号换写法也落进同一个桶 */
     $key = (strpos($raw, '@') !== false) ? mail_norm($raw) : norm_username($raw);
     if (login_locked($key)) {

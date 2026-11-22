@@ -1,6 +1,6 @@
 {
-    "version": "3.71.0",
-    "at": "2026-11-22 00:45:39",
+    "version": "3.72.0",
+    "at": "2026-11-22 03:27:32",
     "algo": "sha256+md5",
     "files": {
         "index.php": {
@@ -29,9 +29,9 @@
             "size": 112029
         },
         "app/bootstrap.php": {
-            "sha256": "805d01fef06d1d2fb53dbe6f43c57e92c1ca3eb0dcb344e71c17d43ee09fdc89",
-            "md5": "f59e371130011777ce78144656688d7d",
-            "size": 13794
+            "sha256": "268ec35fbd02ee9a5725e0b668a275b25a8fcb7f6c4a884708a86a01009e8a9b",
+            "md5": "d4e16785cf3a7f707d2847a8a01eb4cd",
+            "size": 14010
         },
         "app/helpers.php": {
             "sha256": "c2fd48a4bb4962d295d89d201bfd20224dc87284909cdb57f4e4c47f8b694a22",
@@ -39,9 +39,9 @@
             "size": 44209
         },
         "app/auth.php": {
-            "sha256": "bc01fb980f9ebbb6be219d598527eec1f4ee7700d46897c7cbe9b0652e4e5721",
-            "md5": "7b5f6a34fd07821744312e99e6ffc244",
-            "size": 36957
+            "sha256": "a9623dae0121ae0fde1b25eb4bd1f588b0de6c0ef2871a91dc377481723fe52a",
+            "md5": "3f66a07a821e147fc91564ec13de1d47",
+            "size": 38425
         },
         "app/db.php": {
             "sha256": "a1d70926aa07b028608fb3d3ed35aa2f5f3828770e0da978b67d5992074ee3f5",
@@ -139,5 +139,5 @@
             "size": 12400
         }
     },
-    "sig": "d25f5d3ce00861b2f123eb6597473d2d1477603d27c22662283624b968d50b37"
+    "sig": "f28773f4745b7a9145a0cbde0677ffafa61486404b707bfe90595c0b18adb65a"
 }

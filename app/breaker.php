@@ -78,14 +78,51 @@ function brk_tick()
     brk_write(BRK_HB, $hb);
 }
 
-/** 判定一次：返回 array(rate, limit, trip) */
+/**
+ * 未过期的关键异常信号（撞库 / 管理接口探测）。
+ * 由 app/sentinel.php 写进 storage/cache/pen_*.txt；这里只读文件，不 require 任何模块 ——
+ * 熔断跑在一切之前，必须自包含。
+ */
+function brk_signals(): int
+{
+    $dir = brk_dir() . '/cache';
+    if (!is_dir($dir)) { return 0; }
+    $now = time();
+    $n = 0;
+    $names = @scandir($dir);
+    if (!is_array($names)) { return 0; }
+    foreach ($names as $f) {
+        if (!is_string($f)) { continue; }
+        if (strpos($f, 'pen_auth_all_') !== 0 && strpos($f, 'pen_admin_probe_') !== 0
+            && strpos($f, 'pen_auth_dev_') !== 0 && strpos($f, 'pen_reg_all_') !== 0) { continue; }
+        $exp = (int)@file_get_contents($dir . '/' . $f);
+        if ($exp > $now) { $n++; }
+    }
+    return $n;
+}
+
+/**
+ * 判定一次：返回 array(rate, limit, signals, trip)。
+ * 只看请求数会被慢速绕开，也容易把正常高峰误判成攻击 —— 所以越线之后还要看信号：
+ *   · 速率达到两倍阈值：直接熔断；
+ *   · 速率越线且有任一提权信号（撞库 / 探测管理接口）：熔断；
+ *   · 信号已有三条以上、速率到六成：熔断。
+ */
 function brk_decide(): array
 {
     brk_tick();
     $rate  = brk_rate();
     $limit = (int)brk_cfg('rate', 1200);
     if ($limit < 120) { $limit = 120; }
-    return array('rate' => $rate, 'limit' => $limit, 'trip' => $rate >= $limit);
+    $hard = (int)brk_cfg('rate_hard', 0);
+    if ($hard <= 0) { $hard = $limit * 2; }
+
+    $sig = brk_signals();
+    $trip = ($rate >= $hard)
+        || ($rate >= $limit && $sig >= 1)
+        || ($sig >= 3 && $rate >= (int)round($limit * 0.6));
+
+    return array('rate' => $rate, 'limit' => $limit, 'signals' => $sig, 'trip' => $trip);
 }
 
 /**
