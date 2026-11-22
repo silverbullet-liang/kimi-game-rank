@@ -1111,5 +1111,9 @@
   "删除后云端不再保留这一份；若本机正在使用它，也会一并移除。确定？": "This theme will be removed from the cloud, and from this device if it is in use. Continue?",
   "已从本机移除（云端主题仍保留在「我的主题」里）": "Removed from this device (it stays in My themes)",
   "自定义主题统一使用「液态玻璃」风格，正在切换…": "Custom themes use the Liquid Glass style — switching…",
-  "这份主题已失效，请重新导入": "This theme is no longer available; import it again"
+  "这份主题已失效，请重新导入": "This theme is no longer available; import it again",
+  "@ 提及": "@ mention",
+  "@ 提及（点选插入）": "@ mention (tap to insert)",
+  "没有找到该用户": "No such user",
+  "搜索失败，可继续输入重试": "Search failed — keep typing to retry"
 }

@@ -27,6 +27,14 @@ Site-wide freezing stays, but no longer on volume alone: it triggers at twice th
 
 One origin registering more than 8 accounts in ten minutes is refused and stays refused for half an hour; abnormal site-wide registration volume is recorded as a signal too. The 11·14 incident began with registration flooding.
 
+### Added: @-mentioning members in the world chat
+
+Type @ in the message box (or tap the @ button beside it) and a candidate list appears. It lists only **members who really exist and are not suspended**, matched by the first characters of the name; tapping inserts the mention, ↑↓ to move, Enter to confirm.
+
+Inside a message, only a username that really exists is marked as a mention — anything typed after a bare @ stays ordinary text and is not treated as calling someone.
+
+Lookups are prefix-only and return a few results at a time; there is no "list every member" entry, so the member table cannot be pulled out through this feature.
+
 Ordinary visitors never touch these thresholds: a page view is a dozen requests, a day holds one or two sign-ins, and one device is one account.
 
 ---

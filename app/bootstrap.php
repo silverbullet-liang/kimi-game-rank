@@ -99,6 +99,7 @@ require_once APP_ROOT . '/app/lunar.php';
 require_once APP_ROOT . '/app/festival.php';
 require_once APP_ROOT . '/app/chat_media.php';
 require_once APP_ROOT . '/app/lobby_ai.php';
+require_once APP_ROOT . '/app/lobby_mention.php';   /* @ 提及：真实用户检索 + 消息内提及解析 */
 require_once APP_ROOT . '/app/backup.php';
 require_once APP_ROOT . '/app/link_smart.php';
 require_once APP_ROOT . '/app/relink.php';

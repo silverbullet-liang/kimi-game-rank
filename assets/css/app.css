@@ -2013,3 +2013,14 @@ i.ic[class*='ti-'] { background-repeat: no-repeat; background-position: center; 
   .dev-name { font-size: 13px; }
   .dev-acts { flex-direction: column; gap: 4px; }
 }
+
+/* @ 提及候选列表 */
+.at-list { display: flex; flex-direction: column; gap: 2px; }
+.at-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  border: 0; background: transparent; color: var(--text); font: inherit;
+  padding: 9px 10px; border-radius: 10px; cursor: pointer; text-align: left;
+}
+.at-item:hover, .at-item.on { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.at-item:active { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.at-name { font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

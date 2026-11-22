@@ -73,6 +73,7 @@ The four leaderboards use **the same works and the same six-dimension score** (g
 5. **Images are cleaned up with the message lifecycle** to save space: recalling a message deletes its image, and images no longer referenced, or belonging to messages that have scrolled out of the displayed range, are removed too. A removed image shows an "image cleaned up" placeholder rather than a broken icon.
 6. Chat content is visible to everyone — **do not post personal information** there (phone numbers, addresses, account passwords and so on). Administrators may act on content that breaks the rules.
 7. **@ the official AI**: type `@` in a message and choose "Official AI", or use the `@` button beside the input box, to have the official AI answer that message. The reply appears as **AI**, usually under 150 words of plain text, and its cost is **deducted from the quota of the person who asked** (see section 3 of the [AI Guide](/docs/ai)). It **can look things up** — site data, arithmetic, weather, time, lunar dates and festivals (at most 2 lookups per reply) — and marks sources with a faint "Reference: ..." line. It **reads no personal account data**.
+7. **@ members**: typing `@` (or tapping the `@` button beside the input box) lists **members who really exist and are not suspended**, matched by the start of the name; tap to insert. Only a username that truly exists is marked as a mention — text typed after a bare `@` is not treated as calling anyone.
 
 ---
 

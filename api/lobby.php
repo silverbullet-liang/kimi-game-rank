@@ -18,7 +18,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 
 /** 单条消息 → 输出结构（列表与发送共用） */
-function chat_out(array $r, int $myUid): array
+function chat_out(array $r, int $myUid, array $mset = array()): array
 {
     $recalled = isset($r['is_recalled']) ? ((int)$r['is_recalled'] === 1) : false;
     /* 官方 AI 消息：user_id=0、msg_type='ai'，身份不再来自 users 表 */
@@ -42,6 +42,8 @@ function chat_out(array $r, int $myUid): array
         'cards'    => $recalled ? array() : $meta['cards'],
         'video'    => ($recalled || !isset($meta['v'])) ? null : $meta['v'],
         'time'     => to_local((string)$r['created_at'], 'm-d H:i'),
+        /* 只有真实存在的用户名才算提及：前端据此高亮，@乱打的字不生效 */
+        'mentions' => $recalled ? array() : lobby_mention_pick((string)($r['content'] ?? ''), $mset),
     );
 }
 
@@ -90,10 +92,27 @@ switch ($action) {
                 'hint' => '对话数据暂不可用，请稍后重试（若持续出现，请告知管理员）'));
         }
 
+        $texts = array();
+        foreach ($rows as $r) { $texts[] = (string)($r['content'] ?? ''); }
+        $mset = lobby_mention_index($texts);   /* 一批正文一次 SQL，不做逐条查询 */
         $items = array();
-        foreach ($rows as $r) { $items[] = chat_out($r, $myUid); }
+        foreach ($rows as $r) { $items[] = chat_out($r, $myUid, $mset); }
         ok(array('items' => $items));
         break;
+    }
+
+    /* ---------- @ 提及检索（仅登录成员；必须带查询串） ----------
+       设计上刻意没有「空查询 = 列出全部成员」，也没有分页游标：
+       成员表不能通过这个接口被整批拖走，只能按前缀一个个搜。 */
+    case 'users': {
+        require_token();
+        $q = trim(param_str('q', ''));
+        if ($q === '') { ok(array('items' => array())); break; }
+        if (mb_strlen($q, 'UTF-8') > 32) { fail(400, '查询串过长'); }
+        $ipk = 'ip:' . sen_ip_hash();
+        if (sen_sum('mn', $ipk, 60, 1) >= 30) { fail(429, '搜索过于频繁，请稍后再试'); }
+        sen_bump('mn', $ipk, 60);
+        ok(array('items' => lobby_mention_search($q, 6)));
     }
 
     /* ---------- 发送（仅登录成员） ---------- */

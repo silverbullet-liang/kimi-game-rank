@@ -4560,10 +4560,20 @@ function richInline(html) {
 }
 
 /** 世界对话消息：纯文本 + 表情 + 图片（刻意不渲染 Markdown，避免消息被格式刷屏） */
-function renderRich(text) {
-  /* @ 提及：与评论回复同款灰字（.reply-to） */
-  const h = esc(text).replace(/(^|[\s（(【[>])@([\u4e00-\u9fa5A-Za-z0-9_\-]{1,16})/g,
-    (m, p, nm) => p + '<span class="reply-to">@' + nm + '</span>');
+function renderRich(text, mentions) {
+  /* @ 提及：只高亮后端确认「真实存在」的用户名；命中先换占位符，
+     避免长名与短名互相嵌套（@张三 vs @张三丰）把结构刷坏。 */
+  let h = esc(text);
+  const names = (mentions || []).map(String).filter(Boolean).sort((a, b) => b.length - a.length);
+  const spans = [];
+  names.forEach(function (n) {
+    const en = esc(n);
+    const re = new RegExp('@' + en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    h = h.replace(re, function () { spans.push(en); return '\u0000' + (spans.length - 1) + '\u0000'; });
+  });
+  h = h.replace(/\u0000(\d+)\u0000/g, function (m, i) {
+    return '<span class="reply-to">@' + spans[Number(i)] + '</span>';
+  });
   return richInline(h);
 }
 
@@ -4774,9 +4784,9 @@ async function mountWorld(body) {
     } else if (m.msg_type === 'video' && m.media) {
       inner = videoCardHtml(m.media, m.video);
     } else if (m.msg_type === 'ai' && m.cards && m.cards.length) {
-      inner = cardsHtml(m.cards) + renderRich(m.content);
+      inner = cardsHtml(m.cards) + renderRich(m.content, m.mentions);
     } else {
-      inner = renderRich(m.content);
+      inner = renderRich(m.content, m.mentions);
     }
     const recallBtn = (m.mine && !m.recalled)
       ? ' · <button class="link" data-recall="1" style="border:0;background:0;font-size:12px">' + IC('action.close', 'ico-xs') + '<span>撤回</span></button>' : '';
@@ -4945,13 +4955,15 @@ async function mountWorld(body) {
 
   async function submit(type, payload) {
     if (!canSend) { toast('游客仅可查看，登录后可发言', 'err'); return; }
-    const hasAi = type !== 'image' && payload.content && payload.content.indexOf(AI_MENTION.trim()) >= 0;
+    const aiTag = '@' + t('官方AI');
+    const hasAi = type !== 'image' && payload.content && payload.content.indexOf(aiTag) >= 0;
     /* 乐观上屏：消息立刻出现，不必等后端（含 @AI 时后端要跑模型，会等十几秒） */
     const optimistic = {
       id: -Date.now(), uid: state.uid || 0, username: state.username, role: state.role,
       avatar: state.avatar, content: payload.content || '', msg_type: type,
       media: payload.media || '', video: payload.video || null, recalled: false, flag: '', mine: true,
       time: timeNow(), pending: true, aiPending: hasAi,
+      mentions: atMentionsIn(payload.content || ''),
     };
     if (stream.querySelector('.empty')) { stream.innerHTML = ''; seen.clear(); }
     const optEl = render(optimistic);
@@ -5039,6 +5051,12 @@ async function mountWorld(body) {
 
   sendBtn.addEventListener('click', sendText);
   input.addEventListener('keydown', e => {
+    if (picker.dataset.kind === 'mention' && atItems.length) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); atIndex = (atIndex + 1) % atItems.length; atPaint(); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); atIndex = (atIndex - 1 + atItems.length) % atItems.length; atPaint(); return; }
+      if (e.key === 'Enter') { e.preventDefault(); atInsertAt(atItems[atIndex].name); return; }
+    }
+    if (e.key === 'Escape' && picker.dataset.kind === 'mention') { e.preventDefault(); atHide(); return; }
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); }
   });
   input.addEventListener('input', () => {
@@ -5048,48 +5066,115 @@ async function mountWorld(body) {
   });
   input.addEventListener('focus', () => requestAnimationFrame(stick));
 
-  /* ---------- @ 提及（仅世界对话）：输入 @ 弹面板；@ 按钮一键插入 ---------- */
-  const AI_MENTION = t('@官方AI ');
-  function atInsert() {
-    const st = input.selectionStart, en = input.selectionEnd, v = input.value;
-    input.value = v.slice(0, st) + AI_MENTION + v.slice(en);
-    const p = st + AI_MENTION.length;
+  /* ---------- @ 提及（世界对话）：点 @ 按钮或输入 @ 弹出候选 ----------
+     候选 = 官方AI（前缀命中时）+ 后端检索到的真实用户；
+     后端没有「列出全部成员」的入口，只按前缀查，空查询直接回空。 */
+  const AI_NAME = t('官方AI');
+  const atCache = new Map();          /* 查询串 → 结果，本次会话内不重复打扰服务端 */
+  const atKnown = new Set();          /* 本会话确认过的用户名：乐观上屏时据此立即高亮 */
+  let atTimer = 0, atSeq = 0, atItems = [], atIndex = 0, atQ = '', atFailed = false;
+
+  function atRange() {
+    const pos = input.selectionStart;
+    if (pos == null) { return null; }
+    const m = input.value.slice(0, pos).match(/(?:^|[\s（(【\[>，。！？、,:;])@([^\s@]{0,16})$/);
+    return m ? { start: pos - m[1].length - 1, q: m[1] } : null;
+  }
+  function atHide() {
+    if (picker.dataset.kind === 'mention') { picker.hidden = true; picker.dataset.kind = ''; }
+    atItems = []; atQ = '';
+  }
+  function atInsertAt(name) {
+    const r = atRange();
+    const pos = input.selectionStart, v = input.value;
+    const from = r ? r.start : pos;
+    const txt = '@' + name + ' ';
+    input.value = v.slice(0, from) + txt + v.slice(pos);
+    const p = from + txt.length;
     input.setSelectionRange(p, p);
+    atHide();
     input.focus();
     input.dispatchEvent(new Event('input'));
   }
-  function atRange() {
-    const pos = input.selectionStart;
-    const m = input.value.slice(0, pos).match(/(?:^|[\s（(【[>])@([\u4e00-\u9fa5A-Za-z0-9]{0,7})$/);
-    return (m && m[1] !== undefined) ? { start: pos - m[1].length - 1 } : null;
+  function atPaint() {
+    picker.dataset.kind = 'mention';
+    if (!atItems.length) {
+      const msg = atFailed ? t('搜索失败，可继续输入重试') : t('没有找到该用户');
+      picker.innerHTML = '<div class="picker-head">' + t('@ 提及') + '</div>'
+        + '<div class="picker-body"><div class="tiny">' + esc(msg) + '</div></div>';
+      picker.hidden = false;
+      return;
+    }
+    picker.innerHTML = '<div class="picker-head">' + t('@ 提及（点选插入）') + '</div>'
+      + '<div class="at-list">' + atItems.map(function (it, i) {
+          const badge = it.role === 'ai'
+            ? '<span class="badge bd-ai">AI</span>'
+            : (it.role && it.role !== 'user' ? '<span class="badge">' + esc(it.role) + '</span>' : '');
+          return '<button class="at-item' + (i === atIndex ? ' on' : '') + '" data-at="' + i + '">'
+            + '<span class="at-name">@' + esc(it.name) + '</span>' + badge + '</button>';
+        }).join('') + '</div>';
+    picker.hidden = false;
+    picker.querySelectorAll('[data-at]').forEach(function (btn) {
+      btn.addEventListener('mousedown', function (e) { e.preventDefault(); });   /* 别抢焦点，否则光标错位 */
+      btn.addEventListener('click', function () { atInsertAt(atItems[Number(btn.dataset.at)].name); });
+    });
+  }
+  async function atQuery(q) {
+    const seq = ++atSeq;
+    atQ = q;
+    let users = [];
+    if (q) {
+      if (atCache.has(q)) {
+        users = atCache.get(q);
+      } else {
+        try {
+          const d = await api('lobby', 'users', { q: q }, { silent: true, tries: 1, timeout: 8000 });
+          users = (d && d.items) || [];
+        } catch (err) {
+          if (seq === atSeq) { atItems = []; atFailed = true; atPaint(); }
+          return;
+        }
+        if (atCache.size > 40) { atCache.clear(); }
+        atCache.set(q, users);
+      }
+    }
+    if (seq !== atSeq) { return; }
+    users.forEach(function (u) { atKnown.add(u.name); });
+    const list = [];
+    if (AI_NAME.indexOf(q) === 0) { list.push({ name: AI_NAME, role: 'ai' }); }
+    users.forEach(function (u) { if (u.name !== AI_NAME) { list.push(u); } });
+    atItems = list;
+    atIndex = 0;
+    atFailed = false;
+    atPaint();
+  }
+  function atMentionsIn(text) {
+    const t2 = String(text || ''), out = [];
+    if (t2.indexOf('@' + AI_NAME) >= 0) { out.push(AI_NAME); }
+    atKnown.forEach(function (n) { if (t2.indexOf('@' + n) >= 0 && out.indexOf(n) < 0) { out.push(n); } });
+    return out;
   }
   function atSync() {
     if (!canSend) { return; }
     const r = atRange();
-    const q = r ? input.value.slice(r.start + 1, input.selectionStart) : '';
-    if (!r || t('官方AI').indexOf(q) !== 0) {
-      if (picker.dataset.kind === 'mention') { picker.hidden = true; picker.dataset.kind = ''; }
-      return;
-    }
-    picker.dataset.kind = 'mention';
-    picker.innerHTML = '<div class="picker-head">@ 提及（点击插入）</div>'
-      + '<div class="picker-body"><button class="btn btn-sm" id="wAtPick">' + esc(AI_MENTION.trim()) + '</button>'
-      + '<div class="tiny" style="margin-top:6px">@ 官方 AI，它会回应这条消息</div></div>';
-    picker.hidden = false;
-    picker.querySelector('#wAtPick').addEventListener('click', () => {
-      const st = atRange();
-      const pos = input.selectionStart, v = input.value;
-      const from = st ? st.start : pos;
-      input.value = v.slice(0, from) + AI_MENTION + v.slice(pos);
-      const p = from + AI_MENTION.length;
-      input.setSelectionRange(p, p);
-      picker.hidden = true; picker.dataset.kind = '';
-      input.focus();
-      input.dispatchEvent(new Event('input'));
-    });
+    if (!r) { atHide(); return; }
+    clearTimeout(atTimer);
+    atTimer = setTimeout(function () { atQuery(r.q); }, 200);   /* 防抖：连打不在每个键都请求 */
   }
   const atBtn = body.querySelector('#wAt');
-  if (atBtn) { atBtn.addEventListener('click', atInsert); }
+  if (atBtn) {
+    atBtn.addEventListener('click', function () {
+      const pos = input.selectionStart, v = input.value;
+      const needSpace = !/(?:^|[\s（(【\[>，。！？、,:;])$/.test(v.slice(0, pos));
+      const txt = (needSpace ? ' ' : '') + '@';
+      input.value = v.slice(0, pos) + txt + v.slice(pos);
+      const p = pos + txt.length;
+      input.setSelectionRange(p, p);
+      input.focus();
+      input.dispatchEvent(new Event('input'));
+      atSync();
+    });
+  }
   input.addEventListener('input', atSync);
 
   const loginBtn = body.querySelector('#wLogin');
