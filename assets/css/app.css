@@ -1659,6 +1659,14 @@ html[data-theme="dark"] .mon-app { --mok:#4ade80; --mwarn:#fbbf24; --mbad:#f8717
 .cf-box{display:flex;flex-direction:column;gap:6px;min-height:66px}
 .cf-box #cfSlot{min-height:65px}
 
+/* 扫码登录：二维码区（白底，保证任何皮肤下都可扫） */
+.qr-box { display: flex; justify-content: center; margin: 4px 0 2px; }
+.qr-canvas { width: 200px; height: 200px; display: grid; place-items: center; padding: 10px;
+  border-radius: 12px; background: #fff; border: 1px solid var(--line); }
+.qr-canvas svg { width: 100%; height: 100%; display: block; }
+.qr-canvas .tiny { text-align: center; line-height: 1.5; padding: 0 6px; }
+:root[data-theme="dark"] .qr-canvas { background: #fff; }
+
 /* 语言选择 */
 .lang-list{display:flex;gap:8px;flex-wrap:wrap}
 .lang-btn{appearance:none;border:1px solid var(--line);background:0;color:var(--muted);font-size:14px;padding:9px 18px;cursor:pointer}
@@ -1779,6 +1787,19 @@ i.ic[class*='ti-'] { background-repeat: no-repeat; background-position: center; 
 .skin-card.tj-add { border-style: dashed; }
 .skin-card.tj-on { box-shadow: inset 0 0 0 2px var(--accent); }
 .skin-card .tj-prev { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+
+/* 我的主题：云端保存的多份主题，可就地切换 */
+.tj-mine { width: 100%; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.tj-mine-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; font-size: 13px; font-weight: 600; }
+.tj-mine-list { display: flex; flex-direction: column; }
+.tj-mine-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
+.tj-mine-row:first-child { border-top: 0; }
+.tj-mine-row.on { background: color-mix(in srgb, var(--accent) 7%, transparent); border-radius: 8px; padding-left: 6px; padding-right: 6px; }
+.tj-mine-main { flex: 1 1 auto; min-width: 0; }
+.tj-mine-name { display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tj-mine-on { flex: none; padding: 0 6px; border-radius: 6px; font-size: 11px; font-weight: 500;
+  background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+
 
 /* ── 图标位：主题可替换的槽位（75 个位置全部接入） ──────────────────
    .ic-slot 是统一外壳，尺寸随上下文；主题覆盖后内部换成 img / css 图标。 */

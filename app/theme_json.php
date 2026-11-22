@@ -10,8 +10,20 @@ declare(strict_types=1);
 /** 单份主题上限：1 MB */
 function theme_json_max_bytes(): int { return 1048576; }
 
-/** 云端保留天数：7 天 */
-function theme_json_ttl_days(): int { return 7; }
+/** 云端保留天数。原来只有 7 天、且一个账号只存一份；现在允许并存多份，
+    期限放宽到 90 天，免得列表里的主题过一周就整批消失。 */
+function theme_json_ttl_days(): int { return 90; }
+
+/** 一个账号最多保存几份主题 */
+function theme_save_limit(): int { return 10; }
+
+/** 某账号当前保存的主题份数（顺手清掉已过期的） */
+function theme_saved_count(int $uid): int
+{
+    if ($uid <= 0 || !table_exists('user_themes')) { return 0; }
+    db_exec('DELETE FROM user_themes WHERE uid = ? AND expires_at <= UTC_TIMESTAMP()', array($uid));
+    return (int)db_val('SELECT COUNT(*) FROM user_themes WHERE uid = ?', array($uid));
+}
 
 /**
  * @return array [ok(bool), errors(string[]), meta(array|null)]

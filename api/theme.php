@@ -90,7 +90,7 @@ switch ($action) {
 
     case 'save': {
         csrf_verify();
-        if (!rate_limit('theme_save_' . (int)$ident['uid'], 30, 3600)) {
+        if (!rate_limit('theme_save_' . (int)$ident['uid'], 60, 3600)) {
             fail(429, '保存过于频繁，请稍后再试');
         }
         $raw = param_str('json', '');
@@ -102,30 +102,86 @@ switch ($action) {
         if (!$ok) { fail(400, '主题未通过校验：' . $errs[0]); }
         if (!table_exists('user_themes')) { fail(503, '主题同步暂不可用'); }
 
-        $now = time();
-        $created = gmdate('Y-m-d H:i:s', $now);
-        $expires = gmdate('Y-m-d H:i:s', $now + theme_json_ttl_days() * 86400);
-        db_exec('DELETE FROM user_themes WHERE uid = ?', array((int)$ident['uid']));
-        db_insert('INSERT INTO user_themes (uid, theme_id, theme_name, bytes, body, created_at, expires_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)',
-            array((int)$ident['uid'], $meta['id'], $meta['name'], (int)$meta['bytes'], $raw, $created, $expires));
+        $uid = (int)$ident['uid'];
+        $label = trim((string)param_str('name', ''));
+        $label = mb_substr($label === '' ? (string)$meta['name'] : $label, 0, 32, 'UTF-8');
+        if ($label === '') { $label = '未命名主题'; }
 
-        ok(array('id' => $meta['id'], 'name' => $meta['name'], 'expires_at' => $expires));
+        $expires = gmdate('Y-m-d H:i:s', time() + theme_json_ttl_days() * 86400);
+        /* 先清掉自己已过期的，避免占着额度 */
+        db_exec('DELETE FROM user_themes WHERE uid = ? AND expires_at <= UTC_TIMESTAMP()', array($uid));
+
+        /* 更新：给了行号就更新那一行（须属于本人）；否则按主题 id 覆盖同主题，不堆重复副本 */
+        $rowId = (int)param_int('row', 0);
+        if ($rowId <= 0) {
+            $hit = db_one('SELECT id FROM user_themes WHERE uid = ? AND theme_id = ? ORDER BY id DESC LIMIT 1',
+                array($uid, (string)$meta['id']));
+            if ($hit !== null) { $rowId = (int)$hit['id']; }
+        }
+        if ($rowId > 0) {
+            $own = db_one('SELECT id FROM user_themes WHERE id = ? AND uid = ? LIMIT 1', array($rowId, $uid));
+            if ($own === null) { fail(404, '主题不存在或已删除'); }
+            db_exec('UPDATE user_themes SET theme_id = ?, theme_name = ?, bytes = ?, body = ?, expires_at = ?
+                     WHERE id = ? AND uid = ?',
+                array((string)$meta['id'], $label, (int)$meta['bytes'], $raw, $expires, $rowId, $uid));
+            ok(array('row' => $rowId, 'id' => $meta['id'], 'name' => $label, 'expires_at' => $expires,
+                'count' => theme_saved_count($uid)));
+            break;
+        }
+
+        if (theme_saved_count($uid) >= theme_save_limit()) {
+            fail(409, '最多保存 ' . theme_save_limit() . ' 份主题，请先删掉不用的');
+        }
+        $newId = db_insert('INSERT INTO user_themes (uid, theme_id, theme_name, bytes, body, created_at, expires_at)
+                            VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP(), ?)',
+            array($uid, (string)$meta['id'], $label, (int)$meta['bytes'], $raw, $expires));
+        ok(array('row' => $newId, 'id' => $meta['id'], 'name' => $label, 'expires_at' => $expires,
+            'count' => theme_saved_count($uid)));
+        break;
+    }
+
+    /* 我的主题列表（只给概要，正文按需取，避免一次拉回十份大文件） */
+    case 'saved': {
+        if (!table_exists('user_themes')) { ok(array('items' => array(), 'limit' => 0)); }
+        $uid = (int)$ident['uid'];
+        db_exec('DELETE FROM user_themes WHERE uid = ? AND expires_at <= UTC_TIMESTAMP()', array($uid));
+        $rows = db_all('SELECT id, theme_id, theme_name, bytes, created_at, expires_at
+                        FROM user_themes WHERE uid = ? ORDER BY id DESC LIMIT 20', array($uid));
+        $out = array();
+        foreach ($rows as $r) {
+            $out[] = array(
+                'row'        => (int)$r['id'],
+                'id'         => (string)$r['theme_id'],
+                'name'       => (string)$r['theme_name'],
+                'bytes'      => (int)$r['bytes'],
+                'created_at' => (string)$r['created_at'],
+                'expires_at' => (string)$r['expires_at'],
+            );
+        }
+        ok(array('items' => $out, 'limit' => theme_save_limit()));
         break;
     }
 
     case 'get': {
         if (!table_exists('user_themes')) { ok(array('json' => '', 'name' => '')); }
-        $row = db_one('SELECT theme_id, theme_name, body, expires_at FROM user_themes WHERE uid = ? ORDER BY id DESC LIMIT 1',
-            array((int)$ident['uid']));
+        $uid = (int)$ident['uid'];
+        $rowId = (int)param_int('row', 0);
+        if ($rowId > 0) {
+            $row = db_one('SELECT id, theme_id, theme_name, body, expires_at FROM user_themes
+                           WHERE id = ? AND uid = ? LIMIT 1', array($rowId, $uid));
+        } else {
+            $row = db_one('SELECT id, theme_id, theme_name, body, expires_at FROM user_themes
+                           WHERE uid = ? ORDER BY id DESC LIMIT 1', array($uid));
+        }
         if ($row === null) { ok(array('json' => '', 'name' => '')); }
         $exp = strtotime((string)$row['expires_at'] . ' UTC');
         if ($exp !== false && $exp <= time()) {
             /* 过期即删：不等到 GC，读取时顺手清掉 */
-            db_exec('DELETE FROM user_themes WHERE uid = ?', array((int)$ident['uid']));
+            db_exec('DELETE FROM user_themes WHERE id = ? AND uid = ?', array((int)$row['id'], $uid));
             ok(array('json' => '', 'name' => '', 'expired' => 1));
         }
         ok(array(
+            'row'        => (int)$row['id'],
             'json'       => (string)$row['body'],
             'id'         => (string)$row['theme_id'],
             'name'       => (string)$row['theme_name'],
@@ -137,7 +193,13 @@ switch ($action) {
     case 'del': {
         csrf_verify();
         if (table_exists('user_themes')) {
-            db_exec('DELETE FROM user_themes WHERE uid = ?', array((int)$ident['uid']));
+            $uid = (int)$ident['uid'];
+            $rowId = (int)param_int('row', 0);
+            if ($rowId > 0) {
+                db_exec('DELETE FROM user_themes WHERE id = ? AND uid = ?', array($rowId, $uid));
+            } else {
+                db_exec('DELETE FROM user_themes WHERE uid = ?', array($uid));
+            }
         }
         ok(array('deleted' => 1));
         break;

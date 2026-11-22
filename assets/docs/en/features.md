@@ -103,6 +103,7 @@ How to use it:
 
 1. **Register and sign in**: username plus password, with a **human check** (primary: Cloudflare Turnstile, usually a single tap or none at all; if the primary is unavailable a fallback channel is used automatically). The username is your display name, **shown site-wide and not changeable after registration** (no line breaks or decorative special characters, and it must pass content review); contact an administrator if you forget your password.
 2. **Three ways to identify yourself**: UID, username, or a linked email — all with the password. The sign-in page also has a "Code sign-in" tab: enter the address, receive a code, done — no password to remember. An email can also be linked during registration (optional, one code to confirm).
+**QR sign-in**: the "Sign in with QR code" tab shows a code; scan it with a phone that is already signed in and confirm there, and this device is signed in without typing a password. A human check is required both before the code is generated and when the phone confirms, and the code is valid for two minutes and works once.
 3. **Two-factor sign-in**: with a linked address you can turn it on in "Mine". Password sign-in then sends a code to that address and only issues the credential once the code matches. The switch asks for your current password, and it applies to administrator accounts as well.
 4. **Verification mail heals itself**: a failed delivery is retried and moved to another delivery channel; when the anonymous channel runs out of quota, a different sending account is picked up automatically — you never have to do anything twice.
 3. **Guest mode**: browse without registering; signing in unlocks voting, comments and the AI chat.
@@ -214,7 +215,7 @@ The login is used only to read this one work. It is not stored and not displayed
 - The total number of themes sits at the top; below is every approved theme, searchable by name, author or theme id.
 - Themes featured by an administrator carry a "Featured" badge, are pinned to the front and highlighted.
 - Each card has two actions:
-  - **Save as mine** — adds it to your own themes, switchable later in Mine → Appearance (requires login).
+  - **Save as mine** — adds it to your own themes (**up to 10**, kept for 90 days), switchable later in Mine → Appearance → My themes; saving the same theme again updates it instead of piling up copies (requires login).
   - **Apply** — takes effect on this device only, without overwriting what you saved.
 - "Design spec" at the top right jumps straight to the full specification in the repository: fields, icon slots and border positions.
 

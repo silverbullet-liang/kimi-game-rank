@@ -7,7 +7,7 @@
  */
 declare(strict_types=1);
 
-define('SCHEMA_VERSION', 54);
+define('SCHEMA_VERSION', 55);
 
 /**
  * 表的全部列名（按表名缓存）。
@@ -2825,6 +2825,32 @@ INCDOC36;
             app_log('schema migrated to v54（远程切换账号）');
         } catch (Throwable $e) {
             app_log('migrate v54 failed: ' . $e->getMessage());
+        }
+    }
+
+    /* ---------- v55：扫码登录（一次性短票据，二维码接口自带防刷） ---------- */
+    if ($cur < 55) {
+        try {
+            db_exec("CREATE TABLE IF NOT EXISTS `qr_logins` (
+                `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `qr_id` CHAR(32) NOT NULL COMMENT '二维码里的公开 id（16 字节随机十六进制）',
+                `secret_hash` CHAR(64) NOT NULL COMMENT '轮询凭证的哈希，明文只下发给发起方一次',
+                `status` VARCHAR(12) NOT NULL DEFAULT 'pending' COMMENT 'pending/confirmed/done',
+                `uid` INT NOT NULL DEFAULT 0,
+                `role` VARCHAR(12) NOT NULL DEFAULT '',
+                `polls` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '轮询次数，超过上限即作废',
+                `ip_hash` CHAR(64) NOT NULL DEFAULT '',
+                `created_at` DATETIME NOT NULL,
+                `expires_at` DATETIME NOT NULL,
+                `confirmed_at` DATETIME NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uk_qr` (`qr_id`),
+                KEY `idx_qr_exp` (`expires_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='扫码登录票据（两分钟有效，一次性）'");
+            setting_set('schema_version', '55');
+            app_log('schema migrated to v55（扫码登录）');
+        } catch (Throwable $e) {
+            app_log('migrate v55 failed: ' . $e->getMessage());
         }
     }
 

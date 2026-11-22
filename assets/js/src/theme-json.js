@@ -807,6 +807,47 @@ function restoreThemeJson() {
   }
 }
 
+/* ---------- 自定义主题统一用液态玻璃皮肤 ----------
+ * 皮肤是一份独立的 CSS 文件，由服务端按 cookie 选择加载，前端只改 dataset.skin
+ * 换不掉整套样式。所以用户主动「应用主题」时把 kimgr_skin 写成 glass，并把原
+ * 皮肤记在 kimgr_skin_prev，清除主题时再还原。
+ * 启动恢复（restore）不触发这里，否则刷新会来回打转。 */
+var SKIN_PREV_KEY = 'kimgr_skin_prev';
+
+function readCookieVal(name) {
+  try {
+    var m = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : '';
+  } catch (e) { return ''; }
+}
+
+function writeCookieVal(name, val, maxAge) {
+  try {
+    document.cookie = name + '=' + encodeURIComponent(val) + '; path=/; max-age='
+      + (maxAge === undefined ? 31536000 : maxAge) + '; SameSite=Lax';
+  } catch (e) {}
+}
+
+/** 自定义主题一律按液态玻璃渲染；返回 true 表示刚改了 cookie、需要刷新一次 */
+function ensureSkin() {
+  var cur = readCookieVal('kimgr_skin') || document.documentElement.dataset.skin || 'glass';
+  document.documentElement.dataset.skin = 'glass';
+  if (cur === 'glass') { return false; }
+  if (!readCookieVal(SKIN_PREV_KEY)) { writeCookieVal(SKIN_PREV_KEY, cur); }
+  writeCookieVal('kimgr_skin', 'glass');
+  return true;
+}
+
+/** 清除自定义主题后，把用户原来选的皮肤还回去 */
+function restoreSkin() {
+  var prev = readCookieVal(SKIN_PREV_KEY);
+  writeCookieVal(SKIN_PREV_KEY, '', 0);
+  if (!prev || prev === 'glass') { return false; }
+  writeCookieVal('kimgr_skin', prev);
+  document.documentElement.dataset.skin = prev;
+  return true;
+}
+
 const ThemeJSON = {
   parse: parse,
   apply: apply,
@@ -816,6 +857,8 @@ const ThemeJSON = {
   current: current,
   reapply: function () { if (TJ.theme) { applyVars(TJ.theme); } },
   restore: restoreThemeJson,
+  ensureSkin: ensureSkin,
+  restoreSkin: restoreSkin,
   slots: SLOTS,
   limits: { json: MAX_JSON, layers: MAX_LAYERS, layerBytes: MAX_LAYER_BYTES, bgBytes: MAX_BG_BYTES },
 };

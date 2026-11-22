@@ -751,6 +751,13 @@ function mountAppearance(box) {
         <button class="btn-ghost btn-sm" type="button" id="tjApply">${t('应用')}</button>
       </div>
       <div class="tiny" id="tjState">${t('未启用。可导入他人分享的主题文件，最大 1 MB。')}</div>
+      <div class="tj-mine">
+        <div class="tj-mine-head">
+          <span>${t('我的主题')}</span>
+          <span class="tiny" id="tjMineCount"></span>
+        </div>
+        <div id="tjMineList" class="tj-mine-list"><div class="tiny muted">${t('加载中…')}</div></div>
+      </div>
     </div>
     <div class="setting-row ${FESTIVAL_KEYS.indexOf(skin) >= 0 ? 'fj-locked' : ''}" style="flex-direction:column;align-items:flex-start;gap:8px">
       <span>${t('主题色（蓝紫色 / 苹果色 / 自定义）')}</span>
@@ -814,6 +821,12 @@ function mountAppearance(box) {
 
       /* 每种风格是一份独立 CSS 文件，由内联脚本按 cookie 选择加载，
          因此切换动作 = 写 cookie（+ 同步账号偏好）→ 刷新页面。 */
+      /* 选了内置皮肤就退出自定义主题：主题自带背景与图标，留着会互相打架 */
+      if (sk !== '__tj' && window.ThemeJSON && window.ThemeJSON.current()) {
+        window.ThemeJSON.clear();
+        try { localStorage.removeItem('kimgr_tjson'); localStorage.setItem('kimgr_tjson_on', '0'); } catch (e) {}
+        try { localStorage.removeItem('kimgr_tjson_row'); } catch (e) {}
+      }
       setSkinCookie(sk);
       setPrefs(Object.assign({}, getPrefs(), { skin: sk }));
       if (state.role !== 'guest') {
@@ -869,6 +882,8 @@ function bindThemeJson(box) {
   const fileEl = box.querySelector('#tjFile');
   const pasteBox = box.querySelector('#tjPasteBox');
   const textEl = box.querySelector('#tjText');
+  const listEl = box.querySelector('#tjMineList');
+  const countEl = box.querySelector('#tjMineCount');
 
   const show = () => {
     const clr = box.querySelector('#tjClear');
@@ -898,7 +913,87 @@ function bindThemeJson(box) {
   };
   show();
 
-  const applyText = async (text) => {
+  /* ---------- 我的主题：云端最多 10 份，可就地切换 ---------- */
+  let mineItems = [];
+  const curRow = () => {
+    try { return Number(localStorage.getItem('kimgr_tjson_row') || 0); } catch (e) { return 0; }
+  };
+  const setCurRow = (v) => {
+    try { v ? localStorage.setItem('kimgr_tjson_row', String(v)) : localStorage.removeItem('kimgr_tjson_row'); } catch (e) {}
+  };
+
+  const renderMine = (d) => {
+    if (!listEl) return;
+    mineItems = (d && d.items) || [];
+    const limit = (d && d.limit) || 0;
+    if (countEl) countEl.textContent = mineItems.length + (limit ? ' / ' + limit : '');
+    if (!mineItems.length) {
+      listEl.innerHTML = '<div class="tiny muted">' + t('还没有保存的主题。导入或粘贴一份，会自动存到这里。') + '</div>';
+      return;
+    }
+    const active = curRow();
+    listEl.innerHTML = mineItems.map(function (it) {
+      const on = Number(it.row) === active;
+      return '<div class="tj-mine-row' + (on ? ' on' : '') + '">'
+        + '<div class="tj-mine-main"><div class="tj-mine-name">' + esc(it.name || it.id)
+        + (on ? '<span class="tj-mine-on">' + t('使用中') + '</span>' : '') + '</div>'
+        + '<div class="tiny muted">' + esc(it.id) + ' · ' + Math.max(1, Math.round(Number(it.bytes || 0) / 1024)) + ' KB</div></div>'
+        + '<button class="btn-ghost btn-sm" data-tjapply="' + it.row + '">' + t('应用') + '</button>'
+        + '<button class="btn-ghost btn-sm" data-tjdel="' + it.row + '">' + t('删除') + '</button>'
+        + '</div>';
+    }).join('');
+    listEl.querySelectorAll('[data-tjapply]').forEach(function (b) {
+      b.addEventListener('click', function () { applyRow(Number(b.getAttribute('data-tjapply')), b); });
+    });
+    listEl.querySelectorAll('[data-tjdel]').forEach(function (b) {
+      b.addEventListener('click', async function () {
+        const row = Number(b.getAttribute('data-tjdel'));
+        if (!(await dialog(t('删除主题'), t('删除后云端不再保留这一份；若本机正在使用它，也会一并移除。确定？'), t('删除')))) { return; }
+        try {
+          await api('theme', 'del', { row: row });
+          if (curRow() === row) {
+            TJ.clear();
+            try { localStorage.removeItem('kimgr_tjson'); localStorage.setItem('kimgr_tjson_on', '0'); } catch (e) {}
+            setCurRow(0);
+            if (TJ.restoreSkin) { TJ.restoreSkin(); }
+          }
+          toast(t('已删除'));
+          show(); loadMine();
+        } catch (e) { toast(e.message || '操作失败', 'err'); }
+      });
+    });
+  };
+
+  const loadMine = async () => {
+    if (!listEl) { return; }
+    if (state.role === 'guest') {
+      listEl.innerHTML = '<div class="tiny muted">' + t('登录后可把主题存到云端，换设备也能用。') + '</div>';
+      if (countEl) { countEl.textContent = ''; }
+      return;
+    }
+    try {
+      renderMine(await api('theme', 'saved', null, { silent: true, retry: false }));
+    } catch (e) {
+      listEl.innerHTML = '<div class="tiny muted">' + t('主题列表暂时取不到') + '</div>';
+    }
+  };
+
+  const applyRow = async (row, btn) => {
+    if (btn) { btnLoading(btn, true); }
+    try {
+      const d = await api('theme', 'get', { row: row }, { silent: true });
+      if (!d || !d.json) { toast(t('这份主题已失效，请重新导入'), 'err'); if (btn) { btnLoading(btn, false); } return; }
+      applyText(String(d.json), { skipSave: true, row: row });
+    } catch (e) {
+      toast(e.message || '操作失败', 'err');
+      if (btn) { btnLoading(btn, false); }
+    }
+  };
+
+  loadMine();
+
+  const applyText = async (text, opts) => {
+    opts = opts || {};
     if (!text) return;
     if (text.length > 1024 * 1024) { toast(t('主题文件超过 1 MB，已拒绝')); return; }
     const r = TJ.applyRaw(text);
@@ -907,13 +1002,26 @@ function bindThemeJson(box) {
       return;
     }
     try { localStorage.setItem('kimgr_tjson', text); localStorage.setItem('kimgr_tjson_on', '1'); } catch (e) {}
+    if (opts.row) { setCurRow(opts.row); }
     show();
     toast(t('主题已应用'));
     if (r.warns.length) { toast(t('提示') + '：' + r.warns[0]); }
-    /* 云同步：登录态下随账号走，7 天后自动过期 */
-    if (state.role !== 'guest') {
-      try { await api('theme', 'save', { json: text }); toast(t('已同步到云端（7 天有效）')); }
-      catch (e) { toast(t('云端同步失败，已在本机生效') + '：' + (e && e.message ? e.message : '')); }
+    /* 存成「我的主题」里的一份：同一份主题不会重复堆积，最多 10 份 */
+    if (!opts.skipSave && state.role !== 'guest') {
+      try {
+        const nm = (r.theme && r.theme.name) ? tjName(r.theme.name) : '';
+        const saved = await api('theme', 'save', { json: text, name: nm }, { silent: true });
+        if (saved && saved.row) { setCurRow(saved.row); }
+        toast(t('已保存到我的主题'));
+        loadMine();
+      } catch (e) {
+        toast(t('云端保存失败，已在本机生效') + '：' + (e && e.message ? e.message : ''));
+      }
+    }
+    /* 自定义主题一律按液态玻璃呈现：皮肤不一致时写 cookie 并刷新一次 */
+    if (TJ.ensureSkin && TJ.ensureSkin()) {
+      toast(t('自定义主题统一使用「液态玻璃」风格，正在切换…'));
+      setTimeout(function () { location.reload(); }, 500);
     }
   };
 
@@ -941,13 +1049,15 @@ function bindThemeJson(box) {
   });
 
   const btnClear = box.querySelector('#tjClear');
-  if (btnClear) btnClear.addEventListener('click', async () => {
+  if (btnClear) btnClear.addEventListener('click', () => {
     TJ.clear();
     try { localStorage.removeItem('kimgr_tjson'); localStorage.setItem('kimgr_tjson_on', '0'); } catch (e) {}
-    if (textEl) textEl.value = '';
-    show();
-    toast(t('已移除导入的主题'));
-    if (state.role !== 'guest') { try { await api('theme', 'del'); } catch (e) {} }
+    setCurRow(0);
+    const back = TJ.restoreSkin ? TJ.restoreSkin() : false;
+    if (textEl) { textEl.value = ''; }
+    show(); loadMine();
+    toast(t('已从本机移除（云端主题仍保留在「我的主题」里）'));
+    if (back) { setTimeout(function () { location.reload(); }, 400); }
   });
 }
 

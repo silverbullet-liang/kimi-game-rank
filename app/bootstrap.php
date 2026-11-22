@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '3.70.1');
+define('APP_VERSION', '3.71.0');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);
@@ -121,6 +121,7 @@ require_once APP_ROOT . '/app/uid.php';
 require_once APP_ROOT . '/app/ip_lookup.php';
 require_once APP_ROOT . '/app/discipline.php';
 require_once APP_ROOT . '/app/devices.php';
+require_once APP_ROOT . '/app/qr_login.php';   /* 扫码登录：一次性短票据 */
 require_once APP_ROOT . '/app/peer_crypto.php';
 require_once APP_ROOT . '/app/peer_sync.php';
 require_once APP_ROOT . '/app/audit.php';

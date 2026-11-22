@@ -2864,6 +2864,47 @@ function restoreThemeJson() {
   }
 }
 
+/* ---------- 自定义主题统一用液态玻璃皮肤 ----------
+ * 皮肤是一份独立的 CSS 文件，由服务端按 cookie 选择加载，前端只改 dataset.skin
+ * 换不掉整套样式。所以用户主动「应用主题」时把 kimgr_skin 写成 glass，并把原
+ * 皮肤记在 kimgr_skin_prev，清除主题时再还原。
+ * 启动恢复（restore）不触发这里，否则刷新会来回打转。 */
+var SKIN_PREV_KEY = 'kimgr_skin_prev';
+
+function readCookieVal(name) {
+  try {
+    var m = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : '';
+  } catch (e) { return ''; }
+}
+
+function writeCookieVal(name, val, maxAge) {
+  try {
+    document.cookie = name + '=' + encodeURIComponent(val) + '; path=/; max-age='
+      + (maxAge === undefined ? 31536000 : maxAge) + '; SameSite=Lax';
+  } catch (e) {}
+}
+
+/** 自定义主题一律按液态玻璃渲染；返回 true 表示刚改了 cookie、需要刷新一次 */
+function ensureSkin() {
+  var cur = readCookieVal('kimgr_skin') || document.documentElement.dataset.skin || 'glass';
+  document.documentElement.dataset.skin = 'glass';
+  if (cur === 'glass') { return false; }
+  if (!readCookieVal(SKIN_PREV_KEY)) { writeCookieVal(SKIN_PREV_KEY, cur); }
+  writeCookieVal('kimgr_skin', 'glass');
+  return true;
+}
+
+/** 清除自定义主题后，把用户原来选的皮肤还回去 */
+function restoreSkin() {
+  var prev = readCookieVal(SKIN_PREV_KEY);
+  writeCookieVal(SKIN_PREV_KEY, '', 0);
+  if (!prev || prev === 'glass') { return false; }
+  writeCookieVal('kimgr_skin', prev);
+  document.documentElement.dataset.skin = prev;
+  return true;
+}
+
 const ThemeJSON = {
   parse: parse,
   apply: apply,
@@ -2873,6 +2914,8 @@ const ThemeJSON = {
   current: current,
   reapply: function () { if (TJ.theme) { applyVars(TJ.theme); } },
   restore: restoreThemeJson,
+  ensureSkin: ensureSkin,
+  restoreSkin: restoreSkin,
   slots: SLOTS,
   limits: { json: MAX_JSON, layers: MAX_LAYERS, layerBytes: MAX_LAYER_BYTES, bgBytes: MAX_BG_BYTES },
 };
@@ -6419,6 +6462,13 @@ function mountAppearance(box) {
         <button class="btn-ghost btn-sm" type="button" id="tjApply">${t('应用')}</button>
       </div>
       <div class="tiny" id="tjState">${t('未启用。可导入他人分享的主题文件，最大 1 MB。')}</div>
+      <div class="tj-mine">
+        <div class="tj-mine-head">
+          <span>${t('我的主题')}</span>
+          <span class="tiny" id="tjMineCount"></span>
+        </div>
+        <div id="tjMineList" class="tj-mine-list"><div class="tiny muted">${t('加载中…')}</div></div>
+      </div>
     </div>
     <div class="setting-row ${FESTIVAL_KEYS.indexOf(skin) >= 0 ? 'fj-locked' : ''}" style="flex-direction:column;align-items:flex-start;gap:8px">
       <span>${t('主题色（蓝紫色 / 苹果色 / 自定义）')}</span>
@@ -6482,6 +6532,12 @@ function mountAppearance(box) {
 
       /* 每种风格是一份独立 CSS 文件，由内联脚本按 cookie 选择加载，
          因此切换动作 = 写 cookie（+ 同步账号偏好）→ 刷新页面。 */
+      /* 选了内置皮肤就退出自定义主题：主题自带背景与图标，留着会互相打架 */
+      if (sk !== '__tj' && window.ThemeJSON && window.ThemeJSON.current()) {
+        window.ThemeJSON.clear();
+        try { localStorage.removeItem('kimgr_tjson'); localStorage.setItem('kimgr_tjson_on', '0'); } catch (e) {}
+        try { localStorage.removeItem('kimgr_tjson_row'); } catch (e) {}
+      }
       setSkinCookie(sk);
       setPrefs(Object.assign({}, getPrefs(), { skin: sk }));
       if (state.role !== 'guest') {
@@ -6537,6 +6593,8 @@ function bindThemeJson(box) {
   const fileEl = box.querySelector('#tjFile');
   const pasteBox = box.querySelector('#tjPasteBox');
   const textEl = box.querySelector('#tjText');
+  const listEl = box.querySelector('#tjMineList');
+  const countEl = box.querySelector('#tjMineCount');
 
   const show = () => {
     const clr = box.querySelector('#tjClear');
@@ -6566,7 +6624,87 @@ function bindThemeJson(box) {
   };
   show();
 
-  const applyText = async (text) => {
+  /* ---------- 我的主题：云端最多 10 份，可就地切换 ---------- */
+  let mineItems = [];
+  const curRow = () => {
+    try { return Number(localStorage.getItem('kimgr_tjson_row') || 0); } catch (e) { return 0; }
+  };
+  const setCurRow = (v) => {
+    try { v ? localStorage.setItem('kimgr_tjson_row', String(v)) : localStorage.removeItem('kimgr_tjson_row'); } catch (e) {}
+  };
+
+  const renderMine = (d) => {
+    if (!listEl) return;
+    mineItems = (d && d.items) || [];
+    const limit = (d && d.limit) || 0;
+    if (countEl) countEl.textContent = mineItems.length + (limit ? ' / ' + limit : '');
+    if (!mineItems.length) {
+      listEl.innerHTML = '<div class="tiny muted">' + t('还没有保存的主题。导入或粘贴一份，会自动存到这里。') + '</div>';
+      return;
+    }
+    const active = curRow();
+    listEl.innerHTML = mineItems.map(function (it) {
+      const on = Number(it.row) === active;
+      return '<div class="tj-mine-row' + (on ? ' on' : '') + '">'
+        + '<div class="tj-mine-main"><div class="tj-mine-name">' + esc(it.name || it.id)
+        + (on ? '<span class="tj-mine-on">' + t('使用中') + '</span>' : '') + '</div>'
+        + '<div class="tiny muted">' + esc(it.id) + ' · ' + Math.max(1, Math.round(Number(it.bytes || 0) / 1024)) + ' KB</div></div>'
+        + '<button class="btn-ghost btn-sm" data-tjapply="' + it.row + '">' + t('应用') + '</button>'
+        + '<button class="btn-ghost btn-sm" data-tjdel="' + it.row + '">' + t('删除') + '</button>'
+        + '</div>';
+    }).join('');
+    listEl.querySelectorAll('[data-tjapply]').forEach(function (b) {
+      b.addEventListener('click', function () { applyRow(Number(b.getAttribute('data-tjapply')), b); });
+    });
+    listEl.querySelectorAll('[data-tjdel]').forEach(function (b) {
+      b.addEventListener('click', async function () {
+        const row = Number(b.getAttribute('data-tjdel'));
+        if (!(await dialog(t('删除主题'), t('删除后云端不再保留这一份；若本机正在使用它，也会一并移除。确定？'), t('删除')))) { return; }
+        try {
+          await api('theme', 'del', { row: row });
+          if (curRow() === row) {
+            TJ.clear();
+            try { localStorage.removeItem('kimgr_tjson'); localStorage.setItem('kimgr_tjson_on', '0'); } catch (e) {}
+            setCurRow(0);
+            if (TJ.restoreSkin) { TJ.restoreSkin(); }
+          }
+          toast(t('已删除'));
+          show(); loadMine();
+        } catch (e) { toast(e.message || '操作失败', 'err'); }
+      });
+    });
+  };
+
+  const loadMine = async () => {
+    if (!listEl) { return; }
+    if (state.role === 'guest') {
+      listEl.innerHTML = '<div class="tiny muted">' + t('登录后可把主题存到云端，换设备也能用。') + '</div>';
+      if (countEl) { countEl.textContent = ''; }
+      return;
+    }
+    try {
+      renderMine(await api('theme', 'saved', null, { silent: true, retry: false }));
+    } catch (e) {
+      listEl.innerHTML = '<div class="tiny muted">' + t('主题列表暂时取不到') + '</div>';
+    }
+  };
+
+  const applyRow = async (row, btn) => {
+    if (btn) { btnLoading(btn, true); }
+    try {
+      const d = await api('theme', 'get', { row: row }, { silent: true });
+      if (!d || !d.json) { toast(t('这份主题已失效，请重新导入'), 'err'); if (btn) { btnLoading(btn, false); } return; }
+      applyText(String(d.json), { skipSave: true, row: row });
+    } catch (e) {
+      toast(e.message || '操作失败', 'err');
+      if (btn) { btnLoading(btn, false); }
+    }
+  };
+
+  loadMine();
+
+  const applyText = async (text, opts) => {
+    opts = opts || {};
     if (!text) return;
     if (text.length > 1024 * 1024) { toast(t('主题文件超过 1 MB，已拒绝')); return; }
     const r = TJ.applyRaw(text);
@@ -6575,13 +6713,26 @@ function bindThemeJson(box) {
       return;
     }
     try { localStorage.setItem('kimgr_tjson', text); localStorage.setItem('kimgr_tjson_on', '1'); } catch (e) {}
+    if (opts.row) { setCurRow(opts.row); }
     show();
     toast(t('主题已应用'));
     if (r.warns.length) { toast(t('提示') + '：' + r.warns[0]); }
-    /* 云同步：登录态下随账号走，7 天后自动过期 */
-    if (state.role !== 'guest') {
-      try { await api('theme', 'save', { json: text }); toast(t('已同步到云端（7 天有效）')); }
-      catch (e) { toast(t('云端同步失败，已在本机生效') + '：' + (e && e.message ? e.message : '')); }
+    /* 存成「我的主题」里的一份：同一份主题不会重复堆积，最多 10 份 */
+    if (!opts.skipSave && state.role !== 'guest') {
+      try {
+        const nm = (r.theme && r.theme.name) ? tjName(r.theme.name) : '';
+        const saved = await api('theme', 'save', { json: text, name: nm }, { silent: true });
+        if (saved && saved.row) { setCurRow(saved.row); }
+        toast(t('已保存到我的主题'));
+        loadMine();
+      } catch (e) {
+        toast(t('云端保存失败，已在本机生效') + '：' + (e && e.message ? e.message : ''));
+      }
+    }
+    /* 自定义主题一律按液态玻璃呈现：皮肤不一致时写 cookie 并刷新一次 */
+    if (TJ.ensureSkin && TJ.ensureSkin()) {
+      toast(t('自定义主题统一使用「液态玻璃」风格，正在切换…'));
+      setTimeout(function () { location.reload(); }, 500);
     }
   };
 
@@ -6609,13 +6760,15 @@ function bindThemeJson(box) {
   });
 
   const btnClear = box.querySelector('#tjClear');
-  if (btnClear) btnClear.addEventListener('click', async () => {
+  if (btnClear) btnClear.addEventListener('click', () => {
     TJ.clear();
     try { localStorage.removeItem('kimgr_tjson'); localStorage.setItem('kimgr_tjson_on', '0'); } catch (e) {}
-    if (textEl) textEl.value = '';
-    show();
-    toast(t('已移除导入的主题'));
-    if (state.role !== 'guest') { try { await api('theme', 'del'); } catch (e) {} }
+    setCurRow(0);
+    const back = TJ.restoreSkin ? TJ.restoreSkin() : false;
+    if (textEl) { textEl.value = ''; }
+    show(); loadMine();
+    toast(t('已从本机移除（云端主题仍保留在「我的主题」里）'));
+    if (back) { setTimeout(function () { location.reload(); }, 400); }
   });
 }
 
@@ -6735,7 +6888,11 @@ function simpleAvatar(seed) {
 
 
 
-async function renderLogin(container) {
+async function renderLogin(container, ctx) {
+  /* 手机扫码后打开的是 #/login?qr=<id>：已登录则显示确认面板，未登录先登录再自动确认 */
+  const qrId = (ctx && ctx.params && ctx.params.qr)
+    ? String(ctx.params.qr).replace(/[^a-f0-9]/gi, '').slice(0, 32) : '';
+  let pendingQr = '';
   /* ?tab=code 可直接落到验证码登录（邮件里给的入口、或用户从地址栏直达） */
   let tab = (/[?&]tab=code\b/.test(location.search)) ? 'code' : 'password';   // password | code | guest
   let sub = 'login';      // login | register
@@ -6753,6 +6910,7 @@ async function renderLogin(container) {
           <div class="seg" style="margin-bottom:14px">
             <button data-tab="password" class="${tab === 'password' ? 'on' : ''}">密码登录</button>
             <button data-tab="code" class="${tab === 'code' ? 'on' : ''}">${t('验证码登录')}</button>
+            <button data-tab="qr" class="${tab === 'qr' ? 'on' : ''}">${t('扫码登录')}</button>
             <button data-tab="guest" class="${tab === 'guest' ? 'on' : ''}">游客模式</button>
           </div>
           <div id="pane"></div>
@@ -6777,8 +6935,14 @@ async function renderLogin(container) {
       catch (e) { toast(e.message, 'err'); }
     });
     const pane = container.querySelector('#pane');
+    /* 带着二维码 id 进来：已登录就是「确认登录」，否则先登录、成功后再自动确认 */
+    if (qrId) {
+      if (state.role !== 'guest' && state.token) { paintQrConfirm(pane); return; }
+      pendingQr = qrId;
+    }
     if (tab === 'password') paintPassword(pane);
     else if (tab === 'code') paintCode(pane);
+    else if (tab === 'qr') paintQr(pane);
     else paintGuest(pane);
   }
 
@@ -6816,6 +6980,142 @@ async function renderLogin(container) {
     });
     const first = pane.querySelector('#tCode');
     if (first) { first.focus(); }
+  }
+
+  /* ---------- 手机端：确认另一台设备登录 ---------- */
+  function paintQrConfirm(pane) {
+    pane.innerHTML = `
+      <div class="tiny" style="margin-bottom:10px">有人在另一台设备上扫码，想用「${esc(state.username)}」这个账号登录。</div>
+      <div class="tiny muted" style="margin-bottom:14px">确认后那台设备会立即以你的身份登录。二维码两分钟内有效、只能用一次；不是你本人的操作就点取消。</div>
+      <div id="qrCap" class="cf-box" style="margin-bottom:12px"></div>
+      <button class="btn" id="qrOk" style="width:100%">确认登录</button>
+      <div class="tiny" style="text-align:center;margin-top:10px"><span class="link" id="qrNo">不是我，取消</span></div>`;
+    const capHost = pane.querySelector('#qrCap');
+    const needCap = captchaConfig().on;
+    if (needCap) { mountCaptcha(capHost); }
+    pane.querySelector('#qrNo').addEventListener('click', () => navigate('#/mine'));
+    pane.querySelector('#qrOk').addEventListener('click', async function () {
+      /* 确认方同样要过人机验证：这枚操作会把另一台设备授权成登录态 */
+      if (needCap && !captchaToken()) { toast(t('请先完成人机验证'), 'err'); return; }
+      btnLoading(this, true);
+      try {
+        await api('qr', 'confirm', {
+          qr_id: qrId, cap_token: captchaToken(), cap_channel: captchaChannel(),
+        });
+        toast(t('已确认，请回到那台设备继续'));
+        navigate('#/mine');
+      } catch (e) {
+        toast(e.message || '操作失败', 'err');
+        btnLoading(this, false);
+        if (needCap) { resetCaptcha(capHost); }
+      }
+    });
+  }
+
+  /* ---------- 桌面端：显示二维码并轮询 ---------- */
+  function paintQr(pane) {
+    pane.innerHTML = `
+      <div id="qrCap" class="cf-box" style="margin-bottom:10px"></div>
+      <div class="qr-box"><div id="qrCanvas" class="qr-canvas"><div class="tiny muted">${t('先完成上方的人机验证')}</div></div></div>
+      <div class="tiny" id="qrHint" style="text-align:center;margin:10px 0 0">${t('通过验证后自动生成二维码')}</div>
+      <div class="tiny" style="text-align:center;margin-top:8px"><span class="link" id="qrRefresh">${t('二维码失效？点此刷新')}</span></div>`;
+
+    let dead = false, timer = null, expAt = 0;
+    const box = pane.querySelector('#qrCanvas');
+    const hint = pane.querySelector('#qrHint');
+
+    const stop = () => {
+      dead = true;
+      if (timer) { clearTimeout(timer); timer = null; }
+    };
+    const tickHint = () => {
+      if (hint && !dead) {
+        const left = Math.max(0, Math.round((expAt - Date.now()) / 1000));
+        hint.textContent = t('用已登录的手机扫描二维码') + '（' + left + 's）';
+      }
+    };
+
+    const capHost = pane.querySelector('#qrCap');
+    const needCap = captchaConfig().on;
+
+    const refresh = async () => {
+      /* 生成二维码前先过人机验证：没有凭证就不发请求，换一次验证再回来 */
+      if (needCap && !captchaToken()) {
+        if (hint) { hint.textContent = t('请先完成上方的人机验证'); }
+        resetCaptcha(capHost);
+        return;
+      }
+      stop();
+      dead = false;
+      if (box) { box.innerHTML = '<div class="tiny muted">' + t('正在生成…') + '</div>'; }
+      try {
+        /* 创建接口按 IP 限速（每小时 8 个），连点几次刷新会先被自己挡住 */
+        const d = await api('qr', 'create',
+          { cap_token: captchaToken(), cap_channel: captchaChannel() }, { silent: true });
+        expAt = Date.now() + Number(d.expires_in || 120) * 1000;
+        if (!window.qrcode) { if (box) { box.textContent = t('二维码组件未加载'); } return; }
+        const url = location.origin + location.pathname + '#/login?qr=' + d.qr_id;
+        const qr = window.qrcode(0, 'M');
+        qr.addData(url);
+        qr.make();
+        if (box) { box.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2 }); }
+        /* 人机验证凭证是一次性的，这张已经用掉了：重新挂一枚，
+           等二维码失效点刷新时用户只需再点一次，不会带着死凭证去撞墙 */
+        if (needCap) { resetCaptcha(capHost); }
+        tickHint();
+
+        const step = Math.max(1, Number(d.interval || 2));
+        const poll = async () => {
+          if (dead) { return; }
+          try {
+            const r = await api('qr', 'poll', { qr_id: d.qr_id, secret: d.secret }, { silent: true, retry: false });
+            if (r && r.status === 'confirmed') {
+              stop();
+              if (hint) { hint.textContent = t('已确认，正在登录…'); }
+              setToken(r.token);
+              await finishLogin({ token: r.token, uid: r.uid, role: r.role, username: r.username });
+              return;
+            }
+            if (r && r.status === 'expired') { stop(); if (hint) { hint.textContent = t('二维码已过期，请点下方刷新'); } return; }
+          } catch (e) {
+            if (e && (Number(e.code) === 404 || Number(e.code) === 410)) {
+              stop();
+              if (hint) { hint.textContent = t('二维码已失效，请点下方刷新'); }
+              return;
+            }
+          }
+          tickHint();
+          timer = setTimeout(poll, step * 1000);
+          if (window.__addPageTimer) { window.__addPageTimer(timer); }
+        };
+        timer = setTimeout(poll, step * 1000);
+        if (window.__addPageTimer) { window.__addPageTimer(timer); }
+      } catch (e) {
+        /* 验证凭证被消耗掉之后再刷新会撞在这里：换一枚新凭证，别让用户对着死二维码 */
+        if (needCap && e && Number(e.code) === 400 && String(e.message || '').indexOf('人机验证') >= 0) {
+          resetCaptcha(capHost);
+          if (hint) { hint.textContent = t('请先完成上方的人机验证'); }
+        }
+        if (box) { box.textContent = (e && e.message) ? e.message : '生成失败'; }
+      }
+    };
+
+    pane.querySelector('#qrRefresh').addEventListener('click', function () {
+      if (needCap && !captchaToken()) {
+        if (hint) { hint.textContent = t('请先完成上方的人机验证'); }
+        resetCaptcha(capHost);
+        return;
+      }
+      refresh();
+    });
+    if (needCap) {
+      /* 与登录页一致：先过 Cap，拿到凭证再生成；凭证是一次性的，刷新即重新验证 */
+      if (box) { box.innerHTML = '<div class="tiny muted">' + t('先完成上方的人机验证') + '</div>'; }
+      if (hint) { hint.textContent = t('通过验证后自动生成二维码'); }
+      mountCaptcha(capHost, function (tok) { if (tok) { refresh(); } });
+    } else {
+      refresh();
+    }
   }
 
   /* 邮箱验证码登录：先在「我的」里绑定过邮箱，这里才能收到码 */
@@ -7069,6 +7369,14 @@ async function renderLogin(container) {
     } catch (e) {}
     toast(guest ? '已进入游客模式' : (t('欢迎，') + state.username));
     if (Number(state.settings.notify) === 1) askNotifyPermission();
+    /* 从二维码链接进来、刚登录完：顺手把那台设备的登录确认掉 */
+    if (!guest && pendingQr) {
+      try {
+        await api('qr', 'confirm', { qr_id: pendingQr });
+        toast(t('已确认，另一台设备即将登录'));
+      } catch (e) {}
+      pendingQr = '';
+    }
     // 登录后回「我的」；游客进入回榜单（路由会重绘页面与抽屉，无需整页刷新）
     navigate(guest ? '#/rank' : '#/mine');
     if (!guest && typeof window.__nameFixCheck === 'function') { window.__nameFixCheck(); }

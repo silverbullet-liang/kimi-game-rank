@@ -7,6 +7,28 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.71.0 · 2026-11-22 (Each to Its Own)
+
+### Added: sign-in with a QR code
+
+The sign-in page has a "Sign in with QR code" tab: the computer shows a code, you scan it with a phone that is already signed in and confirm there, and the computer is signed in — no password typed on the desktop.
+
+- The code is **valid for two minutes and works once**; it dies the moment it is confirmed, and an expired or used code tells you to refresh.
+- **A human check comes first, before the code is generated** — the same gate as password sign-in — and **the confirming phone passes one too**, because that tap hands a sign-in to another device.
+- The endpoint is built for the assumption that it will be hammered: at most 8 codes per hour per origin and 400 per hour site-wide, a hard cap on how many pending codes can exist at once (beyond it, new requests are refused rather than queued into the database), a poll limit per code, expired and spent codes deleted immediately, and a polling secret issued once with only its hash stored — a wrong secret still counts as an attempt.
+
+### Fixed: an account could keep only one custom theme
+
+"Save to mine" used to overwrite: saving a second theme deleted the first, including ones collected from the theme directory. Themes now coexist, **up to 10 per account**, listed under "Me → Appearance → My themes" with one-tap switching and deletion. Saving the same theme again updates it instead of piling up copies, and the retention period went from 7 days to 90.
+
+### Changed: custom themes always render in Liquid Glass
+
+A custom theme brings its own background, icons, borders and click effects, while a "design style" (Liquid Glass / MD3 / Pixel / Sketch / Neo-brutal) still sits underneath. The two used to stack, so the same theme looked very different from one style to another, and some combinations fought each other.
+
+Applying a custom theme now switches to Liquid Glass automatically; the previous style is remembered and restored when the theme is removed. Want another style? Then not using a custom theme is the answer.
+
+---
+
 ## v3.70.1 · 2026-11-21 (The Name Matches the Thing)
 
 ### Fixed: devices that were signed in but never appeared

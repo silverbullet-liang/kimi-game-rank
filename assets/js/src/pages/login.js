@@ -6,7 +6,11 @@ import { navigate } from '../router.js';
 import { applyTheme } from '../theme.js';
 import { mountCaptcha, resetCaptcha, captchaToken, captchaChannel, captchaConfig } from '../captcha.js';
 
-export async function renderLogin(container) {
+export async function renderLogin(container, ctx) {
+  /* 手机扫码后打开的是 #/login?qr=<id>：已登录则显示确认面板，未登录先登录再自动确认 */
+  const qrId = (ctx && ctx.params && ctx.params.qr)
+    ? String(ctx.params.qr).replace(/[^a-f0-9]/gi, '').slice(0, 32) : '';
+  let pendingQr = '';
   /* ?tab=code 可直接落到验证码登录（邮件里给的入口、或用户从地址栏直达） */
   let tab = (/[?&]tab=code\b/.test(location.search)) ? 'code' : 'password';   // password | code | guest
   let sub = 'login';      // login | register
@@ -24,6 +28,7 @@ export async function renderLogin(container) {
           <div class="seg" style="margin-bottom:14px">
             <button data-tab="password" class="${tab === 'password' ? 'on' : ''}">密码登录</button>
             <button data-tab="code" class="${tab === 'code' ? 'on' : ''}">${t('验证码登录')}</button>
+            <button data-tab="qr" class="${tab === 'qr' ? 'on' : ''}">${t('扫码登录')}</button>
             <button data-tab="guest" class="${tab === 'guest' ? 'on' : ''}">游客模式</button>
           </div>
           <div id="pane"></div>
@@ -48,8 +53,14 @@ export async function renderLogin(container) {
       catch (e) { toast(e.message, 'err'); }
     });
     const pane = container.querySelector('#pane');
+    /* 带着二维码 id 进来：已登录就是「确认登录」，否则先登录、成功后再自动确认 */
+    if (qrId) {
+      if (state.role !== 'guest' && state.token) { paintQrConfirm(pane); return; }
+      pendingQr = qrId;
+    }
     if (tab === 'password') paintPassword(pane);
     else if (tab === 'code') paintCode(pane);
+    else if (tab === 'qr') paintQr(pane);
     else paintGuest(pane);
   }
 
@@ -87,6 +98,142 @@ export async function renderLogin(container) {
     });
     const first = pane.querySelector('#tCode');
     if (first) { first.focus(); }
+  }
+
+  /* ---------- 手机端：确认另一台设备登录 ---------- */
+  function paintQrConfirm(pane) {
+    pane.innerHTML = `
+      <div class="tiny" style="margin-bottom:10px">有人在另一台设备上扫码，想用「${esc(state.username)}」这个账号登录。</div>
+      <div class="tiny muted" style="margin-bottom:14px">确认后那台设备会立即以你的身份登录。二维码两分钟内有效、只能用一次；不是你本人的操作就点取消。</div>
+      <div id="qrCap" class="cf-box" style="margin-bottom:12px"></div>
+      <button class="btn" id="qrOk" style="width:100%">确认登录</button>
+      <div class="tiny" style="text-align:center;margin-top:10px"><span class="link" id="qrNo">不是我，取消</span></div>`;
+    const capHost = pane.querySelector('#qrCap');
+    const needCap = captchaConfig().on;
+    if (needCap) { mountCaptcha(capHost); }
+    pane.querySelector('#qrNo').addEventListener('click', () => navigate('#/mine'));
+    pane.querySelector('#qrOk').addEventListener('click', async function () {
+      /* 确认方同样要过人机验证：这枚操作会把另一台设备授权成登录态 */
+      if (needCap && !captchaToken()) { toast(t('请先完成人机验证'), 'err'); return; }
+      btnLoading(this, true);
+      try {
+        await api('qr', 'confirm', {
+          qr_id: qrId, cap_token: captchaToken(), cap_channel: captchaChannel(),
+        });
+        toast(t('已确认，请回到那台设备继续'));
+        navigate('#/mine');
+      } catch (e) {
+        toast(e.message || '操作失败', 'err');
+        btnLoading(this, false);
+        if (needCap) { resetCaptcha(capHost); }
+      }
+    });
+  }
+
+  /* ---------- 桌面端：显示二维码并轮询 ---------- */
+  function paintQr(pane) {
+    pane.innerHTML = `
+      <div id="qrCap" class="cf-box" style="margin-bottom:10px"></div>
+      <div class="qr-box"><div id="qrCanvas" class="qr-canvas"><div class="tiny muted">${t('先完成上方的人机验证')}</div></div></div>
+      <div class="tiny" id="qrHint" style="text-align:center;margin:10px 0 0">${t('通过验证后自动生成二维码')}</div>
+      <div class="tiny" style="text-align:center;margin-top:8px"><span class="link" id="qrRefresh">${t('二维码失效？点此刷新')}</span></div>`;
+
+    let dead = false, timer = null, expAt = 0;
+    const box = pane.querySelector('#qrCanvas');
+    const hint = pane.querySelector('#qrHint');
+
+    const stop = () => {
+      dead = true;
+      if (timer) { clearTimeout(timer); timer = null; }
+    };
+    const tickHint = () => {
+      if (hint && !dead) {
+        const left = Math.max(0, Math.round((expAt - Date.now()) / 1000));
+        hint.textContent = t('用已登录的手机扫描二维码') + '（' + left + 's）';
+      }
+    };
+
+    const capHost = pane.querySelector('#qrCap');
+    const needCap = captchaConfig().on;
+
+    const refresh = async () => {
+      /* 生成二维码前先过人机验证：没有凭证就不发请求，换一次验证再回来 */
+      if (needCap && !captchaToken()) {
+        if (hint) { hint.textContent = t('请先完成上方的人机验证'); }
+        resetCaptcha(capHost);
+        return;
+      }
+      stop();
+      dead = false;
+      if (box) { box.innerHTML = '<div class="tiny muted">' + t('正在生成…') + '</div>'; }
+      try {
+        /* 创建接口按 IP 限速（每小时 8 个），连点几次刷新会先被自己挡住 */
+        const d = await api('qr', 'create',
+          { cap_token: captchaToken(), cap_channel: captchaChannel() }, { silent: true });
+        expAt = Date.now() + Number(d.expires_in || 120) * 1000;
+        if (!window.qrcode) { if (box) { box.textContent = t('二维码组件未加载'); } return; }
+        const url = location.origin + location.pathname + '#/login?qr=' + d.qr_id;
+        const qr = window.qrcode(0, 'M');
+        qr.addData(url);
+        qr.make();
+        if (box) { box.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2 }); }
+        /* 人机验证凭证是一次性的，这张已经用掉了：重新挂一枚，
+           等二维码失效点刷新时用户只需再点一次，不会带着死凭证去撞墙 */
+        if (needCap) { resetCaptcha(capHost); }
+        tickHint();
+
+        const step = Math.max(1, Number(d.interval || 2));
+        const poll = async () => {
+          if (dead) { return; }
+          try {
+            const r = await api('qr', 'poll', { qr_id: d.qr_id, secret: d.secret }, { silent: true, retry: false });
+            if (r && r.status === 'confirmed') {
+              stop();
+              if (hint) { hint.textContent = t('已确认，正在登录…'); }
+              setToken(r.token);
+              await finishLogin({ token: r.token, uid: r.uid, role: r.role, username: r.username });
+              return;
+            }
+            if (r && r.status === 'expired') { stop(); if (hint) { hint.textContent = t('二维码已过期，请点下方刷新'); } return; }
+          } catch (e) {
+            if (e && (Number(e.code) === 404 || Number(e.code) === 410)) {
+              stop();
+              if (hint) { hint.textContent = t('二维码已失效，请点下方刷新'); }
+              return;
+            }
+          }
+          tickHint();
+          timer = setTimeout(poll, step * 1000);
+          if (window.__addPageTimer) { window.__addPageTimer(timer); }
+        };
+        timer = setTimeout(poll, step * 1000);
+        if (window.__addPageTimer) { window.__addPageTimer(timer); }
+      } catch (e) {
+        /* 验证凭证被消耗掉之后再刷新会撞在这里：换一枚新凭证，别让用户对着死二维码 */
+        if (needCap && e && Number(e.code) === 400 && String(e.message || '').indexOf('人机验证') >= 0) {
+          resetCaptcha(capHost);
+          if (hint) { hint.textContent = t('请先完成上方的人机验证'); }
+        }
+        if (box) { box.textContent = (e && e.message) ? e.message : '生成失败'; }
+      }
+    };
+
+    pane.querySelector('#qrRefresh').addEventListener('click', function () {
+      if (needCap && !captchaToken()) {
+        if (hint) { hint.textContent = t('请先完成上方的人机验证'); }
+        resetCaptcha(capHost);
+        return;
+      }
+      refresh();
+    });
+    if (needCap) {
+      /* 与登录页一致：先过 Cap，拿到凭证再生成；凭证是一次性的，刷新即重新验证 */
+      if (box) { box.innerHTML = '<div class="tiny muted">' + t('先完成上方的人机验证') + '</div>'; }
+      if (hint) { hint.textContent = t('通过验证后自动生成二维码'); }
+      mountCaptcha(capHost, function (tok) { if (tok) { refresh(); } });
+    } else {
+      refresh();
+    }
   }
 
   /* 邮箱验证码登录：先在「我的」里绑定过邮箱，这里才能收到码 */
@@ -340,6 +487,14 @@ export async function renderLogin(container) {
     } catch (e) {}
     toast(guest ? '已进入游客模式' : (t('欢迎，') + state.username));
     if (Number(state.settings.notify) === 1) askNotifyPermission();
+    /* 从二维码链接进来、刚登录完：顺手把那台设备的登录确认掉 */
+    if (!guest && pendingQr) {
+      try {
+        await api('qr', 'confirm', { qr_id: pendingQr });
+        toast(t('已确认，另一台设备即将登录'));
+      } catch (e) {}
+      pendingQr = '';
+    }
     // 登录后回「我的」；游客进入回榜单（路由会重绘页面与抽屉，无需整页刷新）
     navigate(guest ? '#/rank' : '#/mine');
     if (!guest && typeof window.__nameFixCheck === 'function') { window.__nameFixCheck(); }

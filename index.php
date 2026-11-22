@@ -609,6 +609,8 @@ try {
       if (!in_array($__lang, array('zh', 'en', 'ja'), true)) { $__lang = ''; } ?>
 <script>window.__LANG = <?= json_encode($__lang) ?>;</script>
 <script>window.__SITE__ = { name: <?= json_encode((string)cfg('site.name', 'Kimi游戏榜')) ?>, ver: <?= json_encode(APP_VERSION) ?>, timezone: <?= json_encode((string)cfg('site.timezone', 'Asia/Shanghai')) ?> };</script>
+<!-- 二维码编码器（MIT，qrcode-generator 1.4.4）：本地引入，不依赖外部 CDN -->
+<script defer src="<?= e($__P) ?>/assets/js/vendor/qrcode.js?v=<?= e($__appVer) ?>"></script>
 <link rel="preload" as="script" href="<?= e($__P) ?>/assets/js/app.js?v=<?= e($__appVer) ?>">
 <script type="module" src="<?= e($__P) ?>/assets/js/app.js?v=<?= e($__appVer) ?>"<?= $__sri !== '' ? ' integrity="' . e($__sri) . '"' : '' ?> onerror="(function(){if(window.__lgRetry)return;window.__lgRetry=1;var s=document.createElement('script');s.type='module';s.src='<?= e($__P) ?>/assets/js/app.js?v=<?= e($__appVer) ?>&r='+Date.now();document.body.appendChild(s);})()"></script>
 </body>
