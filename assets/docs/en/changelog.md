@@ -7,6 +7,14 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.74.0 · 2026-11-25 (Words and Deeds)
+
+### Fixed: the documents described the wrong human check
+
+Human verification now uses Cloudflare Turnstile only. The Terms, Privacy Policy, Features page and their English counterparts still said that a Cap channel took over when the primary was unavailable, and Cap was still listed among third-party services. Those sentences and that table row are gone — the documents now match what the site actually does.
+
+Nothing in the product changed; only the documentation is now accurate.
+
 ## v3.73.0 · 2026-11-22 (Sharp Tools)
 
 ### Updated: the Android deploy tool now covers every setting

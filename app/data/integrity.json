@@ -1,6 +1,6 @@
 {
-    "version": "3.73.0",
-    "at": "2026-11-22 05:06:58",
+    "version": "3.74.0",
+    "at": "2026-11-25 12:18:23",
     "algo": "sha256+md5",
     "files": {
         "index.php": {
@@ -29,8 +29,8 @@
             "size": 112631
         },
         "app/bootstrap.php": {
-            "sha256": "58649fe8e2b39e640946c42fa9bdc0e0d1f08fa4349477e1562ac2a50b7c49dd",
-            "md5": "9f9efa0bba54d885eb7b20658947eb29",
+            "sha256": "26b35330ce4b6f29fe679052075d08a2cfba669cdaa454fbebc4f5e668803027",
+            "md5": "8dfc4e1d30972a7faefa13e08aa0b7e4",
             "size": 14122
         },
         "app/helpers.php": {
@@ -139,5 +139,5 @@
             "size": 12400
         }
     },
-    "sig": "d5aaf1b64feba200132ab182063e1915150870242c67400d3eb109aaca42b340"
+    "sig": "15f9010825935e78c50e81a235038b79c6a9e252d5f294cf8bb12668bb55264b"
 }

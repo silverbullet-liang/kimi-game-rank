@@ -102,7 +102,7 @@ How to use it:
 
 ## 7. Account and "Mine"
 
-1. **Register and sign in**: username plus password, with a **human check** (primary: Cloudflare Turnstile, usually a single tap or none at all; if the primary is unavailable a fallback channel is used automatically). The username is your display name, **shown site-wide and not changeable after registration** (no line breaks or decorative special characters, and it must pass content review); contact an administrator if you forget your password.
+1. **Register and sign in**: username plus password, with a **human check** (provided by Cloudflare Turnstile, usually a single tap or none at all). The username is your display name, **shown site-wide and not changeable after registration** (no line breaks or decorative special characters, and it must pass content review); contact an administrator if you forget your password.
 2. **Three ways to identify yourself**: UID, username, or a linked email — all with the password. The sign-in page also has a "Code sign-in" tab: enter the address, receive a code, done — no password to remember. An email can also be linked during registration (optional, one code to confirm).
 **QR sign-in**: the "Sign in with QR code" tab shows a code; scan it with a phone that is already signed in and confirm there, and this device is signed in without typing a password. A human check is required both before the code is generated and when the phone confirms, and the code is valid for two minutes and works once.
 3. **Two-factor sign-in**: with a linked address you can turn it on in "Mine". Password sign-in then sends a code to that address and only issues the credential once the code matches. The switch asks for your current password, and it applies to administrator accounts as well.
@@ -241,7 +241,7 @@ The second and third tiers are recalculated from the themes currently approved, 
 While the site is under a traffic attack, an access check is enabled. **Some origins must pass a single human check before browsing**; once passed, everything works normally for 2 hours without asking again.
 
 - Only origins that sent a large burst of requests in a very short window are asked; ordinary visitors rarely see it
-- The check is provided by Cloudflare Turnstile; if it cannot load, the page falls back to two backup channels, and if none of them work it shows a hint and a retry button
+- The check is provided by Cloudflare Turnstile; if it cannot load, the page shows a hint and a retry button
 - Once passed, the browser remembers it for about 2 hours; changing network or IP requires checking again
 - A verified origin gets exactly the same features as usual
 
