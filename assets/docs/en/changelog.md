@@ -7,6 +7,18 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.76.0 · 2026-11-26 (Seen)
+
+### Added: an in-site scanner
+
+Scanning to sign in used to mean leaving the browser for the system camera app, then coming back.
+
+"Mine" now has **Scan** at the top: it opens the rear camera, you put the code shown on the other device inside the frame, and the confirmation page opens as soon as it reads it — confirm there and that device is signed in. If the camera is unavailable (page not https, an older WebView, permission denied) you can pick a screenshot from photos, or paste the link / code.
+
+Only this site's sign-in codes are accepted: a 16-digit (or 32-digit) id is extracted and nothing else is followed, so a scanned code can never redirect you anywhere. Scanning some other QR code says so plainly instead of acting on it.
+
+The decoder loads on demand — nothing extra is downloaded until you tap Scan.
+
 ## v3.75.0 · 2026-11-26 (Pointing the Way)
 
 ### Added: a direct route to QR sign-in from "Mine"

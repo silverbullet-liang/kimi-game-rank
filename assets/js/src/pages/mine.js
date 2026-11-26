@@ -6,6 +6,7 @@ import { LANGS, I18N, setLang, festName } from '../i18n.js';
 import { navigate } from '../router.js';
 import { saveTheme, ACCENTS, SKINS, hexToHsl, FESTIVAL_KEYS, festivalNow } from '../theme.js';
 import { setNavAnim } from '../transitions.js';
+import { scanQrLogin } from '../scan.js';
 
 /* 管理入口按钮图标（内联 SVG，避免额外依赖） */
 const G_ICON = 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 4l-2 1.5.3 2.5-2 1-1.8-1.8-2.3.8L12 18l-1.2-2-2.3-.8L6.7 17l-2-1 .3-2.5L3 12l2-1.5L4.7 8l2-1 1.8 1.8 2.3-.8L12 6l1.2 2 2.3.8L17.3 7l2 1-.3 2.5L21 12z';
@@ -64,6 +65,10 @@ export async function renderMine(container) {
           <div class="name">${userName(d.username, d.role)}</div>
           <div class="tiny">${isAdmin ? IC('user.verified', 'ico-xs') + (d.role === 'subadmin' ? '副管理员账号' : t('管理员账号')) : (t('注册于 ') + esc(d.registered_at || ''))}</div>
         </div>
+      </div>
+      <div class="scan-entry">
+        <button class="btn-ghost btn-sm" id="scanBtn">${t('扫一扫')}</button>
+        <span class="tiny muted">${t('扫描另一台设备上的登录二维码')}</span>
       </div>
       <div class="uid-row">
         <div class="uid-left">
@@ -205,6 +210,8 @@ export async function renderMine(container) {
     if (panelBtn) { panelBtn.addEventListener('click', () => navigate('#/panel')); }
     const monBtn = container.querySelector('#monitorBtn');
     if (monBtn) { monBtn.addEventListener('click', () => navigate('#/monitor')); }
+    const scanBtn = container.querySelector('#scanBtn');
+    if (scanBtn) { scanBtn.addEventListener('click', () => scanQrLogin()); }
     const copyBtn = container.querySelector('#copyUid');
     if (copyBtn) copyBtn.addEventListener('click', async () => {
       const v = String(d.uid8 || '');
