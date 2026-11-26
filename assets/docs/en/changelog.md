@@ -7,6 +7,22 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.75.0 · 2026-11-26 (Pointing the Way)
+
+### Added: a direct route to QR sign-in from "Mine"
+
+Guests on the "Mine" page only had a "Sign in / Register" button; QR sign-in sat in the fourth tab of the sign-in page with nothing on the site pointing to it, which in practice meant it could not be found.
+
+"Mine" now has a "Sign in with QR code · scan with a signed-in phone" button that goes straight to that tab. The sign-in page also accepts a direct link (`#/login?tab=qr`); previously only the email-code tab could be reached that way.
+
+### Changed: the four sign-in tabs wrap on narrow screens
+
+On a phone the four tabs were squeezed into one row with tiny text, easy to overlook. Narrow screens now show them in two rows.
+
+### Added: a line of guidance under the device list
+
+To sign a new device in: open this site there → sign-in page → "Sign in with QR code", then scan it with this phone. That sentence is now printed right under the device list.
+
 ## v3.74.0 · 2026-11-25 (Words and Deeds)
 
 ### Fixed: the documents described the wrong human check

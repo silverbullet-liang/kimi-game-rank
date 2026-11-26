@@ -2024,3 +2024,9 @@ i.ic[class*='ti-'] { background-repeat: no-repeat; background-position: center; 
 .at-item:hover, .at-item.on { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .at-item:active { background: color-mix(in srgb, var(--accent) 22%, transparent); }
 .at-name { font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 登录页四个页签（密码 / 验证码 / 扫码 / 游客）：窄屏排两行，别挤成一排小字 */
+@media (max-width: 430px) {
+  .login-wrap .seg { flex-wrap: wrap; }
+  .login-wrap .seg button { flex: 1 1 44%; }
+}

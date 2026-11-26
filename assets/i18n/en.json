@@ -1115,5 +1115,7 @@
   "@ 提及": "@ mention",
   "@ 提及（点选插入）": "@ mention (tap to insert)",
   "没有找到该用户": "No such user",
-  "搜索失败，可继续输入重试": "Search failed — keep typing to retry"
+  "搜索失败，可继续输入重试": "Search failed — keep typing to retry",
+  "用已登录的手机扫一扫": "scan with a signed-in phone",
+  "新设备想登录？在它上面打开本站 → 登录页 →「扫码登录」，再用本机扫一扫。": "New device? Open this site there → sign-in page → \"Sign in with QR code\", then scan it with this phone."
 }

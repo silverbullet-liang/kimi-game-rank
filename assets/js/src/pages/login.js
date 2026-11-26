@@ -12,7 +12,9 @@ export async function renderLogin(container, ctx) {
     ? String(ctx.params.qr).replace(/[^a-f0-9]/gi, '').slice(0, 32) : '';
   let pendingQr = '';
   /* ?tab=code 可直接落到验证码登录（邮件里给的入口、或用户从地址栏直达） */
-  let tab = (/[?&]tab=code\b/.test(location.search)) ? 'code' : 'password';   // password | code | guest
+  /* ?tab=code / ?tab=qr … 可从任何入口直达某个页签（hash 路由的参数也要认） */
+  const tabQ = (location.search + location.hash).match(/[?&]tab=(password|code|qr|guest)\b/);
+  let tab = tabQ ? tabQ[1] : 'password';   // password | code | qr | guest
   let sub = 'login';      // login | register
   let agreed = false;
   /* 个人信息出境的单独同意（《个人信息保护法》第 39 条要求单列，不能并进上面那一条） */

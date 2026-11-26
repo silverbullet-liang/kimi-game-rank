@@ -5823,6 +5823,7 @@ async function renderMine(container) {
         </div>
         <p class="muted tiny">游客可浏览榜单与世界对话；登录后可评论、点赞、使用 AI 对话。</p>
         <button class="btn" id="goLogin" style="width:100%;margin-top:10px">${IC('user.login', 'ico-sm')}<span>登录 / 注册</span></button>
+        <button class="btn-ghost" id="goQrLogin" style="width:100%;margin-top:8px">${t('扫码登录')} · ${t('用已登录的手机扫一扫')}</button>
       </div>
       <div class="card">
         <div class="card-title">外观设置</div>
@@ -5837,6 +5838,7 @@ async function renderMine(container) {
         <div id="guestSearchAi"></div>
       </div>`;
     container.querySelector('#goLogin').addEventListener('click', () => navigate('#/login'));
+    container.querySelector('#goQrLogin').addEventListener('click', () => navigate('#/login?tab=qr'));
     mountAppearance(container.querySelector('#guestAppearance'));
     mountBlockList(container.querySelector('#guestBlock'), true);
     mountSearchAi(container.querySelector('#guestSearchAi'), true);
@@ -5899,6 +5901,7 @@ async function renderMine(container) {
       <div class="dev-foot">
         <button class="btn-ghost btn-sm" id="devSwitch">${t('切换账号')}</button>
       </div>
+      <div class="tiny muted" style="margin-top:8px">${t('新设备想登录？在它上面打开本站 → 登录页 →「扫码登录」，再用本机扫一扫。')}</div>
     </div>
 
     <div class="card">
@@ -6979,7 +6982,9 @@ async function renderLogin(container, ctx) {
     ? String(ctx.params.qr).replace(/[^a-f0-9]/gi, '').slice(0, 32) : '';
   let pendingQr = '';
   /* ?tab=code 可直接落到验证码登录（邮件里给的入口、或用户从地址栏直达） */
-  let tab = (/[?&]tab=code\b/.test(location.search)) ? 'code' : 'password';   // password | code | guest
+  /* ?tab=code / ?tab=qr … 可从任何入口直达某个页签（hash 路由的参数也要认） */
+  const tabQ = (location.search + location.hash).match(/[?&]tab=(password|code|qr|guest)\b/);
+  let tab = tabQ ? tabQ[1] : 'password';   // password | code | qr | guest
   let sub = 'login';      // login | register
   let agreed = false;
   /* 个人信息出境的单独同意（《个人信息保护法》第 39 条要求单列，不能并进上面那一条） */
