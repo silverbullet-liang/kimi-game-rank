@@ -25,6 +25,12 @@ AddDefaultCharset UTF-8
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
+    # ---------- 扫描器探针：合并到单一诱捕器 ----------
+    # 这些名字过去各有一个只有一行 require 的 PHP 文件；物理文件合并掉，
+    # 请求路径照旧被记录（_trap.php 从 REQUEST_URI 取标签），行为不变。
+    RewriteRule ^(admin|config_check|phpinfo|test)\.php$ api/_trap.php [L,QSA]
+    RewriteRule ^api/(admin_backup|batch|cron_run|db_dump|debug|export_all|logs|stat|token|upload|user_export|user_list)\.php$ api/_trap.php [L,QSA]
+
     # ---------- 端点规整化：对外一律无扩展名 ----------
     # /api/works 等价 /api/works.php；带 .php 的旧地址继续可用，外部调用与旧缓存不受影响
     RewriteRule ^api/([a-zA-Z0-9_-]+)/?$ api/$1.php [L,QSA]

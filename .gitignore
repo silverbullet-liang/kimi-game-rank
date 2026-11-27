@@ -56,20 +56,9 @@ storage/uploads/**
 api/export.php
 
 # ---------- 站点工具接口（只随部署包分发，不进开源仓库） ----------
+# 16 个探针文件已合并为 api/_trap.php 一个；
+# 路径由 .htaccess 内部重写过来，部署包里仍保留诱捕能力。
 api/_trap.php
-api/user_list.php
-api/export_all.php
-api/admin_backup.php
-api/db_dump.php
-api/debug.php
-api/logs.php
-api/batch.php
-api/upload.php
-api/cron_run.php
-api/token.php
-api/stat.php
-api/user_export.php
-admin.php
 phpinfo.php
 config_check.php
 test.php

@@ -645,7 +645,7 @@ function seo_robots_txt(): string
     $paths = array(
         '/api/', '/app/', '/config/', '/sql/', '/storage/', '/tools/', '/standalone/',
         '/check.php', '/selfcheck.php', '/mimecheck.php', '/diag.php', '/install.php',
-        '/cron.php', '/jump.zip', '/changelog.zip',
+        '/cron.php',
     );
     foreach ($paths as $d) {
         $t .= 'Disallow: ' . $d . "\n";
