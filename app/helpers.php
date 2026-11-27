@@ -489,57 +489,17 @@ function setting_set(string $k, $v)
 }
 
 /* ============================================================
- * 用户头像：仿 GitHub identicon（4×4 = 16 像素，左右镜像）
- * 后端确定性 SVG 生成，无需存储
+ * 用户头像：兼容旧调用点（实现见 app/avatar.php，GitHub 同款 5×5）
  * ============================================================ */
 function identicon_svg(string $seed, int $size = 80): string
 {
-    $hash = md5($seed);
-    $hue = hexdec(substr($hash, 0, 2)) / 255 * 360;
-    $hue2 = fmod($hue + 40, 360);
-
-    $cells = array();
-    $bits = hexdec(substr($hash, 2, 8));  // 32 位 → 16 格（左半 2×4 = 8 格）
-    for ($i = 0; $i < 8; $i++) {
-        $cells[$i] = (($bits >> $i) & 1) === 1;
-    }
-    // 左 2 列，镜像到右 2 列
-    $grid = array();
-    for ($y = 0; $y < 4; $y++) {
-        for ($x = 0; $x < 4; $x++) {
-            $srcCol = $x < 2 ? $x : 3 - $x;
-            $grid[$y][$x] = $cells[$y * 2 + $srcCol];
-        }
-    }
-
-    $cellPx = $size / 4;
-    $c1 = 'hsl(' . round($hue) . ',68%,52%)';
-    $c2 = 'hsl(' . round($hue2) . ',72%,62%)';
-
-    $svg  = '<svg xmlns="http://www.w3.org/2000/svg" width="' . $size . '" height="' . $size . '" viewBox="0 0 ' . $size . ' ' . $size . '" role="img" aria-label="用户头像">';
-    $svg .= '<rect width="' . $size . '" height="' . $size . '" fill="#eceef2"/>';
-    for ($y = 0; $y < 4; $y++) {
-        for ($x = 0; $x < 4; $x++) {
-            if ($grid[$y][$x]) {
-                $fill = (($x + $y) % 2 === 0) ? $c1 : $c2;
-                $svg .= '<rect x="' . ($x * $cellPx) . '" y="' . ($y * $cellPx) . '" width="' . $cellPx . '" height="' . $cellPx . '" fill="' . $fill . '"/>';
-            }
-        }
-    }
-    $svg .= '</svg>';
-    return $svg;
+    return avatar_svg(avatar_key_by_name($seed), $size, 2);
 }
 
-/** 纯数据版 identicon（供前端或列表），返回 data URI */
+/** 纯数据版 identicon，返回 data URI */
 function identicon_data_uri(string $seed, int $size = 80): string
 {
-    /* 同一请求内相同用户名 + 尺寸复用：消息/评论列表逐条生成会明显拖慢响应 */
-    static $cache = array();
-    $ck = $seed . '|' . $size;
-    if (isset($cache[$ck])) { return $cache[$ck]; }
-    $uri = 'data:image/svg+xml;base64,' . base64_encode(identicon_svg($seed, $size));
-    $cache[$ck] = $uri;
-    return $uri;
+    return avatar_uri_by_name($seed, $size);
 }
 
 /* ============================================================

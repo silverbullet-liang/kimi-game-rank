@@ -7,6 +7,18 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.78.0 · 2026-11-27 (A New Face)
+
+### Changed: avatars are 5×5 patterns
+
+Avatars used to be 4×4 blocks; they are now GitHub-style 5×5 mirrored patterns derived from your name together with your UID. Existing accounts are recalculated automatically — nothing to upload.
+
+Two accounts with the same name do not get the same avatar: the UID takes part. If a collision is ever detected, the registration time and UID8 are added in turn, so avatars stay unique site-wide. An administrator rename also changes the avatar.
+
+### Added: choose the avatar's colour levels
+
+Settings → Appearance now has "Avatar colour levels": 1 to 4, deciding how many colours the pattern uses. Other people see the levels you set, not their own.
+
 ## v3.76.0 · 2026-11-26 (Seen)
 
 ### Added: an in-site scanner

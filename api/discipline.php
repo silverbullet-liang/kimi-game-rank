@@ -33,7 +33,7 @@ switch ($action) {
             'id'        => (int)$row['id'],
             'user_id'   => (int)$row['user_id'],
             'username'  => (string)$row['username'],
-            'avatar'    => identicon_data_uri((string)$row['username'], 64),
+            'avatar'    => avatar_uri($row, 64),
             'reasons'   => discipline_reasons_of($row),
             'note'      => (string)($row['note'] ?? ''),
             'banned'    => (int)$row['banned'] === 1,

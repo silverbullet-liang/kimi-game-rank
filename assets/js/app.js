@@ -6815,6 +6815,16 @@ function mountAppearance(box) {
         </div>
       </div>
     </div>
+    ${state.role === 'guest' ? '' : `<div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+      <span>${t('头像色阶')}</span>
+      <div class="seg-mini" id="avatarLevelSeg">
+        ${[1,2,3,4].map(function (n) {
+          const on = ((state.settings && state.settings.avatar_levels) || 2) === n;
+          return '<button data-l="' + n + '" class="' + (on ? 'on' : '') + '">' + n + ' ' + t('阶') + '</button>';
+        }).join('')}
+      </div>
+      <div class="tiny muted">${t('头像是 5×5 图案，按你的名字与 UID 生成；色阶决定用几种颜色。别人看到的也是你设定的阶数。')}</div>
+    </div>`}
     <div class="setting-row">
       <span>返回动画</span>
       <div class="seg" style="max-width:200px" id="navAnimSeg">
@@ -6872,6 +6882,20 @@ function mountAppearance(box) {
       setTimeout(() => location.reload(), 260);
     });
   }
+
+  const avSeg = box.querySelector('#avatarLevelSeg');
+  if (avSeg) { avSeg.addEventListener('click', async e => {
+    const b = e.target.closest('[data-l]'); if (!b) return;
+    const n = Number(b.dataset.l);
+    if (!n || n < 1 || n > 4) return;
+    try {
+      await api('profile', 'settings', { avatar_levels: n });
+      if (state.settings) { state.settings.avatar_levels = n; }
+      box.querySelectorAll('#avatarLevelSeg button').forEach(x => x.classList.toggle('on', x === b));
+      toast(t('已保存，刷新后头像更新'));
+      setTimeout(() => location.reload(), 320);
+    } catch (err) { toast(t('保存失败'), 'err'); }
+  }); }
 
   box.querySelector('#navAnimSeg').addEventListener('click', e => {
     const b = e.target.closest('[data-n]'); if (!b) return;

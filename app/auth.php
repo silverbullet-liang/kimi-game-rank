@@ -93,7 +93,7 @@ function identity_payload(array $id): array
         $u = current_user_row();
         if ($u === null) { fail(401, '账号不可用'); }
         $data['username'] = (string)$u['username'];
-        $data['avatar']   = identicon_data_uri((string)$u['username'], 80);
+        $data['avatar']   = avatar_uri($u, 80);
         $data['settings'] = user_settings($u);
         $data['csrf']     = csrf_token();
         $data['uid8']     = uid_of_user($u, subadmin_seq_of((int)$u['id']));
@@ -799,6 +799,7 @@ function default_user_settings(): array
         'theme'      => 'light',
         'accent'     => cfg('glass.default_accent', 'blue-purple'),
         'search_ai'  => 1,     // 搜索结果页的 AI 总结卡片（站点承担额度，与个人额度无关）
+        'avatar_levels' => 2,  // 5×5  identicon 的前景配色阶数（1–4）
     );
 }
 

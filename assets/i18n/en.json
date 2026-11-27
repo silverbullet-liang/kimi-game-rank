@@ -1130,5 +1130,9 @@
   "这台设备不支持调用摄像头（或页面不是 https），请用系统相机扫码，或粘贴链接。": "This device cannot open the camera (or the page is not https). Use the system camera, or paste the link.",
   "摄像头权限被拒绝，可在浏览器设置里允许后重试。": "Camera permission was denied. Allow it in the browser settings and try again.",
   "没有可用的摄像头。": "No camera available.",
-  "摄像头打不开，请用系统相机扫码。": "The camera could not start. Please use the system camera."
+  "摄像头打不开，请用系统相机扫码。": "The camera could not start. Please use the system camera.",
+  "头像色阶": "Avatar colour levels",
+  "阶": "levels",
+  "头像是 5×5 图案，按你的名字与 UID 生成；色阶决定用几种颜色。别人看到的也是你设定的阶数。": "Your avatar is a 5×5 pattern generated from your name and UID; levels decide how many colours it uses. Others see the levels you set.",
+  "已保存，刷新后头像更新": "Saved — refresh to see the new avatar"
 }

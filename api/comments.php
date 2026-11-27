@@ -108,7 +108,7 @@ switch ($action) {
                 'username' => (string)$r['username'],
                 'role'     => (string)$r['role'],
                 'reports'  => isset($reports[(int)$r['user_id']]) ? $reports[(int)$r['user_id']] : 0,
-                'avatar'   => identicon_data_uri((string)$r['username'], 40),
+                'avatar'   => avatar_uri($r, 40),
                 'content'  => (string)$r['content'],
                 'blocked'  => (int)$r['is_blocked'] === 1,
                 /* AI 重审判为 middle 时的标注 */

@@ -30,7 +30,7 @@ switch ($action) {
             'uid8' => $uid8,
             'uid8_babao' => $uid8 !== '' && uid_is_babao($uid8),
             'username' => (string)$u['username'],
-            'avatar' => identicon_data_uri((string)$u['username'], 96),
+            'avatar' => avatar_uri($u, 96),
             'settings' => $st,
             'ip' => ip_public((int)$u['id']),
             'usage' => $isAdmin ? ai_usage_summary(0) : ai_usage_summary((int)$u['id']),
@@ -74,6 +74,10 @@ switch ($action) {
             $st['block_words'] = sanitize_block_words((string)param_str('block_words', ''));
         }
         if (param('search_ai') !== null)  { $st['search_ai'] = param_int('search_ai', 1) === 1 ? 1 : 0; }
+        if (param('avatar_levels') !== null) {
+            $lv = param_int('avatar_levels', 2);
+            $st['avatar_levels'] = ($lv >= 1 && $lv <= 4) ? $lv : 2;
+        }
         if (param('accent_custom') !== null) {
             $c = preg_replace('/[^0-9a-fA-F#]/', '', param_str('accent_custom'));
             $st['accent_custom'] = mb_substr($c, 0, 7, 'UTF-8');

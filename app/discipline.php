@@ -402,7 +402,7 @@ function discipline_item(array $r): array
         'username_now' => $uid > 0
             ? (string)(db_val('SELECT username FROM users WHERE id = ? LIMIT 1', array($uid)) ?? '')
             : '',
-        'avatar'     => identicon_data_uri((string)($r['username'] ?? '用户'), 40),
+        'avatar'     => avatar_uri($r, 40),
         'reasons'    => discipline_reasons_of($r),
         'note'       => (string)($r['note'] ?? ''),
         'banned'     => $banned,

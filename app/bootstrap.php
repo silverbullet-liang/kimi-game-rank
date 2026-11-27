@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '3.77.0');
+define('APP_VERSION', '3.78.0');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);
@@ -73,6 +73,7 @@ error_reporting(E_ALL);
 /* ---------- 加载核心库 ---------- */
 require_once APP_ROOT . '/app/db.php';
 require_once APP_ROOT . '/app/helpers.php';
+require_once APP_ROOT . '/app/avatar.php';   /* 头像：5×5 identicon + 唯一键 */
 require_once APP_ROOT . '/app/oid.php';
 require_once APP_ROOT . '/app/monitor.php';
 require_once APP_ROOT . '/app/mon_srv.php';

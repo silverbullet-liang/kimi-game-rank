@@ -712,7 +712,7 @@ switch ($action) {
             $out = array(
                 'id' => (int)$r['id'], 'username' => (string)$r['username'],
                 'role' => (string)$r['role'], 'uid8' => (string)$r['uid8'],
-                'avatar' => identicon_data_uri((string)$r['username'], 40),
+                'avatar' => avatar_uri($r, 40),
                 'banned' => (int)$r['is_banned'] === 1,
                 'ban_until' => $r['ban_until'] === null ? '' : to_local((string)$r['ban_until']),
                 'reports' => (int)$r['reports'],
@@ -823,6 +823,12 @@ switch ($action) {
             ok(array('id' => $uid, 'username' => $clean, 'old' => (string)$u['username']), '名字没有变化');
         }
         db_exec('UPDATE users SET username = ?, username_norm = ? WHERE id = ?', array($clean, $norm, $uid));
+        /* 头像按「名字 + UID」生成：改名后清掉旧 key，让头像跟着重算 */
+        try {
+            $__st = user_settings($u);
+            unset($__st['avatar_key']);
+            db_exec('UPDATE users SET settings = ? WHERE id = ?', array(json_encode($__st, JSON_UNESCAPED_UNICODE), $uid));
+        } catch (Throwable $e) { }
         if ((string)$u['role'] === 'subadmin') {
             try { db_admin_exec('UPDATE sub_admins SET username = ?, username_norm = ? WHERE user_id = ?',
                                 array($clean, $norm, $uid)); } catch (Throwable $e) { }
