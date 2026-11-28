@@ -42,15 +42,78 @@
   ],
   "force": "auto",
   "tokens": {
-    "--surface": "rgba(255,252,251,.92)",
-    "--border": "rgba(196,98,122,.16)",
-    "--border-soft": "rgba(196,98,122,.08)",
-    "--shadow": "0 10px 28px rgba(196,98,122,.14)",
-    "--shadow-sm": "0 4px 12px rgba(196,98,122,.09)"
+    "light": {
+      "--bg-1": "#FBEFF0",
+      "--bg-2": "#F5E0E1",
+      "--surface": "rgba(255,249,249,0.9)",
+      "--surface-solid": "#FFF9F9",
+      "--border": "#EBCFD1",
+      "--border-soft": "rgba(192,81,107,0.16)",
+      "--text": "#382125",
+      "--text-2": "#5A3A3E",
+      "--text-3": "#7A5A5E",
+      "--accent": "#B44A63",
+      "--accent-2": "#567F46",
+      "--accent-ink": "#FFF6F7",
+      "--shadow": "rgba(90,58,62,0.16)",
+      "--shadow-sm": "rgba(90,58,62,0.09)",
+      "--msg-bg": "#FFF7F8",
+      "--msg-fg": "#382125",
+      "--msg-mine-bg": "#F2DCE0",
+      "--msg-mine-fg": "#3A2226",
+      "--tab-active-bg": "#B44A63",
+      "--tab-active-fg": "#FFF6F7",
+      "--toast-bg": "#3A2226",
+      "--toast-fg": "#FBEFF0",
+      "--toggle-on": "#B44A63",
+      "--slider-fill": "#D98BA0"
+    },
+    "dark": {
+      "--bg-1": "#2A1B1F",
+      "--bg-2": "#1C1216",
+      "--surface": "rgba(51,34,41,0.88)",
+      "--surface-solid": "#332229",
+      "--border": "#4E3540",
+      "--border-soft": "rgba(240,140,160,0.2)",
+      "--text": "#FBEDEF",
+      "--text-2": "#E0C8CE",
+      "--text-3": "#BB9AA2",
+      "--accent": "#F08CA0",
+      "--accent-2": "#9CCB87",
+      "--accent-ink": "#2A1218",
+      "--shadow": "rgba(12,6,8,0.6)",
+      "--shadow-sm": "rgba(12,6,8,0.4)",
+      "--msg-bg": "#332229",
+      "--msg-fg": "#FBEDEF",
+      "--msg-mine-bg": "#4A2F39",
+      "--msg-mine-fg": "#FDEEF1",
+      "--tab-active-bg": "#F08CA0",
+      "--tab-active-fg": "#2A1218",
+      "--toast-bg": "#FBEDEF",
+      "--toast-fg": "#2A1B1F",
+      "--toggle-on": "#F08CA0",
+      "--slider-fill": "#9CCB87"
+    }
   },
   "meta": {
     "author": "Kimi 游戏榜",
     "version": "1.0.0",
     "license": "AGPL-3.0"
+  },
+  "icons": {
+    "nav.total": "M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3zM9.3 8.2a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0zM11.7 8.2a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0zM10.5 10.4a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0z",
+    "action.star": "M12 2.6l3 6.1 6.7 1-4.9 4.7 1.2 6.6L12 17.8 5.9 21l1.2-6.6-4.9-4.7 6.7-1zM12 6.4l1.4 2.8-1.4 1.4-1.4-1.4zM2.4 21.4a1.4 1.4 0 1 1 2.8 0 1.4 1.4 0 0 1-2.8 0z",
+    "action.send": "M3 20l18-8L3 4v6l12 2-12 2v6zM2.2 20.6c1.6-2.4 4-2.8 6.2-1.6-1.4 2.6-4 3.2-6.2 1.6z",
+    "action.comment": "M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2zM13.4 9.4a1.8 1.8 0 1 1 3.6 0 1.8 1.8 0 0 1-3.6 0zM16.4 11.2a1.8 1.8 0 1 1 3.6 0 1.8 1.8 0 0 1-3.6 0z",
+    "action.vote": "M12 2l3 6 6.5.9-4.7 4.6 1.1 6.5L12 17l-5.9 3 1.1-6.5L2.5 8.9 9 8zM1.6 20.8c1.4-2.2 3.6-2.6 5.6-1.4-1.2 2.4-3.6 2.8-5.6 1.4z",
+    "field.search": "M10 4a6 6 0 1 0 3.7 10.7l4.3 4.3 1.4-1.4-4.3-4.3A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM9 7.6a1.2 1.2 0 1 1 2.4 0 1.2 1.2 0 0 1-2.4 0zM10.4 9a1.2 1.2 0 1 1 2.4 0 1.2 1.2 0 0 1-2.4 0z",
+    "nav.today": "M7 2h2v2h6V2h2v2h3v18H4V4h3V2zm0 8v10h10V10H7zM12 11.8a2.8 2.8 0 1 1 0 5.6 2.8 2.8 0 0 1 0-5.6z",
+    "state.success": "M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm-1.2 14.4l-4-4 1.4-1.4 2.6 2.6 5.6-5.6 1.4 1.4zM19.4 3.2a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2z",
+    "media.play": "M7 3.4l13 8.6-13 8.6zM2.4 21.6a1.6 1.6 0 1 1 3.2 0 1.6 1.6 0 0 1-3.2 0z",
+    "user.verified": "M12 2l8 3v7c0 5-3.4 8.7-8 10-4.6-1.3-8-5-8-10V5zm0 5.4c-2.6 0-4.2 2-4.2 3.8 0 2.4 2.6 3.8 4.2 5 1.6-1.2 4.2-2.6 4.2-5 0-1.8-1.6-3.8-4.2-3.8z"
+  },
+  "deco": {
+    "html": "<div class=\"fd-veil\"></div><div class=\"fd-ring1\"></div><div class=\"fd-ring2\"></div><div class=\"fd-ring3\"></div><span class=\"fd-leaf\"></span>",
+    "css": ".fd-veil{position:fixed;left:0;right:0;top:0;height:9vh;background:linear-gradient(180deg,rgba(240,140,160,.22),transparent);pointer-events:none}.fd-ring1{position:fixed;right:5vw;top:4vh;width:52px;height:52px;border:2px solid rgba(180,74,99,.28);border-radius:50%;pointer-events:none}.fd-ring2{position:fixed;right:7vw;top:6vh;width:40px;height:40px;border:2px solid rgba(180,74,99,.22);border-radius:50%;pointer-events:none}.fd-ring3{position:fixed;right:4vw;top:8vh;width:30px;height:30px;border:2px solid rgba(86,127,70,.28);border-radius:50%;pointer-events:none}.fd-leaf{position:fixed;left:5vw;bottom:7vh;display:block;width:26px;height:13px;border-radius:50% 0 50% 0;background:rgba(86,127,70,.35);transform:rotate(-18deg);pointer-events:none}"
   }
 }

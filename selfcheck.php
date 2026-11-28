@@ -15,7 +15,6 @@ $expect = array(
     'api/' => array('auth.php', 'works.php', 'comments.php', 'lobby.php', 'ai.php', 'feedback.php', 'profile.php', 'admin.php', 'dashboard.php', 'site.php', 'start.php', 'img.php', 'media.php'),
     'assets/' => array('css/app.css'),
     'assets/js/' => array('app.js'),
-    'assets/vendor/' => array('liquid-glass@0.3.2.js'),
     'assets/docs/' => array('社区公约.md', '用户协议.md', '隐私政策.md', '功能说明.md', 'AI 使用说明.md', '评分标准.md', '入榜规则.md', '更新日志.md'),
     'sql/' => array('schema.sql', 'schema_admin.sql'),
     'assets/emoji/' => array('index.json'),

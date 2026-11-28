@@ -51,15 +51,78 @@
   ],
   "force": "auto",
   "tokens": {
-    "--surface": "rgba(255,252,247,.88)",
-    "--border": "rgba(200,16,46,.16)",
-    "--border-soft": "rgba(140,30,40,.10)",
-    "--shadow": "0 10px 30px rgba(142,14,32,.13)",
-    "--shadow-sm": "0 4px 14px rgba(142,14,32,.10)"
+    "light": {
+      "--bg-1": "#FBF0E7",
+      "--bg-2": "#F6E2D4",
+      "--surface": "rgba(255,252,247,.90)",
+      "--surface-solid": "#FFFBF5",
+      "--border": "rgba(200,16,46,.18)",
+      "--border-soft": "rgba(200,16,46,.09)",
+      "--text": "#2B0E12",
+      "--text-2": "#5A2028",
+      "--text-3": "#8A4A50",
+      "--accent": "#C8102E",
+      "--accent-2": "#E8B923",
+      "--accent-ink": "#FFF7E4",
+      "--shadow": "0 10px 30px rgba(142,14,32,.13)",
+      "--shadow-sm": "0 4px 14px rgba(142,14,32,.10)",
+      "--msg-bg": "rgba(255,252,247,.94)",
+      "--msg-fg": "#2B0E12",
+      "--msg-mine-bg": "#C8102E",
+      "--msg-mine-fg": "#FFF7E4",
+      "--tab-active-bg": "#C8102E",
+      "--tab-active-fg": "#FFF7E4",
+      "--toast-bg": "#2B0E12",
+      "--toast-fg": "#FBEEDA",
+      "--toggle-on": "#C8102E",
+      "--slider-fill": "#E8B923"
+    },
+    "dark": {
+      "--bg-1": "#2A0C10",
+      "--bg-2": "#1C070A",
+      "--surface": "rgba(48,14,18,.88)",
+      "--surface-solid": "#380F14",
+      "--border": "rgba(232,185,35,.26)",
+      "--border-soft": "rgba(232,185,35,.13)",
+      "--text": "#FBEEE2",
+      "--text-2": "#E0BEB0",
+      "--text-3": "#C0998C",
+      "--accent": "#E63A4E",
+      "--accent-2": "#E8B923",
+      "--accent-ink": "#2A0C10",
+      "--shadow": "0 12px 34px rgba(0,0,0,.62)",
+      "--shadow-sm": "0 5px 16px rgba(0,0,0,.5)",
+      "--msg-bg": "rgba(53,16,21,.92)",
+      "--msg-fg": "#FBEEE2",
+      "--msg-mine-bg": "#C8102E",
+      "--msg-mine-fg": "#FFF7E4",
+      "--tab-active-bg": "#E8B923",
+      "--tab-active-fg": "#2A0C10",
+      "--toast-bg": "#FBEEE2",
+      "--toast-fg": "#2A0C10",
+      "--toggle-on": "#E8B923",
+      "--slider-fill": "#E8B923"
+    }
   },
   "meta": {
     "author": "Kimi 游戏榜",
     "version": "1.0.0",
     "license": "AGPL-3.0"
+  },
+  "icons": {
+    "nav.total": "M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3zM8.6 6.4h2.2v2.2H8.6zM13.2 6.4h2.2v2.2h-2.2zM9.8 10.4h4.4v2.4H9.8z",
+    "action.star": "M12 2.6l3 6.1 6.7 1-4.9 4.7 1.2 6.6L12 17.8 5.9 21l1.2-6.6-4.9-4.7 6.7-1zM12 8.4l1.2 2.4 2.6.4-1.9 1.9.5 2.6-2.4-1.3-2.4 1.3.5-2.6-1.9-1.9 2.6-.4z",
+    "action.send": "M3 18.6l17.2-7.6L3 3.2v5.6l11.4 1.8L3 12.4v6.2zM8.6 20.4v2M10.8 20.4v2M13 20.4v2",
+    "tab.rank": "M4 20.4v-6.6h3.8v6.6M10.1 20.4V10h3.8v10.4M16.2 20.4V4.2h3.8v16.2M4 12.6h3.8M10.1 8h3.8M16.2 2h3.8",
+    "nav.today": "M7 2h2v2h6V2h2v2h3v18H4V4h3V2zm0 8v10h10V10H7zM12 12.4c1.7 0 3 1.2 3 2.8s-1.3 2.8-3 2.8-3-1.2-3-2.8 1.3-2.8 3-2.8zM12 18.6v1.2",
+    "state.success": "M12 2.8a9.2 9.2 0 1 1 0 18.4 9.2 9.2 0 0 1 0-18.4M7.4 12.2l3.2 3.2 6-6.4M6.2 6.4a9.4 9.4 0 0 1 3-2.4M17.8 6.4a9.4 9.4 0 0 0-3-2.4",
+    "doc.criteria": "M6 2.4h8.2L18 6.2V21.6H6zM14.2 2.4v3.8h3.8M8.8 12.4h4.4M8.8 16h3.4M15.4 14.6l1.6 1.8 2.2-3",
+    "media.play": "M8.8 5.4l9.6 6.6-9.6 6.6zM4.4 9.2a9.6 9.6 0 0 0 0 5.6M2.6 6a13 13 0 0 0 0 12",
+    "field.search": "M10 4a6 6 0 1 0 3.7 10.7l4.3 4.3 1.4-1.4-4.3-4.3A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8M7 10.4h6M10 7.4v6",
+    "action.comment": "M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2zM8.4 8.2h2v2h-2zM11.2 8.2h2v2h-2zM14 8.2h1.6v2H14z"
+  },
+  "deco": {
+    "html": "<div class=\"fd-lantern\"></div><div class=\"fd-lantern2\"></div><i class=\"fd-tassel\"></i><span class=\"fd-gold\"></span>",
+    "css": ".fd-lantern{position:fixed;top:0;right:2vw;width:56px;height:74px;border-radius:50%/38% 38% 46% 46%;background:radial-gradient(circle at 42% 34%,rgba(232,185,35,.60),rgba(200,16,46,.34) 56%,rgba(200,16,46,.10));box-shadow:0 0 22px rgba(232,185,35,.30);animation:fd-swing 9s ease-in-out infinite;pointer-events:none}\n.fd-lantern2{position:fixed;top:1vh;right:5vw;width:34px;height:46px;border-radius:50%/38% 38% 46% 46%;background:radial-gradient(circle at 42% 34%,rgba(232,185,35,.42),rgba(200,16,46,.22) 58%,rgba(200,16,46,.06));opacity:.8;pointer-events:none}\n.fd-tassel{position:fixed;top:8.6vh;right:2.9vw;width:2px;height:1.2vh;background:linear-gradient(180deg,rgba(232,185,35,.7),rgba(232,185,35,0));pointer-events:none}\n.fd-gold{position:fixed;left:0;bottom:0;width:100%;height:4vh;background:repeating-linear-gradient(90deg,rgba(232,185,35,.18) 0 8px,rgba(232,185,35,0) 8px 20px);pointer-events:none}\n@keyframes fd-swing{0%,100%{transform:rotate(-2.2deg)}50%{transform:rotate(2.2deg)}}\n@media (prefers-reduced-motion: reduce){.fd-lantern{animation:none}}"
   }
 }

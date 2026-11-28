@@ -49,20 +49,74 @@
     }
   ],
   "icons": {
-    "nav.today": "M4 17.2L15.6 5.6a2 2 0 0 1 2.8 2.8L6.8 20 3 21z",
-    "nav.help": "M11.2 5.6C9.4 4.4 6.6 4 3 4.2v13.6c3.6-.2 6.4.2 8.2 1.4zM12.8 5.6C14.6 4.4 17.4 4 21 4.2v13.6c-3.6-.2-6.4.2-8.2 1.4z"
+    "nav.total": "M7.2 4.8h9.6v2.3h2.2a2.4 2.4 0 0 1 0 4.8h-1.2c-.5 2.2-2.1 3.9-4.1 4.5v3.2h2.7v2.3H7.6v-2.3h2.7v-3.2c-2-.6-3.6-2.3-4.1-4.5H5a2.4 2.4 0 0 1 0-4.8h2.2V4.8Zm.1 2.3H5a1 1 0 0 0 0 2h2.3v-2Zm9.4 0v2H19a1 1 0 0 0 0-2h-2.3ZM6.2 1.2h4.4v1.6H6.2V1.2Z",
+    "action.star": "M12 3.2l2.8 5.6 6.2 1-4.5 4.3 1.1 6.2L12 17.4l-5.6 2.9 1.1-6.2L3 9.8l6.2-1L12 3.2ZM5.2 20.6a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2Zm2.6 0.8a0.8 0.8 0 1 1 0 1.6 0.8 0.8 0 0 1 0-1.6Z",
+    "action.send": "M3.4 20.2l17.2-8.2L3.4 3.8v6l11.2 2.1L3.4 14.1v6.1ZM17.6 1.4l2.2 4.4-1.4.7-2.2-4.4 1.4-.7Z",
+    "tab.chat": "M9 4.6h6.6a3.6 3.6 0 0 1 3.6 3.6v3.8a3.6 3.6 0 0 1-3.6 3.6H9a3.6 3.6 0 0 1-3.6-3.6V8.2A3.6 3.6 0 0 1 9 4.6ZM7 15.4l-2.6 4.6 5.8-1.8-3.2-2.8ZM16.8 0.8l2 4-1.4.7-2-4 1.4-.7Z",
+    "nav.today": "M6.8 2.6h2.2v2.2h5.8V2.6h2.2v2.2h2.6v16.9H4.2V4.8h2.6V2.6ZM6.7 18.9h10.4V9.5H6.7v9.4Zm11.6-6.4h3.2v1.4h-3.2v-1.4Z",
+    "field.search": "M10.5 3.4a6.7 6.7 0 1 1 0 13.4 6.7 6.7 0 0 1 0-13.4Zm0 2.1a4.6 4.6 0 1 0 0 9.2 4.6 4.6 0 0 0 0-9.2ZM15 14.4l1.6-1.3 5.1 4.6-1.5 1.6-5.2-4.9ZM8.2 7.6l2.6 3.8-1.2.8-2.6-3.8 1.2-.8Z",
+    "action.vote": "M12 3.4a8.2 8.2 0 1 1 0 16.4 8.2 8.2 0 0 1 0-16.4Zm0 1.9a6.3 6.3 0 1 0 0 12.6 6.3 6.3 0 0 0 0-12.6ZM10.8 15L7.6 11.8l1.4-1.4 1.8 1.8 3.8-3.8 1.4 1.4-5.2 5.2ZM17.4 20.4a0.9 0.9 0 1 1 0 1.8 0.9 0.9 0 0 1 0-1.8Z",
+    "state.empty": "M4.4 10.4h15.2v9.4H4.4v-9.4Zm1.9-6.2h11.4l2.2 4.8H4.1l2.2-4.8ZM6.4 1.6l2.4 2.8-1.1 1-2.4-2.8 1.1-1Z",
+    "user.avatar": "M12 3.4a4.1 4.1 0 1 1 0 8.2 4.1 4.1 0 0 1 0-8.2ZM4.4 21c0-4.2 3.4-7.4 7.6-7.4s7.6 3.2 7.6 7.4H4.4ZM18.6 1.4h4v1.5h-4V1.4Z"
   },
   "force": "auto",
   "tokens": {
-    "--surface": "rgba(255,255,252,.92)",
-    "--border": "rgba(47,90,69,.17)",
-    "--border-soft": "rgba(47,90,69,.08)",
-    "--shadow": "0 7px 20px rgba(27,42,34,.12)",
-    "--shadow-sm": "0 3px 9px rgba(27,42,34,.07)"
+    "light": {
+      "--bg-1": "#F2F4EC",
+      "--bg-2": "#E5EBDC",
+      "--surface": "rgba(252,253,248,.94)",
+      "--surface-solid": "#FCFDF8",
+      "--border": "rgba(47,90,69,.18)",
+      "--border-soft": "rgba(47,90,69,.09)",
+      "--text": "#1A2A21",
+      "--text-2": "#3D5B4A",
+      "--text-3": "#4F6E5C",
+      "--accent": "#2F5A45",
+      "--accent-2": "#8A7A46",
+      "--accent-ink": "#F6F8F4",
+      "--shadow": "0 10px 24px rgba(30,60,45,.12)",
+      "--shadow-sm": "0 3px 10px rgba(30,60,45,.08)",
+      "--msg-bg": "#F6F8F0",
+      "--msg-fg": "#1A2A21",
+      "--msg-mine-bg": "#2F5A45",
+      "--msg-mine-fg": "#F6F8F4",
+      "--tab-active-bg": "#2F5A45",
+      "--tab-active-fg": "#F6F8F4",
+      "--toggle-on": "#2F5A45",
+      "--slider-fill": "#9EB8A0"
+    },
+    "dark": {
+      "--bg-1": "#121E17",
+      "--bg-2": "#1A2A21",
+      "--surface": "rgba(28,46,36,.82)",
+      "--surface-solid": "#1C2B22",
+      "--border": "rgba(200,220,200,.18)",
+      "--border-soft": "rgba(200,220,200,.08)",
+      "--text": "#F1F5EC",
+      "--text-2": "#C3D2C2",
+      "--text-3": "#9BB09D",
+      "--accent": "#E8E2D0",
+      "--accent-2": "#9EC4A6",
+      "--accent-ink": "#16241C",
+      "--shadow": "0 10px 26px rgba(0,0,0,.50)",
+      "--shadow-sm": "0 3px 10px rgba(0,0,0,.40)",
+      "--msg-bg": "#1C2B22",
+      "--msg-fg": "#F1F5EC",
+      "--msg-mine-bg": "#E8E2D0",
+      "--msg-mine-fg": "#16241C",
+      "--tab-active-bg": "#E8E2D0",
+      "--tab-active-fg": "#16241C",
+      "--toggle-on": "#E8E2D0",
+      "--slider-fill": "#9EC4A6"
+    }
   },
   "meta": {
     "author": "Kimi 游戏榜",
     "version": "1.0.0",
     "license": "AGPL-3.0"
+  },
+  "deco": {
+    "html": "<div class=\"fd-dust\"></div><div class=\"fd-wipe\"></div><i class=\"fd-chalk\"></i>",
+    "css": ".fd-dust{position:fixed;bottom:0;left:0;width:100%;height:6.4vh;background:radial-gradient(2px 2px at 8% 30%,rgba(232,226,208,.50),rgba(232,226,208,0) 60%),radial-gradient(1.6px 1.6px at 26% 62%,rgba(232,226,208,.42),rgba(232,226,208,0) 60%),radial-gradient(2.2px 2.2px at 47% 26%,rgba(232,226,208,.46),rgba(232,226,208,0) 60%),radial-gradient(1.4px 1.4px at 68% 66%,rgba(232,226,208,.40),rgba(232,226,208,0) 60%),radial-gradient(2px 2px at 86% 34%,rgba(232,226,208,.44),rgba(232,226,208,0) 60%);opacity:.8;pointer-events:none}.fd-wipe{position:fixed;top:0;right:0;width:26vw;height:9.2vh;background:linear-gradient(212deg,rgba(232,226,208,.22),rgba(232,226,208,0) 62%);filter:blur(6px);transform:skewY(-3deg);pointer-events:none}.fd-chalk{position:fixed;top:2.2vh;left:3vw;width:2.6vw;height:0.7vh;border-radius:2px;background:linear-gradient(90deg,rgba(232,226,208,.7),rgba(232,226,208,.25));pointer-events:none}"
   }
 }

@@ -41,15 +41,78 @@
   ],
   "force": "auto",
   "tokens": {
-    "--surface": "rgba(255,252,247,.91)",
-    "--border": "rgba(122,82,56,.18)",
-    "--border-soft": "rgba(122,82,56,.09)",
-    "--shadow": "0 8px 22px rgba(45,33,24,.14)",
-    "--shadow-sm": "0 3px 9px rgba(45,33,24,.09)"
+    "light": {
+      "--bg-1": "#F7F1E7",
+      "--bg-2": "#EFE5D6",
+      "--surface": "rgba(255,252,246,.92)",
+      "--surface-solid": "#FCF8F1",
+      "--border": "rgba(120,88,56,.22)",
+      "--border-soft": "rgba(120,88,56,.10)",
+      "--text": "#2E2218",
+      "--text-2": "#4E3D2C",
+      "--text-3": "#6E5A44",
+      "--accent": "#8A5A2B",
+      "--accent-2": "#B98A4E",
+      "--accent-ink": "#FFF8EC",
+      "--shadow": "0 10px 28px rgba(48,34,20,.15)",
+      "--shadow-sm": "0 4px 12px rgba(48,34,20,.10)",
+      "--msg-bg": "rgba(255,252,246,.94)",
+      "--msg-fg": "#2E2218",
+      "--msg-mine-bg": "#8A5A2B",
+      "--msg-mine-fg": "#FFF8EC",
+      "--tab-active-bg": "#8A5A2B",
+      "--tab-active-fg": "#FFF8EC",
+      "--toast-bg": "#2E2218",
+      "--toast-fg": "#F7F0E4",
+      "--toggle-on": "#8A5A2B",
+      "--slider-fill": "#B98A4E"
+    },
+    "dark": {
+      "--bg-1": "#1A130D",
+      "--bg-2": "#120D08",
+      "--surface": "rgba(30,23,16,.88)",
+      "--surface-solid": "#221A12",
+      "--border": "rgba(192,138,78,.26)",
+      "--border-soft": "rgba(192,138,78,.13)",
+      "--text": "#F4EADA",
+      "--text-2": "#CDBAA2",
+      "--text-3": "#A08B72",
+      "--accent": "#C08A4E",
+      "--accent-2": "#D9B27A",
+      "--accent-ink": "#1A130D",
+      "--shadow": "0 12px 32px rgba(0,0,0,.62)",
+      "--shadow-sm": "0 5px 16px rgba(0,0,0,.5)",
+      "--msg-bg": "rgba(34,26,18,.92)",
+      "--msg-fg": "#F4EADA",
+      "--msg-mine-bg": "#8A5A2B",
+      "--msg-mine-fg": "#FFF8EC",
+      "--tab-active-bg": "#C08A4E",
+      "--tab-active-fg": "#1A130D",
+      "--toast-bg": "#F4EADA",
+      "--toast-fg": "#1A130D",
+      "--toggle-on": "#C08A4E",
+      "--slider-fill": "#D9B27A"
+    }
   },
   "meta": {
     "author": "Kimi 游戏榜",
     "version": "1.0.0",
     "license": "AGPL-3.0"
+  },
+  "icons": {
+    "nav.total": "M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3zM8.2 7.2c2.6 1.2 5 1.2 7.6 0M8.2 10.8c2.6 1.2 5 1.2 7.6 0",
+    "user.avatar": "M12 3.4a4 4 0 1 1 0 8 4 4 0 0 1 0-8M4.6 21c.4-4.2 3.4-6.6 7.4-6.6s7 2.4 7.4 6.6M5.4 17.8c4.2-1.6 8.8-1.6 13 0",
+    "action.star": "M12 2.6l3 6.1 6.7 1-4.9 4.7 1.2 6.6L12 17.8 5.9 21l1.2-6.6-4.9-4.7 6.7-1zM5.6 12.4c1.7 2 4 3.1 6.4 3.1s4.7-1.1 6.4-3.1",
+    "action.send": "M3 19.2l12.6-6.2L3 7.2v5.2l7.6 1.4-7.6 1.4v4zM8 21.6h9.6M10.6 18.4h7",
+    "tab.mine": "M4 4h16v16H4zM8 20v-5.6c0-2 1.8-3.4 4-3.4s4 1.4 4 3.4V20M8.4 14.4c2.2-1 4.8-1 7 0",
+    "field.search": "M10 4a6 6 0 1 0 3.7 10.7l4.3 4.3 1.4-1.4-4.3-4.3A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8M7.8 10.2c1.4 1.2 3 1.2 4.4 0",
+    "state.empty": "M12 2.8a9.2 9.2 0 1 1 0 18.4 9.2 9.2 0 0 1 0-18.4M6.6 14.6c3.6-1.6 7.2-1.6 10.8 0M6.6 17.8c3.6-1.6 7.2-1.6 10.8 0",
+    "doc.terms": "M6 2.4h8.2L18 6.2V21.6H6zM14.2 2.4v3.8h3.8M8.8 11c2.2.8 4.4.8 6.4 0M8.8 14.2c2 .7 3.6.7 5.4 0M8.8 17.4h6.4",
+    "action.share": "M18 3.6a3 3 0 1 1 0 6 3 3 0 0 1 0-6M6 9.4a3 3 0 1 1 0 6 3 3 0 0 1 0-6M18 15.4a3 3 0 1 1 0 6 3 3 0 0 1 0-6M8.6 11.2l6.8-3.6M8.6 13l6.8 3.4M4.6 22.6c4.4-1.4 10.4-1.4 14.8 0",
+    "nav.today": "M7 2h2v2h6V2h2v2h3v18H4V4h3V2zm0 8v10h10V10H7zM7.6 14.6c2.8-1 5.6-1 8.4 0M7.6 17.4c2.8-1 5.6-1 8.4 0"
+  },
+  "deco": {
+    "html": "<div class=\"fd-shoulder\"></div><div class=\"fd-grain\"></div><i class=\"fd-knot\"></i><span class=\"fd-thread\"></span>",
+    "css": ".fd-shoulder{position:fixed;left:0;bottom:0;width:100%;height:5vh;border-radius:46% 46% 0 0/100% 100% 0 0;box-shadow:0 -2px 0 rgba(138,90,43,.20);background:linear-gradient(180deg,rgba(185,138,78,.14),rgba(185,138,78,.02));pointer-events:none}\n.fd-grain{position:fixed;top:0;left:0;width:8vw;height:10vh;background:repeating-linear-gradient(90deg,rgba(138,90,43,.12) 0 2px,rgba(138,90,43,0) 2px 14px);opacity:.8;pointer-events:none}\n.fd-knot{position:fixed;top:3vh;right:5vw;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 36% 34%,#B98A4E,#8A5A2B);opacity:.5;pointer-events:none}\n.fd-thread{position:fixed;left:0;bottom:5.4vh;width:8vw;height:1px;background:linear-gradient(90deg,rgba(138,90,43,.35),rgba(138,90,43,0));pointer-events:none}"
   }
 }

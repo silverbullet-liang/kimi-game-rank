@@ -238,23 +238,139 @@
       ]
     },
     "tokens": {
-      "type": "object",
-      "propertyNames": {
-        "enum": [
-          "--glass-blur",
-          "--glass-sat",
-          "--glass-alpha",
-          "--shadow",
-          "--shadow-sm",
-          "--border",
-          "--border-soft",
-          "--surface"
-        ]
-      },
-      "additionalProperties": {
-        "type": "string",
-        "maxLength": 120
-      }
+      "description": "设计变量：扁平一套，或 light/dark 两套",
+      "oneOf": [
+        {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "--bg-1",
+              "--bg-2",
+              "--surface",
+              "--surface-solid",
+              "--border",
+              "--border-soft",
+              "--text",
+              "--text-2",
+              "--text-3",
+              "--accent",
+              "--accent-2",
+              "--accent-ink",
+              "--shadow",
+              "--shadow-sm",
+              "--radius-lg",
+              "--radius-md",
+              "--radius-sm",
+              "--msg-bg",
+              "--msg-fg",
+              "--msg-mine-bg",
+              "--msg-mine-fg",
+              "--tab-active-bg",
+              "--tab-active-fg",
+              "--toast-bg",
+              "--toast-fg",
+              "--toggle-on",
+              "--slider-fill",
+              "--glass-blur",
+              "--glass-sat",
+              "--glass-alpha"
+            ]
+          },
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 120
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "light": {
+              "type": "object",
+              "propertyNames": {
+                "enum": [
+                  "--bg-1",
+                  "--bg-2",
+                  "--surface",
+                  "--surface-solid",
+                  "--border",
+                  "--border-soft",
+                  "--text",
+                  "--text-2",
+                  "--text-3",
+                  "--accent",
+                  "--accent-2",
+                  "--accent-ink",
+                  "--shadow",
+                  "--shadow-sm",
+                  "--radius-lg",
+                  "--radius-md",
+                  "--radius-sm",
+                  "--msg-bg",
+                  "--msg-fg",
+                  "--msg-mine-bg",
+                  "--msg-mine-fg",
+                  "--tab-active-bg",
+                  "--tab-active-fg",
+                  "--toast-bg",
+                  "--toast-fg",
+                  "--toggle-on",
+                  "--slider-fill",
+                  "--glass-blur",
+                  "--glass-sat",
+                  "--glass-alpha"
+                ]
+              },
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 120
+              }
+            },
+            "dark": {
+              "type": "object",
+              "propertyNames": {
+                "enum": [
+                  "--bg-1",
+                  "--bg-2",
+                  "--surface",
+                  "--surface-solid",
+                  "--border",
+                  "--border-soft",
+                  "--text",
+                  "--text-2",
+                  "--text-3",
+                  "--accent",
+                  "--accent-2",
+                  "--accent-ink",
+                  "--shadow",
+                  "--shadow-sm",
+                  "--radius-lg",
+                  "--radius-md",
+                  "--radius-sm",
+                  "--msg-bg",
+                  "--msg-fg",
+                  "--msg-mine-bg",
+                  "--msg-mine-fg",
+                  "--tab-active-bg",
+                  "--tab-active-fg",
+                  "--toast-bg",
+                  "--toast-fg",
+                  "--toggle-on",
+                  "--slider-fill",
+                  "--glass-blur",
+                  "--glass-sat",
+                  "--glass-alpha"
+                ]
+              },
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 120
+              }
+            }
+          },
+          "additionalProperties": false,
+          "minProperties": 1
+        }
+      ]
     },
     "borders": {
       "type": "object",
@@ -376,6 +492,21 @@
         },
         "homepage": {
           "type": "string"
+        }
+      }
+    },
+    "deco": {
+      "description": "装饰层：只允许 div/span/i 与 fd- 前缀的 class",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "html": {
+          "type": "string",
+          "maxLength": 1200
+        },
+        "css": {
+          "type": "string",
+          "maxLength": 4000
         }
       }
     }

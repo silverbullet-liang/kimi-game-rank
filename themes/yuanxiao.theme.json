@@ -42,19 +42,79 @@
     }
   ],
   "icons": {
-    "nav.today": "M11 0h2v2h-2zM12 3a6 6 0 0 1 6 6 6 6 0 0 1-6 6 6 6 0 0 1-6-6 6 6 0 0 1 6-6zM11 15h2v4h-2zM8 19h8v2H8z"
+    "nav.total": "M6 3.4h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 17.3V19.4h3v2H8v-2h3V17.3A6 6 0 0 1 5.2 12.4H4a3 3 0 0 1 0-6h2v-3zM12 0.6a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 1 1 0-4.4zM2.6 15.2a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 1 1 0-2.8zM21.4 15.2a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 1 1 0-2.8z",
+    "action.star": "M12 3.4l2.8 5.9 6.4 0.9-4.6 4.6 1.1 6.4L12 18.1l-5.7 3.1 1.1-6.4-4.6-4.6 6.4-0.9zM12 0.6a2 2 0 1 1 0 4 2 2 0 1 1 0-4z",
+    "tab.chat": "M4.2 3.8h15.6a2.2 2.2 0 0 1 2.2 2.2v8.8a2.2 2.2 0 0 1-2.2 2.2H9.6L4.2 20.4V6a2.2 2.2 0 0 1 0-2.2zM19.6 14.4h1.4v4h1.4l-2.1 2.8-2.1-2.8h1.4z",
+    "nav.today": "M7 2.2h1.8v2.2h6.4V2.2H17v2.2h3v17.4H4V4.4h3zM6 10.4v9.2h12v-9.2zM12 12.4a1.7 1.7 0 1 1 0 3.4 1.7 1.7 0 1 1 0-3.4z",
+    "field.search": "M10 3.8a6.2 6.2 0 1 0 3.8 11.1l4.4 4.4 1.5-1.5-4.4-4.4A6.2 6.2 0 0 0 10 3.8zm0 2.1a4.1 4.1 0 1 1 0 8.2 4.1 4.1 0 0 1 0-8.2zM10 7.8a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 1 1 0-3.2z",
+    "action.vote": "M12 2.2l2.9 6.1 6.5 1-4.7 4.6 1.1 6.5L12 17.4 6.1 20.4l1.1-6.5L2.5 9.3l6.5-1zM3 19.2a1.5 1.5 0 1 1 0 3 1.5 1.5 0 1 1 0-3zM21 19.2a1.5 1.5 0 1 1 0 3 1.5 1.5 0 1 1 0-3z",
+    "state.empty": "M3.6 13.6h16.8a8.4 8.4 0 0 1-16.8 0zM8.6 9.2a1.9 1.9 0 1 1 0 3.8 1.9 1.9 0 1 1 0-3.8zM12.6 8.6a1.9 1.9 0 1 1 0 3.8 1.9 1.9 0 1 1 0-3.8zM16 8.4a1.7 1.7 0 1 1 0 3.4 1.7 1.7 0 1 1 0-3.4z",
+    "action.send": "M4 20.2l17-8.2L4 3.6v6.4l11.2 2L4 13.6v6.6zM2 18.6a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 1 1 0-2.8z",
+    "user.avatar": "M12 3.4a4.2 4.2 0 1 1 0 8.4 4.2 4.2 0 0 1 0-8.4zM4.6 21.4c0-3.9 3.4-6.6 7.4-6.6s7.4 2.7 7.4 6.6H4.6zM12 0.8a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 1 1 0-3.2z",
+    "doc.ranking": "M3.4 13.4h4.6v7.6H3.4zM9.7 9.6h4.6v11.4H9.7zM16 15.2h4.6v5.8H16zM12 2.2a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 1 1 0-3.6zM1.6 6.2a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 1 1 0-2.4zM21.6 6.2a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 1 1 0-2.4z"
   },
   "force": "auto",
   "tokens": {
-    "--surface": "rgba(255,252,247,.91)",
-    "--border": "rgba(217,123,43,.18)",
-    "--border-soft": "rgba(217,123,43,.09)",
-    "--shadow": "0 10px 28px rgba(42,32,53,.16)",
-    "--shadow-sm": "0 4px 13px rgba(42,32,53,.10)"
+    "light": {
+      "--bg-1": "#FCEEE0",
+      "--bg-2": "#F7E0C6",
+      "--surface": "rgba(255,250,244,0.9)",
+      "--surface-solid": "#FFF9F2",
+      "--border": "#EBD2B4",
+      "--border-soft": "#F6E3CB",
+      "--text": "#3B2410",
+      "--text-2": "#6A4423",
+      "--text-3": "#855C33",
+      "--accent": "#C0341F",
+      "--accent-2": "#4B3A6B",
+      "--accent-ink": "#FFF6EE",
+      "--shadow": "rgba(59,36,16,0.16)",
+      "--shadow-sm": "rgba(59,36,16,0.08)",
+      "--msg-bg": "#FAE6D2",
+      "--msg-fg": "#3B2410",
+      "--msg-mine-bg": "#C0341F",
+      "--msg-mine-fg": "#FFF6EE",
+      "--tab-active-bg": "#C0341F",
+      "--tab-active-fg": "#FFF6EE",
+      "--toast-bg": "#3B2410",
+      "--toast-fg": "#FCEEE0",
+      "--toggle-on": "#C0341F",
+      "--slider-fill": "#C0341F"
+    },
+    "dark": {
+      "--bg-1": "#1A1424",
+      "--bg-2": "#120E19",
+      "--surface": "rgba(44,34,60,0.7)",
+      "--surface-solid": "#241C32",
+      "--border": "#3A2E4C",
+      "--border-soft": "#2E253D",
+      "--text": "#FBEEE2",
+      "--text-2": "#DCC7B6",
+      "--text-3": "#B9A3A0",
+      "--accent": "#F2795C",
+      "--accent-2": "#A98BD0",
+      "--accent-ink": "#1A1424",
+      "--shadow": "rgba(0,0,0,0.55)",
+      "--shadow-sm": "rgba(0,0,0,0.36)",
+      "--msg-bg": "#2B2238",
+      "--msg-fg": "#FBEEE2",
+      "--msg-mine-bg": "#F2795C",
+      "--msg-mine-fg": "#1A1424",
+      "--tab-active-bg": "#F2795C",
+      "--tab-active-fg": "#1A1424",
+      "--toast-bg": "#FBEEE2",
+      "--toast-fg": "#1A1424",
+      "--toggle-on": "#A98BD0",
+      "--slider-fill": "#F2795C"
+    }
   },
   "meta": {
     "author": "Kimi 游戏榜",
     "version": "1.0.0",
     "license": "AGPL-3.0"
+  },
+  "deco": {
+    "html": "<i class=\"fd-night\"></i><i class=\"fd-lamp fd-l1\"></i><i class=\"fd-lamp fd-l2\"></i><i class=\"fd-lamp fd-l3\"></i><span class=\"fd-glow\"></span>",
+    "css": ".fd-night{position:fixed;top:0;left:0;width:100%;height:10vh;background:linear-gradient(180deg,rgba(75,58,107,.26),rgba(75,58,107,0));pointer-events:none}.fd-lamp{position:fixed;top:1vh;width:24px;height:28px;border-radius:50% 50% 46% 46%;background:radial-gradient(circle at 40% 34%,#F0836A,#C0341F 72%);box-shadow:0 -14px 0 -13px rgba(192,52,31,.55),0 0 16px 5px rgba(240,131,106,.3);animation:fd-sway 9s ease-in-out infinite;pointer-events:none}.fd-l1{left:4vw}.fd-l2{right:5vw;top:2vh;width:18px;height:21px;animation-duration:11s}.fd-l3{right:7vw;top:1.2vh;width:14px;height:17px;opacity:.8}.fd-glow{position:fixed;bottom:0;left:0;width:100%;height:7vh;background:linear-gradient(0deg,rgba(240,131,106,.24),rgba(240,131,106,0));pointer-events:none}@keyframes fd-sway{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}@media (prefers-reduced-motion: reduce){.fd-lamp{animation:none}}"
   }
 }

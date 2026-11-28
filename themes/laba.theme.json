@@ -50,15 +50,78 @@
   ],
   "force": "auto",
   "tokens": {
-    "--surface": "rgba(255,252,244,.91)",
-    "--border": "rgba(139,90,43,.18)",
-    "--border-soft": "rgba(139,90,43,.09)",
-    "--shadow": "0 10px 28px rgba(139,90,43,.15)",
-    "--shadow-sm": "0 4px 13px rgba(139,90,43,.09)"
+    "light": {
+      "--bg-1": "#FBF4E2",
+      "--bg-2": "#F4EAD3",
+      "--surface": "rgba(255,252,244,.92)",
+      "--surface-solid": "#FDF9EE",
+      "--border": "rgba(150,112,60,.22)",
+      "--border-soft": "rgba(150,112,60,.10)",
+      "--text": "#2E2210",
+      "--text-2": "#52401F",
+      "--text-3": "#75603A",
+      "--accent": "#A63A1E",
+      "--accent-2": "#C89A3C",
+      "--accent-ink": "#FFF9EC",
+      "--shadow": "0 10px 26px rgba(54,38,16,.15)",
+      "--shadow-sm": "0 4px 12px rgba(54,38,16,.09)",
+      "--msg-bg": "rgba(255,252,244,.95)",
+      "--msg-fg": "#2E2210",
+      "--msg-mine-bg": "#A63A1E",
+      "--msg-mine-fg": "#FFF9EC",
+      "--tab-active-bg": "#A63A1E",
+      "--tab-active-fg": "#FFF9EC",
+      "--toast-bg": "#2E2210",
+      "--toast-fg": "#F9F1DE",
+      "--toggle-on": "#A63A1E",
+      "--slider-fill": "#C89A3C"
+    },
+    "dark": {
+      "--bg-1": "#1E1509",
+      "--bg-2": "#140E06",
+      "--surface": "rgba(34,25,13,.90)",
+      "--surface-solid": "#271C0E",
+      "--border": "rgba(224,178,92,.24)",
+      "--border-soft": "rgba(224,178,92,.12)",
+      "--text": "#F7EEDD",
+      "--text-2": "#D8C4A4",
+      "--text-3": "#AD9878",
+      "--accent": "#C4522F",
+      "--accent-2": "#E0B25C",
+      "--accent-ink": "#FFF9EC",
+      "--shadow": "0 12px 32px rgba(0,0,0,.62)",
+      "--shadow-sm": "0 5px 16px rgba(0,0,0,.5)",
+      "--msg-bg": "rgba(38,28,15,.94)",
+      "--msg-fg": "#F7EEDD",
+      "--msg-mine-bg": "#C4522F",
+      "--msg-mine-fg": "#FFF9EC",
+      "--tab-active-bg": "#E0B25C",
+      "--tab-active-fg": "#1E1509",
+      "--toast-bg": "#F7EEDD",
+      "--toast-fg": "#1E1509",
+      "--toggle-on": "#E0B25C",
+      "--slider-fill": "#E0B25C"
+    }
   },
   "meta": {
     "author": "Kimi 游戏榜",
     "version": "1.0.0",
     "license": "AGPL-3.0"
+  },
+  "icons": {
+    "nav.total": "M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3zM8.6 7c2.2 1.2 4.6 1.2 6.8 0M10.2 9.4a0.9 0.9 0 1 0 0 1.8 0.9 0.9 0 0 0 0-1.8M14 9.4a0.9 0.9 0 1 0 0 1.8 0.9 0.9 0 0 0 0-1.8",
+    "action.star": "M12 2.6l3 6.1 6.7 1-4.9 4.7 1.2 6.6L12 17.8 5.9 21l1.2-6.6-4.9-4.7 6.7-1zM9.4 12.2a2.6 2 0 1 0 5.2 0 2.6 2 0 1 0-5.2 0z",
+    "action.send": "M3 18.4l17.2-7.8L3 3.2v5.6l11.4 1.8L3 12.4v6zM7 20.6c1-1.4 2-1.4 3 0s2 1.4 3 0",
+    "tab.chat": "M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2zM9.4 8c.6.9.6 1.7 0 2.6M12 7.6c.6.9.6 1.7 0 2.6M14.6 8c.6.9.6 1.7 0 2.6",
+    "nav.today": "M7 2h2v2h6V2h2v2h3v18H4V4h3V2zm0 8v10h10V10H7zM8.6 14.2h6.8c0 2.2-1.5 3.6-3.4 3.6s-3.4-1.4-3.4-3.6zM10.4 11.6c.6-.8.6-1.4 0-2",
+    "state.empty": "M3.6 11.4h16.8c0 4.2-3.8 7.4-8.4 7.4s-8.4-3.2-8.4-7.4zM9 21h6M10.4 5.8c.8 1 1 2 .6 3M13.6 5.8c.8 1 1 2 .6 3",
+    "doc.community": "M6 2.4h8.2L18 6.2V21.6H6zM14.2 2.4v3.8h3.8M8.8 11.4h6.4M8.8 14.6h2.4M12 14.6h1.6M15.6 14.6h1.2",
+    "state.loading": "M12 2.8a9.2 9.2 0 1 1-9.2 9.2M12 5.6a6.4 6.4 0 1 1-6.4 6.4M9.6 13.4c1-1 1-2 0-3M13.4 13.4c1-1 1-2 0-3",
+    "media.play": "M9 5.6l9.2 6.4-9.2 6.4zM4.6 8.2a8.8 8.8 0 0 0 0 7.6M8.4 12.4a2.6 2.6 0 0 1 2.6 2.6",
+    "action.vote": "M12 2l3 6 6.5.9-4.7 4.6 1.1 6.5L12 17l-5.9 3 1.1-6.5L2.5 8.9 9 8zM8.8 13.6a2.2 2.2 0 1 1 4.4 0 2.2 2.2 0 0 1-4.4 0zM14.6 11a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2z"
+  },
+  "deco": {
+    "html": "<div class=\"fd-bowl\"></div><div class=\"fd-steam\"></div><i class=\"fd-bean\"></i><span class=\"fd-millet\"></span>",
+    "css": ".fd-bowl{position:fixed;bottom:0;left:2vw;width:92px;height:46px;border-radius:0 0 52% 52%/0 0 100% 100%;background:linear-gradient(180deg,rgba(166,58,30,.22),rgba(166,58,30,.05));box-shadow:0 -2px 0 rgba(166,58,30,.24);pointer-events:none}\n.fd-steam{position:fixed;bottom:6vh;left:4vw;width:44px;height:7vh;background:radial-gradient(ellipse at 50% 100%,rgba(200,154,60,.24),rgba(200,154,60,0) 72%);animation:fd-rise 11s ease-in-out infinite;pointer-events:none}\n.fd-bean{position:fixed;top:3vh;right:4vw;width:10px;height:10px;border-radius:50%;background:rgba(166,58,30,.38);pointer-events:none}\n.fd-millet{position:fixed;left:0;bottom:1vh;width:8vw;height:4vh;background:radial-gradient(circle at 20% 60%,rgba(166,58,30,.16) 0 2px,rgba(166,58,30,0) 2px),radial-gradient(circle at 60% 30%,rgba(200,154,60,.20) 0 2px,rgba(200,154,60,0) 2px);pointer-events:none}\n@keyframes fd-rise{0%,100%{transform:translateY(0);opacity:.6}50%{transform:translateY(-8px);opacity:1}}\n@media (prefers-reduced-motion: reduce){.fd-steam{animation:none}}"
   }
 }

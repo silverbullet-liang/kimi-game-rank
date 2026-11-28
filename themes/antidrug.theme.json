@@ -42,15 +42,78 @@
   ],
   "force": "auto",
   "tokens": {
-    "--surface": "rgba(255,255,255,.91)",
-    "--border": "rgba(27,58,92,.16)",
-    "--border-soft": "rgba(27,58,92,.08)",
-    "--shadow": "0 8px 22px rgba(22,33,45,.12)",
-    "--shadow-sm": "0 3px 9px rgba(22,33,45,.07)"
+    "light": {
+      "--bg-1": "#EDF2F8",
+      "--bg-2": "#DEE7F1",
+      "--surface": "rgba(255,255,255,.92)",
+      "--surface-solid": "#FFFFFF",
+      "--border": "rgba(27,58,92,.18)",
+      "--border-soft": "rgba(27,58,92,.09)",
+      "--text": "#0F1E2C",
+      "--text-2": "#334B62",
+      "--text-3": "#4F677C",
+      "--accent": "#1B3A5C",
+      "--accent-2": "#8797A6",
+      "--accent-ink": "#F4F8FC",
+      "--msg-bg": "#E2EAF4",
+      "--msg-fg": "#0F1E2C",
+      "--msg-mine-bg": "#1B3A5C",
+      "--msg-mine-fg": "#F4F8FC",
+      "--tab-active-bg": "#1B3A5C",
+      "--tab-active-fg": "#F4F8FC",
+      "--toast-bg": "#0F1E2C",
+      "--toast-fg": "#F4F8FC",
+      "--toggle-on": "#2C5B85",
+      "--slider-fill": "#A9BED3",
+      "--shadow": "0 8px 22px rgba(22,33,45,.12)",
+      "--shadow-sm": "0 3px 9px rgba(22,33,45,.07)"
+    },
+    "dark": {
+      "--bg-1": "#0A141F",
+      "--bg-2": "#102131",
+      "--surface": "rgba(24,42,60,.86)",
+      "--surface-solid": "#15273A",
+      "--border": "rgba(201,211,220,.24)",
+      "--border-soft": "rgba(201,211,220,.12)",
+      "--text": "#EAF2F9",
+      "--text-2": "#B7C7D6",
+      "--text-3": "#8FA3B4",
+      "--accent": "#4E86B8",
+      "--accent-2": "#C9D3DC",
+      "--accent-ink": "#06131F",
+      "--msg-bg": "#16293D",
+      "--msg-fg": "#EAF2F9",
+      "--msg-mine-bg": "#2E5F8A",
+      "--msg-mine-fg": "#F4F8FC",
+      "--tab-active-bg": "#2E5F8A",
+      "--tab-active-fg": "#F4F8FC",
+      "--toast-bg": "#040C14",
+      "--toast-fg": "#EAF2F9",
+      "--toggle-on": "#4E86B8",
+      "--slider-fill": "#3A5B79",
+      "--shadow": "0 10px 26px rgba(0,0,0,.5)",
+      "--shadow-sm": "0 3px 10px rgba(0,0,0,.4)"
+    }
   },
   "meta": {
     "author": "Kimi 游戏榜",
     "version": "1.0.0",
     "license": "AGPL-3.0"
+  },
+  "icons": {
+    "nav.total": "M7.2 2.6h9.6v4.8a4.8 4.8 0 0 1-9.6 0zM7.2 3.9H4.3v2.2a3.4 3.4 0 0 0 3 3.4M16.8 3.9h2.9v2.2a3.4 3.4 0 0 1-3 3.4M11 12.2h2v2.9h-2zM7.7 15.5h8.6v3.1H7.7zM17.4 1.2a2 2 0 0 1 2 2M21.2 1.2a2 2 0 0 1-2 2",
+    "action.star": "M12 2.4l2.5 5.1 5.6.8-4.1 4 1 5.6-5-2.7-5 2.7 1-5.6-4.1-4 5.6-.8zM18.4 16.8a2 2 0 0 1 2 2M20.4 20.8a2 2 0 0 1-2-2",
+    "action.send": "M2.4 20.2L21.4 12 2.4 3.8v6.4l12.8 1.8-12.8 1.8zM14.8 17.2a2 2 0 0 1 2 2M18.8 19.2a2 2 0 0 1-2 2",
+    "action.report": "M12 2.2l8 2.7v6.4c0 4.4-3.2 7.7-8 9.5-4.8-1.8-8-5.1-8-9.5V4.9zM2.8 18.4a2 2 0 0 1 2 2M6.8 20.4a2 2 0 0 1-2 2",
+    "state.warn": "M12 2.4l10.1 18.8H1.9zM12 .6a1.9 1.9 0 0 1 1.9 1.9M12 4.4a1.9 1.9 0 0 1-1.9-1.9",
+    "state.success": "M3.6 12.4l4.9 5 11.9-11.7-2.6-2.6-9.3 9.3-2.3-2.4zM18.4 16.8a2 2 0 0 1 2 2M20.4 20.8a2 2 0 0 1-2-2",
+    "field.search": "M10.2 3.4a6.6 6.6 0 1 0 3.9 11.9l4.7 4.7 1.5-1.5-4.7-4.7A6.6 6.6 0 0 0 10.2 3.4zm0 2.1a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zM17.4 1a2.1 2.1 0 0 1 2.1 2.1M21.6 1a2.1 2.1 0 0 1-2.1 2.1",
+    "nav.help": "M9.4 8.6a2.7 2.7 0 1 1 4 2.6c-.9.5-1.3 1.1-1.3 2.1v1.1h-2.3v-1.4c0-1.7.8-2.5 1.9-3.1.7-.4 1-1 1-1.6a1.3 1.3 0 0 0-2.6 0zM10.15 17h2.4v2.4h-2.4zM18.4 14.6a2 2 0 0 1 2 2M20.4 18.6a2 2 0 0 1-2-2",
+    "doc.criteria": "M6.2 2.4h8L20 7.9v13.7H6.2zM18.4 18.2a2 2 0 0 1 2 2M18.4 22.2a2 2 0 0 1 2-2",
+    "user.verified": "M12 2.2a9.4 9.4 0 1 1-3.9 18l-3.4 2 1.2-3.5A9.4 9.4 0 0 1 12 2.2zM18.6 .9a2 2 0 0 1 2 2M20.6 4.9a2 2 0 0 1-2-2"
+  },
+  "deco": {
+    "html": "<i class=\"fd-chain\"></i><i class=\"fd-chain2\"></i><span class=\"fd-ash\"></span>",
+    "css": ".fd-chain{position:fixed;top:2vh;left:2vw;width:62px;height:62px;border:9px solid rgba(201,211,220,.5);border-radius:50%;transform:rotate(-16deg);pointer-events:none;z-index:0}.fd-chain2{position:fixed;top:10vh;left:6vw;width:26px;height:26px;border:7px solid rgba(201,211,220,.32);border-radius:50%;transform:rotate(24deg);pointer-events:none;z-index:0}.fd-ash{position:fixed;bottom:3vh;right:3vw;width:150px;height:6px;border-radius:3px;background:linear-gradient(90deg,rgba(46,95,138,0),rgba(201,211,220,.62),rgba(46,95,138,0));pointer-events:none;z-index:0}"
   }
 }

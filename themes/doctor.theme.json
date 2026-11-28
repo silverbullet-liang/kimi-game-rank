@@ -42,18 +42,78 @@
   ],
   "force": "auto",
   "icons": {
-    "nav.today": "M12 20.8 4.4 13.5a4.9 4.9 0 0 1 7-6.9l.6.6.6-.6a4.9 4.9 0 0 1 7 6.9z"
+    "action.star": "M12 2.4l2.5 5.1 5.6.8-4.1 4 1 5.6-5-2.7-5 2.7 1-5.6-4.1-4 5.6-.8zM18.4 16.2h2v2h2v2h-2v2h-2v-2h-2v-2h2z",
+    "action.send": "M2.4 20.2L21.4 12 2.4 3.8v6.4l12.8 1.8-12.8 1.8zM1.6 19.4h3.2l1.4-2.6 1.8 4.4 1.6-6.2 1.6 4.4h1.6v1.8H9.4l-.9-2.5-1.6 6.2-2.2-5.4H1.6z",
+    "tab.chat": "M4.2 3.6h15.6a2.2 2.2 0 0 1 2.2 2.2v8.6a2.2 2.2 0 0 1-2.2 2.2H9.4L4.2 20.8V5.8a2.2 2.2 0 0 1 2.2-2.2zM18.4 16.2h2v2h2v2h-2v2h-2v-2h-2v-2h2z",
+    "state.success": "M3.6 12.4l4.9 5 11.9-11.7-2.6-2.6-9.3 9.3-2.3-2.4zM18.4 16.2h2v2h2v2h-2v2h-2v-2h-2v-2h2z",
+    "nav.help": "M9.4 8.6a2.7 2.7 0 1 1 4 2.6c-.9.5-1.3 1.1-1.3 2.1v1.1h-2.3v-1.4c0-1.7.8-2.5 1.9-3.1.7-.4 1-1 1-1.6a1.3 1.3 0 0 0-2.6 0zM10.15 17h2.4v2.4h-2.4zM18.4 16.2h2v2h2v2h-2v2h-2v-2h-2v-2h2z",
+    "user.verified": "M12 2.2a9.4 9.4 0 1 1-3.9 18l-3.4 2 1.2-3.5A9.4 9.4 0 0 1 12 2.2zM18.4 16.2h2v2h2v2h-2v2h-2v-2h-2v-2h2z",
+    "doc.criteria": "M6.2 2.4h8L20 7.9v13.7H6.2zM18.4 16.2h2v2h2v2h-2v2h-2v-2h-2v-2h2z",
+    "field.search": "M10.2 3.4a6.6 6.6 0 1 0 3.9 11.9l4.7 4.7 1.5-1.5-4.7-4.7A6.6 6.6 0 0 0 10.2 3.4zm0 2.1a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zM1.6 19.4h3.2l1.4-2.6 1.8 4.4 1.6-6.2 1.6 4.4h1.6v1.8H9.4l-.9-2.5-1.6 6.2-2.2-5.4H1.6z",
+    "state.warn": "M12 2.4l10.1 18.8H1.9zM18.4 16.2h2v2h2v2h-2v2h-2v-2h-2v-2h2z",
+    "action.report": "M12 2.2l8 2.7v6.4c0 4.4-3.2 7.7-8 9.5-4.8-1.8-8-5.1-8-9.5V4.9zM18.4 16.2h2v2h2v2h-2v2h-2v-2h-2v-2h2z"
   },
   "tokens": {
-    "--surface": "rgba(255,255,255,.92)",
-    "--border": "rgba(30,110,122,.16)",
-    "--border-soft": "rgba(30,110,122,.08)",
-    "--shadow": "0 9px 24px rgba(20,38,42,.11)",
-    "--shadow-sm": "0 3px 10px rgba(20,38,42,.07)"
+    "light": {
+      "--bg-1": "#F0FAF8",
+      "--bg-2": "#E0F2EF",
+      "--surface": "rgba(255,255,255,.95)",
+      "--surface-solid": "#FFFFFF",
+      "--border": "rgba(30,110,122,.20)",
+      "--border-soft": "rgba(30,110,122,.10)",
+      "--text": "#0E2629",
+      "--text-2": "#2A4E52",
+      "--text-3": "#456E72",
+      "--accent": "#1A6570",
+      "--accent-2": "#4FB3A5",
+      "--accent-ink": "#F0FBFC",
+      "--msg-bg": "#E2F2EF",
+      "--msg-fg": "#0E2629",
+      "--msg-mine-bg": "#1A6570",
+      "--msg-mine-fg": "#F0FBFC",
+      "--tab-active-bg": "#1A6570",
+      "--tab-active-fg": "#F0FBFC",
+      "--toast-bg": "#0E2629",
+      "--toast-fg": "#F0FBFC",
+      "--toggle-on": "#2A8B85",
+      "--slider-fill": "#BCE0DA",
+      "--shadow": "0 9px 24px rgba(20,38,42,.11)",
+      "--shadow-sm": "0 3px 10px rgba(20,38,42,.07)"
+    },
+    "dark": {
+      "--bg-1": "#07161A",
+      "--bg-2": "#0D2226",
+      "--surface": "rgba(16,44,48,.92)",
+      "--surface-solid": "#0F2A2F",
+      "--border": "rgba(127,212,200,.22)",
+      "--border-soft": "rgba(127,212,200,.11)",
+      "--text": "#E6F7F6",
+      "--text-2": "#AFD4D2",
+      "--text-3": "#88B4B2",
+      "--accent": "#4FC0AE",
+      "--accent-2": "#9BE8DC",
+      "--accent-ink": "#04211E",
+      "--msg-bg": "#123236",
+      "--msg-fg": "#E6F7F6",
+      "--msg-mine-bg": "#12616B",
+      "--msg-mine-fg": "#F0FBFC",
+      "--tab-active-bg": "#4FC0AE",
+      "--tab-active-fg": "#04211E",
+      "--toast-bg": "#020A0C",
+      "--toast-fg": "#E6F7F6",
+      "--toggle-on": "#4FC0AE",
+      "--slider-fill": "#1D4A4E",
+      "--shadow": "0 10px 26px rgba(0,0,0,.55)",
+      "--shadow-sm": "0 3px 10px rgba(0,0,0,.45)"
+    }
   },
   "meta": {
     "author": "Kimi 游戏榜",
     "version": "1.0.0",
     "license": "AGPL-3.0"
+  },
+  "deco": {
+    "html": "<i class=\"fd-ecg\"></i><span class=\"fd-mint\"></span>",
+    "css": ".fd-ecg{position:fixed;bottom:3vh;left:2vw;width:120px;height:22px;background:repeating-linear-gradient(90deg,rgba(30,110,122,.45) 0 14px,rgba(30,110,122,0) 14px 26px);pointer-events:none;z-index:0}.fd-mint{position:fixed;top:2vh;right:3vw;width:70px;height:70px;border-radius:50%;background:radial-gradient(circle at 50% 50%,rgba(127,212,200,.4),rgba(127,212,200,0) 72%);pointer-events:none;z-index:0}"
   }
 }

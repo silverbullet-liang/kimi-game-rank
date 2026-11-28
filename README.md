@@ -38,7 +38,7 @@ A site that collects games, tools, literary works and fan creations from the com
 | Admin panel | Ingest and bulk refresh, database backup, comment moderation, tag management, sub-admins |
 | Smart link resolution | On by default: when a work page is only a redirect page, use the real address behind it |
 | Discipline notices | Admins can report a user in one click (several reasons, ban duration incl. permanent and fractional days, IP ban, purge of their comments / chats / images). A banned user can still sign in, but the UI is locked to the violation notice page and the backend rejects every other API |
-| Festival themes | **48** limited-time themes, each with its own design and palette (fixed solar dates, lunar dates, the Nth weekday of a month, and multi-day windows), switching on and off by date automatically; only Halloween forces a dark palette |
+| Festival themes | **49** limited-time themes, each with its own design and palette (fixed solar dates, lunar dates, the Nth weekday of a month, and multi-day windows), switching on and off by date automatically; only Halloween forces a dark palette |
 | Skins | Several visual skins; fonts are loaded straight from public CDNs, so they cost your host no traffic |
 | Scoring | Six dimensions grouped into three pillars (quality / effort / recognition); ratings are quota-based by rank — only the top 2% get SSS, the top 10% SS — so grades stay meaningful as the site grows |
 | Transfer compliance | An **International Data Transfer Notice** written separately for the EU GDPR (Chapter V), the UK GDPR, US state statutes (CCPA/CPRA and the VA / CO / CT / UT Acts), Canada's PIPEDA, Australia's APP 8 and Singapore's PDPA — with its own consent tick at sign-in |
@@ -145,6 +145,7 @@ It verifies three things: whether forbidden files slipped into the staged set, w
 ├── sql/            Table schema
 ├── standalone/     Standalone pages (changelog / redirect page)
 ├── storage/        Runtime data (cache, logs, uploads, backups)
+├── themes/         Festival themes as JSON (palette, icons, decoration, background)
 └── tools/          Build and verification scripts
 ```
 

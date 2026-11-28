@@ -41,15 +41,78 @@
   ],
   "force": "auto",
   "tokens": {
-    "--surface": "rgba(255,255,255,.90)",
-    "--border": "rgba(74,93,110,.18)",
-    "--border-soft": "rgba(74,93,110,.09)",
-    "--shadow": "0 10px 28px rgba(27,39,51,.13)",
-    "--shadow-sm": "0 3px 12px rgba(27,39,51,.08)"
+    "light": {
+      "--bg-1": "#EBEEF1",
+      "--bg-2": "#DCE2E6",
+      "--surface": "rgba(248,250,251,0.9)",
+      "--surface-solid": "#F8FAFB",
+      "--border": "#C0C9CF",
+      "--border-soft": "rgba(47,107,132,0.16)",
+      "--text": "#1C2529",
+      "--text-2": "#3C4A51",
+      "--text-3": "#5A6A72",
+      "--accent": "#2F6B84",
+      "--accent-2": "#A87F2C",
+      "--accent-ink": "#F4FAFC",
+      "--shadow": "rgba(28,37,41,0.16)",
+      "--shadow-sm": "rgba(28,37,41,0.09)",
+      "--msg-bg": "#F2F6F8",
+      "--msg-fg": "#1C2529",
+      "--msg-mine-bg": "#DCE7EB",
+      "--msg-mine-fg": "#1F2A2E",
+      "--tab-active-bg": "#2F6B84",
+      "--tab-active-fg": "#F4FAFC",
+      "--toast-bg": "#1C2529",
+      "--toast-fg": "#EBEEF1",
+      "--toggle-on": "#2F6B84",
+      "--slider-fill": "#6E90A0"
+    },
+    "dark": {
+      "--bg-1": "#101618",
+      "--bg-2": "#0A0F11",
+      "--surface": "rgba(26,34,38,0.88)",
+      "--surface-solid": "#1A2226",
+      "--border": "#2F3D42",
+      "--border-soft": "rgba(98,166,192,0.2)",
+      "--text": "#E8EEF1",
+      "--text-2": "#BFCDD4",
+      "--text-3": "#93A4AC",
+      "--accent": "#62A6C0",
+      "--accent-2": "#E2BC6E",
+      "--accent-ink": "#0B1114",
+      "--shadow": "rgba(0,0,0,0.6)",
+      "--shadow-sm": "rgba(0,0,0,0.4)",
+      "--msg-bg": "#1A2226",
+      "--msg-fg": "#E8EEF1",
+      "--msg-mine-bg": "#24383F",
+      "--msg-mine-fg": "#EAF2F5",
+      "--tab-active-bg": "#62A6C0",
+      "--tab-active-fg": "#0B1114",
+      "--toast-bg": "#E8EEF1",
+      "--toast-fg": "#101618",
+      "--toggle-on": "#62A6C0",
+      "--slider-fill": "#6E90A0"
+    }
   },
   "meta": {
     "author": "Kimi 游戏榜",
     "version": "1.0.0",
     "license": "AGPL-3.0"
+  },
+  "icons": {
+    "nav.total": "M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3zM8.6 11.4h6.8v1.4H8.6z",
+    "action.star": "M12 2.6l3 6.1 6.7 1-4.9 4.7 1.2 6.6L12 17.8 5.9 21l1.2-6.6-4.9-4.7 6.7-1zM2 21.6h7.2v1.3H2zM20.4 22a1.1 1.1 0 1 1 2.2 0 1.1 1.1 0 0 1-2.2 0z",
+    "action.send": "M3 20l18-8L3 4v6l12 2-12 2v6zM1.2 22.4h9.6v1.3H1.2z",
+    "action.comment": "M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2zM6.6 11.4h10.8v1.4H6.6z",
+    "action.vote": "M12 2.2l3.1 6.2 6.8 1-4.9 4.8 1.2 6.7L12 17.6l-6.1 3.1 1.2-6.7-4.9-4.8 6.8-1zM3 21.6h18v1.4H3z",
+    "field.search": "M10 4a6 6 0 1 0 3.7 10.7l4.3 4.3 1.4-1.4-4.3-4.3A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM7 9.4h6v1.2H7z",
+    "nav.today": "M7 2h2v2h6V2h2v2h3v18H4V4h3V2zm0 8v10h10V10H7zM7 18.8v1.2h10v-1.2z",
+    "state.empty": "M3.6 6.4h16.8v3.4H3.6zM5 11h14v8.8H5zM2 22.4h20v1.2H2z",
+    "media.play": "M7 3.4l13 8.6-13 8.6zM2 22.4h11v1.2H2z",
+    "doc.community": "M8.4 2.6a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM15.6 2.6a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM4 10.4h16.2a1.8 1.8 0 0 1 1.8 1.8v6.2a1.8 1.8 0 0 1-1.8 1.8H4a1.8 1.8 0 0 1-1.8-1.8v-6.2A1.8 1.8 0 0 1 4 10.4zM6.4 22.6h11.2v1.2H6.4z"
+  },
+  "deco": {
+    "html": "<div class=\"fd-line\"></div><div class=\"fd-glow\"></div><i class=\"fd-dot\"></i><span class=\"fd-dot2\"></span>",
+    "css": ".fd-line{position:fixed;left:0;right:0;bottom:7vh;height:2px;background:linear-gradient(90deg,transparent,rgba(47,107,132,.5),transparent);pointer-events:none}.fd-glow{position:fixed;right:4vw;top:3vh;width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,rgba(226,188,110,.42),transparent 70%);pointer-events:none}.fd-dot{position:fixed;right:7vw;top:8vh;display:block;width:7px;height:7px;border-radius:50%;background:rgba(226,188,110,.9);pointer-events:none}.fd-dot2{position:fixed;left:6vw;bottom:7vh;display:block;width:5px;height:5px;border-radius:50%;background:rgba(47,107,132,.55);pointer-events:none}"
   }
 }

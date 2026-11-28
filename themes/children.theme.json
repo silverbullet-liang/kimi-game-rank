@@ -42,15 +42,78 @@
   ],
   "force": "auto",
   "tokens": {
-    "--surface": "rgba(255,253,248,.92)",
-    "--border": "rgba(224,122,95,.16)",
-    "--border-soft": "rgba(224,122,95,.08)",
-    "--shadow": "0 10px 26px rgba(50,39,32,.13)",
-    "--shadow-sm": "0 4px 12px rgba(50,39,32,.08)"
+    "light": {
+      "--bg-1": "#FFF6EA",
+      "--bg-2": "#FCEBD5",
+      "--surface": "rgba(255,255,255,.95)",
+      "--surface-solid": "#FFFEFB",
+      "--border": "rgba(224,122,95,.22)",
+      "--border-soft": "rgba(224,122,95,.11)",
+      "--text": "#31221C",
+      "--text-2": "#573F35",
+      "--text-3": "#75584B",
+      "--accent": "#B04A31",
+      "--accent-2": "#5B8FB9",
+      "--accent-ink": "#FFFCF7",
+      "--msg-bg": "#FCEEDE",
+      "--msg-fg": "#31221C",
+      "--msg-mine-bg": "#B04A31",
+      "--msg-mine-fg": "#FFFCF7",
+      "--tab-active-bg": "#3E6C93",
+      "--tab-active-fg": "#FBFDFF",
+      "--toast-bg": "#31221C",
+      "--toast-fg": "#FFFCF7",
+      "--toggle-on": "#E9B949",
+      "--slider-fill": "#F4C9B4",
+      "--shadow": "0 10px 26px rgba(50,39,32,.13)",
+      "--shadow-sm": "0 4px 12px rgba(50,39,32,.08)"
+    },
+    "dark": {
+      "--bg-1": "#241E1A",
+      "--bg-2": "#2F2721",
+      "--surface": "rgba(58,49,43,.9)",
+      "--surface-solid": "#332B25",
+      "--border": "rgba(244,201,180,.24)",
+      "--border-soft": "rgba(244,201,180,.12)",
+      "--text": "#FBF3E8",
+      "--text-2": "#D9C9B9",
+      "--text-3": "#B2A190",
+      "--accent": "#F0A186",
+      "--accent-2": "#86B6DC",
+      "--accent-ink": "#2A1A14",
+      "--msg-bg": "#382F29",
+      "--msg-fg": "#FBF3E8",
+      "--msg-mine-bg": "#B9512F",
+      "--msg-mine-fg": "#FFFCF7",
+      "--tab-active-bg": "#86B6DC",
+      "--tab-active-fg": "#1B2733",
+      "--toast-bg": "#14100D",
+      "--toast-fg": "#FBF3E8",
+      "--toggle-on": "#E9B949",
+      "--slider-fill": "#6E4E42",
+      "--shadow": "0 10px 28px rgba(0,0,0,.5)",
+      "--shadow-sm": "0 3px 10px rgba(0,0,0,.4)"
+    }
   },
   "meta": {
     "author": "Kimi 游戏榜",
     "version": "1.0.0",
     "license": "AGPL-3.0"
+  },
+  "icons": {
+    "tab.chat": "M4.2 3.6h15.6a2.2 2.2 0 0 1 2.2 2.2v8.6a2.2 2.2 0 0 1-2.2 2.2H9.4L4.2 20.8V5.8a2.2 2.2 0 0 1 2.2-2.2zM19.2 1a2.7 2.7 0 1 0 .1 0zM19.2 6.4c-.7 1.5.8 2.3-.2 3.4v.8h-1.2v-.9c1-1.1-.5-1.9.2-3.3z",
+    "action.star": "M12 2.4l2.5 5.1 5.6.8-4.1 4 1 5.6-5-2.7-5 2.7 1-5.6-4.1-4 5.6-.8zM7.4 19.4h2.6v2.6H7.4zM13.6 19.4h2.6v2.6h-2.6z",
+    "action.send": "M2.4 20.2L21.4 12 2.4 3.8v6.4l12.8 1.8-12.8 1.8zM2.4 20.8a2.4 2.4 0 0 1 2.4 2.4H2.4zM6.8 20.8a2.4 2.4 0 0 1-2.4 2.4h2.4z",
+    "state.empty": "M3.6 8.2l8.4-4.2 8.4 4.2v11.4H3.6zM7.4 19.4h2.6v2.6H7.4zM13.6 19.4h2.6v2.6h-2.6z",
+    "nav.total": "M7.2 2.6h9.6v4.8a4.8 4.8 0 0 1-9.6 0zM7.2 3.9H4.3v2.2a3.4 3.4 0 0 0 3 3.4M16.8 3.9h2.9v2.2a3.4 3.4 0 0 1-3 3.4M11 12.2h2v2.9h-2zM7.7 15.5h8.6v3.1H7.7zM19.2 1a2.7 2.7 0 1 0 .1 0zM19.2 6.4c-.7 1.5.8 2.3-.2 3.4v.8h-1.2v-.9c1-1.1-.5-1.9.2-3.3z",
+    "field.emoji": "M12 2.4a9.6 9.6 0 1 0 0 19.2 9.6 9.6 0 0 0 0-19.2zM2.4 20.8a2.4 2.4 0 0 1 2.4 2.4H2.4zM6.8 20.8a2.4 2.4 0 0 1-2.4 2.4h2.4z",
+    "action.vote": "M12 2l3.1 6.3 6.7.9-4.9 4.6 1.2 6.5L12 17.2l-6.1 3.1 1.2-6.5-4.9-4.6 6.7-.9zM7.4 19.4h2.6v2.6H7.4zM13.6 19.4h2.6v2.6h-2.6z",
+    "ui.theme": "M12 2.4a9.6 9.6 0 1 0 6.9 16.3A7.6 7.6 0 0 1 12 2.4zM19.2 1a2.7 2.7 0 1 0 .1 0zM19.2 6.4c-.7 1.5.8 2.3-.2 3.4v.8h-1.2v-.9c1-1.1-.5-1.9.2-3.3z",
+    "doc.community": "M6.2 2.4h8L20 7.9v13.7H6.2zM2.4 20.8a2.4 2.4 0 0 1 2.4 2.4H2.4zM6.8 20.8a2.4 2.4 0 0 1-2.4 2.4h2.4z",
+    "state.success": "M3.6 12.4l4.9 5 11.9-11.7-2.6-2.6-9.3 9.3-2.3-2.4zM2.4 20.8a2.4 2.4 0 0 1 2.4 2.4H2.4zM6.8 20.8a2.4 2.4 0 0 1-2.4 2.4h2.4z"
+  },
+  "deco": {
+    "html": "<i class=\"fd-cube\"></i><i class=\"fd-cube2\"></i><span class=\"fd-candy\"></span>",
+    "css": ".fd-cube{position:fixed;top:2vh;left:3vw;width:42px;height:42px;border-radius:10px;background:linear-gradient(140deg,rgba(224,122,95,.75),rgba(224,122,95,.32));transform:rotate(-12deg);pointer-events:none;z-index:0}.fd-cube2{position:fixed;top:3vh;right:4vw;width:34px;height:34px;border-radius:9px;background:linear-gradient(140deg,rgba(91,143,185,.7),rgba(91,143,185,.28));transform:rotate(14deg);pointer-events:none;z-index:0}.fd-candy{position:fixed;bottom:3vh;left:5vw;width:16px;height:16px;border-radius:50%;background:rgba(233,185,73,.85);pointer-events:none;z-index:0;animation:fd-bob 7s ease-in-out infinite}@keyframes fd-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}@media (prefers-reduced-motion: reduce){.fd-candy{animation:none}}"
   }
 }

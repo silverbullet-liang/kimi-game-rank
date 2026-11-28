@@ -1,12 +1,12 @@
 {
-    "version": "3.78.0",
-    "at": "2026-11-27 09:56:42",
+    "version": "3.80.0",
+    "at": "2026-11-28 12:43:48",
     "algo": "sha256+md5",
     "files": {
         "index.php": {
-            "sha256": "d74b8c0c22093565530e51a465e28817c0cf86f729c6128b35390057c7979504",
-            "md5": "aa373df22c7e58728e23c1f18b5e7f1a",
-            "size": 32566
+            "sha256": "c2da48a6e4a4eee04d4475803b32f38ba94a2a0b42e7fbb8a90e5e3bec162dc7",
+            "md5": "8aa601c174cd5382a4b2e4b6010a85be",
+            "size": 22799
         },
         ".htaccess": {
             "sha256": "a323e80132f5ecdb470f9c503257b251c79b15360ea09f7f80ad0bfbbe00d408",
@@ -14,9 +14,9 @@
             "size": 7318
         },
         "assets/js/app.js": {
-            "sha256": "feb973373af1a8db0da10d300208fac65536a1fe7ee961d1f6c856cec2a72b2b",
-            "md5": "9d153a9a60589cf3cb38fa2d28a3a21f",
-            "size": 619053
+            "sha256": "b7e28db8730fb0e364e4196267d7f42abe59563615adabe7cb6ae58485c8f3ae",
+            "md5": "fecc4dfde063fafb88f3c18075e006bb",
+            "size": 624649
         },
         "assets/js/monitor.js": {
             "sha256": "cbbc84afd9533a38cdb4b84a71c3621d3a1477ce8ed8e3afa366e3f8e890e81a",
@@ -24,14 +24,14 @@
             "size": 11504
         },
         "assets/css/app.css": {
-            "sha256": "88cbccca8010c3c97ef6c442f10e4cfae2bfcd33d30d6777906a81a0650f3e8d",
-            "md5": "2b9dc74936e39a33faf4d0a6559f940e",
-            "size": 115914
+            "sha256": "faa55609e5892cdd753e1ed8db454e1ac86a2f6a261e150025625c1713f75aa7",
+            "md5": "b202847e1724e35b378f08e01742f2a8",
+            "size": 116187
         },
         "app/bootstrap.php": {
-            "sha256": "8f9feb2edda0841536e8b2e00b94519e5e1bc2b8fbd0429591f6e712c7828a11",
-            "md5": "d459a01de6c5f2ce5891f08390d85a9d",
-            "size": 14209
+            "sha256": "9ad025c2ca627c3f000fe60a49c0d9ba50791180efcdeccf13d3a8f11fdfd057",
+            "md5": "308d4d777708995474cf074838f4a8fd",
+            "size": 14302
         },
         "app/helpers.php": {
             "sha256": "875ab5c9fd19f2e5202746ab2406321e3e76479953bd47e97ac24bdd3ce24da1",
@@ -139,5 +139,5 @@
             "size": 12400
         }
     },
-    "sig": "5a8f6b252a174ba5599939edcd76d7461ea34f87edc784f3fad0d148f8115eca"
+    "sig": "2b484eacaf061316e9b1d934d78b6c42d83889eb8a9b3f57b38a121f90e118d7"
 }

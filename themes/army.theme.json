@@ -49,18 +49,77 @@
   ],
   "force": "auto",
   "icons": {
-    "nav.today": "M12 2.2l2.9 6.1 6.7.9-4.9 4.7 1.2 6.7L12 17.4l-5.9 3.2 1.2-6.7L2.4 9.2l6.7-.9z"
+    "nav.total": "M7.2 2.6h9.6v4.8a4.8 4.8 0 0 1-9.6 0zM7.2 3.9H4.3v2.2a3.4 3.4 0 0 0 3 3.4M16.8 3.9h2.9v2.2a3.4 3.4 0 0 1-3 3.4M11 12.2h2v2.9h-2zM7.7 15.5h8.6v3.1H7.7zM19.2 12.2l1 2.1 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2-1.6-1.5 2.2-.3z",
+    "action.star": "M12 2.4l2.5 5.1 5.6.8-4.1 4 1 5.6-5-2.7-5 2.7 1-5.6-4.1-4 5.6-.8zM7 18.4l-1.5 4.4 3.2-1.5 1.3 2.5 1-3.4zM17 18.4l1.5 4.4-3.2-1.5-1.3 2.5-1-3.4z",
+    "action.send": "M2.4 20.2L21.4 12 2.4 3.8v6.4l12.8 1.8-12.8 1.8zM1.6 18.2l3.4 3.4.9-.9-3.4-3.4zM4.2 21.4l1.6 1.6.9-.9-1.6-1.6z",
+    "nav.today": "M6.8 2.4h2.2v2h6v-2h2.2v2h3.4v17.2H3.4V4.4h3.4zM19.2 12.2l1 2.1 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2-1.6-1.5 2.2-.3z",
+    "action.vote": "M12 2l3.1 6.3 6.7.9-4.9 4.6 1.2 6.5L12 17.2l-6.1 3.1 1.2-6.5-4.9-4.6 6.7-.9zM7 18.4l-1.5 4.4 3.2-1.5 1.3 2.5 1-3.4zM17 18.4l1.5 4.4-3.2-1.5-1.3 2.5-1-3.4z",
+    "user.verified": "M12 2.2a9.4 9.4 0 1 1-3.9 18l-3.4 2 1.2-3.5A9.4 9.4 0 0 1 12 2.2zM19.2 12.2l1 2.1 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2-1.6-1.5 2.2-.3z",
+    "ui.menu": "M3.4 5.6h17.2v2.2H3.4zM3.4 10.9h17.2v2.2H3.4zM3.4 16.2h11.4v2.2H3.4zM19.2 12.2l1 2.1 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2-1.6-1.5 2.2-.3z",
+    "doc.criteria": "M6.2 2.4h8L20 7.9v13.7H6.2zM1.6 18.2l3.4 3.4.9-.9-3.4-3.4zM4.2 21.4l1.6 1.6.9-.9-1.6-1.6z",
+    "state.success": "M3.6 12.4l4.9 5 11.9-11.7-2.6-2.6-9.3 9.3-2.3-2.4zM19.2 12.2l1 2.1 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2-1.6-1.5 2.2-.3z"
   },
   "tokens": {
-    "--surface": "rgba(255,255,251,.91)",
-    "--border": "rgba(74,90,58,.18)",
-    "--border-soft": "rgba(74,90,58,.09)",
-    "--shadow": "0 7px 20px rgba(34,39,29,.13)",
-    "--shadow-sm": "0 3px 9px rgba(34,39,29,.08)"
+    "light": {
+      "--bg-1": "#F1ECDD",
+      "--bg-2": "#E4DDC8",
+      "--surface": "rgba(255,253,246,.93)",
+      "--surface-solid": "#FFFDF6",
+      "--border": "rgba(74,90,58,.22)",
+      "--border-soft": "rgba(74,90,58,.10)",
+      "--text": "#1F2618",
+      "--text-2": "#3D4730",
+      "--text-3": "#5A6647",
+      "--accent": "#4A5A3A",
+      "--accent-2": "#B03A2E",
+      "--accent-ink": "#F6F7F2",
+      "--msg-bg": "#EDE7D6",
+      "--msg-fg": "#1F2618",
+      "--msg-mine-bg": "#4A5A3A",
+      "--msg-mine-fg": "#F6F7F2",
+      "--tab-active-bg": "#4A5A3A",
+      "--tab-active-fg": "#F6F7F2",
+      "--toast-bg": "#1F2618",
+      "--toast-fg": "#F6F7F2",
+      "--toggle-on": "#5E7049",
+      "--slider-fill": "#C3C6A8",
+      "--shadow": "0 7px 20px rgba(34,39,29,.13)",
+      "--shadow-sm": "0 3px 9px rgba(34,39,29,.08)"
+    },
+    "dark": {
+      "--bg-1": "#13170F",
+      "--bg-2": "#1D2317",
+      "--surface": "rgba(32,39,27,.9)",
+      "--surface-solid": "#212818",
+      "--border": "rgba(178,187,150,.22)",
+      "--border-soft": "rgba(178,187,150,.11)",
+      "--text": "#EDEFE2",
+      "--text-2": "#C3C9B0",
+      "--text-3": "#9AA484",
+      "--accent": "#8FA06B",
+      "--accent-2": "#D06A5C",
+      "--accent-ink": "#13170F",
+      "--msg-bg": "#232B1C",
+      "--msg-fg": "#EDEFE2",
+      "--msg-mine-bg": "#4A5A3A",
+      "--msg-mine-fg": "#F6F7F2",
+      "--tab-active-bg": "#8FA06B",
+      "--tab-active-fg": "#13170F",
+      "--toast-bg": "#0A0D07",
+      "--toast-fg": "#EDEFE2",
+      "--toggle-on": "#8FA06B",
+      "--slider-fill": "#4E5B3C",
+      "--shadow": "0 9px 24px rgba(0,0,0,.5)",
+      "--shadow-sm": "0 3px 10px rgba(0,0,0,.4)"
+    }
   },
   "meta": {
     "author": "Kimi 游戏榜",
     "version": "1.0.0",
     "license": "AGPL-3.0"
+  },
+  "deco": {
+    "html": "<i class=\"fd-weft\"></i><i class=\"fd-warp\"></i>",
+    "css": ".fd-weft{position:fixed;top:1vh;left:0;width:100%;height:7vh;background:repeating-linear-gradient(90deg,rgba(74,90,58,.10) 0 2px,rgba(74,90,58,0) 2px 9px),repeating-linear-gradient(0deg,rgba(74,90,58,.07) 0 2px,rgba(74,90,58,0) 2px 9px);pointer-events:none;z-index:0}.fd-warp{position:fixed;bottom:0;left:0;width:100%;height:6vh;background:repeating-linear-gradient(90deg,rgba(176,58,46,.16) 0 14px,rgba(176,58,46,0) 14px 34px);pointer-events:none;z-index:0}"
   }
 }

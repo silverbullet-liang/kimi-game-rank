@@ -41,15 +41,78 @@
   ],
   "force": "auto",
   "tokens": {
-    "--surface": "rgba(255,255,253,.92)",
-    "--border": "rgba(90,90,90,.16)",
-    "--border-soft": "rgba(90,90,90,.08)",
-    "--shadow": "0 6px 18px rgba(35,35,35,.12)",
-    "--shadow-sm": "0 2px 8px rgba(35,35,35,.07)"
+    "light": {
+      "--bg-1": "#F2F1ED",
+      "--bg-2": "#E7E6E1",
+      "--surface": "rgba(255,255,255,.90)",
+      "--surface-solid": "#FAF9F6",
+      "--border": "rgba(72,72,68,.20)",
+      "--border-soft": "rgba(72,72,68,.10)",
+      "--text": "#2A2825",
+      "--text-2": "#4C4944",
+      "--text-3": "#65615B",
+      "--accent": "#54514B",
+      "--accent-2": "#8A7455",
+      "--accent-ink": "#FAF8F4",
+      "--shadow": "0 10px 26px rgba(38,37,34,.14)",
+      "--shadow-sm": "0 4px 12px rgba(38,37,34,.09)",
+      "--msg-bg": "rgba(255,255,255,.93)",
+      "--msg-fg": "#2A2825",
+      "--msg-mine-bg": "#54514B",
+      "--msg-mine-fg": "#FAF8F4",
+      "--tab-active-bg": "#54514B",
+      "--tab-active-fg": "#FAF8F4",
+      "--toast-bg": "#2A2825",
+      "--toast-fg": "#EFEDE7",
+      "--toggle-on": "#8A7455",
+      "--slider-fill": "#8A7455"
+    },
+    "dark": {
+      "--bg-1": "#171614",
+      "--bg-2": "#100F0E",
+      "--surface": "rgba(30,29,27,.90)",
+      "--surface-solid": "#232220",
+      "--border": "rgba(196,192,183,.22)",
+      "--border-soft": "rgba(196,192,183,.11)",
+      "--text": "#EFECE5",
+      "--text-2": "#C4C0B7",
+      "--text-3": "#989288",
+      "--accent": "#B4ADA0",
+      "--accent-2": "#C9B99B",
+      "--accent-ink": "#171614",
+      "--shadow": "0 12px 34px rgba(0,0,0,.64)",
+      "--shadow-sm": "0 5px 16px rgba(0,0,0,.5)",
+      "--msg-bg": "rgba(34,33,30,.94)",
+      "--msg-fg": "#EFECE5",
+      "--msg-mine-bg": "#B4ADA0",
+      "--msg-mine-fg": "#171614",
+      "--tab-active-bg": "#B4ADA0",
+      "--tab-active-fg": "#171614",
+      "--toast-bg": "#EFECE5",
+      "--toast-fg": "#171614",
+      "--toggle-on": "#C9B99B",
+      "--slider-fill": "#C9B99B"
+    }
   },
   "meta": {
     "author": "Kimi 游戏榜",
     "version": "1.0.0",
     "license": "AGPL-3.0"
+  },
+  "icons": {
+    "nav.total": "M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3zM8.4 6.4h2v2h-2zM12 6.4h2v2h-2zM8.4 10.4h2v2h-2zM11.8 10.4h3.8",
+    "action.star": "M12 2.6l3 6.1 6.7 1-4.9 4.7 1.2 6.6L12 17.8 5.9 21l1.2-6.6-4.9-4.7 6.7-1zM8.4 12.4h2.2v2H8.4zM12.8 12.4h1.4",
+    "action.send": "M3 18.4l17.2-7.8L3 3.2v5.6l11.4 1.8L3 12.4v6zM5.8 20.6h3.4M11.4 20.6h2",
+    "tab.chat": "M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2zM7.4 8.4h3.2M12.4 8.4h2.4M7.4 11.6h2.6M11.8 11.6h3.4",
+    "nav.today": "M7 2h2v2h6V2h2v2h3v18H4V4h3V2zm0 8v10h10V10H7zM8.2 16.4h7.6M8.2 16.4v2h1.8M11.6 16.4v2",
+    "state.empty": "M12 2.8a9.2 9.2 0 1 1 0 18.4 9.2 9.2 0 0 1 0-18.4M6.2 15.4h4.4M12.6 15.4h3.2M4.4 9.6h4M10.4 9.6h2.6",
+    "doc.criteria": "M6 2.4h8.2L18 6.2V21.6H6zM14.2 2.4v3.8h3.8M8.8 11h6.4M8.8 14.2h3.6M13.4 14.2h2",
+    "state.warn": "M12 3.2l9 16.4H3zM12 7.6v5.4M11.2 15.4h1.6v1.6h-1.6zM9 17.4h6",
+    "action.report": "M5.4 21V3.2h10.8l-1.4 3.8 1.4 3.8H7.2M5.4 13.4H8M10 13.4h2.4",
+    "nav.monitor": "M4 4.4h16v11H4zM9.4 19.4h5.2M12 15.4v4M6.4 8h3M11 8h2.4M6.4 11.2h2.6"
+  },
+  "deco": {
+    "html": "<div class=\"fd-wall\"></div><div class=\"fd-gap\"></div><i class=\"fd-dust\"></i><span class=\"fd-edge\"></span>",
+    "css": ".fd-wall{position:fixed;left:0;bottom:0;width:100%;height:7vh;background:repeating-linear-gradient(90deg,rgba(85,82,76,.18) 0 26px,rgba(85,82,76,0) 26px 28px),repeating-linear-gradient(180deg,rgba(85,82,76,.18) 0 12px,rgba(85,82,76,0) 12px 14px);opacity:.8;pointer-events:none}\n.fd-gap{position:fixed;left:0;bottom:7vh;width:100%;height:8px;background:repeating-linear-gradient(90deg,rgba(85,82,76,.24) 0 22px,rgba(85,82,76,0) 22px 44px);pointer-events:none}\n.fd-dust{position:fixed;top:2vh;right:3vw;width:54px;height:54px;border-radius:50%;background:radial-gradient(circle,rgba(120,116,108,.20),rgba(120,116,108,0) 70%);pointer-events:none}\n.fd-edge{position:fixed;top:0;right:0;width:8vw;height:10vh;background:linear-gradient(270deg,rgba(85,82,76,.10),rgba(85,82,76,0));pointer-events:none}"
   }
 }

@@ -50,15 +50,78 @@
   ],
   "force": "auto",
   "tokens": {
-    "--surface": "rgba(255,255,255,.88)",
-    "--border": "rgba(74,90,106,.20)",
-    "--border-soft": "rgba(74,90,106,.10)",
-    "--shadow": "0 10px 28px rgba(42,50,58,.12)",
-    "--shadow-sm": "0 4px 14px rgba(42,50,58,.08)"
+    "light": {
+      "--bg-1": "#EDF0F1",
+      "--bg-2": "#DFE4E6",
+      "--surface": "rgba(250,252,252,0.9)",
+      "--surface-solid": "#FAFCFC",
+      "--border": "#C2CCD0",
+      "--border-soft": "rgba(91,108,114,0.18)",
+      "--text": "#1F2A2E",
+      "--text-2": "#3A4A50",
+      "--text-3": "#5C6E75",
+      "--accent": "#9B2C22",
+      "--accent-2": "#5B6C72",
+      "--accent-ink": "#FDF4EC",
+      "--shadow": "rgba(31,42,46,0.16)",
+      "--shadow-sm": "rgba(31,42,46,0.09)",
+      "--msg-bg": "#F4F8F8",
+      "--msg-fg": "#1F2A2E",
+      "--msg-mine-bg": "#E3DAD3",
+      "--msg-mine-fg": "#2A211D",
+      "--tab-active-bg": "#9B2C22",
+      "--tab-active-fg": "#FDF4EC",
+      "--toast-bg": "#1F2A2E",
+      "--toast-fg": "#EDF0F1",
+      "--toggle-on": "#9B2C22",
+      "--slider-fill": "#7C8C92"
+    },
+    "dark": {
+      "--bg-1": "#14191B",
+      "--bg-2": "#0D1113",
+      "--surface": "rgba(30,37,40,0.88)",
+      "--surface-solid": "#1E2528",
+      "--border": "#364345",
+      "--border-soft": "rgba(216,85,63,0.2)",
+      "--text": "#EAF0F1",
+      "--text-2": "#C2CDCF",
+      "--text-3": "#98A8AD",
+      "--accent": "#D8553F",
+      "--accent-2": "#8FA3A8",
+      "--accent-ink": "#17100E",
+      "--shadow": "rgba(0,0,0,0.6)",
+      "--shadow-sm": "rgba(0,0,0,0.4)",
+      "--msg-bg": "#1E2528",
+      "--msg-fg": "#EAF0F1",
+      "--msg-mine-bg": "#3D2A24",
+      "--msg-mine-fg": "#F6EBE7",
+      "--tab-active-bg": "#D8553F",
+      "--tab-active-fg": "#17100E",
+      "--toast-bg": "#EAF0F1",
+      "--toast-fg": "#14191B",
+      "--toggle-on": "#D8553F",
+      "--slider-fill": "#7C8C92"
+    }
   },
   "meta": {
     "author": "Kimi 游戏榜",
     "version": "1.0.0",
     "license": "AGPL-3.0"
+  },
+  "icons": {
+    "nav.total": "M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3zM8.3 9.6L12 4.8l3.7 4.8-1.5 1.2L12 7.9l-2.2 2.9z",
+    "action.star": "M12 2.2l2.7 6.4 6.8 1-5 4.6 1.3 6.6L12 17.5l-5.8 3.3 1.3-6.6-5-4.6 6.8-1zM2.6 22.4l3-2.6 2.6 2.2 3-2.8",
+    "action.send": "M3 20l18-8L3 4v6l12 2-12 2v6zM1.2 22.6l3-2.6 2.8 2.2 3-2.8",
+    "action.comment": "M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2zM18.6 18.6l2.6-2.4 1.6 1.4-2.4 2.2z",
+    "field.search": "M10 4a6 6 0 1 0 3.7 10.7l4.3 4.3 1.4-1.4-4.3-4.3A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM8.7 10.4l1.3-1.8 1.3 1.8z",
+    "nav.today": "M7 2h2v2h6V2h2v2h3v18H4V4h3V2zm0 8v10h10V10H7zM1.2 18.6l2-1.8 1.8 1.4 2-2",
+    "state.empty": "M3.6 6.4h16.8v3.4H3.6zM5 11h14v8.8H5zm2.6 6.2l2.4-2.4 2.2 2 2.6-2.8 1.6 1.4z",
+    "action.vote": "M12 2.2l3.1 6.2 6.8 1-4.9 4.8 1.2 6.7L12 17.6l-6.1 3.1 1.2-6.7-4.9-4.8 6.8-1zM2.4 22.4l3-2.6 2.8 2.2 3-2.8",
+    "doc.criteria": "M6 2h9l4 4v16H6V2zm2 2v16h9V9h-4V4H8zM9.8 13.4l1.4 1.4 3-3 1.3 1.3-4.3 4.3-2.7-2.7z",
+    "user.verified": "M12 2l8 3v7c0 5-3.4 8.7-8 10-4.6-1.3-8-5-8-10V5zm-3.4 8.6L12 7.4l3.4 3.2-1.3 1.3L12 10l-2.1 1.9z"
+  },
+  "deco": {
+    "html": "<div class=\"fd-ridge\"></div><div class=\"fd-peak\"></div><div class=\"fd-track\"></div><span class=\"fd-star\"></span>",
+    "css": ".fd-ridge{position:fixed;left:0;right:0;top:0;height:9vh;background:linear-gradient(180deg,rgba(31,42,46,.12),transparent);pointer-events:none}.fd-peak{position:fixed;left:3vw;top:5vh;width:42px;height:42px;background:rgba(91,108,114,.24);border-radius:7px;transform:rotate(45deg);pointer-events:none}.fd-track{position:fixed;right:3vw;bottom:4vh;width:130px;height:3px;background:linear-gradient(90deg,transparent,rgba(155,44,34,.55));border-radius:2px;transform:rotate(-24deg);pointer-events:none}.fd-star{position:fixed;right:6vw;top:5vh;display:block;width:9px;height:9px;background:rgba(155,44,34,.6);border-radius:2px;transform:rotate(45deg);pointer-events:none}"
   }
 }

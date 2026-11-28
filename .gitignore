@@ -66,3 +66,4 @@ test.php
 # 站长维护的拦截名单：含攻击来源，不进开源仓库，只随部署包分发
 storage/blocklist.txt
 storage/gate_pool.txt
+tools/__pycache__/

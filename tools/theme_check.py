@@ -36,8 +36,16 @@ BORDER_PROPS = re.compile(r'^(border(-[a-z-]+)?|border-radius|box-shadow|outline
 FX_PROPS = re.compile(r'^(width|height|margin(-[a-z]+)?|border(-[a-z-]+)?|border-radius|box-shadow|background(-color)?|background-image|transform|opacity|filter|backdrop-filter|animation(-[a-z-]+)?)$')
 DANGER_VAL = re.compile(r'url\s*\(|expression|@import|javascript:|[<>{}]', re.I)
 
-TOKENS = {'--glass-blur', '--glass-sat', '--glass-alpha', '--shadow', '--shadow-sm',
-          '--border', '--border-soft', '--surface'}
+TOKENS = {'--bg-1', '--bg-2', '--surface', '--surface-solid', '--border', '--border-soft',
+          '--text', '--text-2', '--text-3', '--accent', '--accent-2', '--accent-ink',
+          '--shadow', '--shadow-sm', '--radius-lg', '--radius-md', '--radius-sm',
+          '--msg-bg', '--msg-fg', '--msg-mine-bg', '--msg-mine-fg',
+          '--tab-active-bg', '--tab-active-fg', '--toast-bg', '--toast-fg',
+          '--toggle-on', '--slider-fill',
+          '--glass-blur', '--glass-sat', '--glass-alpha'}
+DECO_PROPS = re.compile(r'^(position|top|right|bottom|left|width|height|margin(-[a-z]+)?|padding(-[a-z]+)?|'
+                        r'border(-[a-z]+)?|border-radius|background(-color|-image)?|box-shadow|opacity|'
+                        r'transform|filter|animation(-[a-z]+)?|display|z-index|mix-blend-mode|pointer-events)$')
 LANGS = ('zh', 'en', 'ja')
 MAX_BG_TOTAL = 2 * 1024 * 1024
 MAX_JSON = 1024 * 1024
@@ -312,18 +320,53 @@ def check(data, raw_len):
     if 'force' in data and data['force'] not in ('auto', 'light', 'dark'):
         problems.append(err('force 只能是 auto / light / dark'))
     if 'tokens' in data:
-        if not isinstance(data['tokens'], dict):
+        tok = data['tokens']
+        if not isinstance(tok, dict):
             problems.append(err('tokens 必须是对象'))
         else:
-            bad = set(data['tokens']) - TOKENS
-            if bad:
-                problems.append(err('tokens 含白名单外的键：%s' % ','.join(sorted(bad))))
-            for k, val in data['tokens'].items():
-                if 'important' in str(val) or 'var(' in str(val):
-                    problems.append(err('tokens.%s 不允许 !important 或 var()' % k))
+            nested = isinstance(tok.get('light'), dict) or isinstance(tok.get('dark'), dict)
+            sets = [('light.', tok['light']), ('dark.', tok['dark'])] if nested else [('', tok)]
+            for label, one in sets:
+                if not isinstance(one, dict):
+                    problems.append(err('tokens.%s 必须是对象' % label.rstrip('.')))
+                    continue
+                bad = set(one) - TOKENS
+                if bad:
+                    problems.append(err('tokens.%s 含白名单外的键：%s' % (label, ','.join(sorted(bad)))))
+                for k, val in one.items():
+                    if 'important' in str(val) or 'var(' in str(val):
+                        problems.append(err('tokens.%s%s 不允许 !important 或 var()' % (label, k)))
+            if nested and not isinstance(tok.get('light'), dict) and not isinstance(tok.get('dark'), dict):
+                problems.append(err('tokens 必须含 light 或 dark'))
+    if 'deco' in data:
+        d = data['deco']
+        if not isinstance(d, dict):
+            problems.append(err('deco 必须是对象'))
+        else:
+            html = d.get('html', '')
+            if html:
+                if len(html) > 1200:
+                    problems.append(err('deco.html 超过 1200 字符'))
+                if re.search(r'<\s*script|\son[a-z]+\s*=|style\s*=|javascript:', html, re.I):
+                    problems.append(err('deco.html 含脚本或内联样式'))
+                tags = set(t.lower() for t in re.findall(r'<\s*/?\s*([a-zA-Z]+)', html))
+                if tags - {'div', 'span', 'i'}:
+                    problems.append(err('deco.html 只允许 div/span/i：%s' % ','.join(sorted(tags))))
+                for cls in re.findall(r'class\s*=\s*"([^"]*)"', html):
+                    for one in cls.split():
+                        if not one.startswith('fd-'):
+                            problems.append(err('deco.html 的 class 必须以 fd- 开头：%s' % one))
+            css = d.get('css', '')
+            if css:
+                if len(css) > 4000:
+                    problems.append(err('deco.css 超过 4000 字符'))
+                if re.search(r'url\s*\(|@import|expression|javascript:|content\s*:', css, re.I):
+                    problems.append(err('deco.css 含 url()/@import/content'))
+                if 'animation' in css and 'prefers-reduced-motion' not in css:
+                    problems.append(err('deco.css 用了 animation 但缺 prefers-reduced-motion 关闭规则'))
     unknown = set(data) - {'schema', 'id', 'name', 'colour', 'colourDesc', 'radius',
                            'background', 'icons', 'font', 'force', 'tokens', 'borders',
-                           'effects', 'dialog', 'meta'}
+                           'effects', 'dialog', 'deco', 'meta'}
     if unknown:
         warns.append('忽略未知顶层字段：%s' % ','.join(sorted(unknown)))
     return problems, warns

@@ -61,8 +61,12 @@ ck('三语周年模板', strpos($fest, '长征胜利 %d 周年') !== false
     && strpos($fest, '%d Years Since the Long March') !== false
     && strpos($fest, '長征勝利 %d 周年') !== false);
 ck('前端按语言取节日名（festName）', strpos(rd('assets/js/src/i18n.js'), 'export function festName(') !== false);
-ck('皮肤文件存在', rd('assets/css/skins/longmarch.css') !== '');
-ck('装饰节点存在', strpos(rd('index.php'), 'fd-lm-ridge') !== false && strpos(rd('index.php'), 'fd-lm-snow') !== false);
+$lmTheme = json_decode(rd('themes/longmarch.theme.json'), true);
+ck('节日主题 JSON 完整', is_array($lmTheme)
+    && !empty($lmTheme['tokens']['light']) && !empty($lmTheme['tokens']['dark'])
+    && !empty($lmTheme['icons']) && !empty($lmTheme['deco']['html']));
+ck('装饰节点来自主题 JSON', strpos((string)($lmTheme['deco']['html'] ?? ''), 'fd-') !== false
+    && strpos(rd('index.php'), "\$__paint['deco']") !== false);
 ck('长征文档三语齐全', is_file(APP_ROOT . '/assets/docs/festivals/zh/longmarch.md')
     && is_file(APP_ROOT . '/assets/docs/festivals/en/longmarch.md')
     && is_file(APP_ROOT . '/assets/docs/festivals/ja/longmarch.md'));

@@ -1652,6 +1652,9 @@ html[data-theme="dark"] .mon-app { --mok:#4ade80; --mwarn:#fbbf24; --mbad:#f8717
    各皮肤自己的显示规则都带 html[data-skin="…"] 前缀（特异性更高），不会被这里覆盖。
    其余装饰都是无文字的空元素，未生效时宽高为 0，无需在此处理。 */
 .festival-deco { display: none; pointer-events: none; }
+html[data-festival="1"] .festival-deco { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; }
+.tj-bg { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.tj-bg > div { position: fixed; inset: 0; }
 .fd-pd-rain, .fd-pd-angle { display: none; }
 
 /* 人机验证（Cloudflare Turnstile）：先在容器里占住高度，脚本到位后原地渲染，

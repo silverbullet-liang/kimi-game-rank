@@ -49,15 +49,78 @@
   ],
   "force": "auto",
   "tokens": {
-    "--surface": "rgba(255,253,248,.91)",
-    "--border": "rgba(180,128,46,.17)",
-    "--border-soft": "rgba(180,128,46,.08)",
-    "--shadow": "0 9px 24px rgba(51,41,27,.14)",
-    "--shadow-sm": "0 3px 10px rgba(51,41,27,.09)"
+    "light": {
+      "--bg-1": "#FBF5E8",
+      "--bg-2": "#F2E9D4",
+      "--surface": "rgba(255,252,246,.95)",
+      "--surface-solid": "#FFFDF8",
+      "--border": "rgba(180,128,46,.24)",
+      "--border-soft": "rgba(180,128,46,.11)",
+      "--text": "#261E14",
+      "--text-2": "#4B3F2E",
+      "--text-3": "#65573F",
+      "--accent": "#8E5F18",
+      "--accent-2": "#4A4033",
+      "--accent-ink": "#FFFBF2",
+      "--msg-bg": "#F6EDD8",
+      "--msg-fg": "#261E14",
+      "--msg-mine-bg": "#8E5F18",
+      "--msg-mine-fg": "#FFFBF2",
+      "--tab-active-bg": "#8E5F18",
+      "--tab-active-fg": "#FFFBF2",
+      "--toast-bg": "#261E14",
+      "--toast-fg": "#FFFBF2",
+      "--toggle-on": "#A87725",
+      "--slider-fill": "#E3CFA2",
+      "--shadow": "0 9px 24px rgba(51,41,27,.14)",
+      "--shadow-sm": "0 3px 10px rgba(51,41,27,.09)"
+    },
+    "dark": {
+      "--bg-1": "#17120D",
+      "--bg-2": "#221B13",
+      "--surface": "rgba(42,33,24,.92)",
+      "--surface-solid": "#241C13",
+      "--border": "rgba(232,199,138,.22)",
+      "--border-soft": "rgba(232,199,138,.11)",
+      "--text": "#F5EEE0",
+      "--text-2": "#CFC2AC",
+      "--text-3": "#A6987F",
+      "--accent": "#E3B96A",
+      "--accent-2": "#9A8A72",
+      "--accent-ink": "#2A2114",
+      "--msg-bg": "#2A2117",
+      "--msg-fg": "#F5EEE0",
+      "--msg-mine-bg": "#7A5316",
+      "--msg-mine-fg": "#FFF8EA",
+      "--tab-active-bg": "#E3B96A",
+      "--tab-active-fg": "#2A2114",
+      "--toast-bg": "#0C0906",
+      "--toast-fg": "#F5EEE0",
+      "--toggle-on": "#E3B96A",
+      "--slider-fill": "#5A4A34",
+      "--shadow": "0 10px 26px rgba(0,0,0,.52)",
+      "--shadow-sm": "0 3px 10px rgba(0,0,0,.4)"
+    }
   },
   "meta": {
     "author": "Kimi 游戏榜",
     "version": "1.0.0",
     "license": "AGPL-3.0"
+  },
+  "icons": {
+    "action.star": "M12 2.4l2.5 5.1 5.6.8-4.1 4 1 5.6-5-2.7-5 2.7 1-5.6-4.1-4 5.6-.8zM9.6 18.4v5l1.7-1.4 1.7 1.4v-5z",
+    "field.search": "M10.2 3.4a6.6 6.6 0 1 0 3.9 11.9l4.7 4.7 1.5-1.5-4.7-4.7A6.6 6.6 0 0 0 10.2 3.4zm0 2.1a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zM16.4 12.4l4 3.1-4 3.1z",
+    "tab.chat": "M4.2 3.6h15.6a2.2 2.2 0 0 1 2.2 2.2v8.6a2.2 2.2 0 0 1-2.2 2.2H9.4L4.2 20.8V5.8a2.2 2.2 0 0 1 2.2-2.2zM15.4 16.4v5.4l1.7-1.4 1.7 1.4v-5.4z",
+    "nav.today": "M6.8 2.4h2.2v2h6v-2h2.2v2h3.4v17.2H3.4V4.4h3.4zM1.4 1.4l2.8 2.8v1.4L1.4 2.8zM1.4 6.4l2.6-1.2v1.6l-2.6 1.2zM6.4 1.4L5.2 4v1.6l2.6-2.6z",
+    "doc.features": "M6.2 2.4h8L20 7.9v13.7H6.2zM16.4 12.4l4 3.1-4 3.1z",
+    "action.comment": "M4.2 3.6h15.6a2.2 2.2 0 0 1 2.2 2.2v8.6a2.2 2.2 0 0 1-2.2 2.2H9.4L4.2 20.8V5.8a2.2 2.2 0 0 1 2.2-2.2zM2.4 21.6l.8-3.2 2.4 2.4-3.2.8z",
+    "state.empty": "M3.6 8.2l8.4-4.2 8.4 4.2v11.4H3.6zM1.4 1.4l2.8 2.8v1.4L1.4 2.8zM1.4 6.4l2.6-1.2v1.6l-2.6 1.2zM6.4 1.4L5.2 4v1.6l2.6-2.6z",
+    "action.download": "M11 3.4h2v8.9h3.4L12 17.6 7.6 12.3H11zM4.2 19.2h15.6v2.2H4.2zM9.6 18.4v5l1.7-1.4 1.7 1.4v-5z",
+    "theme.palette": "M12 2.4a9.6 9.6 0 0 0 0 19.2h1.4a2 2 0 0 0 1.6-3 2 2 0 0 1 1.6-3h1.9A3 3 0 0 0 21.5 12 9.6 9.6 0 0 0 12 2.4zM16.4 12.4l4 3.1-4 3.1z",
+    "action.reply": "M9.6 4.2L3 10.8l6.6 6.6v-4h3.8c3.1 0 5.5 2 6.3 4.9.5-6.9-3.3-10.3-8.5-10.3H9.6zM1.4 1.4l2.8 2.8v1.4L1.4 2.8zM1.4 6.4l2.6-1.2v1.6l-2.6 1.2zM6.4 1.4L5.2 4v1.6l2.6-2.6z"
+  },
+  "deco": {
+    "html": "<i class=\"fd-lamp\"></i><span class=\"fd-bookedge\"></span>",
+    "css": ".fd-lamp{position:fixed;top:0;left:2vw;width:26vw;height:9vh;background:linear-gradient(180deg,rgba(224,178,74,.26),rgba(224,178,74,0));pointer-events:none;z-index:0}.fd-bookedge{position:fixed;bottom:3vh;right:4vw;width:130px;height:6px;border-radius:3px;background:linear-gradient(90deg,rgba(180,128,46,0),rgba(180,128,46,.55),rgba(180,128,46,0));pointer-events:none;z-index:0}"
   }
 }

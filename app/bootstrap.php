@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 define('APP_ROOT', dirname(__DIR__));
-define('APP_VERSION', '3.78.0');
+define('APP_VERSION', '3.80.0');
 
 if (!file_exists(APP_ROOT . '/config/config.php')) {
     http_response_code(500);
@@ -77,6 +77,7 @@ require_once APP_ROOT . '/app/avatar.php';   /* 头像：5×5 identicon + 唯一
 require_once APP_ROOT . '/app/oid.php';
 require_once APP_ROOT . '/app/monitor.php';
 require_once APP_ROOT . '/app/mon_srv.php';
+require_once APP_ROOT . '/app/theme.php';   /* 内置主题 JSON 的服务端首屏渲染 */
 require_once APP_ROOT . '/app/theme_json.php';
 require_once APP_ROOT . '/app/theme_submit.php';
 require_once APP_ROOT . '/app/theme_honour.php';

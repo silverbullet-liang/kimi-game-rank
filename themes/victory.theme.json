@@ -41,19 +41,79 @@
     }
   ],
   "icons": {
-    "nav.today": "M2 18h20v2H2zM12 4a8 8 0 0 1 8 8H4a8 8 0 0 1 8-8zM11 12h2v6h-2z"
+    "nav.total": "M6 3.4h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 17.3V19.4h3v2H8v-2h3V17.3A6 6 0 0 1 5.2 12.4H4a3 3 0 0 1 0-6h2v-3zM12 .9l1.1 1.7h-2.2zM1.6 6.6l2.4 0.9-0.5 1.3-2.4-0.9zM22.4 6.6l-2.4 0.9 0.5 1.3 2.4-0.9z",
+    "action.star": "M12 2.4l2.9 6.1 6.6 1-4.8 4.7 1.2 6.6L12 17.8 6.1 20.8l1.2-6.6-4.8-4.7 6.6-1zM6.1 20.8l-2 1.7-1-1.2 2-1.7zM17.9 20.8l2 1.7 1-1.2-2-1.7z",
+    "action.send": "M4 20.2l17-8.2L4 3.6v6.4l11.2 2L4 13.6v6.6zM1.4 5.6l2.6 1-0.4 1.2-2.6-1zM2 17.4l2.4-1.2 0.6 1.1-2.4 1.2z",
+    "nav.today": "M7 2.2h1.8v2.2h6.4V2.2H17v2.2h3v17.4H4V4.4h3zM6 10.4v9.2h12v-9.2zM1.8 6.4l2 0.8-0.4 1.2-2-0.8zM22.2 6.4l-2 0.8 0.4 1.2 2-0.8z",
+    "field.search": "M10 3.8a6.2 6.2 0 1 0 3.8 11.1l4.4 4.4 1.5-1.5-4.4-4.4A6.2 6.2 0 0 0 10 3.8zm0 2.1a4.1 4.1 0 1 1 0 8.2 4.1 4.1 0 0 1 0-8.2zM18.6 2.4l2.8-1.7 0.6 1.1-2.8 1.7z",
+    "doc.criteria": "M6.2 2.4h8.8l4 4v15.2H6.2zM8.2 9.2h8v1.4h-8zM8.2 12.6h8v1.4h-8zM15.4 2.4v4.2h3.6zM11.4 14.6l0.7-1.9 0.7 1.9v3.4h-1.4z",
+    "state.success": "M12 2.2a9.8 9.8 0 1 1 0 19.6 9.8 9.8 0 0 1 0-19.6zm0 1.9a7.9 7.9 0 1 0 0 15.8 7.9 7.9 0 0 0 0-15.8zM9.6 15.4l-2.8-2.8-1.5 1.5 4.3 4.3 8.6-8.6-1.5-1.5zM12 0.6l0.9 1.5h-1.8z",
+    "nav.monitor": "M3 20.4h18v1.6H3zM5.4 12.6h2.6v6.2H5.4zM10 9.2h2.6v9.6H10zM14.6 5.4h2.6v13.4h-2.6zM19.2 2.2h2.6v16.6h-2.6zM1.4 10.4l2.2 0.6-0.3 1.3-2.2-0.6z",
+    "ui.menu": "M4 6.6h16v1.8H4zM4 11.2h16v1.8H4zM4 15.8h10v1.8H4zM2 3.2l1.2 1-1.2 1zM20.6 15.6l1.4 1-1.4 1z",
+    "action.vote": "M12 2.2l2.9 6.1 6.5 1-4.7 4.6 1.1 6.5L12 17.4 6.1 20.4l1.1-6.5L2.5 9.3l6.5-1zM2.6 19.4l2.2 1-0.5 1.2-2.2-1z"
   },
   "force": "auto",
   "tokens": {
-    "--surface": "rgba(255,252,247,.92)",
-    "--border": "rgba(138,75,40,.16)",
-    "--border-soft": "rgba(138,75,40,.08)",
-    "--shadow": "0 9px 24px rgba(46,29,18,.12)",
-    "--shadow-sm": "0 3px 9px rgba(46,29,18,.07)"
+    "light": {
+      "--bg-1": "#F4EFE3",
+      "--bg-2": "#EAE2D1",
+      "--surface": "rgba(252,250,244,0.88)",
+      "--surface-solid": "#FBF8F0",
+      "--border": "#D8CDB6",
+      "--border-soft": "#E6DCC8",
+      "--text": "#3A3020",
+      "--text-2": "#5A4C34",
+      "--text-3": "#6F6046",
+      "--accent": "#8C3A1E",
+      "--accent-2": "#C99A3F",
+      "--accent-ink": "#FBF6EA",
+      "--shadow": "rgba(58,48,32,0.16)",
+      "--shadow-sm": "rgba(58,48,32,0.08)",
+      "--msg-bg": "#F1E9D8",
+      "--msg-fg": "#3A3020",
+      "--msg-mine-bg": "#8C3A1E",
+      "--msg-mine-fg": "#FBF6EA",
+      "--tab-active-bg": "#8C3A1E",
+      "--tab-active-fg": "#FBF6EA",
+      "--toast-bg": "#3A3020",
+      "--toast-fg": "#F4EFE3",
+      "--toggle-on": "#8C3A1E",
+      "--slider-fill": "#8C3A1E"
+    },
+    "dark": {
+      "--bg-1": "#241E15",
+      "--bg-2": "#191510",
+      "--surface": "rgba(58,48,34,0.64)",
+      "--surface-solid": "#302719",
+      "--border": "#4A3B26",
+      "--border-soft": "#3A2E1D",
+      "--text": "#F2EADA",
+      "--text-2": "#D2C2A4",
+      "--text-3": "#B3A184",
+      "--accent": "#D98A5A",
+      "--accent-2": "#E0B45F",
+      "--accent-ink": "#241E15",
+      "--shadow": "rgba(0,0,0,0.55)",
+      "--shadow-sm": "rgba(0,0,0,0.36)",
+      "--msg-bg": "#31271A",
+      "--msg-fg": "#F2EADA",
+      "--msg-mine-bg": "#D98A5A",
+      "--msg-mine-fg": "#241E15",
+      "--tab-active-bg": "#D98A5A",
+      "--tab-active-fg": "#241E15",
+      "--toast-bg": "#F2EADA",
+      "--toast-fg": "#241E15",
+      "--toggle-on": "#E0B45F",
+      "--slider-fill": "#D98A5A"
+    }
   },
   "meta": {
     "author": "Kimi 游戏榜",
     "version": "1.0.0",
     "license": "AGPL-3.0"
+  },
+  "deco": {
+    "html": "<i class=\"fd-dawn\"></i><i class=\"fd-stele\"></i><span class=\"fd-base\"></span>",
+    "css": ".fd-dawn{position:fixed;top:0;left:0;width:100%;height:9vh;background:linear-gradient(180deg,rgba(201,154,63,.42),rgba(201,154,63,0) 78%);pointer-events:none}.fd-stele{position:fixed;bottom:0;right:5vw;width:3px;height:8vh;background:linear-gradient(0deg,#8C3A1E,rgba(140,58,30,0));box-shadow:-0.5px 0 0 rgba(58,48,32,.25);pointer-events:none}.fd-base{position:fixed;bottom:0;left:0;width:100%;height:6vh;background:linear-gradient(0deg,rgba(140,58,30,.14),rgba(140,58,30,0));pointer-events:none}"
   }
 }

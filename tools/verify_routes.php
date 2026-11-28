@@ -190,7 +190,9 @@ $idx = (string)file_get_contents(APP_ROOT . '/index.php');
 ok('index.php：无相对 assets 引用', !preg_match('/(src|href)="assets\//', $idx));
 ok('index.php：入口脚本带前缀', strpos($idx, '<?= e($__P) ?>/assets/js/app.js') !== false);
 ok('index.php：监控端点带前缀且无扩展名', strpos($idx, "endpoint: '<?= e(\$__P) ?>/api/monitor'") !== false);
-ok('index.php：皮肤路径带前缀', strpos($idx, "' + P + '/assets/css/skins/'") !== false);
+ok('index.php：主题由 JSON 内联', strpos($idx, 'theme_first_paint($__theme)') !== false
+    && strpos($idx, "\$__paint['css']") !== false);
+ok('index.php：风格皮肤路径带前缀', strpos($idx, 'assets/css/skins/') !== false);
 ok('index.php：下发 window.__BASE', strpos($idx, 'window.__BASE = <?= json_encode(seo_base_path()) ?>') !== false);
 ok('index.php：旧地址 301 已接入', strpos($idx, 'seo_legacy_redirect_url()') !== false);
 

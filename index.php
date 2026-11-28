@@ -69,9 +69,22 @@ if ($announceText === '') {
 $__captcha = array('on' => false, 'channels' => array());
 try { $__captcha = captcha_client_config(); } catch (Throwable $e) { }
 
-/* 限时节日皮肤：规则在 app/festival.php，这里下发结果（首屏脚本据此决定皮肤） */
+/* 限时节日：规则在 app/festival.php，这里下发结果（前端用它做角标与文案） */
 $__festival = array('now' => '', 'list' => array());
 try { $__festival = festival_client(); } catch (Throwable $e) { }
+
+/* 首屏主题：节日优先、其次用户所选设计风格。
+   节日与内置主题的数据全在 themes/*.theme.json —— 配色 token、背景层、装饰层、图标 path。
+   这里在服务端把当前主题内联进 head，不再加载 skins/*.css，也不产生额外请求。 */
+$__now      = (string)($__festival['now'] ?? '');
+$__optout   = isset($_COOKIE['kimgr_skin_optout']) && $_COOKIE['kimgr_skin_optout'] === '1';
+$__theme    = ($__now !== '' && !$__optout) ? theme_load($__now) : null;
+$__festOn   = $__theme !== null;
+$__themeKey = $__festOn ? $__now : $SKIN;
+$__paint    = $__theme ? theme_first_paint($__theme) : null;
+$__darkFest = $__festOn && !empty($__festival['list'][$__now]['dark']);
+/* 风格皮肤只剩 4 份 CSS（md3/pixel/sketch/brutal）；glass 就是 app.css 默认样式 */
+$__skinCss  = (!$__festOn && $SKIN !== 'glass') ? $SKIN : '';
 
 /* ---------- SEO：按路由生成 meta / 结构化数据 / 服务端渲染内容 ----------
    纯前端 SPA 的 HTML 默认是空骨架，不执行 JS 的搜索引擎抓不到内容。这里在服务端
@@ -105,7 +118,7 @@ try {
 } catch (Throwable $e) { app_log('seo failed: ' . $e->getMessage()); }
 ?>
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="light" data-accent="blue-purple" data-skin="<?= $SKIN ?>">
+<html lang="zh-CN" data-theme="<?= $__darkFest ? 'dark' : 'light' ?>" data-accent="blue-purple" data-skin="<?= htmlspecialchars($__themeKey, ENT_QUOTES) ?>"<?= $__festOn ? ' data-festival="1"' : '' ?><?= (!empty($__theme['background']) ? ' data-tjbg="1"' : '') ?>>
 <head>
 <meta charset="utf-8">
 <link rel="preconnect" href="https://gcore.jsdelivr.net" crossorigin>
@@ -130,6 +143,9 @@ try {
 <script>window.__ROUTES = <?= json_encode(array('seg' => seo_route_segments(), 'name' => array_flip(seo_route_segments()), 'docSlug' => seo_doc_slugs(), 'docName' => array_flip(seo_doc_slugs())), JSON_UNESCAPED_UNICODE) ?>;</script>
 <script>window.__CAPTCHA = <?= json_encode($__captcha, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
 <script>window.__FESTIVAL = <?= json_encode($__festival, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;</script>
+<?php if ($__theme): /* 主题图标覆盖：前端以它为基线，自定义主题在其上叠加 */ ?>
+<script>window.__THEME_ICONS = <?= json_encode(theme_icons_map($__theme), JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;</script>
+<?php endif; ?>
 <script>window.__BANNED = <?= (int)$__bannedId ?>;</script>
 <?php $__monUid = (isset($__ident) && is_array($__ident)) ? (int)($__ident['uid'] ?? 0) : 0; ?>
 <script>window.__MON_CFG__ = { endpoint: '<?= e($__P) ?>/api/monitor', uid: <?= $__monUid ?>, version: '<?= APP_VERSION ?>' };</script>
@@ -156,34 +172,12 @@ try {
 ?>
 <style><?php readfile(__DIR__ . '/assets/css/app.css'); ?></style>
 <?php
-/* 皮肤：国庆专版由前端按北京时间判断（9/30–10/8）自动启用，窗口结束自动回退到用户所选皮肤。
-   这里输出一段同步脚本而非直接内联皮肤文件 —— 它在 head 解析期同步决定并写入 <link>，
-   不会出现样式闪动；窗口外不产生任何额外请求。 */
+/* 主题：节日与内置主题全部来自 themes/*.theme.json，服务端把明暗两套 token、
+   装饰层与背景承载规则内联在这里 —— 解析期即生效，没有样式闪动，也没有额外请求。
+   只有 4 份设计风格皮肤（md3/pixel/sketch/brutal）仍是独立 CSS。 */
 ?>
-<script>
-(function () {
-  var V = <?= json_encode(APP_VERSION) ?>, P = <?= json_encode($__P) ?>;
-  var skin = <?= json_encode($SKIN) ?>;          /* 服务端已按白名单校验过 */
-  /* 当前节日由服务端（北京时间）判定，前端只负责套用 —— 规则只有 app/festival.php 一处 */
-  var FEST = <?= json_encode($__festival, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
-  var now = FEST.now || '';
-  var meta = now ? FEST.list[now] : null;
-  /* 用户在窗口内主动切走过皮肤 = 不参与节日专版，尊重其选择 */
-  var optout = /(?:^|;\s*)kimgr_skin_optout=1/.test(document.cookie);
-  var on = now !== '' && !optout;
-  var r = document.documentElement;
-
-  r.dataset.skin = on ? now : skin;
-  if (on) { r.setAttribute('data-festival', '1'); }
-  /* 强制暗色的节日（万圣夜）：窗口内不论用户偏好一律暗色 */
-  if (on && meta && meta.dark) { r.dataset.theme = 'dark'; }
-
-  var file = on ? now : skin;                    /* 液态玻璃 = app.css 默认样式，无需额外文件 */
-  if (file !== 'glass') {
-    document.write('<link rel="stylesheet" href="' + P + '/assets/css/skins/' + file + '.css?v=' + V + '">');
-  }
-})();
-</script>
+<?php if ($__paint): ?><style id="theme-json"><?= $__paint['css'] ?></style><?php endif; ?>
+<?php if ($__skinCss !== ''): ?><link rel="stylesheet" href="<?= htmlspecialchars($__P, ENT_QUOTES) ?>/assets/css/skins/<?= htmlspecialchars($__skinCss, ENT_QUOTES) ?>.css?v=<?= htmlspecialchars(APP_VERSION, ENT_QUOTES) ?>"><?php endif; ?>
 <?php
 /* 字体加载策略（均不占首屏关键路径）：
    1. 全部字体（正文 MiSans、手绘 ZCOOL KuaiLe、像素 FusionPixel）都由浏览器直连公共 CDN，
@@ -261,246 +255,13 @@ try {
 </head>
 <body>
 
-<!-- 节日装饰层：各节日的装饰都放在这里，由皮肤 CSS 决定显示哪一组
-     （默认 display:none；pointer-events:none，绝不拦截任何交互） -->
-<div class="festival-deco" aria-hidden="true">
-  <!-- 长征胜利：雪山轮廓 + 向北的路 + 风雪 -->
-  <span class="fd-lm-ridge"></span>
-  <span class="fd-lm-road"></span>
-  <span class="fd-lm-snow"></span>
-  <!-- 国庆：灯笼 + 缓落星点 -->
-  <span class="fd-lantern fd-lantern--l"><i></i></span>
-  <span class="fd-lantern fd-lantern--r"><i></i></span>
-  <span class="fd-star fd-star--1"></span>
-  <span class="fd-star fd-star--2"></span>
-  <span class="fd-star fd-star--3"></span>
-  <span class="fd-star fd-star--4"></span>
-  <span class="fd-star fd-star--5"></span>
-  <span class="fd-star fd-star--6"></span>
-  <!-- 辛亥纪念：铁血星芒 + 顶部光晕 -->
-  <span class="fd-xh-glow"></span>
-  <span class="fd-xh-star fd-xh-star--1"></span>
-  <span class="fd-xh-star fd-xh-star--2"></span>
-  <span class="fd-xh-star fd-xh-star--3"></span>
-  <span class="fd-xh-star fd-xh-star--4"></span>
-  <span class="fd-xh-star fd-xh-star--5"></span>
-  <span class="fd-xh-star fd-xh-star--6"></span>
-  <!-- 抗美援朝纪念：红星 + 远山剪影 + 微光 -->
-  <span class="fd-km-star"></span>
-  <span class="fd-km-hill fd-km-hill--1"></span>
-  <span class="fd-km-hill fd-km-hill--2"></span>
-  <span class="fd-km-spark fd-km-spark--1"></span>
-  <span class="fd-km-spark fd-km-spark--2"></span>
-  <span class="fd-km-spark fd-km-spark--3"></span>
-  <!-- 重阳：菊花 + 远山 + 落英 -->
-  <span class="fd-cy-chrys fd-cy-chrys--1"></span>
-  <span class="fd-cy-chrys fd-cy-chrys--2"></span>
-  <span class="fd-cy-hill"></span>
-  <span class="fd-cy-petal fd-cy-petal--1"></span>
-  <span class="fd-cy-petal fd-cy-petal--2"></span>
-  <span class="fd-cy-petal fd-cy-petal--3"></span>
-  <span class="fd-cy-petal fd-cy-petal--4"></span>
-  <!-- 5·12：一支烛 + 两朵白菊 + 停在 50% 的线 + 顶部薄雾 -->
-  <span class="fd-m12-mist"></span>
-  <span class="fd-m12-candle"></span>
-  <span class="fd-m12-chrys fd-m12-chrys--1"></span>
-  <span class="fd-m12-chrys fd-m12-chrys--2"></span>
-  <span class="fd-m12-half"></span>
-  <!-- 1024 程序员节：代码雨 + 光标 + 角标 + 扫描线 -->
-  <span class="fd-pd-rain fd-pd-rain--1">01001010 01100101 01101101</span>
-  <span class="fd-pd-rain fd-pd-rain--2">11010110 00101101 10110100</span>
-  <span class="fd-pd-rain fd-pd-rain--3">01101101 10010011 01011010</span>
-  <span class="fd-pd-caret"></span>
-  <span class="fd-pd-angle">&lt;/&gt;</span>
-  <span class="fd-pd-scan"></span>
-  <!-- 春节：两盏灯笼 + 窗花 + 金色碎屑 -->
-  <span class="fd-sf-lantern fd-sf-lantern--l"><i></i></span>
-  <span class="fd-sf-lantern fd-sf-lantern--r"><i></i></span>
-  <span class="fd-sf-window"></span>
-  <span class="fd-sf-flake fd-sf-flake--1"></span>
-  <span class="fd-sf-flake fd-sf-flake--2"></span>
-  <span class="fd-sf-flake fd-sf-flake--3"></span>
-  <span class="fd-sf-flake fd-sf-flake--4"></span>
-  <!-- 记者节：报头双线 + 两侧栏线 + 朱批圈 + 钢笔尖 -->
-  <span class="fd-jn-rule fd-jn-rule--1"></span>
-  <span class="fd-jn-rule fd-jn-rule--2"></span>
-  <span class="fd-jn-rule fd-jn-rule--3"></span>
-  <span class="fd-jn-rule fd-jn-rule--4"></span>
-  <span class="fd-jn-mark"></span>
-  <span class="fd-jn-nib"></span>
-  <!-- 寒衣节：低垂的月 + 叠好的寒衣 + 霜粒 -->
-  <span class="fd-hy-moon"></span>
-  <span class="fd-hy-robe"></span>
-  <span class="fd-hy-frost fd-hy-frost--1"></span>
-  <span class="fd-hy-frost fd-hy-frost--2"></span>
-  <span class="fd-hy-frost fd-hy-frost--3"></span>
-  <span class="fd-hy-frost fd-hy-frost--4"></span>
-  <span class="fd-hy-frost fd-hy-frost--5"></span>
-  <span class="fd-hy-frost fd-hy-frost--6"></span>
-  <!-- 感恩节：底部暖光 + 南瓜 + 两片旋落枫叶 -->
-  <span class="fd-tg-glow"></span>
-  <span class="fd-tg-pumpkin"></span>
-  <span class="fd-tg-leaf fd-tg-leaf--1"></span>
-  <span class="fd-tg-leaf fd-tg-leaf--2"></span>
-  <!-- 万圣夜：月亮 + 蝙蝠 + 南瓜灯 + 地面雾 -->
-  <span class="fd-hw-moon"></span>
-  <span class="fd-hw-bat fd-hw-bat--1"></span>
-  <span class="fd-hw-bat fd-hw-bat--2"></span>
-  <span class="fd-hw-bat fd-hw-bat--3"></span>
-  <span class="fd-hw-pumpkin"><i></i></span>
-  <span class="fd-hw-fog fd-hw-fog--1"></span>
-  <span class="fd-hw-fog fd-hw-fog--2"></span>
-  <!-- 警察节：警徽 + 两条警戒带 -->
-  <span class="fd-pl-badge"></span>
-  <span class="fd-pl-tape fd-pl-tape--1"></span>
-  <span class="fd-pl-tape fd-pl-tape--2"></span>
-  <!-- 腊八：一碗粥 + 七粒米 + 一缕热气 -->
-  <span class="fd-lb-bowl"></span>
-  <span class="fd-lb-grain--1"></span>
-  <span class="fd-lb-grain--2"></span>
-  <span class="fd-lb-grain--3"></span>
-  <span class="fd-lb-grain--4"></span>
-  <span class="fd-lb-grain--5"></span>
-  <span class="fd-lb-grain--6"></span>
-  <span class="fd-lb-grain--7"></span>
-  <span class="fd-lb-steam"></span>
-  <!-- 尾牙：一盏灯 + 一角桌布 + 一双筷 -->
-  <span class="fd-wy-lamp"></span>
-  <span class="fd-wy-cloth"></span>
-  <span class="fd-wy-chopsticks"></span>
-  <!-- 北方小年：一扇剪纸窗 + 一颗糖瓜 -->
-  <span class="fd-xn-window"></span>
-  <span class="fd-xn-tang"></span>
-  <!-- 南方小年：一把扫帚 + 四点扬尘 -->
-  <span class="fd-xs-broom"></span>
-  <span class="fd-xs-dust--1"></span>
-  <span class="fd-xs-dust--2"></span>
-  <span class="fd-xs-dust--3"></span>
-  <span class="fd-xs-dust--4"></span>
-  <!-- 除夕：一枚表盘 + 指针 + 一张福字 + 三点火星 -->
-  <span class="fd-cx-dial"></span>
-  <span class="fd-cx-hand"></span>
-  <span class="fd-cx-fu"></span>
-  <span class="fd-cx-spark--1"></span>
-  <span class="fd-cx-spark--2"></span>
-  <span class="fd-cx-spark--3"></span>
-  <!-- 元旦：地平线 + 刻度 + 一线晨光 -->
-  <span class="fd-ny-line"></span>
-  <span class="fd-ny-tick"></span>
-  <span class="fd-ny-glow"></span>
-  <!-- 情人节：一支玫瑰与茎 -->
-  <span class="fd-va-stem"></span>
-  <span class="fd-va-rose"></span>
-  <!-- 元宵：一碗汤圆 + 三盏悬灯 -->
-  <span class="fd-yx-bowl"></span>
-  <span class="fd-yx-lantern--1"></span>
-  <span class="fd-yx-lantern--2"></span>
-  <span class="fd-yx-lantern--3"></span>
-  <!-- 愚人节：一个倒写的问号与一道虚线 -->
-  <span class="fd-af-q"></span>
-  <span class="fd-af-line"></span>
-  <!-- 清明：一株垂柳 + 细雨 -->
-  <span class="fd-qm-willow"></span>
-  <span class="fd-qm-rain"></span>
-  <!-- 上巳：一只曲水杯 + 三道水波 -->
-  <span class="fd-ss-cup"></span>
-  <span class="fd-ss-wave--1"></span>
-  <span class="fd-ss-wave--2"></span>
-  <span class="fd-ss-wave--3"></span>
-  <!-- 地球日：一枚地球 + 高光 + 一条纬带 -->
-  <span class="fd-ed-globe"></span>
-  <span class="fd-ed-highlight"></span>
-  <span class="fd-ed-band"></span>
-  <!-- 世界读书日：一盏阅读灯 + 一页纸 + 一角书封 -->
-  <span class="fd-bd-lamp"></span>
-  <span class="fd-bd-page"></span>
-  <span class="fd-bd-cone"></span>
-  <!-- 劳动节：一柄锤与一把扳手 -->
-  <span class="fd-lb2-hammer"></span>
-  <span class="fd-lb2-wrench"></span>
-  <!-- 青年节：一架纸飞机与尾迹 -->
-  <span class="fd-yo-plane"></span>
-  <span class="fd-yo-trail"></span>
-  <!-- 微笑日：一条笑弧 + 两点 -->
-  <span class="fd-sm-arc"></span>
-  <span class="fd-sm-dot--1"></span>
-  <span class="fd-sm-dot--2"></span>
-  <!-- 母亲节：三瓣康乃馨与茎 -->
-  <span class="fd-mo-stem"></span>
-  <span class="fd-mo-flower"></span>
-  <!-- 博物馆日：一方展柜与一只陶罐 -->
-  <span class="fd-mu-glass"></span>
-  <span class="fd-mu-vase"></span>
-  <!-- 儿童节：三块积木 + 一架纸飞机 -->
-  <span class="fd-ch-block--1"></span>
-  <span class="fd-ch-block--2"></span>
-  <span class="fd-ch-block--3"></span>
-  <span class="fd-ch-plane"></span>
-  <!-- 环境日：一片叶脉 -->
-  <span class="fd-ev-leaf"></span>
-  <!-- 端午：一枚棱锥粽 + 绳 + 三道水纹 -->
-  <span class="fd-dw-zong"></span>
-  <span class="fd-dw-rope"></span>
-  <span class="fd-dw-wave--1"></span>
-  <span class="fd-dw-wave--2"></span>
-  <span class="fd-dw-wave--3"></span>
-  <!-- 父亲节：一件旧外套 -->
-  <span class="fd-fa-coat"></span>
-  <!-- 奥林匹克日：五枚细线圆环 -->
-  <span class="fd-ol-ring--1"></span>
-  <span class="fd-ol-ring--2"></span>
-  <span class="fd-ol-ring--3"></span>
-  <span class="fd-ol-ring--4"></span>
-  <span class="fd-ol-ring--5"></span>
-  <!-- 禁毒日：一段断开的锁链 -->
-  <span class="fd-ad-link--1"></span>
-  <span class="fd-ad-link--2"></span>
-  <span class="fd-ad-link--3"></span>
-  <span class="fd-ad-link--4"></span>
-  <!-- 建党节：一枚五角星 + 一道竖带 -->
-  <span class="fd-pt-star"></span>
-  <span class="fd-pt-band"></span>
-  <!-- 七七事变：一段带缺口的城墙 -->
-  <span class="fd-j7-wall"></span>
-  <span class="fd-j7-gap"></span>
-  <!-- 建军节：织物网格 + 一枚红星 -->
-  <span class="fd-ar-weave"></span>
-  <span class="fd-ar-star"></span>
-  <!-- 七夕：一条星河 + 两岸的星 -->
-  <span class="fd-qx-river"></span>
-  <span class="fd-qx-star--1"></span>
-  <span class="fd-qx-star--2"></span>
-  <!-- 日本投降日：半降的旗 -->
-  <span class="fd-sr-pole"></span>
-  <span class="fd-sr-flag"></span>
-  <span class="fd-sr-banner"></span>
-  <!-- 中元节：一盏河灯 + 光晕 + 三道涟漪 -->
-  <span class="fd-zy-lamp"></span>
-  <span class="fd-zy-glow"></span>
-  <span class="fd-zy-ripple--1"></span>
-  <span class="fd-zy-ripple--2"></span>
-  <span class="fd-zy-ripple--3"></span>
-  <!-- 医师节：一条脉搏线 -->
-  <span class="fd-dr-pulse"></span>
-  <!-- 抗战胜利日：地平线与曙光 -->
-  <span class="fd-vc-dawn"></span>
-  <span class="fd-vc-line"></span>
-  <!-- 教师节：一枚粉笔 + 三点粉笔灰 -->
-  <span class="fd-tc-chalk"></span>
-  <span class="fd-tc-dust--1"></span>
-  <span class="fd-tc-dust--2"></span>
-  <span class="fd-tc-dust--3"></span>
-  <!-- 中秋：满月 + 月晕 + 一片薄云 -->
-  <span class="fd-ma-halo"></span>
-  <span class="fd-ma-moon"></span>
-  <span class="fd-ma-cloud"></span>
-  <!-- 九一八：日历格与一道裂痕 -->
-  <span class="fd-n9-grid"></span>
-  <span class="fd-n9-crack"></span>
-  <!-- 烈士纪念日：一面纪念墙与一枚小星 -->
-  <span class="fd-mr-wall"></span>
-  <span class="fd-mr-star"></span>
-</div>
+<?php
+/* 节日装饰层：内容来自当前主题 JSON 的 deco 字段（服务端已做标签与 class 白名单校验）。
+   容器只在节日期间输出；pointer-events:none，绝不拦截交互。 */ ?>
+<?php if ($__paint): ?>
+<?= $__paint['bg'] ?>
+<div class="festival-deco" aria-hidden="true"><?= $__paint['deco'] ?></div>
+<?php endif; ?>
 
 <!-- 全局加载条（API 请求自动显隐） -->
 <div id="globalBar" aria-hidden="true"></div>

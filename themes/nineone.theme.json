@@ -49,15 +49,78 @@
   ],
   "force": "auto",
   "tokens": {
-    "--surface": "rgba(255,255,251,.92)",
-    "--border": "rgba(74,74,72,.16)",
-    "--border-soft": "rgba(74,74,72,.08)",
-    "--shadow": "0 5px 16px rgba(34,34,32,.11)",
-    "--shadow-sm": "0 2px 7px rgba(34,34,32,.07)"
+    "light": {
+      "--bg-1": "#EDECEA",
+      "--bg-2": "#E2E1DE",
+      "--surface": "rgba(250,250,248,0.9)",
+      "--surface-solid": "#FAFAF8",
+      "--border": "#CBCAC6",
+      "--border-soft": "rgba(30,30,29,0.1)",
+      "--text": "#1E1E1D",
+      "--text-2": "#414140",
+      "--text-3": "#6A6A67",
+      "--accent": "#8A3B34",
+      "--accent-2": "#5E6467",
+      "--accent-ink": "#FAF7F4",
+      "--shadow": "rgba(30,30,29,0.14)",
+      "--shadow-sm": "rgba(30,30,29,0.08)",
+      "--msg-bg": "#F7F7F5",
+      "--msg-fg": "#1E1E1D",
+      "--msg-mine-bg": "#E4E1DC",
+      "--msg-mine-fg": "#2A2825",
+      "--tab-active-bg": "#414140",
+      "--tab-active-fg": "#FAF7F4",
+      "--toast-bg": "#1E1E1D",
+      "--toast-fg": "#EDECEA",
+      "--toggle-on": "#8A3B34",
+      "--slider-fill": "#8A8A86"
+    },
+    "dark": {
+      "--bg-1": "#191918",
+      "--bg-2": "#111110",
+      "--surface": "rgba(35,35,32,0.9)",
+      "--surface-solid": "#232320",
+      "--border": "#3A3A36",
+      "--border-soft": "rgba(184,86,74,0.2)",
+      "--text": "#EDECE8",
+      "--text-2": "#C9C8C3",
+      "--text-3": "#9B9A93",
+      "--accent": "#B8564A",
+      "--accent-2": "#8C9295",
+      "--accent-ink": "#17110F",
+      "--shadow": "rgba(0,0,0,0.62)",
+      "--shadow-sm": "rgba(0,0,0,0.42)",
+      "--msg-bg": "#232320",
+      "--msg-fg": "#EDECE8",
+      "--msg-mine-bg": "#33322E",
+      "--msg-mine-fg": "#F0EFEA",
+      "--tab-active-bg": "#B8564A",
+      "--tab-active-fg": "#17110F",
+      "--toast-bg": "#EDECE8",
+      "--toast-fg": "#191918",
+      "--toggle-on": "#B8564A",
+      "--slider-fill": "#8C9295"
+    }
   },
   "meta": {
     "author": "Kimi 游戏榜",
     "version": "1.0.0",
     "license": "AGPL-3.0"
+  },
+  "icons": {
+    "nav.total": "M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3zM1.2 9.4h2v1.2h-2zM1.2 12h3v1.2h-3zM1.2 14.6h2v1.2h-2z",
+    "action.star": "M12 2.6l3 6.1 6.7 1-4.9 4.7 1.2 6.6L12 17.8 5.9 21l1.2-6.6-4.9-4.7 6.7-1zM12.4 17.6l1.6 2-1 1.4-1.4-1.8z",
+    "nav.today": "M7 2h2v2h6V2h2v2h3v18H4V4h3V2zm0 8v10h10V10H7zM1.2 11.6h2v1.2h-2zM1.2 14.2h3v1.2h-3z",
+    "action.comment": "M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2zM11.4 7.6l1.4 2.2-1.2 1.6 1.8 2.2",
+    "field.search": "M10 4a6 6 0 1 0 3.7 10.7l4.3 4.3 1.4-1.4-4.3-4.3A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM7.4 7.6h2.6v1H7.4zM7.4 9.8h4v1h-4zM7.4 12h2.6v1H7.4z",
+    "action.vote": "M12 2l3 6 6.5.9-4.7 4.6 1.1 6.5L12 17l-5.9 3 1.1-6.5L2.5 8.9 9 8zM1.4 6.4h2.2v1.2H1.4zM1.4 9h3.2v1.2H1.4zM1.4 11.6h2.2v1.2H1.4z",
+    "state.warn": "M12 2.4l9.4 16.4H2.6zM11.2 8h1.6v5.2h-1.6zm-.6 6.6l1.4 1.4 1.4-1.4",
+    "doc.terms": "M6 2h9l4 4v16H6V2zm2 2v16h9V9h-4V4H8zM9.6 12.4h4.8v1.2H9.6zM9.6 15.4h3.2v1.2H9.6z",
+    "media.play": "M7 3.4l13 8.6-13 8.6zM2.4 6.4l1.4-1.8 1.2 2-1 1.6z",
+    "state.empty": "M3.6 6.4h16.8v3.4H3.6zM5 11h14v8.8H5zM1.4 21.6h3v1.2h-3zM1.4 19h4.2v1.2H1.4z"
+  },
+  "deco": {
+    "html": "<div class=\"fd-scale\"></div><div class=\"fd-crack\"></div><i class=\"fd-tick\"></i><span class=\"fd-tick2\"></span>",
+    "css": ".fd-scale{position:fixed;left:3vw;top:4vh;width:2px;height:26vh;background:linear-gradient(180deg,rgba(120,120,116,.45),rgba(120,120,116,.06));pointer-events:none}.fd-crack{position:fixed;right:4vw;top:3vh;width:2px;height:16vh;background:linear-gradient(180deg,rgba(138,59,52,.7),transparent);transform:rotate(14deg);pointer-events:none}.fd-tick{position:fixed;left:3vw;top:8vh;display:block;width:16px;height:2px;background:rgba(120,120,116,.5);pointer-events:none}.fd-tick2{position:fixed;left:3vw;top:6vh;display:block;width:9px;height:2px;background:rgba(120,120,116,.38);pointer-events:none}"
   }
 }

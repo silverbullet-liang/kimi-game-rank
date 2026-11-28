@@ -7,6 +7,23 @@ This site keeps evolving. Every version is recorded here — **what was added, w
 
 ---
 
+## v3.80.0 · 2026-11-28 (A Fine Saddle for a Good Horse)
+
+### Festival themes reworked
+
+All 49 festival themes have been redesigned. Each has its own background, accent and text colours — one set for light mode and one for dark, so dark mode no longer ends up with pale text on a pale background.
+
+Icons follow the season too: the trophy, star, paper plane, leaderboard, calendar and magnifier keep their familiar shapes but pick up a festival accent — lanterns and paper-cuts for Spring Festival, a full moon and osmanthus petals for Mid-Autumn, slanting rain and willow leaves for Qingming, ripples and red cord for Dragon Boat.
+
+Decoration stays at the edges of the viewport (top, bottom or sides), never covers content and never blocks a tap; when the system asks for reduced motion, the decoration animation stops.
+
+### Other
+
+- Festival themes are in place earlier on first paint, with no extra stylesheet to wait for.
+- Removed a batch of old appearance resources that are no longer used.
+
+---
+
 ## v3.78.0 · 2026-11-27 (A New Face)
 
 ### Changed: avatars are 5×5 patterns

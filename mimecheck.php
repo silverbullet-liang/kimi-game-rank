@@ -12,9 +12,7 @@ $host = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : '
 $targets = array(
     'app.js（无参数）'        => '/assets/js/app.js',
     'app.js（带版本参数）'    => '/assets/js/app.js?v=1.1.0',
-    'core.js'                 => '/assets/js/core.js',
     'app.css'                 => '/assets/css/app.css',
-    'vendor 液态玻璃库'       => '/assets/vendor/liquid-glass@0.3.2.js',
 );
 
 function probe(string $url): array

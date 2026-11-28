@@ -42,15 +42,78 @@
   ],
   "force": "auto",
   "tokens": {
-    "--surface": "rgba(255,255,255,.92)",
-    "--border": "rgba(52,69,110,.16)",
-    "--border-soft": "rgba(52,69,110,.08)",
-    "--shadow": "0 11px 28px rgba(28,34,51,.13)",
-    "--shadow-sm": "0 4px 12px rgba(28,34,51,.08)"
+    "light": {
+      "--bg-1": "#F6F2E7",
+      "--bg-2": "#EDE6D3",
+      "--surface": "rgba(255,253,246,0.9)",
+      "--surface-solid": "#FFFDF6",
+      "--border": "#D8CDB4",
+      "--border-soft": "rgba(43,53,104,0.14)",
+      "--text": "#1E2648",
+      "--text-2": "#3A4260",
+      "--text-3": "#646879",
+      "--accent": "#A8761F",
+      "--accent-2": "#2B3568",
+      "--accent-ink": "#FFFAEE",
+      "--shadow": "rgba(30,38,72,0.16)",
+      "--shadow-sm": "rgba(30,38,72,0.09)",
+      "--msg-bg": "#FFFCF3",
+      "--msg-fg": "#1E2648",
+      "--msg-mine-bg": "#E7E1CE",
+      "--msg-mine-fg": "#22283F",
+      "--tab-active-bg": "#2B3568",
+      "--tab-active-fg": "#FFFAEE",
+      "--toast-bg": "#1E2648",
+      "--toast-fg": "#F6F2E7",
+      "--toggle-on": "#A8761F",
+      "--slider-fill": "#C0A05A"
+    },
+    "dark": {
+      "--bg-1": "#131A33",
+      "--bg-2": "#0B1023",
+      "--surface": "rgba(28,36,68,0.88)",
+      "--surface-solid": "#1C2444",
+      "--border": "#333E63",
+      "--border-soft": "rgba(231,194,119,0.18)",
+      "--text": "#F3EEDF",
+      "--text-2": "#D6D0BE",
+      "--text-3": "#ACA894",
+      "--accent": "#E7C277",
+      "--accent-2": "#8FA0DA",
+      "--accent-ink": "#1A2038",
+      "--shadow": "rgba(3,6,20,0.6)",
+      "--shadow-sm": "rgba(3,6,20,0.4)",
+      "--msg-bg": "#1C2444",
+      "--msg-fg": "#F3EEDF",
+      "--msg-mine-bg": "#2E3763",
+      "--msg-mine-fg": "#F6F1E2",
+      "--tab-active-bg": "#E7C277",
+      "--tab-active-fg": "#1A2038",
+      "--toast-bg": "#F3EEDF",
+      "--toast-fg": "#131A33",
+      "--toggle-on": "#E7C277",
+      "--slider-fill": "#8FA0DA"
+    }
   },
   "meta": {
     "author": "Kimi 游戏榜",
     "version": "1.0.0",
     "license": "AGPL-3.0"
+  },
+  "icons": {
+    "nav.total": "M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3zM12 6.4a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8z",
+    "action.star": "M12 2.6l3 6.1 6.7 1-4.9 4.7 1.2 6.6L12 17.8 5.9 21l1.2-6.6-4.9-4.7 6.7-1zM12 5.8l1.3 2.6-1.3 1.2-1.3-1.2zM3.2 12.6a1.4 1.4 0 1 1 2.8 0 1.4 1.4 0 0 1-2.8 0zM18 12.6a1.4 1.4 0 1 1 2.8 0 1.4 1.4 0 0 1-2.8 0z",
+    "action.send": "M3 20l18-8L3 4v6l12 2-12 2v6zM1.4 21.2h6.4v1.4H1.4zM19 22a1.3 1.3 0 1 1 2.6 0 1.3 1.3 0 0 1-2.6 0z",
+    "action.comment": "M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2zM15 9.4a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2z",
+    "action.vote": "M12 2l3 6 6.5.9-4.7 4.6 1.1 6.5L12 17l-5.9 3 1.1-6.5L2.5 8.9 9 8zM18.8 21.6a1.6 1.6 0 1 1 3.2 0 1.6 1.6 0 0 1-3.2 0z",
+    "field.search": "M10 4a6 6 0 1 0 3.7 10.7l4.3 4.3 1.4-1.4-4.3-4.3A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM10 7.6a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2z",
+    "nav.today": "M7 2h2v2h6V2h2v2h3v18H4V4h3V2zm0 8v10h10V10H7zM12 11.6a3 3 0 1 1 0 6 3 3 0 0 1 0-6z",
+    "state.empty": "M3.6 6.4h16.8v3.4H3.6zM5 11h14v8.8H5zM12 13a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8z",
+    "theme.dark": "M12 3a9 9 0 1 0 9 9c0-.4-.1-.8-.2-1.2A7 7 0 0 1 12 3zM19.4 3.2l.9 1.9 1.9.9-1.9.9-.9 1.9-.9-1.9-1.9-.9 1.9-.9z",
+    "doc.criteria": "M6 2h9l4 4v16H6V2zm2 2v16h9V9h-4V4H8zM9.8 13.4l1.4 1.4 3-3 1.3 1.3-4.3 4.3-2.7-2.7zM18.6 19.6a1.2 1.2 0 1 1 2.4 0 1.2 1.2 0 0 1-2.4 0z"
+  },
+  "deco": {
+    "html": "<div class=\"fd-moon\"></div><div class=\"fd-haze\"></div><i class=\"fd-petal\"></i><i class=\"fd-petal2\"></i><i class=\"fd-petal3\"></i>",
+    "css": ".fd-moon{position:fixed;top:4vh;right:5vw;width:96px;height:96px;border-radius:50%;background:radial-gradient(circle at 36% 32%,#FFF9DE,#EFD79A 72%,#D9BE7C);box-shadow:0 0 46px rgba(231,194,119,.42);opacity:.9;pointer-events:none}.fd-haze{position:fixed;left:0;right:0;top:0;height:8vh;background:linear-gradient(180deg,rgba(43,53,104,.26),transparent);pointer-events:none}.fd-petal{position:fixed;right:6vw;top:8vh;display:block;width:9px;height:14px;border-radius:50% 50% 50% 0;background:rgba(231,194,119,.7);animation:fd-fall 9s ease-in-out infinite;pointer-events:none}.fd-petal2{position:fixed;left:5vw;top:6vh;display:block;width:7px;height:11px;border-radius:50%;background:rgba(231,194,119,.5);transform:rotate(-22deg);pointer-events:none}.fd-petal3{position:fixed;left:4vw;bottom:7vh;display:block;width:8px;height:12px;border-radius:50% 0 50% 50%;background:rgba(231,194,119,.45);transform:rotate(38deg);pointer-events:none}@keyframes fd-fall{0%{opacity:.25;transform:translateY(-6px) rotate(18deg)}50%{opacity:.85;transform:translateY(12px) rotate(42deg)}100%{opacity:.25;transform:translateY(-6px) rotate(18deg)}}@media (prefers-reduced-motion: reduce){.fd-petal{animation:none}}"
   }
 }

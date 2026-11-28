@@ -235,9 +235,24 @@ function icObserve() {
   decorateEmpties(document);
 }
 
-/** 主题应用时注入覆盖表；传空对象即恢复默认 */
+/** 服务端下发的内置主题图标表：作为基线，自定义主题在其上叠加 */
+function themeBaseIcons() {
+  if (typeof window === 'undefined' || !window.__THEME_ICONS) { return null; }
+  var b = window.__THEME_ICONS;
+  return (b && typeof b === 'object') ? b : null;
+}
+
+/** 主题应用时注入覆盖表；传空对象即回到服务端基线（没有基线则就是默认图标） */
 function applyThemeIcons(map) {
   OVR = {};
+  var base = themeBaseIcons();
+  if (base) {
+    for (var bk in base) {
+      if (Object.prototype.hasOwnProperty.call(base, bk) && typeof base[bk] === 'string' && base[bk]) {
+        OVR[bk] = base[bk];
+      }
+    }
+  }
   if (map && typeof map === 'object') {
     for (var k in map) {
       if (!Object.prototype.hasOwnProperty.call(map, k)) { continue; }
@@ -260,6 +275,7 @@ export { I, T, icon, IC, TIcon, SLOT_KEYS, applyThemeIcons, refreshStaticIcons, 
 
 /* 页面一就绪就开观察：空状态图标与动态插入的槽位不必等主题切换 */
 if (typeof document !== 'undefined') {
-  if (document.body) { icObserve(); }
-  else { document.addEventListener('DOMContentLoaded', icObserve); }
+  var bootIcons = function () { try { applyThemeIcons({}); } catch (e) {} icObserve(); };
+  if (document.body) { bootIcons(); }
+  else { document.addEventListener('DOMContentLoaded', bootIcons); }
 }

@@ -38,7 +38,7 @@ Un sito che raccoglie giochi, strumenti, opere letterarie e lavori amatoriali de
 | Pannello di amministrazione | Acquisizione e aggiornamento in blocco, backup del database, moderazione dei commenti, gestione dei tag, co-amministratori |
 | Risoluzione intelligente dei link | Attiva per impostazione predefinita: se la pagina di un'opera è solo una pagina di reindirizzamento, viene usato l'indirizzo reale dietro di essa |
 | Segnalazioni disciplinari | Segnala un utente con un clic: più motivi, durata del blocco (anche permanente e in frazioni di giorno), blocco della provenienza, rimozione dei suoi commenti / chat / immagini. Chi è segnalato può ancora accedere, ma l'interfaccia resta bloccata sulla pagina di violazione e il backend rifiuta tutte le altre API |
-| Temi festivi | **48** temi a tempo limitato, ognuno con design e palette propri (date solari fisse, date lunari, l'ennesimo giorno della settimana di un mese e finestre di più giorni); si attivano e disattivano da soli in base alla data, solo Halloween forza il tema scuro |
+| Temi festivi | **49** temi a tempo limitato, ognuno con design e palette propri (date solari fisse, date lunari, l'ennesimo giorno della settimana di un mese e finestre di più giorni); si attivano e disattivano da soli in base alla data, solo Halloween forza il tema scuro |
 | Temi | Diversi temi visivi; i caratteri tipografici sono scaricati dal browser direttamente da CDN pubbliche, senza consumare traffico del tuo server |
 | Punteggio | Sei dimensioni raggruppate in tre pilastri (qualità / impegno / riconoscimento); i voti sono assegnati **per quota di classifica** — solo il 2% migliore ottiene SSS, il 10% SS — così i giudizi restano significativi con la crescita del sito |
 | Trasferimenti internazionali | «Informativa sul trasferimento internazionale dei dati», redatta separatamente per GDPR UE (capo V), UK GDPR, leggi statali USA (CCPA/CPRA e VA / CO / CT / UT), PIPEDA, APP 8 e PDPA — con una casella di consenso dedicata all'accesso |
@@ -145,6 +145,7 @@ Verifica tre cose: se file vietati sono finiti nell'area di staging, se nel test
 ├── sql/            Schema delle tabelle
 ├── standalone/     Pagine autonome (registro delle modifiche / pagina di reindirizzamento)
 ├── storage/        Dati di esecuzione (cache, log, caricamenti, backup)
+├── themes/         Temi festivi in JSON (palette, icone, decorazioni, sfondo)
 └── tools/          Script di build e verifica
 ```
 

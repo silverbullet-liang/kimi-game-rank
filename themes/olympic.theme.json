@@ -41,15 +41,78 @@
   ],
   "force": "auto",
   "tokens": {
-    "--surface": "rgba(255,255,255,.93)",
-    "--border": "rgba(43,108,163,.15)",
-    "--border-soft": "rgba(43,108,163,.07)",
-    "--shadow": "0 9px 24px rgba(26,34,41,.10)",
-    "--shadow-sm": "0 3px 10px rgba(26,34,41,.06)"
+    "light": {
+      "--bg-1": "#F7F7F4",
+      "--bg-2": "#EEEEEA",
+      "--surface": "rgba(255,255,255,0.93)",
+      "--surface-solid": "#FFFFFF",
+      "--border": "#D8D8D2",
+      "--border-soft": "rgba(20,23,26,0.1)",
+      "--text": "#14171A",
+      "--text-2": "#3A4045",
+      "--text-3": "#5F666B",
+      "--accent": "#24549E",
+      "--accent-2": "#BE4128",
+      "--accent-ink": "#FFFFFF",
+      "--shadow": "rgba(20,23,26,0.14)",
+      "--shadow-sm": "rgba(20,23,26,0.07)",
+      "--msg-bg": "#FBFBFA",
+      "--msg-fg": "#14171A",
+      "--msg-mine-bg": "#E7EAF0",
+      "--msg-mine-fg": "#1B2227",
+      "--tab-active-bg": "#24549E",
+      "--tab-active-fg": "#FFFFFF",
+      "--toast-bg": "#14171A",
+      "--toast-fg": "#F7F7F4",
+      "--toggle-on": "#24549E",
+      "--slider-fill": "#8FA6C0"
+    },
+    "dark": {
+      "--bg-1": "#121517",
+      "--bg-2": "#0A0C0E",
+      "--surface": "rgba(26,30,33,0.88)",
+      "--surface-solid": "#1A1E21",
+      "--border": "#2F3639",
+      "--border-soft": "rgba(111,168,232,0.2)",
+      "--text": "#F2F4F5",
+      "--text-2": "#CBD2D5",
+      "--text-3": "#97A2A6",
+      "--accent": "#6FA8E8",
+      "--accent-2": "#E5705A",
+      "--accent-ink": "#0F1315",
+      "--shadow": "rgba(0,0,0,0.62)",
+      "--shadow-sm": "rgba(0,0,0,0.42)",
+      "--msg-bg": "#1A1E21",
+      "--msg-fg": "#F2F4F5",
+      "--msg-mine-bg": "#26313B",
+      "--msg-mine-fg": "#EFF4F7",
+      "--tab-active-bg": "#6FA8E8",
+      "--tab-active-fg": "#0F1315",
+      "--toast-bg": "#F2F4F5",
+      "--toast-fg": "#121517",
+      "--toggle-on": "#6FA8E8",
+      "--slider-fill": "#E5705A"
+    }
   },
   "meta": {
     "author": "Kimi 游戏榜",
     "version": "1.0.0",
     "license": "AGPL-3.0"
+  },
+  "icons": {
+    "nav.total": "M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3zM12 6.4a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8zm0 1.2a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4z",
+    "action.star": "M12 2.6l3 6.1 6.7 1-4.9 4.7 1.2 6.6L12 17.8 5.9 21l1.2-6.6-4.9-4.7 6.7-1zM2.4 20a1.4 1.4 0 1 1 2.8 0 1.4 1.4 0 0 1-2.8 0zM18.8 20a1.4 1.4 0 1 1 2.8 0 1.4 1.4 0 0 1-2.8 0z",
+    "media.play": "M7 3.4l13 8.6-13 8.6zM2.2 21.6h19.6v1.2H2.2z",
+    "nav.today": "M7 2h2v2h6V2h2v2h3v18H4V4h3V2zm0 8v10h10V10H7zM12 11.6a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm0 1.4a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2z",
+    "field.search": "M10 4a6 6 0 1 0 3.7 10.7l4.3 4.3 1.4-1.4-4.3-4.3A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM10 7.4a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2zm0 1a.7.7 0 1 0 0 1.4.7.7 0 0 0 0-1.4z",
+    "action.vote": "M12 2l3 6 6.5.9-4.7 4.6 1.1 6.5L12 17l-5.9 3 1.1-6.5L2.5 8.9 9 8zM2.2 21.6h19.6v1.2H2.2z",
+    "state.success": "M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm-1.2 14.4l-4-4 1.4-1.4 2.6 2.6 5.6-5.6 1.4 1.4zM19.6 3a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8z",
+    "action.comment": "M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2zM15.4 8.2a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm0 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2z",
+    "action.send": "M3 20l18-8L3 4v6l12 2-12 2v6zM2 21.6h20v1.2H2z",
+    "doc.ranking": "M9.4 2h5.2v6.4H9.4zM3 9.4h6.4V22H3zM14.6 12h6.4v10h-6.4zM12 6.6a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4z"
+  },
+  "deco": {
+    "html": "<div class=\"fd-ring1\"></div><div class=\"fd-ring2\"></div><div class=\"fd-ring3\"></div><div class=\"fd-band\"></div>",
+    "css": ".fd-ring1{position:fixed;right:3vw;top:4vh;width:32px;height:32px;border:2px solid rgba(36,84,158,.5);border-radius:50%;pointer-events:none}.fd-ring2{position:fixed;right:6vw;top:4vh;width:32px;height:32px;border:2px solid rgba(190,65,40,.5);border-radius:50%;pointer-events:none}.fd-ring3{position:fixed;right:4.5vw;top:7vh;width:32px;height:32px;border:2px solid rgba(52,132,86,.45);border-radius:50%;pointer-events:none}.fd-band{position:fixed;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,#24549E,#D9A93A,#2B3138,#348456,#BE4128);opacity:.65;pointer-events:none}"
   }
 }

@@ -41,19 +41,79 @@
     }
   ],
   "icons": {
-    "nav.today": "M4 12h16c0 4.4-3.6 8-8 8s-8-3.6-8-8zM3 21h18v2H3zM9.4 3.2l1.9 7.4-1.9.5-1.9-7.4zM14.6 3.2l-1.9 7.4 1.9.5 1.9-7.4z"
+    "nav.total": "M6 3.4h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 17.3V19.4h3v2H8v-2h3V17.3A6 6 0 0 1 5.2 12.4H4a3 3 0 0 1 0-6h2v-3zM12 0.9a1.5 1.5 0 1 1 0 3 1.5 1.5 0 1 1 0-3zM3.2 15.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 1 1 0-2.8zM20.8 15.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 1 1 0-2.8z",
+    "action.star": "M12 3.6l2.8 5.8 6.3 0.9-4.6 4.5 1.1 6.3L12 18.4l-5.6 2.7 1.1-6.3-4.6-4.5 6.3-0.9zM12 0.8a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 1 1 0-2.6z",
+    "action.send": "M4 20.2l17-8.2L4 3.6v6.4l11.2 2L4 13.6v6.6zM2.4 17.4a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 1 1 0-2.6z",
+    "tab.chat": "M4.2 3.8h15.6a2.2 2.2 0 0 1 2.2 2.2v8.8a2.2 2.2 0 0 1-2.2 2.2H9.6L4.2 20.4V6a2.2 2.2 0 0 1 0-2.2zM19.8 15.6a2.8 2.8 0 1 1 0 5.6 2.8 2.8 0 1 1 0-5.6z",
+    "nav.today": "M7 2.2h1.8v2.2h6.4V2.2H17v2.2h3v17.4H4V4.4h3zM6 10.4v9.2h12v-9.2zM2.8 19.6a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 1 1 0-3.2z",
+    "field.search": "M10 3.8a6.2 6.2 0 1 0 3.8 11.1l4.4 4.4 1.5-1.5-4.4-4.4A6.2 6.2 0 0 0 10 3.8zm0 2.1a4.1 4.1 0 1 1 0 8.2 4.1 4.1 0 0 1 0-8.2zM20.4 8a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 1 1 0-2.6z",
+    "action.vote": "M12 2.2l2.9 6.1 6.5 1-4.7 4.6 1.1 6.5L12 17.4 6.1 20.4l1.1-6.5L2.5 9.3l6.5-1zM17.4 17.8h4.8v4.4h-4.8zM17.4 17.8l2.4 1.9 2.4-1.9-2.4 1.1z",
+    "state.success": "M12 2.2a9.8 9.8 0 1 1 0 19.6 9.8 9.8 0 0 1 0-19.6zm0 1.9a7.9 7.9 0 1 0 0 15.8 7.9 7.9 0 0 0 0-15.8zM9.6 15.4l-2.8-2.8-1.5 1.5 4.3 4.3 8.6-8.6-1.5-1.5zM1.4 4.4a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 1 1 0-2.4zM21.4 4.4a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 1 1 0-2.4z",
+    "user.avatar": "M12 3.4a4.2 4.2 0 1 1 0 8.4 4.2 4.2 0 0 1 0-8.4zM4.6 21.4c0-3.9 3.4-6.6 7.4-6.6s7.4 2.7 7.4 6.6H4.6zM3.2 6.4l0.9 0.5-3 5.2-0.9-0.5zM4.8 8.4l0.9 0.5-3 5.2-0.9-0.5z",
+    "doc.ranking": "M3.4 13.4h4.6v7.6H3.4zM9.7 9.6h4.6v11.4H9.7zM16 15.2h4.6v5.8H16zM12 2.4a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 1 1 0-3.6zM1.6 6.6a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 1 1 0-2.4zM21.6 6.6a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 1 1 0-2.4z"
   },
   "force": "auto",
   "tokens": {
-    "--surface": "rgba(255,250,244,.91)",
-    "--border": "rgba(168,50,42,.17)",
-    "--border-soft": "rgba(168,50,42,.08)",
-    "--shadow": "0 10px 26px rgba(107,74,47,.16)",
-    "--shadow-sm": "0 3px 11px rgba(107,74,47,.10)"
+    "light": {
+      "--bg-1": "#FEF9F2",
+      "--bg-2": "#F7EDE0",
+      "--surface": "rgba(255,252,247,0.9)",
+      "--surface-solid": "#FFFCF7",
+      "--border": "#EBD9C4",
+      "--border-soft": "#F4E7D6",
+      "--text": "#3D2A1C",
+      "--text-2": "#6B4C33",
+      "--text-3": "#7E6047",
+      "--accent": "#B3362C",
+      "--accent-2": "#C99B3F",
+      "--accent-ink": "#FFF8EF",
+      "--shadow": "rgba(61,42,28,0.16)",
+      "--shadow-sm": "rgba(61,42,28,0.08)",
+      "--msg-bg": "#FAEFE3",
+      "--msg-fg": "#3D2A1C",
+      "--msg-mine-bg": "#B3362C",
+      "--msg-mine-fg": "#FFF8EF",
+      "--tab-active-bg": "#B3362C",
+      "--tab-active-fg": "#FFF8EF",
+      "--toast-bg": "#3D2A1C",
+      "--toast-fg": "#FEF9F2",
+      "--toggle-on": "#B3362C",
+      "--slider-fill": "#B3362C"
+    },
+    "dark": {
+      "--bg-1": "#241811",
+      "--bg-2": "#1A110C",
+      "--surface": "rgba(62,38,26,0.64)",
+      "--surface-solid": "#33231A",
+      "--border": "#55352A",
+      "--border-soft": "#43291F",
+      "--text": "#F9EDE0",
+      "--text-2": "#DCC1A8",
+      "--text-3": "#BCA089",
+      "--accent": "#E8756A",
+      "--accent-2": "#E7C073",
+      "--accent-ink": "#241811",
+      "--shadow": "rgba(0,0,0,0.54)",
+      "--shadow-sm": "rgba(0,0,0,0.36)",
+      "--msg-bg": "#3A261C",
+      "--msg-fg": "#F9EDE0",
+      "--msg-mine-bg": "#E8756A",
+      "--msg-mine-fg": "#241811",
+      "--tab-active-bg": "#E8756A",
+      "--tab-active-fg": "#241811",
+      "--toast-bg": "#F9EDE0",
+      "--toast-fg": "#241811",
+      "--toggle-on": "#E7C073",
+      "--slider-fill": "#E8756A"
+    }
   },
   "meta": {
     "author": "Kimi 游戏榜",
     "version": "1.0.0",
     "license": "AGPL-3.0"
+  },
+  "deco": {
+    "html": "<i class=\"fd-cloth\"></i><span class=\"fd-warm\"></span><span class=\"fd-dot\"></span>",
+    "css": ".fd-cloth{position:fixed;bottom:0;left:0;width:100%;height:7vh;background:repeating-linear-gradient(90deg,#B3362C 0 28px,#A62F26 28px 44px,#BC4237 44px 56px);opacity:.9;pointer-events:none}.fd-warm{position:fixed;top:0;left:0;width:100%;height:9vh;background:linear-gradient(180deg,rgba(255,206,140,.34),rgba(255,206,140,0));pointer-events:none}.fd-dot{position:fixed;top:3vh;left:3vw;width:10px;height:10px;border-radius:50%;background:#C99B3F;box-shadow:0 0 0 6px rgba(201,155,63,.18);opacity:.8;pointer-events:none}"
   }
 }

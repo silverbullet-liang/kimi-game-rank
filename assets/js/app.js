@@ -1876,9 +1876,24 @@ function icObserve() {
   decorateEmpties(document);
 }
 
-/** 主题应用时注入覆盖表；传空对象即恢复默认 */
+/** 服务端下发的内置主题图标表：作为基线，自定义主题在其上叠加 */
+function themeBaseIcons() {
+  if (typeof window === 'undefined' || !window.__THEME_ICONS) { return null; }
+  var b = window.__THEME_ICONS;
+  return (b && typeof b === 'object') ? b : null;
+}
+
+/** 主题应用时注入覆盖表；传空对象即回到服务端基线（没有基线则就是默认图标） */
 function applyThemeIcons(map) {
   OVR = {};
+  var base = themeBaseIcons();
+  if (base) {
+    for (var bk in base) {
+      if (Object.prototype.hasOwnProperty.call(base, bk) && typeof base[bk] === 'string' && base[bk]) {
+        OVR[bk] = base[bk];
+      }
+    }
+  }
   if (map && typeof map === 'object') {
     for (var k in map) {
       if (!Object.prototype.hasOwnProperty.call(map, k)) { continue; }
@@ -1900,8 +1915,9 @@ function applyThemeIcons(map) {
 
 /* 页面一就绪就开观察：空状态图标与动态插入的槽位不必等主题切换 */
 if (typeof document !== 'undefined') {
-  if (document.body) { icObserve(); }
-  else { document.addEventListener('DOMContentLoaded', icObserve); }
+  var bootIcons = function () { try { applyThemeIcons({}); } catch (e) {} icObserve(); };
+  if (document.body) { bootIcons(); }
+  else { document.addEventListener('DOMContentLoaded', bootIcons); }
 }
 
 /* ========== theme.js ========== */
@@ -2094,9 +2110,17 @@ const SLOTS = {
   'doc.ranking': 1, 'doc.changelog': 1, 'doc.ai': 1,
 };
 
-/* 8 个可覆写的变量：只碰观感，不碰布局尺寸 */
-const TOKENS = ['--glass-blur', '--glass-sat', '--glass-alpha', '--shadow', '--shadow-sm',
-  '--border', '--border-soft', '--surface'];
+/* 可覆写的设计变量：只碰观感，不碰布局尺寸 */
+const TOKENS = ['--bg-1', '--bg-2', '--surface', '--surface-solid', '--border', '--border-soft',
+  '--text', '--text-2', '--text-3', '--accent', '--accent-2', '--accent-ink',
+  '--shadow', '--shadow-sm', '--radius-lg', '--radius-md', '--radius-sm',
+  '--msg-bg', '--msg-fg', '--msg-mine-bg', '--msg-mine-fg',
+  '--tab-active-bg', '--tab-active-fg', '--toast-bg', '--toast-fg',
+  '--toggle-on', '--slider-fill',
+  '--glass-blur', '--glass-sat', '--glass-alpha'];
+
+/* 装饰层允许的属性：形状/位置/动效，不含 url() 与 content */
+const DECO_PROPS = /^(position|top|right|bottom|left|width|height|margin(-[a-z]+)?|padding(-[a-z]+)?|border(-[a-z]+)?|border-radius|background(-color|-image)?|box-shadow|opacity|transform|filter|animation(-[a-z]+)?|display|z-index|mix-blend-mode|pointer-events)$/;
 
 /* 边框作用位置：语义键 → 站内真实选择器。主题只能给声明，不能给选择器。 */
 const BORDER_KEYS = {
@@ -2264,6 +2288,60 @@ function sanitizeKeyframes(css) {
   if (/url\s*\(|expression|javascript:|@import|position\s*:|pointer-events/i.test(s)) { return ''; }
   var o = (s.match(/\{/g) || []).length, c2 = (s.match(/\}/g) || []).length;
   return o === c2 ? s : '';
+}
+
+/* ---------- 装饰层净化 ---------- */
+
+/** 只留 div/span/i、class 必须 fd- 前缀、无内联样式与事件、不嵌套 */
+function sanitizeDecoHtml(html) {
+  if (typeof html !== 'string' || !html || html.length > 1200) { return ''; }
+  if (/<\s*script|\son[a-z]+\s*=|style\s*=|javascript:/i.test(html)) { return ''; }
+  var box = document.createElement('div');
+  box.innerHTML = html;
+  var out = [], ok = true;
+  Array.prototype.forEach.call(box.children, function (el) {
+    var tag = el.tagName.toLowerCase();
+    if (tag !== 'div' && tag !== 'span' && tag !== 'i') { ok = false; return; }
+    if (el.children.length) { ok = false; return; }
+    var cls = (el.getAttribute('class') || '').trim();
+    if (!cls) { ok = false; return; }
+    var parts = cls.split(/\s+/);
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i].indexOf('fd-') !== 0) { ok = false; }
+    }
+    var d = document.createElement(tag);
+    d.className = cls;
+    out.push(d.outerHTML);
+  });
+  return (ok && out.length) ? out.join('') : '';
+}
+
+/** 装饰 CSS：选择器只能是 .fd-*（或包在 prefers-reduced-motion 的 @media 里） */
+function sanitizeDecoCss(css) {
+  if (typeof css !== 'string' || !css || css.length > 4000) { return ''; }
+  if (/url\s*\(|@import|expression|javascript:|content\s*:|<\/?[a-z]/i.test(css)) { return ''; }
+  var out = '', i = 0;
+  while (i < css.length) {
+    var lb = css.indexOf('{', i);
+    if (lb < 0) { break; }
+    var sel = css.slice(i, lb).trim();
+    var depth = 1, j = lb + 1;
+    while (j < css.length && depth > 0) {
+      if (css[j] === '{') { depth++; } else if (css[j] === '}') { depth--; }
+      j++;
+    }
+    var body = css.slice(lb + 1, j - 1);
+    i = j;
+    if (/^@media/.test(sel)) {
+      var inner = sanitizeDecoCss(body);
+      if (inner && /prefers-reduced-motion/.test(sel)) { out += sel + '{' + inner + '}'; }
+      continue;
+    }
+    if (!/^\.[A-Za-z0-9_.:\- ]+$/.test(sel) || sel.indexOf('.fd-') < 0) { continue; }
+    var decl = sanitizeDecls(body, DECO_PROPS);
+    if (decl) { out += sel + '{' + decl + '}'; }
+  }
+  return out;
 }
 
 /* ---------- 校验 ---------- */
@@ -2532,28 +2610,50 @@ function validate(data, rawLen) {
     else { force = data.force; }
   }
 
-  var tokens = {};
+  var tokens = { light: {}, dark: {}, flat: {} };
   if (data.tokens != null) {
     if (!data.tokens || typeof data.tokens !== 'object') {
       errors.push('tokens 必须是对象');
     } else {
-      Object.keys(data.tokens).forEach(function (k) {
-        if (TOKENS.indexOf(k) < 0) {
-          warns.push('tokens 忽略白名单外的键 ' + k);
-          return;
-        }
-        var val = String(data.tokens[k] == null ? '' : data.tokens[k]);
-        if (!val || val.length > 120 || /important|var\(|url\(|[{}<>]/i.test(val)) {
-          warns.push('tokens.' + k + ' 值不合法，已忽略');
-          return;
-        }
-        tokens[k] = val;
-      });
+      var pickTokens = function (src, bucket, label) {
+        Object.keys(src).forEach(function (k) {
+          if (TOKENS.indexOf(k) < 0) { warns.push('tokens 忽略白名单外的键 ' + k); return; }
+          var val = String(src[k] == null ? '' : src[k]);
+          if (!val || val.length > 120 || /important|var\(|url\(|[{}<>]/i.test(val)) {
+            warns.push('tokens.' + label + k + ' 值不合法，已忽略');
+            return;
+          }
+          bucket[k] = val;
+        });
+      };
+      var nested = (data.tokens.light && typeof data.tokens.light === 'object')
+        || (data.tokens.dark && typeof data.tokens.dark === 'object');
+      if (nested) {
+        if (data.tokens.light) { pickTokens(data.tokens.light, tokens.light, 'light.'); }
+        if (data.tokens.dark) { pickTokens(data.tokens.dark, tokens.dark, 'dark.'); }
+      } else {
+        pickTokens(data.tokens, tokens.flat, '');
+      }
+    }
+  }
+
+  /* 装饰层：只允许 div/span/i 与 fd- 前缀的 class；任何不合规就整块丢弃 */
+  var deco = null;
+  if (data.deco != null) {
+    if (typeof data.deco !== 'object' || Array.isArray(data.deco)) {
+      warns.push('deco 必须是对象，已忽略');
+    } else {
+      var dHtml = typeof data.deco.html === 'string' ? data.deco.html : '';
+      var dCss = typeof data.deco.css === 'string' ? data.deco.css : '';
+      var safeHtml = sanitizeDecoHtml(dHtml);
+      var safeCss = dCss ? sanitizeDecoCss(dCss) : '';
+      if (safeHtml) { deco = { html: safeHtml, css: safeCss }; }
+      else if (dHtml) { warns.push('deco.html 不合规，已忽略'); }
     }
   }
 
   var known = ['schema', 'id', 'name', 'colour', 'colourDesc', 'radius', 'background',
-    'icons', 'font', 'force', 'tokens', 'borders', 'effects', 'dialog', 'meta'];
+    'icons', 'font', 'force', 'tokens', 'borders', 'effects', 'dialog', 'deco', 'meta'];
   Object.keys(data).forEach(function (k) {
     if (known.indexOf(k) < 0) { warns.push('忽略未知字段 ' + k); }
   });
@@ -2565,7 +2665,8 @@ function validate(data, rawLen) {
     theme: {
       id: data.id, name: name, desc: desc, colour: colour, radius: radius,
       background: bg, icons: icons, iconCss: iconCss, font: font, force: force,
-      tokens: tokens, borders: borders, effects: effects, dialog: dialog, meta: data.meta || null,
+      tokens: tokens, borders: borders, effects: effects, dialog: dialog, deco: deco,
+      meta: data.meta || null,
     },
   };
 }
@@ -2645,6 +2746,25 @@ function buildLayers(list) {
     box.appendChild(d);
   });
   document.body.appendChild(box);
+}
+
+function applyDeco(theme) {
+  var old = document.getElementById('tjson-deco');
+  if (old) { old.remove(); }
+  if (!theme.deco || !theme.deco.html) { return; }
+  var box = document.createElement('div');
+  box.id = 'tjson-deco';
+  box.className = 'festival-deco';
+  box.setAttribute('aria-hidden', 'true');
+  box.innerHTML = theme.deco.html;
+  document.body.appendChild(box);
+  document.documentElement.setAttribute('data-festival', '1');
+  if (theme.deco.css) {
+    var st = document.createElement('style');
+    st.id = 'tjson-deco-css';
+    st.textContent = theme.deco.css;
+    document.head.appendChild(st);
+  }
 }
 
 function injectStyle(theme) {
@@ -2739,7 +2859,10 @@ function applyVars(theme) {
     if (theme.radius.md != null) { setVar('--radius-md', theme.radius.md + 'px'); }
     if (theme.radius.sm != null) { setVar('--radius-sm', theme.radius.sm + 'px'); }
   }
-  Object.keys(theme.tokens).forEach(function (k) { setVar(k, theme.tokens[k]); });
+  var darkMode = document.documentElement.dataset.theme === 'dark';
+  var tok = theme.tokens || { light: {}, dark: {}, flat: {} };
+  var set = Object.assign({}, tok.flat, darkMode ? tok.dark : tok.light);
+  Object.keys(set).forEach(function (k) { setVar(k, set[k]); });
   if (theme.dialog) {
     var dark = document.documentElement.dataset.theme === 'dark';
     var dlg = Object.assign({}, theme.dialog, dark && theme.dialog.dark ? theme.dialog.dark : {});
@@ -2762,6 +2885,7 @@ function apply(theme) {
     buildLayers(theme.background);
   }
   applyThemeIcons(theme.icons);
+  applyDeco(theme);
   injectStyle(theme);
   injectFont(theme);
   bindClickFx(!!(theme.effects && theme.effects.click));
@@ -2785,11 +2909,14 @@ function clear() {
   delete window.__TJSON_FORCE;
   var bg = document.getElementById(BG_ID);
   if (bg) { bg.remove(); }
-  ['tjson-style', 'tjson-font'].forEach(function (id) {
+  ['tjson-style', 'tjson-font', 'tjson-deco-css'].forEach(function (id) {
     var n = document.getElementById(id);
     if (n) { n.remove(); }
   });
   bindClickFx(false);
+  var dc = document.getElementById('tjson-deco');
+  if (dc) { dc.remove(); }
+  document.documentElement.removeAttribute('data-festival');
   applyThemeIcons({});
   try { if (typeof window.__rerenderDrawer === 'function') { window.__rerenderDrawer(); } } catch (e) {}
   TJ.theme = null;

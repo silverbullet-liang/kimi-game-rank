@@ -56,7 +56,8 @@ themes/
 | `icons` | object | 否 | 按位置替换图标，见 §8 |
 | `font` | object | 否 | 字体，见 §9 |
 | `force` | string | 否 | `auto` / `light` / `dark`，见 §10 |
-| `tokens` | object | 否 | 8 个白名单 CSS 变量，见 §11 |
+| `tokens` | object | 否 | 明暗两套设计变量，见 §11 |
+| `deco` | object | 否 | 装饰层（贴边元素 + 其样式），见 §11.2 |
 | `borders` | object | 否 | 22 处元素的描边，见 §12 |
 | `effects` | object | 否 | 点击效果，见 §13 |
 | `dialog` | object | 否 | 对话框配色，见 §14 |
@@ -483,27 +484,61 @@ themes/
 
 ---
 
-## 11. tokens：受限的 CSS 变量
+## 11. tokens：设计变量
+
+`tokens` 只覆写「观感」变量，不碰布局尺寸。支持两种写法：
+
+```json
+"tokens": { "--shadow": "0 8px 24px rgba(20,30,60,.12)", "--surface": "rgba(255,255,255,.7)" }
+```
 
 ```json
 "tokens": {
-  "--glass-blur": "18px",
-  "--glass-alpha": ".62",
-  "--shadow": "0 8px 24px rgba(20, 30, 60, .12)"
+  "light": { "--bg-1": "#FFF7F2", "--bg-2": "#FBE6DA", "--text": "#2A1512", "--accent": "#B8272A" },
+  "dark":  { "--bg-1": "#1D0F0B", "--bg-2": "#2E1712", "--text": "#F7E9E2", "--accent": "#E4574A" }
 }
 ```
 
-白名单只有 8 个：
+推荐用 `light` / `dark` 两套：站点的明暗切换是纯 CSS 变量切换，两套同时下发后切换即时生效。
+只有一套时也可以写扁平形式，它同时用于明暗两种模式。
+
+白名单 30 个：
 
 ```
+--bg-1  --bg-2  --surface  --surface-solid  --border  --border-soft
+--text  --text-2  --text-3  --accent  --accent-2  --accent-ink
+--shadow  --shadow-sm  --radius-lg  --radius-md  --radius-sm
+--msg-bg  --msg-fg  --msg-mine-bg  --msg-mine-fg
+--tab-active-bg  --tab-active-fg  --toast-bg  --toast-fg
+--toggle-on  --slider-fill
 --glass-blur  --glass-sat  --glass-alpha
---shadow      --shadow-sm
---border      --border-soft  --surface
 ```
 
-值里不允许 `!important`、`var()`、`url()`。白名单外的键会被忽略并提示。
+值只接受颜色、渐变、长度与阴影，不允许 `!important`、`var()`、`url()`；白名单外的键会被忽略并提示。
 
-限制的理由：手写 CSS 皮肤时期出现过装饰盖住按钮、背景撑出横向滚动，所以只开放「观感」相关的几个变量。
+正文与背景的对比度请保持在 4.5:1 以上——深色主题最容易踩的坑是「深底 + 深字」。
+
+### 11.1 背景层与暗色
+
+`background` 的第一层纯渐变被当作底色。站点在暗色模式下会自动换用 `tokens.dark` 的
+`--bg-1` / `--bg-2` 做底色，其余 SVG 点缀层照常叠加，所以你只需把两套 `--bg-*` 写对，
+不必为暗色单独做一套背景图。
+
+### 11.2 deco：装饰层
+
+贴边的装饰元素。只在节日与内置主题里使用；投稿主题里该字段会被严格过滤后再尝试应用。
+
+```json
+"deco": {
+  "html": "<div class=\"fd-moon\"></div><i class=\"fd-petal\"></i>",
+  "css": ".fd-moon{position:fixed;top:8vh;right:9vw;width:92px;height:92px;border-radius:50%;background:radial-gradient(circle at 38% 34%,#FFF6D8,#F2D690);pointer-events:none}"
+}
+```
+
+- `html`：只允许 `<div>` `<span>` `<i>`，class 必须以 `fd-` 开头，最多 6 个元素、总长 ≤ 1200 字符；不得带 `style` 或事件属性。
+- `css`：只允许定位、尺寸、边框、背景、阴影、变换、滤镜、动画与 `pointer-events` 这些属性；不得出现 `url(`、`@import`、`content:`。
+- 装饰必须 `pointer-events:none`，并贴在视口边缘（顶部 ≤10vh、底部 ≤8vh、或左右 ≤8vw），不要压住正文中部。
+- 用了 `animation` 必须同时写一条 `@media (prefers-reduced-motion: reduce)` 关闭它；每个主题最多一处循环动画，时长 ≥6s。
 
 ---
 

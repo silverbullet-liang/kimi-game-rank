@@ -42,15 +42,78 @@
   ],
   "force": "auto",
   "tokens": {
-    "--surface": "rgba(255,255,255,.92)",
-    "--border": "rgba(79,107,114,.17)",
-    "--border-soft": "rgba(79,107,114,.08)",
-    "--shadow": "0 8px 22px rgba(29,42,45,.12)",
-    "--shadow-sm": "0 3px 9px rgba(29,42,45,.07)"
+    "light": {
+      "--bg-1": "#EEEAE1",
+      "--bg-2": "#E2DDD2",
+      "--surface": "rgba(250,248,243,0.9)",
+      "--surface-solid": "#FAF8F3",
+      "--border": "#CFC7B7",
+      "--border-soft": "rgba(51,112,110,0.16)",
+      "--text": "#1F2A28",
+      "--text-2": "#40504D",
+      "--text-3": "#5A6561",
+      "--accent": "#A9522A",
+      "--accent-2": "#33706E",
+      "--accent-ink": "#FFF7EF",
+      "--shadow": "rgba(31,42,40,0.16)",
+      "--shadow-sm": "rgba(31,42,40,0.09)",
+      "--msg-bg": "#FBF8F1",
+      "--msg-fg": "#1F2A28",
+      "--msg-mine-bg": "#E7DECB",
+      "--msg-mine-fg": "#2A211A",
+      "--tab-active-bg": "#33706E",
+      "--tab-active-fg": "#FFF7EF",
+      "--toast-bg": "#1F2A28",
+      "--toast-fg": "#EEEAE1",
+      "--toggle-on": "#A9522A",
+      "--slider-fill": "#8A9C93"
+    },
+    "dark": {
+      "--bg-1": "#1B211F",
+      "--bg-2": "#121716",
+      "--surface": "rgba(36,44,41,0.88)",
+      "--surface-solid": "#242C29",
+      "--border": "#3A4643",
+      "--border-soft": "rgba(217,130,75,0.2)",
+      "--text": "#EDEFE9",
+      "--text-2": "#CAD0C9",
+      "--text-3": "#9AA49E",
+      "--accent": "#D9824B",
+      "--accent-2": "#6BA9A5",
+      "--accent-ink": "#1B1712",
+      "--shadow": "rgba(6,10,9,0.6)",
+      "--shadow-sm": "rgba(6,10,9,0.4)",
+      "--msg-bg": "#242C29",
+      "--msg-fg": "#EDEFE9",
+      "--msg-mine-bg": "#3C3228",
+      "--msg-mine-fg": "#F3EDE2",
+      "--tab-active-bg": "#D9824B",
+      "--tab-active-fg": "#1B1712",
+      "--toast-bg": "#EDEFE9",
+      "--toast-fg": "#1B211F",
+      "--toggle-on": "#D9824B",
+      "--slider-fill": "#6BA9A5"
+    }
   },
   "meta": {
     "author": "Kimi 游戏榜",
     "version": "1.0.0",
     "license": "AGPL-3.0"
+  },
+  "icons": {
+    "nav.total": "M6 3h12v3h2a3 3 0 0 1 0 6h-1.2A6 6 0 0 1 13 16.9V19h3v2H8v-2h3v-2.1A6 6 0 0 1 5.2 12H4a3 3 0 0 1 0-6h2V3zM8.4 11.6h7.2v1.4H8.4zM19.4 2.6l1.3 1.3-2.2 2.2-1.3-1.3z",
+    "action.star": "M12 2.6l3 6.1 6.7 1-4.9 4.7 1.2 6.6L12 17.8 5.9 21l1.2-6.6-4.9-4.7 6.7-1zM12 6.6l1.2 2.4-1.2 1.1-1.2-1.1zM2 21.8h6v1.3H2z",
+    "nav.today": "M7 2h2v2h6V2h2v2h3v18H4V4h3V2zm0 8v10h10V10H7zM8.6 12.4v5.4h6.8v-5.4z",
+    "action.comment": "M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4V6a2 2 0 0 1 2-2zM16.4 7.6l1.3-1.3 1.6 1.6-1.3 1.3z",
+    "field.search": "M10 4a6 6 0 1 0 3.7 10.7l4.3 4.3 1.4-1.4-4.3-4.3A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM7.4 11.2l4.6-4.6 1.2 1.2-4.6 4.6z",
+    "action.send": "M3 20l18-8L3 4v6l12 2-12 2v6zM1.6 17.8l3-3 1.2 1.2-3 3z",
+    "media.play": "M7 3.4l13 8.6-13 8.6zM3 21.6h18v1.4H3z",
+    "action.vote": "M12 2l3 6 6.5.9-4.7 4.6 1.1 6.5L12 17l-5.9 3 1.1-6.5L2.5 8.9 9 8zM3 21.6h18v1.4H3z",
+    "doc.features": "M9 2.4h6v2.2c2 1.6 3.2 4 3.2 6.8 0 4.6-3 8-6.2 8s-6.2-3.4-6.2-8c0-2.8 1.2-5.2 3.2-6.8zM7 12.4h10v1.4H7z",
+    "state.empty": "M4 5.6h16v2.6H4zM6.4 9.2h11.2v7.6H6.4zM3 17.8h18v2.6H3z"
+  },
+  "deco": {
+    "html": "<div class=\"fd-frame\"></div><div class=\"fd-glint\"></div><div class=\"fd-plinth\"></div><i class=\"fd-ocre\"></i>",
+    "css": ".fd-frame{position:fixed;left:3vw;top:4vh;width:70px;height:46px;border:2px solid rgba(51,112,110,.38);background:rgba(227,220,206,.28);pointer-events:none}.fd-glint{position:fixed;right:0;top:0;width:24vw;height:9vh;background:linear-gradient(210deg,rgba(255,255,255,.5),transparent 66%);transform:skewX(-12deg);pointer-events:none}.fd-plinth{position:fixed;left:0;right:0;bottom:0;height:6px;background:linear-gradient(90deg,rgba(169,82,42,.55),rgba(51,112,110,.5),rgba(169,82,42,.55));pointer-events:none}.fd-ocre{position:fixed;right:6vw;bottom:6vh;display:block;width:32px;height:32px;border-radius:50% 50% 46% 46%;background:rgba(169,82,42,.35);pointer-events:none}"
   }
 }

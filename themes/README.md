@@ -50,10 +50,15 @@
 | 图标 | `icons` |
 | 字体 | `font` |
 | 强制深色 / 浅色 | `force` |
+| 底色、文字、主色、阴影（明暗两套） | `tokens.light` / `tokens.dark` |
 | 玻璃模糊、阴影等 | `tokens` |
 | 卡片、按钮的描边 | `borders` |
 | 点击效果 | `effects.click` |
 | 对话框配色 | `dialog` |
+| 贴边的节日装饰（月亮、花瓣、灯笼…） | `deco` |
+
+节日主题就是把这几样一起用：配色在 `tokens` 写两套，图标在 `icons` 里按意象加点缀，
+装饰放在 `deco`。想对照现成的例子，直接看 `themes/*.theme.json`。
 
 ---
 
